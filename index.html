@@ -51,7 +51,7 @@
 
         .page {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             width: 100%;
             max-width: 960px;
             display: grid;
@@ -297,16 +297,29 @@
         .mini-list li span {
             color: #c5e1a5;
         }
+
+        /* Star Wars fly-out animation canvas */
+        #starfield-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
+    <canvas id="starfield-canvas"></canvas>
     <div class="noise-overlay"></div>
     <main class="page">
         <section class="hero-card">
             <div class="hero-card-inner">
                 <div class="title-row">
-                    <h1 class="title">Zombie Survival</h1>
-                    <span class="tagline">Canvas prototype</span>
+                    <h1 class="title">Zombobs</h1>
+                    <span class="tagline">v0.1 · Canvas prototype</span>
                 </div>
 
                 <div class="pill-row">
@@ -316,7 +329,8 @@
                 </div>
 
                 <p class="hero-text">
-                    Dodge, kite and blast your way through endless waves of glowing undead in a fast, arcade‑style prototype.
+                    Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 3 unique weapons, 
+                    throw grenades, collect health and ammo pickups, and face off against normal and armored zombie variants. 
                     Built with pure HTML5 Canvas and JavaScript — no engines, no frameworks, just you and the horde.
                 </p>
 
@@ -325,28 +339,42 @@
                         <div class="feature-icon">🔫</div>
                         <div>
                             <div class="feature-label">3 distinct weapons</div>
-                            <div>Swap between pistol, shotgun and rifle with unique fire rates &amp; ammo.</div>
+                            <div>Pistol, Shotgun, Rifle with unique damage, fire rates &amp; ammo. Switch with 1/2/3 keys.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">💣</div>
+                        <div>
+                            <div class="feature-label">Grenades</div>
+                            <div>Throw explosives (G key) with AOE damage. 3 per game, 2s cooldown.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🛡️</div>
+                        <div>
+                            <div class="feature-label">Enemy variety</div>
+                            <div>Normal zombies plus armored variants with damage-absorbing armor.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📦</div>
+                        <div>
+                            <div class="feature-label">Pickups</div>
+                            <div>Health orbs (+25 HP) and ammo boxes (+15 ammo) spawn periodically.</div>
                         </div>
                     </div>
                     <div class="feature">
                         <div class="feature-icon">🩸</div>
                         <div>
                             <div class="feature-label">Juicy visuals</div>
-                            <div>Screen shake, muzzle flash, blood splatter and glowing enemies.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">❤️</div>
-                        <div>
-                            <div class="feature-label">Health pickups</div>
-                            <div>Grab pulsing med‑orbs to stay alive a little longer.</div>
+                            <div>Screen shake, muzzle flash, blood splatter, floating damage numbers &amp; explosions.</div>
                         </div>
                     </div>
                     <div class="feature">
                         <div class="feature-icon">🏆</div>
                         <div>
-                            <div class="feature-label">Endless score chase</div>
-                            <div>Scaling waves, local high score and an in‑game HUD.</div>
+                            <div class="feature-label">Progressive difficulty</div>
+                            <div>Waves scale with speed, health &amp; count. High score tracking &amp; HUD stats.</div>
                         </div>
                     </div>
                 </div>
@@ -356,7 +384,7 @@
                         <span>Play now</span>
                     </button>
                     <div class="btn-secondary">
-                        <div>WASD to move · Mouse to aim · Click to shoot · <strong>ESC</strong> to pause</div>
+                        <div>WASD to move · Mouse to aim · Click to shoot · <strong>1/2/3</strong> switch weapons · <strong>G</strong> grenade · <strong>R</strong> reload · <strong>ESC</strong> pause</div>
                     </div>
                 </div>
 
@@ -384,25 +412,397 @@
             </div>
 
             <div>
-                <div class="side-heading">What this build includes</div>
+                <div class="side-heading">v0.1 Features</div>
                 <ul class="mini-list">
-                    <li><span>✔</span> Core movement, shooting &amp; waves</li>
-                    <li><span>✔</span> Weapons, ammo &amp; reloads</li>
-                    <li><span>✔</span> Health pickups &amp; HUD</li>
-                    <li><span>✔</span> Audio, particles, screen shake</li>
+                    <li><span>✔</span> 3 weapons (Pistol, Shotgun, Rifle)</li>
+                    <li><span>✔</span> Ammo system with reload mechanics</li>
+                    <li><span>✔</span> Normal &amp; Armored zombies</li>
+                    <li><span>✔</span> Health &amp; Ammo pickups</li>
+                    <li><span>✔</span> Grenades with AOE damage</li>
+                    <li><span>✔</span> Main menu &amp; pause system</li>
+                    <li><span>✔</span> Progressive wave difficulty</li>
+                    <li><span>✔</span> High score tracking</li>
+                    <li><span>✔</span> Visual effects &amp; audio</li>
                 </ul>
             </div>
 
             <div>
-                <div class="side-heading">Roadmap snapshot</div>
+                <div class="side-heading">Coming in future updates</div>
                 <ul class="mini-list">
-                    <li><span>○</span> Special zombie types</li>
-                    <li><span>○</span> Melee attack &amp; pickups</li>
-                    <li><span>○</span> Base defense &amp; upgrades</li>
+                    <li><span>○</span> Spitter &amp; Summoner zombies</li>
+                    <li><span>○</span> Boss waves every 5 rounds</li>
+                    <li><span>○</span> Temporary power-up pickups</li>
+                    <li><span>○</span> Base defense system</li>
                 </ul>
             </div>
         </aside>
     </main>
+
+    <script>
+        // Star Wars-style fly-out animation for game elements
+        const canvas = document.getElementById('starfield-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let centerX = window.innerWidth / 2;
+        let centerY = window.innerHeight / 2;
+        let mouseX = centerX;
+        let mouseY = centerY;
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // Center is initialized here, but will be updated by mouse
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // All active elements flying out
+        const activeElements = [];
+        
+        // Element types with spawn configuration
+        const elementTypes = [
+            { type: 'zombie', speed: 0.8, size: 20, spawnInterval: 2000 },
+            { type: 'armored', speed: 0.7, size: 22, spawnInterval: 2500 },
+            { type: 'grenade', speed: 0.9, size: 15, spawnInterval: 1800 },
+            { type: 'health', speed: 0.85, size: 12, spawnInterval: 2200 },
+            { type: 'ammo', speed: 0.75, size: 12, spawnInterval: 2100 },
+            { type: 'bullet', speed: 1.2, size: 8, spawnInterval: 500 } // Faster, smaller, more frequent
+        ];
+        
+        // Track last spawn time for each type
+        const lastSpawnTime = {};
+        elementTypes.forEach(et => {
+            lastSpawnTime[et.type] = Date.now() - Math.random() * et.spawnInterval; // Stagger initial spawns
+        });
+        
+        // Function to spawn a new element
+        function spawnElement(typeConfig) {
+            const angle = Math.random() * Math.PI * 2; // Random direction
+            activeElements.push({
+                type: typeConfig.type,
+                angle: angle,
+                speed: typeConfig.speed + (Math.random() - 0.5) * 0.2, // Slight speed variation
+                size: typeConfig.size,
+                distance: 0,
+                scale: 1,
+                opacity: 1
+            });
+        }
+        
+        function drawZombie(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Toxic aura
+            const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
+            const auraGradient = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2);
+            auraGradient.addColorStop(0, `rgba(0, 255, 0, ${0.4 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Body
+            const bodyGradient = ctx.createRadialGradient(-4, -4, 0, 0, 0, s);
+            bodyGradient.addColorStop(0, '#9acd32');
+            bodyGradient.addColorStop(1, '#33691e');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 0, 0, ${eyePulse})`;
+            ctx.beginPath();
+            ctx.arc(-s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
+            ctx.arc(s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawArmoredZombie(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Draw base zombie body first
+            const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
+            const auraGradient = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2);
+            auraGradient.addColorStop(0, `rgba(0, 255, 0, ${0.4 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            const bodyGradient = ctx.createRadialGradient(-4, -4, 0, 0, 0, s);
+            bodyGradient.addColorStop(0, '#9acd32');
+            bodyGradient.addColorStop(1, '#33691e');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 0, 0, ${eyePulse})`;
+            ctx.beginPath();
+            ctx.arc(-s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
+            ctx.arc(s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Overlay armor
+            ctx.fillStyle = 'rgba(140, 140, 155, 0.96)';
+            ctx.strokeStyle = '#303030';
+            ctx.lineWidth = 2;
+            
+            // Chest plate
+            ctx.fillRect(-s * 0.9, s * 0.2, s * 1.8, s * 1.1);
+            ctx.strokeRect(-s * 0.9, s * 0.2, s * 1.8, s * 1.1);
+            
+            // Shoulder pads
+            ctx.beginPath();
+            ctx.arc(-s * 0.75, s * 0.3, s * 0.5, 0, Math.PI * 2);
+            ctx.arc(s * 0.75, s * 0.3, s * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function drawGrenade(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Grenade body
+            const grenadeGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, s);
+            grenadeGradient.addColorStop(0, '#8b7355');
+            grenadeGradient.addColorStop(1, '#4a3d2a');
+            ctx.fillStyle = grenadeGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Segments
+            ctx.strokeStyle = '#3a2d1a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(-s, -2);
+            ctx.lineTo(s, -2);
+            ctx.moveTo(-s, 0);
+            ctx.lineTo(s, 0);
+            ctx.moveTo(-s, 2);
+            ctx.lineTo(s, 2);
+            ctx.stroke();
+            
+            // Fuse
+            ctx.fillStyle = '#ffaa00';
+            ctx.beginPath();
+            ctx.arc(0, -s - 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawHealthPickup(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            const t = Date.now() / 500;
+            const pulse = 0.8 + Math.sin(t) * 0.15;
+            
+            // Glow
+            const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2.2 * pulse);
+            glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            glowGradient.addColorStop(1, 'rgba(255, 0, 80, 0)');
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2.2 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Core
+            const coreGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, s);
+            coreGradient.addColorStop(0, '#ff8a80');
+            coreGradient.addColorStop(1, '#d50000');
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Cross
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-s / 2, 0);
+            ctx.lineTo(s / 2, 0);
+            ctx.moveTo(0, -s / 2);
+            ctx.lineTo(0, s / 2);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function drawAmmoPickup(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            const t = Date.now() / 500;
+            const pulse = 0.8 + Math.sin(t) * 0.15;
+            
+            // Glow
+            const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2.2 * pulse);
+            glowGradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+            glowGradient.addColorStop(1, 'rgba(255, 152, 0, 0)');
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2.2 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Core
+            const coreGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, s);
+            coreGradient.addColorStop(0, '#ffd54f');
+            coreGradient.addColorStop(1, '#ff9800');
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bullet icon
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-s * 0.4, -s * 0.3, s * 0.8, s * 0.6);
+            ctx.beginPath();
+            ctx.moveTo(s * 0.4, -s * 0.3);
+            ctx.lineTo(s * 0.6, 0);
+            ctx.lineTo(s * 0.4, s * 0.3);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawBullet(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Bullet glow (yellow)
+            const bulletGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2);
+            bulletGlow.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
+            bulletGlow.addColorStop(1, 'rgba(255, 255, 0, 0)');
+            ctx.fillStyle = bulletGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bullet core
+            const bulletGradient = ctx.createRadialGradient(-1, -1, 0, 0, 0, s);
+            bulletGradient.addColorStop(0, '#ffffff');
+            bulletGradient.addColorStop(0.5, '#ffff00');
+            bulletGradient.addColorStop(1, '#ffaa00');
+            ctx.fillStyle = bulletGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bullet outline
+            ctx.strokeStyle = '#cc8800';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function animate() {
+            // Lerp center towards mouse position for smooth following
+            centerX += (mouseX - centerX) * 0.03;
+            centerY += (mouseY - centerY) * 0.03;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const now = Date.now();
+            const maxDistance = Math.max(canvas.width, canvas.height) * 0.8;
+            
+            // Spawn new elements continuously
+            elementTypes.forEach(typeConfig => {
+                if (now - lastSpawnTime[typeConfig.type] >= typeConfig.spawnInterval) {
+                    spawnElement(typeConfig);
+                    lastSpawnTime[typeConfig.type] = now;
+                }
+            });
+            
+            // Update and draw all active elements
+            for (let i = activeElements.length - 1; i >= 0; i--) {
+                const el = activeElements[i];
+                
+                // Update distance (Star Wars effect - moving away)
+                el.distance += el.speed;
+                
+                // Calculate position
+                const x = centerX + Math.cos(el.angle) * el.distance;
+                const y = centerY + Math.sin(el.angle) * el.distance;
+                
+                // Calculate scale and opacity (fade out as distance increases)
+                el.scale = Math.max(0.1, 1 - (el.distance / maxDistance));
+                el.opacity = Math.max(0, 1 - (el.distance / maxDistance) * 0.8);
+                
+                // Draw element if still visible
+                if (el.distance < maxDistance && el.opacity > 0.05) {
+                    ctx.save();
+                    ctx.globalAlpha = el.opacity;
+                    
+                    switch(el.type) {
+                        case 'zombie':
+                            drawZombie(x, y, el.size, el.scale);
+                            break;
+                        case 'armored':
+                            drawArmoredZombie(x, y, el.size, el.scale);
+                            break;
+                        case 'grenade':
+                            drawGrenade(x, y, el.size, el.scale);
+                            break;
+                        case 'health':
+                            drawHealthPickup(x, y, el.size, el.scale);
+                            break;
+                        case 'ammo':
+                            drawAmmoPickup(x, y, el.size, el.scale);
+                            break;
+                        case 'bullet':
+                            drawBullet(x, y, el.size, el.scale);
+                            break;
+                    }
+                    
+                    ctx.restore();
+                } else {
+                    // Remove element if too far or invisible
+                    activeElements.splice(i, 1);
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Start animation
+        animate();
+    </script>
 </body>
 </html>
 

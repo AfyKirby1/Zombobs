@@ -8,7 +8,7 @@
 - [ ] **Special Zombie Types** - Fast zombies, tank zombies, exploding zombies with different behaviors
 - [ ] **Zombie Slow-on-Hit** - Bullets briefly slow zombies (e.g., 0.5s at 30%) to create crowd-control moments
 - [ ] **Weapon Accuracy Degradation** - Continuous firing reduces accuracy, requiring periodic pauses
-- [ ] **Ammo Pickups from Zombies** - Zombies have a chance to drop small ammo packs on death that restore ammo for current weapon when collected
+- [x] **Ammo Pickups** - Ammo boxes spawn periodically when player has low ammo, restoring ammo for current weapon when collected
 - [ ] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds)
 - [ ] **Stamina/Sprint System** - A stamina bar that depletes when sprinting, forcing players to manage their movement more carefully.
 
@@ -34,6 +34,26 @@
 - [ ] **Zombie Aggression Timer** - Zombies move faster toward player base over time within a wave
 - [ ] **Bounty System** - A specific, marked "bounty" zombie appears each wave. Killing it grants a significant currency bonus.
 
+## Enemies
+- [x] **Armored Zombies** - Slower, heavily armored zombies whose armor absorbs most incoming damage before their health is affected.
+- [ ] **Spitter Zombies** - Ranged infected that lob corrosive projectiles, forcing the player to move and break out of safe positions.
+- [ ] **Summoner/Necromancer Zombies** - Rare support enemies that periodically revive or buff nearby zombies if not prioritized and killed quickly.
+- [ ] **Crawler Variants** - Low-profile crawlers that are hard to spot in the grass and can slip through tight gaps in base defenses.
+
+## Weapons
+- [x] **Grenades** - Throwable explosives (G key) with arc trajectory, AOE damage, and fuse timer. 3 per game, 2s cooldown.
+- [ ] **Rocket Launcher** - More powerful explosive weapon with self-damage risk
+- [ ] **Flamethrower / DoT Weapons** - Short-range weapons that apply burning damage over time to groups of zombies at close range.
+- [ ] **Alternate Fire Modes** - Weapons with secondary fire (burst, single-shot, charged shot) toggled via right-click or a hotkey.
+- [ ] **Elemental Ammo Types** - Special ammo pickups (incendiary, shock, freeze) that temporarily change how the current weapon behaves.
+
+## Pickups
+- [x] **Ammo Pickups** - Yellow/orange ammo boxes that spawn periodically when ammo is low, restoring 15 ammo for current weapon
+- [ ] **Temporary Power-Up Pickups** - Short-duration buffs like double damage, rapid fire, or movement speed boost that drop rarely from zombies.
+- [ ] **Armor / Shield Pickups** - Pickups that grant a temporary overshield layer which absorbs a portion of incoming damage before health.
+- [ ] **Ammo Crates** - Rare, high-value pickups that fully refill ammo for the current weapon or all weapons in your inventory.
+- [ ] **Risk/Reward Pickups** - Powerful pickups placed in dangerous positions (edges of the map or near spawners) to encourage risky plays.
+
 ## Polish & Juice
 - [x] **Sound Effects** - Gunshots, damage sounds, and walking footsteps (Web Audio API generated)
 - [x] **Screen Shake** - Camera shake on shooting and taking damage for impact
@@ -54,7 +74,7 @@
 - [x] **Low Ammo Warning** - Visual pulse/flash on ammo counter when ammo drops below 25% of magazine capacity
 - [ ] **Wave Countdown Overlay** - 3-second overlay with reload hint between waves
 - [ ] **Wave Progress Indicator** - Visual display of remaining zombies in current wave
-- [ ] **Floating Damage Numbers** - Show damage dealt as numbers that float up from zombies when hit
+- [x] **Floating Damage Numbers** - Show damage dealt as numbers that float up from zombies when hit
 - [x] **Aiming Crosshair** - Simple reticle/crosshair at mouse cursor position for better aiming reference
 - [x] **Wave Start Notification** - Brief text overlay showing "Wave X Starting!" when new wave begins
 - [ ] **Weapon Accuracy Indicator** - Visual feedback showing current weapon accuracy level during burst-fire sequences

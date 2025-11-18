@@ -19,8 +19,10 @@
 - **Wave-Based Survival** - Endless waves of zombies with progressive difficulty scaling
 - **3 Unique Weapons** - Pistol, Shotgun, and Rifle, each with distinct damage, fire rate, and ammo capacity
 - **Ammo Management** - Limited ammo with manual/auto-reload mechanics
-- **Health Pickups** - Pulsing med-orbs spawn periodically to keep you alive
-- **Smart Zombie AI** - Enemies track and chase the player with scaling speed and health
+- **Health Pickups** - Pulsing med-orbs spawn periodically to keep you alive (+25 HP)
+- **Ammo Pickups** - Yellow/orange ammo boxes restore ammo for current weapon (+15 ammo, also refills grenades)
+- **Grenades** - Throwable explosives with AOE damage (G key, 3 per game, 2s cooldown)
+- **Normal & Armored Zombies** - Standard infected plus slow, tanky armored variants that soak more damage
 
 ### 🎨 Visual Polish
 - **Screen Shake** - Dynamic camera shake on shooting and taking damage
@@ -35,14 +37,17 @@
 - **Gunshot Sounds** - Sharp crack with low-frequency boom
 - **Damage Feedback** - Low-frequency grunt on player hit
 - **Footstep Audio** - Impact thuds while moving
+- **Explosion Sounds** - Dynamic boom for grenade detonations
 
 ### 🖥️ UI & Feedback
-- **In-Game HUD** - Real-time stats overlay (Health, Ammo, Kills, Wave, High Score)
+- **Main Menu** - Beautiful landing page with animated Star Wars-style background
+- **In-Game HUD** - Real-time stats overlay (Health, Ammo, Grenades, Kills, Wave, High Score)
 - **Low Ammo Warning** - Pulsing red indicator when ammo drops below 25%
 - **FPS Counter** - Performance monitor in top-right corner
 - **Pause Menu** - ESC to pause/resume with restart option
 - **Game Over Screen** - Final stats and high score tracking
 - **High Score Persistence** - Best run saved to localStorage
+- **Animated Landing Page** - Interactive background with game elements (zombies, bullets, grenades, pickups) flying out in Star Wars-style
 
 ### ⚡ Performance
 - **Render Scaling** - Optimized canvas resolution for smooth 60+ FPS
@@ -58,6 +63,7 @@
 | **Aim** | `Mouse` |
 | **Shoot** | `Left Click` (hold for continuous fire) |
 | **Switch Weapon** | `1` (Pistol), `2` (Shotgun), `3` (Rifle) |
+| **Throw Grenade** | `G` |
 | **Reload** | `R` |
 | **Pause** | `ESC` |
 | **Restart** | `R` (when paused/game over) |
@@ -162,17 +168,21 @@ Check out [`DOCS/roadmap.md`](DOCS/roadmap.md) for the full feature list. Highli
 ### ✅ Completed
 - Weapon variety (3 weapons)
 - Ammo system with reloading
-- Health pickups
-- Visual effects (screen shake, particles, blood)
-- Audio system
+- Health & Ammo pickups
+- Grenades with AOE damage
+- Normal & Armored zombie variants
+- Main menu system
+- Animated landing page with Star Wars-style effects
+- Visual effects (screen shake, particles, blood, explosions)
+- Audio system (gunshots, explosions, footsteps)
 - HUD with pause/game over
 - Crosshair and FPS counter
 - Wave notifications
 
 ### 🔜 Coming Soon
-- Special zombie types (fast, tank, exploding)
-- Ammo pickups from zombies
-- Boss waves
+- Additional special zombie types (spitter, summoner, crawler)
+- Boss waves (every 5 rounds)
+- Temporary power-up pickups
 - Melee attack
 - Floating damage numbers
 - Wave progress indicator
