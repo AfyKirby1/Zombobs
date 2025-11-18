@@ -84,6 +84,7 @@
         let gameRunning = true;
         let gamePaused = false; // Pause state
         let showMainMenu = true; // Main menu state
+        let showSettingsPanel = false; // Settings panel state
         let score = 0;
         let wave = 1;
         let zombiesKilled = 0;
@@ -332,6 +333,14 @@
                     this.drawStat('Wave', wave, '🌊', '#ffc107', startX, startY, 140);
                     startY += 40 + this.itemSpacing;
                     
+                    // Wave Progress (remaining zombies)
+                    const remainingZombies = zombies.length;
+                    const totalZombies = zombiesPerWave;
+                    const waveProgressText = `${remainingZombies}/${totalZombies}`;
+                    const waveProgressColor = remainingZombies <= totalZombies * 0.3 ? '#76ff03' : '#ffc107'; // Green when almost done
+                    this.drawStat('Remaining', waveProgressText, '🧟', waveProgressColor, startX, startY, 140);
+                    startY += 40 + this.itemSpacing;
+                    
                     // High Score
                     this.drawStat('High Score', highScore, '🏆', '#ffd700', startX, startY, 140);
                     startY += 40 + this.itemSpacing;
@@ -474,7 +483,7 @@
                     false
                 );
 
-                // Settings Button (disabled)
+                // Settings Button
                 const settingsHovered = this.hoveredButton === 'settings';
                 this.drawMenuButton(
                     'Settings',
@@ -483,7 +492,7 @@
                     buttonWidth,
                     buttonHeight,
                     settingsHovered,
-                    true // disabled
+                    false // enabled
                 );
                 
                 // Multiplayer Button (disabled)
@@ -498,12 +507,11 @@
                     true // disabled
                 );
                 
-                // Coming Soon text
-                if (multiplayerHovered || settingsHovered) {
+                // Coming Soon text (only for multiplayer)
+                if (multiplayerHovered) {
                     this.ctx.font = '14px "Roboto Mono", monospace';
                     this.ctx.fillStyle = '#ff9800';
-                    const yPos = multiplayerHovered ? multiplayerY + 50 : settingsY + 50;
-                    this.ctx.fillText('Coming Soon', centerX, yPos);
+                    this.ctx.fillText('Coming Soon', centerX, multiplayerY + 50);
                 }
                 
                 // Footer text
@@ -605,8 +613,257 @@
             }
         }
 
+        // Settings Manager - handles loading/saving settings
+        class SettingsManager {
+            constructor() {
+                this.settings = this.loadSettings();
+            }
+
+            loadSettings() {
+                try {
+                    const saved = localStorage.getItem('zombobs_settings');
+                    if (saved) {
+                        return JSON.parse(saved);
+                    }
+                } catch (error) {
+                    console.log('Failed to load settings:', error);
+                }
+                // Return defaults
+                return {
+                    audio: {
+                        masterVolume: 1.0
+                    }
+                };
+            }
+
+            saveSettings() {
+                try {
+                    localStorage.setItem('zombobs_settings', JSON.stringify(this.settings));
+                } catch (error) {
+                    console.log('Failed to save settings:', error);
+                }
+            }
+
+            getSetting(category, key) {
+                return this.settings[category]?.[key];
+            }
+
+            setSetting(category, key, value) {
+                if (!this.settings[category]) {
+                    this.settings[category] = {};
+                }
+                this.settings[category][key] = value;
+                this.saveSettings();
+                
+                // Apply setting immediately
+                this.applySetting(category, key, value);
+            }
+
+            applySetting(category, key, value) {
+                if (category === 'audio' && key === 'masterVolume') {
+                    // Only apply if masterGainNode exists (audio context initialized)
+                    if (masterGainNode) {
+                        masterGainNode.gain.value = value;
+                    }
+                }
+            }
+
+            applyAllSettings() {
+                // Apply all settings on load (only if audio is initialized)
+                if (masterGainNode && this.settings.audio?.masterVolume !== undefined) {
+                    this.applySetting('audio', 'masterVolume', this.settings.audio.masterVolume);
+                }
+            }
+        }
+
+        // Settings Panel - minimal UI for settings
+        class SettingsPanel {
+            constructor(canvas, settingsManager) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.settingsManager = settingsManager;
+                this.visible = false;
+                this.draggingSlider = false;
+                this.sliderX = 0;
+                this.sliderY = 0;
+                this.sliderWidth = 200;
+                this.sliderHeight = 8;
+            }
+
+            draw() {
+                if (!this.visible) return;
+
+                // Dark overlay
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Panel background
+                const panelWidth = 400;
+                const panelHeight = 300;
+                const panelX = (this.canvas.width - panelWidth) / 2;
+                const panelY = (this.canvas.height - panelHeight) / 2;
+
+                // Panel background with gradient
+                const bgGradient = this.ctx.createLinearGradient(panelX, panelY, panelX, panelY + panelHeight);
+                bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.95)');
+                bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.95)');
+                this.ctx.fillStyle = bgGradient;
+                this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+
+                // Panel border
+                this.ctx.strokeStyle = '#ff1744';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+
+                // Title
+                this.ctx.font = 'bold 32px "Roboto Mono", monospace';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillStyle = '#ff1744';
+                this.ctx.fillText('SETTINGS', panelX + panelWidth / 2, panelY + 40);
+
+                // Master Volume Setting
+                const settingY = panelY + 100;
+                const settingX = panelX + 40;
+                
+                // Label
+                this.ctx.font = '16px "Roboto Mono", monospace';
+                this.ctx.textAlign = 'left';
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillText('Master Volume', settingX, settingY);
+
+                // Value
+                const volume = this.settingsManager.getSetting('audio', 'masterVolume');
+                const volumePercent = Math.round(volume * 100);
+                this.ctx.textAlign = 'right';
+                this.ctx.fillText(`${volumePercent}%`, panelX + panelWidth - 40, settingY);
+
+                // Slider track
+                const sliderY = settingY + 25;
+                const sliderX = settingX;
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.fillRect(sliderX, sliderY - this.sliderHeight / 2, this.sliderWidth, this.sliderHeight);
+
+                // Slider fill (current value)
+                this.ctx.fillStyle = '#ff1744';
+                const fillWidth = this.sliderWidth * volume;
+                this.ctx.fillRect(sliderX, sliderY - this.sliderHeight / 2, fillWidth, this.sliderHeight);
+
+                // Slider handle
+                const handleX = sliderX + fillWidth - 6;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(sliderX + fillWidth, sliderY, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#ff1744';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+
+                // Store slider bounds for click detection
+                this.sliderBounds = {
+                    x: sliderX,
+                    y: sliderY - 15,
+                    width: this.sliderWidth,
+                    height: 30
+                };
+
+                // Back button
+                const backButtonY = panelY + panelHeight - 60;
+                const backButtonX = panelX + panelWidth / 2 - 60;
+                const backButtonWidth = 120;
+                const backButtonHeight = 40;
+                
+                // Check if mouse is over back button
+                const mouseOverBack = mouse.x >= backButtonX && mouse.x <= backButtonX + backButtonWidth &&
+                                     mouse.y >= backButtonY && mouse.y <= backButtonY + backButtonHeight;
+
+                // Back button background
+                this.ctx.fillStyle = mouseOverBack ? '#ff1744' : 'rgba(255, 23, 68, 0.3)';
+                this.ctx.fillRect(backButtonX, backButtonY, backButtonWidth, backButtonHeight);
+                
+                // Back button border
+                this.ctx.strokeStyle = '#ff1744';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(backButtonX, backButtonY, backButtonWidth, backButtonHeight);
+
+                // Back button text (centered vertically and horizontally)
+                this.ctx.font = '16px "Roboto Mono", monospace';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillText('Back', backButtonX + backButtonWidth / 2, backButtonY + backButtonHeight / 2);
+
+                // Store back button bounds
+                this.backButtonBounds = {
+                    x: backButtonX,
+                    y: backButtonY,
+                    width: backButtonWidth,
+                    height: backButtonHeight
+                };
+            }
+
+            handleClick(x, y) {
+                if (!this.visible) return false;
+
+                // Check back button
+                if (this.backButtonBounds && 
+                    x >= this.backButtonBounds.x && x <= this.backButtonBounds.x + this.backButtonBounds.width &&
+                    y >= this.backButtonBounds.y && y <= this.backButtonBounds.y + this.backButtonBounds.height) {
+                    this.close();
+                    return true;
+                }
+
+                // Check slider
+                if (this.sliderBounds &&
+                    x >= this.sliderBounds.x && x <= this.sliderBounds.x + this.sliderBounds.width &&
+                    y >= this.sliderBounds.y && y <= this.sliderBounds.y + this.sliderBounds.height) {
+                    this.draggingSlider = true;
+                    this.updateSlider(x);
+                    return true;
+                }
+
+                return false;
+            }
+
+            handleMouseMove(x, y) {
+                if (!this.visible) return;
+                
+                if (this.draggingSlider) {
+                    this.updateSlider(x);
+                }
+            }
+
+            handleMouseUp() {
+                this.draggingSlider = false;
+            }
+
+            updateSlider(x) {
+                if (!this.sliderBounds) return;
+                
+                const relativeX = x - this.sliderBounds.x;
+                const value = Math.max(0, Math.min(1, relativeX / this.sliderWidth));
+                this.settingsManager.setSetting('audio', 'masterVolume', value);
+            }
+
+            open() {
+                this.visible = true;
+            }
+
+            close() {
+                this.visible = false;
+                this.draggingSlider = false;
+                showSettingsPanel = false;
+            }
+        }
+
         // Initialize HUD
         const gameHUD = new GameHUD(canvas);
+        
+        // Initialize Settings
+        const settingsManager = new SettingsManager();
+        const settingsPanel = new SettingsPanel(canvas, settingsManager);
+        
+        // Note: Settings will be applied when audio is initialized (in initAudio)
+        // We don't call applyAllSettings() here because masterGainNode doesn't exist yet
 
         // Grass ground pattern cache
         let grassPattern = null;
@@ -670,12 +927,19 @@
         // Audio Context for sound effects
         let audioContext = null;
         let gunshotBuffer = null; // Cache gunshot audio buffer so we don't regenerate it every shot
+        let masterGainNode = null; // Master volume control
         
         // Initialize audio context (needs user interaction first)
         function initAudio() {
             if (!audioContext) {
                 try {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    // Create master gain node for volume control
+                    masterGainNode = audioContext.createGain();
+                    // Apply saved volume setting or default to 100%
+                    const savedVolume = settingsManager.getSetting('audio', 'masterVolume');
+                    masterGainNode.gain.value = savedVolume !== undefined ? savedVolume : 1.0;
+                    masterGainNode.connect(audioContext.destination);
                     // Pre-create the gunshot buffer once for performance
                     createGunshotBuffer();
                 } catch (error) {
@@ -727,7 +991,7 @@
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0.4; // Volume level
                 source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(masterGainNode || audioContext.destination);
                 source.start(0);
             } catch (error) {
                 // Silently fail if audio can't play (e.g., browser restrictions)
@@ -773,7 +1037,53 @@
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0.375; // Volume level (reduced by 25%)
                 source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(masterGainNode || audioContext.destination);
+                source.start(0);
+            } catch (error) {
+                // Silently fail if audio can't play
+            }
+        }
+
+        // Generate kill confirmed sound using Web Audio API
+        function playKillSound() {
+            if (!audioContext) {
+                initAudio();
+                if (!audioContext) return; // Still can't create, skip sound
+            }
+            
+            try {
+                // Create a satisfying kill confirmation sound (pop/thud)
+                const duration = 0.15; // 150ms - shorter and punchier than damage sound
+                const sampleRate = audioContext.sampleRate;
+                const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                // Generate kill sound waveform (satisfying pop/thud)
+                for (let i = 0; i < buffer.length; i++) {
+                    const t = i / sampleRate;
+                    let sample = 0;
+                    // Higher frequency pop (around 300-400Hz) for satisfying "pop" feel
+                    sample += Math.sin(t * 350 * 2 * Math.PI) * 0.5;
+                    // Add lower frequency thud (around 100Hz) for impact
+                    sample += Math.sin(t * 100 * 2 * Math.PI) * 0.4;
+                    // Add higher harmonics for crispness
+                    sample += Math.sin(t * 700 * 2 * Math.PI) * 0.2;
+                    // Add slight noise burst for texture
+                    sample += (Math.random() * 2 - 1) * 0.15;
+                    // Envelope: very quick attack, fast decay (punchy)
+                    const attack = Math.min(1, t / 0.01); // 10ms attack - very quick
+                    const decay = Math.max(0, 1 - (t - 0.01) / (duration - 0.01));
+                    const envelope = attack * decay;
+                    data[i] = sample * envelope * 0.3; // Slightly louder than damage sound
+                }
+                
+                // Play the sound
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 0.4; // Volume level
+                source.connect(gainNode);
+                gainNode.connect(masterGainNode || audioContext.destination);
                 source.start(0);
             } catch (error) {
                 // Silently fail if audio can't play
@@ -825,7 +1135,7 @@
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0.375; // Volume level (increased by 25%)
                 source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(masterGainNode || audioContext.destination);
                 source.start(0);
             } catch (error) {
                 // Silently fail if audio can't play
@@ -871,6 +1181,15 @@
 
         // Event listeners
         document.addEventListener('keydown', (e) => {
+            // Handle ESC key for settings panel first
+            if (e.key === 'Escape') {
+                if (showSettingsPanel) {
+                    showSettingsPanel = false;
+                    settingsPanel.close();
+                    return;
+                }
+            }
+            
             // Don't process game keys if main menu is showing
             if (showMainMenu) return;
             
@@ -919,26 +1238,38 @@
             mouse.y = (e.clientY - rect.top) * scaleY;
             
             // Update menu button hover state
-            if (showMainMenu) {
+            if (showSettingsPanel) {
+                settingsPanel.handleMouseMove(mouse.x, mouse.y);
+            } else if (showMainMenu) {
                 gameHUD.updateMenuHover(mouse.x, mouse.y);
             }
         });
 
         canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+            
+            if (showSettingsPanel) {
+                // Handle settings panel clicks
+                settingsPanel.handleClick(clickX, clickY);
+                return;
+            }
+            
             if (showMainMenu) {
                 // Handle main menu button clicks
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const clickX = (e.clientX - rect.left) * scaleX;
-                const clickY = (e.clientY - rect.top) * scaleY;
-                
                 const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
                 if (clickedButton === 'single') {
                     // Start single player game
                     showMainMenu = false;
                     initAudio(); // Initialize audio on first user interaction
                     startGame(); // Initialize and start the game
+                } else if (clickedButton === 'settings') {
+                    // Open settings panel
+                    showSettingsPanel = true;
+                    settingsPanel.open();
                 } else if (clickedButton === 'multiplayer') {
                     // Multiplayer button clicked - do nothing (non-functional)
                     // Could play a sound or show feedback here
@@ -955,6 +1286,9 @@
 
         canvas.addEventListener('mouseup', () => {
             mouse.isDown = false;
+            if (showSettingsPanel) {
+                settingsPanel.handleMouseUp();
+            }
         });
 
         // Also handle mouse leave to stop firing
@@ -1224,6 +1558,8 @@
                             zombies.splice(zombieIndex, 1);
                             score += 10;
                             zombiesKilled++;
+                            // Play kill confirmed sound
+                            playKillSound();
                             createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), true);
                         } else {
                             createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), false);
@@ -1965,7 +2301,7 @@
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0.4;
                 source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(masterGainNode || audioContext.destination);
                 source.start(0);
             } catch (error) {
                 // Silently fail if audio can't play
@@ -2369,6 +2705,8 @@
                             zombies.splice(zombieIndex, 1);
                             score += 10;
                             zombiesKilled++;
+                            // Play kill confirmed sound
+                            playKillSound();
                             // Create floating damage number
                             damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
                             // Create blood splatter on kill
@@ -2442,6 +2780,13 @@
         }
 
         function drawGame() {
+            // Draw settings panel if showing (on top of everything)
+            if (showSettingsPanel) {
+                canvas.style.cursor = 'default'; // Show cursor on settings
+                settingsPanel.draw();
+                return;
+            }
+            
             // Draw main menu if showing
             if (showMainMenu) {
                 gameHUD.mainMenu = true;
@@ -2632,7 +2977,7 @@
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0.3; // Volume level
                 source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(masterGainNode || audioContext.destination);
                 source.start(0);
             } catch (error) {
                 // Silently fail if audio can't play

@@ -59,7 +59,7 @@
 - [x] **Screen Shake** - Camera shake on shooting and taking damage for impact
 - [x] **Blood Splatter** - Particle effects when zombies are hit/killed
 - [x] **Muzzle Flash** - Visual effect when player shoots
-- [ ] **Kill Confirmed Sound** - Distinct audio feedback (satisfying "pop" or "thud") when zombie is killed, separate from hit sound
+- [x] **Kill Confirmed Sound** - Distinct audio feedback (satisfying "pop" or "thud") when zombie is killed, separate from hit sound
 - [ ] **Hit Markers & Impact SFX** - Quick visual marker and subtle sound on successful hits
 - [ ] **Zombie Spawn Flash** - Brief visual indicator (glow/flash) where zombie will spawn before it appears
 - [ ] **Zombie Death Sound** - Distinct sound effect when zombie is killed (different from hit sound) for kill confirmation
@@ -73,7 +73,7 @@
 - [ ] **Reload Progress Indicator** - Visual progress bar or percentage showing reload completion time in HUD
 - [x] **Low Ammo Warning** - Visual pulse/flash on ammo counter when ammo drops below 25% of magazine capacity
 - [ ] **Wave Countdown Overlay** - 3-second overlay with reload hint between waves
-- [ ] **Wave Progress Indicator** - Visual display of remaining zombies in current wave
+- [x] **Wave Progress Indicator** - Visual display of remaining zombies in current wave
 - [x] **Floating Damage Numbers** - Show damage dealt as numbers that float up from zombies when hit
 - [x] **Aiming Crosshair** - Simple reticle/crosshair at mouse cursor position for better aiming reference
 - [x] **Wave Start Notification** - Brief text overlay showing "Wave X Starting!" when new wave begins
