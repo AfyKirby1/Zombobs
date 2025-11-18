@@ -398,19 +398,20 @@
                 this.ctx.fillStyle = '#ff0000';
                 this.ctx.shadowBlur = 20;
                 this.ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-                this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2 - 50);
+                this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2 - 80);
                 this.ctx.shadowBlur = 0;
                 
                 // Pause instruction
                 this.ctx.font = '20px "Roboto Mono", monospace';
                 this.ctx.fillStyle = '#cccccc';
-                this.ctx.fillText('Game is currently paused', this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.fillText('Game is currently paused', this.canvas.width / 2, this.canvas.height / 2 - 20);
                 
                 // Controls instruction
                 this.ctx.fillStyle = '#ff0000';
                 this.ctx.font = '16px "Roboto Mono", monospace';
-                this.ctx.fillText('Press ESC to Resume', this.canvas.width / 2, this.canvas.height / 2 + 50);
-                this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 80);
+                this.ctx.fillText('Press ESC to Resume', this.canvas.width / 2, this.canvas.height / 2 + 40);
+                this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 70);
+                this.ctx.fillText('Press M to Return to Menu', this.canvas.width / 2, this.canvas.height / 2 + 100);
             }
 
             showGameOver(scoreText) {
@@ -457,9 +458,10 @@
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
                 
-                const singlePlayerY = centerY - 20;
+                const singlePlayerY = centerY - (buttonHeight + buttonSpacing);
+                const settingsY = centerY;
                 const multiplayerY = centerY + buttonHeight + buttonSpacing;
-                
+
                 // Single Player Button
                 const singlePlayerHovered = this.hoveredButton === 'single';
                 this.drawMenuButton(
@@ -470,6 +472,18 @@
                     buttonHeight,
                     singlePlayerHovered,
                     false
+                );
+
+                // Settings Button (disabled)
+                const settingsHovered = this.hoveredButton === 'settings';
+                this.drawMenuButton(
+                    'Settings',
+                    centerX - buttonWidth / 2,
+                    settingsY - buttonHeight / 2,
+                    buttonWidth,
+                    buttonHeight,
+                    settingsHovered,
+                    true // disabled
                 );
                 
                 // Multiplayer Button (disabled)
@@ -484,11 +498,12 @@
                     true // disabled
                 );
                 
-                // Coming Soon text for multiplayer
-                if (multiplayerHovered) {
+                // Coming Soon text
+                if (multiplayerHovered || settingsHovered) {
                     this.ctx.font = '14px "Roboto Mono", monospace';
                     this.ctx.fillStyle = '#ff9800';
-                    this.ctx.fillText('Coming Soon', centerX, multiplayerY + 50);
+                    const yPos = multiplayerHovered ? multiplayerY + 50 : settingsY + 50;
+                    this.ctx.fillText('Coming Soon', centerX, yPos);
                 }
                 
                 // Footer text
@@ -541,7 +556,8 @@
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
                 
-                const singlePlayerY = centerY - 20;
+                const singlePlayerY = centerY - (buttonHeight + buttonSpacing);
+                const settingsY = centerY;
                 const multiplayerY = centerY + buttonHeight + buttonSpacing;
                 
                 // Check Single Player button
@@ -551,8 +567,16 @@
                     mouseY >= singlePlayerYTop && mouseY <= singlePlayerYTop + buttonHeight) {
                     return 'single';
                 }
+
+                // Check Settings button
+                const settingsX = centerX - buttonWidth / 2;
+                const settingsYTop = settingsY - buttonHeight / 2;
+                if (mouseX >= settingsX && mouseX <= settingsX + buttonWidth &&
+                    mouseY >= settingsYTop && mouseY <= settingsYTop + buttonHeight) {
+                    return 'settings';
+                }
                 
-                // Check Multiplayer button (non-functional, but detect for hover feedback)
+                // Check Multiplayer button
                 const multiplayerX = centerX - buttonWidth / 2;
                 const multiplayerYTop = multiplayerY - buttonHeight / 2;
                 if (mouseX >= multiplayerX && mouseX <= multiplayerX + buttonWidth &&
@@ -874,9 +898,15 @@
             if ((e.key === 'r' || e.key === 'R') && gameRunning && !gamePaused) {
                 reloadWeapon();
             }
-            // Restart on R key when game is over or paused
-            if ((e.key === 'r' || e.key === 'R') && (!gameRunning || gamePaused)) {
-                restartGame();
+
+            // Handle keys for paused/game over state
+            if (gamePaused || !gameRunning) {
+                if (e.key === 'r' || e.key === 'R') {
+                    restartGame();
+                }
+                if (gamePaused && (e.key === 'm' || e.key === 'M')) {
+                    restartGame(); // restartGame also handles returning to menu
+                }
             }
         });
         document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
