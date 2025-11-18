@@ -5,6 +5,11 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Wave Break System**
+  - 3-second pause between waves
+  - "Wave Cleared!" notification with countdown
+  - Gives player time to reload and prepare
+
 - **In-Game HUD Component** - Modular HUD system that renders stats directly on the canvas
   - Health display with dynamic color (bright red when low)
   - Weapon name and ammo counter

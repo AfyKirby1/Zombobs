@@ -91,6 +91,9 @@
         let zombiesPerWave = 5;
         let highScore = 0; // High score tracking
         let isSpawningWave = false; // Prevent multiple wave increments
+        let waveBreakActive = false;
+        let waveBreakEndTime = 0;
+        const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves
 
         // Player stats
         const PLAYER_MAX_HEALTH = 100;
@@ -149,6 +152,16 @@
         
         // Low ammo threshold (25% of max ammo)
         const LOW_AMMO_FRACTION = 0.25;
+
+        // Melee attack constants
+        const MELEE_COOLDOWN = 500; // ms between melee attacks
+        const MELEE_RANGE = 40; // pixels
+        const MELEE_DAMAGE = 3; // damage per hit
+        const MELEE_SWIPE_DURATION = 200; // ms for swipe animation
+
+        // Melee state
+        let lastMeleeTime = 0;
+        let activeMeleeSwipe = null; // { startTime, angle, duration }
 
         // Initialize player (after canvas resize)
         player = {
@@ -353,7 +366,25 @@
                     this.ctx.fillStyle = 'rgba(153, 153, 153, 0.7)';
                     this.ctx.font = '14px "Roboto Mono", monospace';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText('WASD to move • Mouse to aim • Click to shoot • 1/2/3 to switch weapons • G for grenade', this.canvas.width / 2, this.canvas.height - 20);
+                    
+                    // Split instructions into two lines
+                    const line1 = 'WASD to move • Mouse to aim • Click to shoot • 1/2/3 to switch weapons';
+                    const line2 = 'G for grenade • V or Right-Click for melee';
+                    
+                    // Draw separator line
+                    this.ctx.strokeStyle = 'rgba(153, 153, 153, 0.3)';
+                    this.ctx.lineWidth = 1;
+                    const lineY = this.canvas.height - 45;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.canvas.width / 2 - 200, lineY);
+                    this.ctx.lineTo(this.canvas.width / 2 + 200, lineY);
+                    this.ctx.stroke();
+                    
+                    // Draw first line above separator
+                    this.ctx.fillText(line1, this.canvas.width / 2, lineY - 8);
+                    
+                    // Draw second line below separator
+                    this.ctx.fillText(line2, this.canvas.width / 2, lineY + 20);
                 }
                 
                 // Draw game over screen
@@ -1217,6 +1248,10 @@
             if ((e.key === 'r' || e.key === 'R') && gameRunning && !gamePaused) {
                 reloadWeapon();
             }
+            // Melee attack on V key
+            if ((e.key === 'v' || e.key === 'V') && gameRunning && !gamePaused) {
+                performMeleeAttack();
+            }
 
             // Handle keys for paused/game over state
             if (gamePaused || !gameRunning) {
@@ -1278,17 +1313,32 @@
             }
             
             if (gameRunning && !gamePaused) {
-                initAudio(); // Initialize audio on first user interaction
-                mouse.isDown = true;
-                shootBullet(); // Fire immediately on mouse down
+                // Left mouse button (button === 0) for shooting
+                if (e.button === 0) {
+                    initAudio(); // Initialize audio on first user interaction
+                    mouse.isDown = true;
+                    shootBullet(); // Fire immediately on mouse down
+                }
+                // Right mouse button (button === 2) for melee attack
+                else if (e.button === 2) {
+                    performMeleeAttack();
+                }
             }
         });
 
-        canvas.addEventListener('mouseup', () => {
-            mouse.isDown = false;
+        canvas.addEventListener('mouseup', (e) => {
+            // Only stop shooting on left mouse button release
+            if (e.button === 0) {
+                mouse.isDown = false;
+            }
             if (showSettingsPanel) {
                 settingsPanel.handleMouseUp();
             }
+        });
+        
+        // Prevent context menu on right click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
 
         // Also handle mouse leave to stop firing
@@ -2219,6 +2269,81 @@
             return distance < obj1.radius + obj2.radius;
         }
 
+        // Check if point is within melee range and arc
+        function isInMeleeRange(zombieX, zombieY, playerX, playerY, playerAngle) {
+            const dx = zombieX - playerX;
+            const dy = zombieY - playerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > MELEE_RANGE) return false;
+            
+            // Check if zombie is in front arc (120 degree arc)
+            const angleToZombie = Math.atan2(dy, dx);
+            const angleDiff = Math.abs(angleToZombie - playerAngle);
+            const normalizedAngleDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+            
+            return normalizedAngleDiff < Math.PI / 3; // 60 degrees on each side = 120 degree arc
+        }
+
+        // Perform melee attack
+        function performMeleeAttack() {
+            const now = Date.now();
+            
+            // Check cooldown
+            if (now - lastMeleeTime < MELEE_COOLDOWN) {
+                return;
+            }
+            
+            // Check if reloading
+            if (isReloading) {
+                return;
+            }
+            
+            lastMeleeTime = now;
+            
+            // Create swipe animation (right to left)
+            // Player angle points toward mouse, so swipe goes from right side to left side
+            activeMeleeSwipe = {
+                startTime: now,
+                angle: player.angle,
+                duration: MELEE_SWIPE_DURATION
+            };
+            
+            // Play melee sound (using damage sound as placeholder)
+            playDamageSound();
+            
+            // Check for zombies in melee range
+            let hitCount = 0;
+            zombies.forEach((zombie, zombieIndex) => {
+                if (isInMeleeRange(zombie.x, zombie.y, player.x, player.y, player.angle)) {
+                    const impactAngle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
+                    
+                    // Check if zombie dies
+                    if (zombie.takeDamage(MELEE_DAMAGE)) {
+                        zombies.splice(zombieIndex, 1);
+                        score += 10;
+                        zombiesKilled++;
+                        playKillSound();
+                        damageNumbers.push(new DamageNumber(zombie.x, zombie.y, MELEE_DAMAGE));
+                        createBloodSplatter(zombie.x, zombie.y, impactAngle, true);
+                    } else {
+                        damageNumbers.push(new DamageNumber(zombie.x, zombie.y, MELEE_DAMAGE));
+                        createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                    }
+                    hitCount++;
+                }
+            });
+            
+            // Screen shake on melee (stronger if hit something)
+            if (hitCount > 0) {
+                shakeAmount = 5;
+                // Create particles at player position
+                createParticles(player.x, player.y, '#ffaa00', 5);
+            } else {
+                shakeAmount = 2; // Light shake even on miss
+            }
+        }
+
         // Create explosion visual effect
         function createExplosion(x, y) {
             // Large flash
@@ -2395,6 +2520,55 @@
             }
         }
 
+        // Draw melee swipe animation (right to left)
+        function drawMeleeSwipe() {
+            if (!activeMeleeSwipe) return;
+            
+            const now = Date.now();
+            const elapsed = now - activeMeleeSwipe.startTime;
+            const progress = Math.min(elapsed / activeMeleeSwipe.duration, 1);
+            
+            // Swipe goes from right side (0.0) to left side (1.0) of player
+            // Animation: start at right, sweep to left
+            const startAngle = activeMeleeSwipe.angle - Math.PI / 2; // Right side
+            const endAngle = activeMeleeSwipe.angle + Math.PI / 2; // Left side
+            const currentAngle = startAngle + (endAngle - startAngle) * progress;
+            
+            // Calculate swipe position (arc from right to left)
+            const swipeRadius = MELEE_RANGE;
+            const swipeStartX = player.x + Math.cos(startAngle) * (player.radius + 5);
+            const swipeStartY = player.y + Math.sin(startAngle) * (player.radius + 5);
+            const swipeEndX = player.x + Math.cos(currentAngle) * swipeRadius;
+            const swipeEndY = player.y + Math.sin(currentAngle) * swipeRadius;
+            
+            // Draw swipe arc
+            ctx.save();
+            ctx.strokeStyle = '#ffaa00';
+            ctx.lineWidth = 4;
+            ctx.globalAlpha = 1 - progress * 0.5; // Fade out as it completes
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ffaa00';
+            
+            // Draw arc from right to current position
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, swipeRadius, startAngle, currentAngle);
+            ctx.stroke();
+            
+            // Draw swipe trail (thick line)
+            ctx.beginPath();
+            ctx.moveTo(swipeStartX, swipeStartY);
+            ctx.lineTo(swipeEndX, swipeEndY);
+            ctx.stroke();
+            
+            // Draw swipe tip (glowing circle)
+            ctx.fillStyle = '#ffaa00';
+            ctx.beginPath();
+            ctx.arc(swipeEndX, swipeEndY, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
         function drawPlayer() {
             // Shadow
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
@@ -2547,6 +2721,36 @@
             ctx.restore();
         }
 
+        function drawWaveBreak() {
+            if (!waveBreakActive) return;
+            
+            const remainingTime = Math.ceil((waveBreakEndTime - Date.now()) / 1000);
+            if (remainingTime < 0) return;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw "Wave Cleared" or similar
+            ctx.font = 'bold 40px Creepster, system-ui';
+            ctx.fillStyle = '#ffc107';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 10;
+            ctx.fillText("Wave Cleared!", canvas.width / 2, canvas.height / 2 - 80);
+            
+            // Draw countdown
+            ctx.font = '30px "Roboto Mono", monospace';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
+            
+            // Reload hint
+            ctx.font = '20px "Roboto Mono", monospace';
+            ctx.fillStyle = '#aaaaaa';
+            ctx.fillText("Reload [R] | Heal Up", canvas.width / 2, canvas.height / 2 + 20);
+            
+            ctx.restore();
+        }
+
         function drawWaveNotification() {
             if (!waveNotification.active) return;
 
@@ -2680,6 +2884,14 @@
                 }
             }
 
+            // Update melee swipe animation
+            if (activeMeleeSwipe) {
+                const swipeElapsed = now - activeMeleeSwipe.startTime;
+                if (swipeElapsed >= activeMeleeSwipe.duration) {
+                    activeMeleeSwipe = null;
+                }
+            }
+
             // Update reload timer
             if (isReloading) {
                 if (now - reloadStartTime >= currentWeapon.reloadTime) {
@@ -2772,10 +2984,18 @@
 
             // Check for next wave (only if not currently spawning)
             if (zombies.length === 0 && gameRunning && !isSpawningWave) {
-                wave++;
-                zombiesPerWave += 2;
-                triggerWaveNotification();
-                spawnZombies(zombiesPerWave);
+                if (!waveBreakActive) {
+                    // Start wave break
+                    waveBreakActive = true;
+                    waveBreakEndTime = Date.now() + WAVE_BREAK_DURATION;
+                } else if (Date.now() >= waveBreakEndTime) {
+                    // End wave break and start next wave
+                    waveBreakActive = false;
+                    wave++;
+                    zombiesPerWave += 2;
+                    triggerWaveNotification();
+                    spawnZombies(zombiesPerWave);
+                }
             }
         }
 
@@ -2875,6 +3095,11 @@
             // Draw zombies
             zombies.forEach(zombie => zombie.draw());
 
+            // Draw melee swipe animation
+            if (activeMeleeSwipe) {
+                drawMeleeSwipe();
+            }
+
             // Draw player
             drawPlayer();
             
@@ -2892,6 +3117,9 @@
             // Draw wave start notification
             drawWaveNotification();
 
+            // Draw wave break notification
+            drawWaveBreak();
+            
             // Draw FPS counter in the top-right corner
             drawFpsCounter();
         }
@@ -3017,6 +3245,7 @@
             zombiesKilled = 0;
             zombiesPerWave = 5;
             isSpawningWave = false;
+            waveBreakActive = false;
             zombies = [];
             zombieSpawnTimeouts = [];
             bullets = [];

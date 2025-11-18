@@ -65,8 +65,11 @@ warped/
 - Game running/paused states
 
 ## Recent Updates
+- Implemented Wave Break System (3s pause between waves with UI notification)
 - Implemented complete weapon system (3 weapons with unique stats)
 - Full ammo system with reloading (R key manual reload, 1 second reload time)
+- Health and Ammo pickups
+- Melee attack mechanism
 - Continuous mouse button firing (hold to fire automatically)
 - Blood splatter system with directional particles
 - Complete audio system (gunshot, damage, footsteps, restart sounds)
@@ -76,12 +79,8 @@ warped/
 
 ## Next Steps
 See `roadmap.md` for planned features including:
-- Health pickups (spawn randomly on map)
-- Ammo pickups (spawn on map)
-- Melee attack (when out of ammo)
 - Special zombie types (fast, tank, exploding)
 - Boss waves
-- Wave break system (pause between waves)
 - Score multiplier (combo system)
 
 ## Development Principles

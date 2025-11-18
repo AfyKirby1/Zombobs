@@ -87,12 +87,16 @@
 - R: Reload (or restart when paused/game over)
 - ESC: Pause/Resume
 
+### Wave Break System
+- ✅ Implemented
+- 3-second pause between waves
+- Visual countdown and "Wave Cleared" text
+- Allows reloading and mental break
+
 ### Known Areas for Enhancement
-- Ammo pickups (pickups that spawn on map) - not implemented yet
-- Health pickups
-- Melee attack when out of ammo
 - Special zombie types
 - Boss waves
+- Score multiplier
 
 ### Code Quality Notes
 - All-in-one file structure (KISS principle)

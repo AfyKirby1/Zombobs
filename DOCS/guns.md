@@ -259,6 +259,37 @@ function reloadWeapon() { /* ... */ }
 
 ---
 
+## Melee Attack System
+
+### Overview
+A close-range melee attack system that provides a fallback option when out of ammo or for close-quarters combat.
+
+### Controls
+- **V Key**: Perform melee attack
+- **Right Mouse Button**: Alternative melee input
+
+### Mechanics
+- **Damage**: 3 points per hit
+- **Range**: 40 pixels (melee arc)
+- **Cooldown**: 500ms between attacks
+- **Arc**: 120-degree arc in front of player
+- **Animation**: Right-to-left swipe animation (200ms duration)
+
+### Visual Effects
+- Orange swipe arc animation (#ffaa00)
+- Glowing swipe trail with shadow effects
+- Screen shake on hit (5 units) or miss (2 units)
+- Particle effects on successful hits
+- Blood splatter on zombie hits/kills
+
+### Strategy
+- Useful when out of ammo or reloading
+- High damage but requires close range
+- Can hit multiple zombies in arc
+- Cooldown prevents spam
+
+---
+
 ## Future Enhancement Ideas
 
 - [ ] Weapon upgrades/perks system
@@ -270,6 +301,7 @@ function reloadWeapon() { /* ... */ }
 - [ ] Weapon durability/wear system
 - [ ] Reload animations/UI feedback
 - [ ] Weapon-specific audio effects differentiation
+- [ ] Melee weapon variety (knife, bat, machete)
 
 ---
 

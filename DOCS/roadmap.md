@@ -4,7 +4,7 @@
 - [x] **Weapon Variety** - Add different guns (pistol, shotgun, rifle) with different damage, fire rate, and ammo
 - [x] **Ammo System** - Limited bullets that require reloading (auto-reload when empty, weapon-specific ammo)
 - [x] **Health Pickups** - Medical kits/health packs spawn randomly on the map
-- [ ] **Melee Attack** - Close-range melee when out of ammo (knife/bat with cooldown)
+- [x] **Melee Attack** - Close-range melee attack (V key or right-click) with swipe animation, 500ms cooldown, 3 damage, 40px range
 - [ ] **Special Zombie Types** - Fast zombies, tank zombies, exploding zombies with different behaviors
 - [ ] **Zombie Slow-on-Hit** - Bullets briefly slow zombies (e.g., 0.5s at 30%) to create crowd-control moments
 - [ ] **Weapon Accuracy Degradation** - Continuous firing reduces accuracy, requiring periodic pauses
@@ -23,7 +23,7 @@
 - [ ] **Automated Turrets** - Placeable, automated turrets that fire at zombies within a certain range.
 
 ## Progression & Difficulty
-- [ ] **Wave Break System** - Brief pause between waves to catch your breath and reload
+- [x] **Wave Break System** - Brief pause between waves to catch your breath and reload
 - [ ] **Score Multiplier** - Combo system for consecutive kills without taking damage
 - [ ] **Boss Waves** - Every 5 waves, spawn a massive boss zombie with high health
 - [x] **Difficulty Scaling** - Zombies get progressively faster, tougher, and more numerous (implemented: speed = 1 + wave*0.1, health = 2 + floor(wave/3), zombiesPerWave increases)
