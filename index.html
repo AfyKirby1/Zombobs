@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zombie Survival Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg-start: #02040a;
+            --bg-end: #051b1f;
+            --accent: #ff1744;
+            --accent-soft: #ff5252;
+            --card-bg: rgba(10, 10, 14, 0.9);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f5f5f5;
+            --text-muted: #9e9e9e;
+            --pill-bg: rgba(255, 255, 255, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            font-family: 'Roboto Mono', monospace;
+            color: var(--text-main);
+            background:
+                radial-gradient(circle at top left, #121212 0, transparent 50%),
+                radial-gradient(circle at bottom right, #1b2229 0, transparent 55%),
+                linear-gradient(145deg, var(--bg-start), var(--bg-end));
+        }
+
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.18;
+            mix-blend-mode: soft-light;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='noStitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+            z-index: 0;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 960px;
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 2.5fr);
+            gap: 32px;
+        }
+
+        @media (max-width: 800px) {
+            .page {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .hero-card {
+            padding: 32px 32px 28px;
+            background: var(--card-bg);
+            border-radius: 18px;
+            border: 1px solid var(--card-border);
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(0, 0, 0, 0.75);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::before {
+            content: "";
+            position: absolute;
+            inset: -120px;
+            background:
+                radial-gradient(circle at top left, rgba(255, 23, 68, 0.09), transparent 55%),
+                radial-gradient(circle at bottom right, rgba(3, 169, 244, 0.12), transparent 55%);
+            opacity: 1;
+            pointer-events: none;
+        }
+
+        .hero-card-inner {
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .title {
+            font-family: 'Creepster', system-ui;
+            font-size: clamp(42px, 5vw, 56px);
+            letter-spacing: 0.08em;
+            color: var(--accent-soft);
+            text-shadow:
+                0 0 18px rgba(255, 23, 68, 0.8),
+                0 0 40px rgba(255, 23, 68, 0.6);
+        }
+
+        .tagline {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .pill {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: var(--pill-bg);
+            color: var(--text-muted);
+        }
+
+        .pill--accent {
+            border-color: rgba(255, 23, 68, 0.6);
+            color: #ffcdd2;
+        }
+
+        .hero-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px 18px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 800px) {
+            .feature-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .feature-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .feature-label {
+            color: var(--text-main);
+        }
+
+        .controls-note {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .controls-note code {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 4px;
+            padding: 1px 5px;
+        }
+
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 24px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: #fff;
+            background: radial-gradient(circle at top left, #ff5252, #ff1744);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.12),
+                0 0 22px rgba(255, 23, 68, 0.45);
+            transition:
+                transform 0.15s ease-out,
+                box-shadow 0.15s ease-out,
+                filter 0.15s ease-out;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.25),
+                0 0 30px rgba(255, 23, 68, 0.65);
+            filter: brightness(1.05);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px) scale(0.99);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.2),
+                0 0 20px rgba(255, 23, 68, 0.5);
+        }
+
+        .btn-secondary {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .btn-secondary strong {
+            color: var(--accent-soft);
+        }
+
+        .side-card {
+            padding: 22px 22px 18px;
+            background: rgba(6, 9, 13, 0.9);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .side-heading {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--text-muted);
+        }
+
+        .stat {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .stat strong {
+            color: var(--text-main);
+        }
+
+        .mini-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .mini-list li {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .mini-list li span {
+            color: #c5e1a5;
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    <main class="page">
+        <section class="hero-card">
+            <div class="hero-card-inner">
+                <div class="title-row">
+                    <h1 class="title">Zombie Survival</h1>
+                    <span class="tagline">Canvas prototype</span>
+                </div>
+
+                <div class="pill-row">
+                    <span class="pill pill--accent">Top‑down arena</span>
+                    <span class="pill">Wave‑based</span>
+                    <span class="pill">Guns &amp; zombies</span>
+                </div>
+
+                <p class="hero-text">
+                    Dodge, kite and blast your way through endless waves of glowing undead in a fast, arcade‑style prototype.
+                    Built with pure HTML5 Canvas and JavaScript — no engines, no frameworks, just you and the horde.
+                </p>
+
+                <div class="feature-grid">
+                    <div class="feature">
+                        <div class="feature-icon">🔫</div>
+                        <div>
+                            <div class="feature-label">3 distinct weapons</div>
+                            <div>Swap between pistol, shotgun and rifle with unique fire rates &amp; ammo.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🩸</div>
+                        <div>
+                            <div class="feature-label">Juicy visuals</div>
+                            <div>Screen shake, muzzle flash, blood splatter and glowing enemies.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">❤️</div>
+                        <div>
+                            <div class="feature-label">Health pickups</div>
+                            <div>Grab pulsing med‑orbs to stay alive a little longer.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🏆</div>
+                        <div>
+                            <div class="feature-label">Endless score chase</div>
+                            <div>Scaling waves, local high score and an in‑game HUD.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cta-row">
+                    <button class="btn-primary" onclick="window.location.href='zombie-game.html'">
+                        <span>Play now</span>
+                    </button>
+                    <div class="btn-secondary">
+                        <div>WASD to move · Mouse to aim · Click to shoot · <strong>ESC</strong> to pause</div>
+                    </div>
+                </div>
+
+                <p class="controls-note">
+                    Tip: For the smoothest experience, use a modern Chromium‑based browser and keep the tab focused.
+                </p>
+            </div>
+        </section>
+
+        <aside class="side-card">
+            <div>
+                <div class="side-heading">Run details</div>
+                <div class="stat">
+                    <span>Engine</span>
+                    <strong>HTML5 Canvas</strong>
+                </div>
+                <div class="stat">
+                    <span>Tech</span>
+                    <strong>Vanilla JS</strong>
+                </div>
+                <div class="stat">
+                    <span>Mode</span>
+                    <strong>Endless waves</strong>
+                </div>
+            </div>
+
+            <div>
+                <div class="side-heading">What this build includes</div>
+                <ul class="mini-list">
+                    <li><span>✔</span> Core movement, shooting &amp; waves</li>
+                    <li><span>✔</span> Weapons, ammo &amp; reloads</li>
+                    <li><span>✔</span> Health pickups &amp; HUD</li>
+                    <li><span>✔</span> Audio, particles, screen shake</li>
+                </ul>
+            </div>
+
+            <div>
+                <div class="side-heading">Roadmap snapshot</div>
+                <ul class="mini-list">
+                    <li><span>○</span> Special zombie types</li>
+                    <li><span>○</span> Melee attack &amp; pickups</li>
+                    <li><span>○</span> Base defense &amp; upgrades</li>
+                </ul>
+            </div>
+        </aside>
+    </main>
+</body>
+</html>
+
+
