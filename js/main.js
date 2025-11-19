@@ -10,7 +10,7 @@ import { canvas, ctx, resizeCanvas } from './core/canvas.js';
 import { gameState, resetGameState } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound } from './systems/AudioSystem.js';
-import { initGrassPattern } from './systems/GraphicsSystem.js';
+import { initGroundPattern } from './systems/GraphicsSystem.js';
 import { GameHUD } from './ui/GameHUD.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
 import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie } from './entities/Zombie.js';
@@ -25,6 +25,7 @@ import {
     loadHighScore, saveHighScore, loadUsername, saveUsername 
 } from './utils/gameUtils.js';
 import { createParticles, createBloodSplatter, addParticle } from './systems/ParticleSystem.js';
+import { inputSystem } from './systems/InputSystem.js';
 
 // Initialize HUD
 const gameHUD = new GameHUD(canvas);
@@ -35,6 +36,7 @@ const settingsPanel = new SettingsPanel(canvas, settingsManager);
 // Input state
 const keys = {};
 const mouse = { x: 0, y: 0, isDown: false };
+let activeInputSource = 'mouse'; // 'mouse' or 'gamepad'
 
 // Initial resize
 resizeCanvas(gameState.player);
@@ -233,14 +235,22 @@ function updatePlayer() {
     if (gameState.showMainMenu) return;
     
     const controls = settingsManager.settings.controls;
+    const gpMove = inputSystem.getMoveInput();
+    const gpAim = inputSystem.getAimInput();
+
+    // Detect Input Source
+    if (Math.abs(gpMove.x) > 0.1 || Math.abs(gpMove.y) > 0.1 || Math.abs(gpAim.x) > 0.1 || Math.abs(gpAim.y) > 0.1) {
+        activeInputSource = 'gamepad';
+    }
     
     // Check if player is moving
     const isMoving = (keys[controls.moveUp] || keys['arrowup'] || keys[controls.moveDown] || keys['arrowdown'] || 
-                     keys[controls.moveLeft] || keys['arrowleft'] || keys[controls.moveRight] || keys['arrowright']);
+                     keys[controls.moveLeft] || keys['arrowleft'] || keys[controls.moveRight] || keys['arrowright'] ||
+                     Math.abs(gpMove.x) > 0 || Math.abs(gpMove.y) > 0);
     
     // Sprint logic
     const sprintKey = controls.sprint || 'shift';
-    const isSprintKeyDown = keys[sprintKey] || keys['shift']; 
+    const isSprintKeyDown = keys[sprintKey] || keys['shift'] || inputSystem.buttons.sprint.pressed; 
     
     // Check if we can sprint (must be moving, holding key, and have stamina)
     if (isMoving && isSprintKeyDown && gameState.player.stamina > 0) {
@@ -259,17 +269,53 @@ function updatePlayer() {
     }
 
     // Movement
-    if (keys[controls.moveUp] || keys['arrowup']) gameState.player.y -= gameState.player.speed;
-    if (keys[controls.moveDown] || keys['arrowdown']) gameState.player.y += gameState.player.speed;
-    if (keys[controls.moveLeft] || keys['arrowleft']) gameState.player.x -= gameState.player.speed;
-    if (keys[controls.moveRight] || keys['arrowright']) gameState.player.x += gameState.player.speed;
+    let dx = 0;
+    let dy = 0;
+
+    // Keyboard
+    if (keys[controls.moveUp] || keys['arrowup']) dy -= 1;
+    if (keys[controls.moveDown] || keys['arrowdown']) dy += 1;
+    if (keys[controls.moveLeft] || keys['arrowleft']) dx -= 1;
+    if (keys[controls.moveRight] || keys['arrowright']) dx += 1;
+    
+    // Normalize keyboard vector
+    const kbdLen = Math.sqrt(dx*dx + dy*dy);
+    if (kbdLen > 0) {
+        dx /= kbdLen;
+        dy /= kbdLen;
+    }
+
+    // Add Gamepad (already normalized-ish, but let's clamp total)
+    dx += gpMove.x;
+    dy += gpMove.y;
+
+    // Clamp final length to 1
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len > 1) {
+        dx /= len;
+        dy /= len;
+    }
+
+    // Apply speed
+    gameState.player.x += dx * gameState.player.speed;
+    gameState.player.y += dy * gameState.player.speed;
 
     // Bounds
     gameState.player.x = Math.max(gameState.player.radius, Math.min(canvas.width - gameState.player.radius, gameState.player.x));
     gameState.player.y = Math.max(gameState.player.radius, Math.min(canvas.height - gameState.player.radius, gameState.player.y));
 
     // Aim
-    gameState.player.angle = Math.atan2(mouse.y - gameState.player.y, mouse.x - gameState.player.x);
+    if (activeInputSource === 'gamepad') {
+        if (Math.abs(gpAim.x) > 0.1 || Math.abs(gpAim.y) > 0.1) {
+            gameState.player.angle = Math.atan2(gpAim.y, gpAim.x);
+            // Project fake mouse position for crosshair visualization
+            const aimDist = 200;
+            mouse.x = gameState.player.x + gpAim.x * aimDist;
+            mouse.y = gameState.player.y + gpAim.y * aimDist;
+        }
+    } else {
+        gameState.player.angle = Math.atan2(mouse.y - gameState.player.y, mouse.x - gameState.player.x);
+    }
     
     // Footstep sounds
     if (isMoving && gameState.gameRunning && !gameState.gamePaused) {
@@ -451,6 +497,9 @@ function drawMeleeSwipe() {
 function drawCrosshair() {
     if (!gameState.gameRunning || gameState.gamePaused) return;
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
+    
+    // If using gamepad, don't draw cursor or draw different one?
+    // For now, let's keep it but it will be projected from player
     
     ctx.save();
     
@@ -729,7 +778,13 @@ function drawGame() {
     }
 
     gameHUD.mainMenu = false;
-    canvas.style.cursor = 'none';
+    
+    // Hide cursor if using gamepad
+    if (activeInputSource === 'gamepad') {
+        canvas.style.cursor = 'none';
+    } else {
+        canvas.style.cursor = 'none'; // We draw our own crosshair anyway
+    }
     
     ctx.save();
     // Apply screen shake
@@ -750,11 +805,11 @@ function drawGame() {
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw grassy ground pattern
-    const grassPattern = initGrassPattern();
-    if (grassPattern) {
-        ctx.globalAlpha = 0.4;
-        ctx.fillStyle = grassPattern;
+    // Draw ground pattern
+    const groundPattern = initGroundPattern();
+    if (groundPattern) {
+        ctx.globalAlpha = 0.6; // Slightly transparent to blend with dark background
+        ctx.fillStyle = groundPattern;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1.0;
     }
@@ -843,6 +898,19 @@ function startGame() {
     spawnZombies(gameState.zombiesPerWave);
 }
 
+function cycleWeapon(direction) {
+    const weaponKeys = Object.keys(WEAPONS);
+    let currentIndex = weaponKeys.findIndex(key => WEAPONS[key] === gameState.currentWeapon);
+    
+    if (currentIndex === -1) currentIndex = 0;
+    
+    let newIndex = currentIndex + direction;
+    if (newIndex >= weaponKeys.length) newIndex = 0;
+    if (newIndex < 0) newIndex = weaponKeys.length - 1;
+    
+    switchWeapon(WEAPONS[weaponKeys[newIndex]]);
+}
+
 function gameLoop() {
     const now = performance.now();
     gameState.framesSinceFpsUpdate++;
@@ -855,12 +923,82 @@ function gameLoop() {
     if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby) {
         updateGame();
     }
+    
+    // Update Input
+    inputSystem.update(settingsManager.settings.gamepad);
+    
+    // Handle Gamepad Actions
+    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && gameState.gameRunning) {
+        // Update active input source based on buttons too
+        if (inputSystem.buttons.fire.pressed || inputSystem.buttons.reload.pressed || inputSystem.buttons.sprint.pressed) {
+            activeInputSource = 'gamepad';
+        }
+
+        if (!gameState.gamePaused) {
+             // Reload
+            if (inputSystem.buttons.reload.justPressed) reloadWeapon();
+            
+            // Grenade
+            if (inputSystem.buttons.grenade.justPressed) {
+                // For grenade throw, we need a target. 
+                // If using controller, throw at a fixed distance in aim direction
+                const gpAim = inputSystem.getAimInput();
+                let target = { x: mouse.x, y: mouse.y };
+                
+                if (Math.abs(gpAim.x) > 0 || Math.abs(gpAim.y) > 0) {
+                     target.x = gameState.player.x + gpAim.x * 300;
+                     target.y = gameState.player.y + gpAim.y * 300;
+                }
+                throwGrenade(target, canvas);
+            }
+            
+            // Weapon Switching
+            if (inputSystem.buttons.prevWeapon.justPressed) cycleWeapon(-1);
+            if (inputSystem.buttons.nextWeapon.justPressed) cycleWeapon(1);
+            
+            // Melee
+            if (inputSystem.buttons.melee.justPressed) performMeleeAttack();
+            
+            // Fire
+            if (inputSystem.buttons.fire.pressed) {
+                 // Construct virtual mouse for shooting
+                 const gpAim = inputSystem.getAimInput();
+                 let target = { x: mouse.x, y: mouse.y };
+                 
+                 if (Math.abs(gpAim.x) > 0 || Math.abs(gpAim.y) > 0) {
+                     target.x = gameState.player.x + gpAim.x * 200;
+                     target.y = gameState.player.y + gpAim.y * 200;
+                 } else {
+                     // If no aim input, shoot in facing direction
+                     target.x = gameState.player.x + Math.cos(gameState.player.angle) * 200;
+                     target.y = gameState.player.y + Math.sin(gameState.player.angle) * 200;
+                 }
+                 shootBullet(target, canvas);
+            }
+        }
+        
+        // Pause
+        if (inputSystem.buttons.pause.justPressed) {
+             togglePause();
+        }
+    } else if (gameState.gamePaused) {
+        // Menu navigation handling for pause menu could go here
+        if (inputSystem.buttons.pause.justPressed) {
+            resumeGame();
+        }
+        if (inputSystem.buttons.reload.justPressed) {
+             restartGame(); // X to restart
+        }
+    }
+    
     drawGame();
     requestAnimationFrame(gameLoop);
 }
 
 // Event Listeners
 document.addEventListener('keydown', (e) => {
+    activeInputSource = 'mouse'; // Switch to keyboard/mouse on key press
+    
     // Handle ESC key for settings panel first
     if (e.key === 'Escape') {
         if (gameState.showSettingsPanel) {
@@ -919,6 +1057,8 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
 canvas.addEventListener('mousemove', (e) => {
+    activeInputSource = 'mouse'; // Switch to mouse on movement
+    
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -933,6 +1073,8 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mousedown', (e) => {
+    activeInputSource = 'mouse'; // Switch to mouse on click
+    
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -950,6 +1092,9 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showMainMenu = false;
             initAudio();
             startGame();
+        } else if (clickedButton === 'local_coop') {
+            // Placeholder for Local Coop
+            // alert("Local Co-op coming soon!");
         } else if (clickedButton === 'settings') {
             gameState.showSettingsPanel = true;
             settingsPanel.open();

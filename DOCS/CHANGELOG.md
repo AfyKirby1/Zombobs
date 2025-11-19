@@ -13,6 +13,22 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Removed redundant "Play Zombobs" header and buttons from the game section.
 
 ### Added
+- **Controller Support (Beta)**
+  - Full Xbox controller support (and other HTML5 compatible gamepads).
+  - **Movement**: Left Stick to move (analog).
+  - **Aiming**: Right Stick to aim.
+  - **Actions**: 
+    - RT: Fire (Continuous)
+    - RB: Grenade
+    - X: Reload
+    - Y: Next Weapon
+    - LB: Previous Weapon
+    - R3: Melee
+    - L3: Sprint
+    - Start: Pause
+  - Hot-plug support (detects controller connection/disconnection).
+  - **Settings UI**: Added specific Controller settings tab with rebind support.
+
 - **Multiplayer Lobby & Socket Sync**
   - Clickable Multiplayer button now opens an in-canvas lobby (status pulses, player list, ready/back controls)
   - Clients register usernames and receive live `lobby:update` payloads over socket.io
@@ -38,7 +54,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Modular Architecture** - Refactored `js/game.js` (~3,700 lines) into ES6 modules:
   - `js/core/` - Core game state, constants, and canvas management
   - `js/entities/` - Game entities (Bullet, Zombie, Particle, Pickup, Grenade, Shell)
-  - `js/systems/` - Game systems (Audio, Graphics, Particle, Settings)
+  - `js/systems/` - Game systems (Audio, Graphics, Particle, Settings, Input)
   - `js/ui/` - User interface components (GameHUD, SettingsPanel)
   - `js/utils/` - Utility functions (combat, game utilities)
   - `js/main.js` - Main game loop and initialization

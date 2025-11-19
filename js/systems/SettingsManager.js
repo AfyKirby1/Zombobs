@@ -16,6 +16,17 @@ export class SettingsManager {
                 weapon1: '1',
                 weapon2: '2',
                 weapon3: '3'
+            },
+            gamepad: {
+                fire: 7, // RT
+                reload: 2, // X
+                grenade: 5, // RB
+                // interact: 0, // A (Not used in game logic yet, but good to have)
+                sprint: 10, // L3
+                pause: 9, // Start
+                prevWeapon: 4, // LB
+                nextWeapon: 3, // Y
+                melee: 11 // R3
             }
         };
         this.settings = this.loadSettings();

@@ -2,6 +2,7 @@ import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { getMasterGainNode } from '../systems/AudioSystem.js';
+import { inputSystem } from '../systems/InputSystem.js';
 
 export class SettingsPanel {
     constructor(canvas, settingsManager) {
@@ -20,6 +21,9 @@ export class SettingsPanel {
         this.backButtonBounds = null;
         this.controlsButtonBounds = null;
         this.keybindButtons = {};
+        
+        this.controlMode = 'keyboard'; // 'keyboard' or 'gamepad'
+        this.toggleButtonBounds = null;
     }
 
     draw(mouse) {
@@ -30,8 +34,8 @@ export class SettingsPanel {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Panel background
-        const panelWidth = 500; // Wider for controls
-        const panelHeight = 450; // Taller to fit controls
+        const panelWidth = 600; // Wider for controls
+        const panelHeight = 500; // Taller to fit controls
         const panelX = (this.canvas.width - panelWidth) / 2;
         const panelY = (this.canvas.height - panelHeight) / 2;
 
@@ -63,8 +67,8 @@ export class SettingsPanel {
 
         // Master Volume Setting
         const settingY = y + 120;
-        const settingX = x + 80;
-        const sliderWidth = width - 160;
+        const settingX = x + 130;
+        const sliderWidth = width - 260;
         this.sliderWidth = sliderWidth;
         
         // Label
@@ -77,7 +81,7 @@ export class SettingsPanel {
         const volume = this.settingsManager.getSetting('audio', 'masterVolume');
         const volumePercent = Math.round(volume * 100);
         this.ctx.textAlign = 'right';
-        this.ctx.fillText(`${volumePercent}%`, x + width - 80, settingY);
+        this.ctx.fillText(`${volumePercent}%`, x + width - 130, settingY);
 
         // Slider track
         const sliderY = settingY + 25;
@@ -142,26 +146,80 @@ export class SettingsPanel {
         this.ctx.font = 'bold 32px "Roboto Mono", monospace';
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.fillText('CONTROLS', x + width / 2, y + 50);
+        this.ctx.fillText('CONTROLS', x + width / 2, y + 40);
         
-        const startY = y + 90;
-        const controls = this.settingsManager.settings.controls;
-        const labels = {
-            moveUp: 'Move Up',
-            moveDown: 'Move Down',
-            moveLeft: 'Move Left',
-            moveRight: 'Move Right',
-            sprint: 'Sprint',
-            reload: 'Reload',
-            grenade: 'Grenade',
-            melee: 'Melee',
-            weapon1: 'Pistol',
-            weapon2: 'Shotgun',
-            weapon3: 'Rifle'
+        // Toggle Button (Keyboard / Controller)
+        const toggleWidth = 300;
+        const toggleHeight = 36;
+        const toggleX = x + (width - toggleWidth) / 2;
+        const toggleY = y + 70;
+        
+        // Toggle Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        this.ctx.fillRect(toggleX, toggleY, toggleWidth, toggleHeight);
+        this.ctx.strokeStyle = '#666';
+        this.ctx.strokeRect(toggleX, toggleY, toggleWidth, toggleHeight);
+        
+        // Active Selection
+        const activeX = this.controlMode === 'keyboard' ? toggleX : toggleX + toggleWidth / 2;
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.fillRect(activeX, toggleY, toggleWidth / 2, toggleHeight);
+        
+        // Text
+        this.ctx.font = 'bold 14px "Roboto Mono", monospace';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.textAlign = 'center';
+        
+        this.ctx.fillStyle = this.controlMode === 'keyboard' ? '#ffffff' : '#888888';
+        this.ctx.fillText('KEYBOARD', toggleX + toggleWidth / 4, toggleY + toggleHeight / 2);
+        
+        this.ctx.fillStyle = this.controlMode === 'gamepad' ? '#ffffff' : '#888888';
+        this.ctx.fillText('CONTROLLER', toggleX + 3 * toggleWidth / 4, toggleY + toggleHeight / 2);
+        
+        this.toggleButtonBounds = {
+            x: toggleX,
+            y: toggleY,
+            width: toggleWidth,
+            height: toggleHeight
         };
         
+        const startY = y + 130;
+        
+        let controls;
+        let labels;
+        
+        if (this.controlMode === 'keyboard') {
+             controls = this.settingsManager.settings.controls;
+             labels = {
+                moveUp: 'Move Up',
+                moveDown: 'Move Down',
+                moveLeft: 'Move Left',
+                moveRight: 'Move Right',
+                sprint: 'Sprint',
+                reload: 'Reload',
+                grenade: 'Grenade',
+                melee: 'Melee',
+                weapon1: 'Pistol',
+                weapon2: 'Shotgun',
+                weapon3: 'Rifle'
+            };
+        } else {
+            controls = this.settingsManager.settings.gamepad || {};
+            labels = {
+                fire: 'Fire',
+                reload: 'Reload',
+                grenade: 'Grenade',
+                sprint: 'Sprint',
+                melee: 'Melee',
+                prevWeapon: 'Prev Weapon',
+                nextWeapon: 'Next Weapon',
+                pause: 'Pause',
+                // interact: 'Interact'
+            };
+        }
+        
         const col1X = x + 50;
-        const col2X = x + width / 2 + 10;
+        const col2X = x + width / 2 + 30;
         
         this.keybindButtons = {};
         const keys = Object.keys(labels);
@@ -180,15 +238,21 @@ export class SettingsPanel {
             this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = '#cccccc';
             this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillText(labels[key], itemX, itemY + 12);
+            this.ctx.fillText(labels[key], itemX, itemY + 15);
             
             // Button
-            const btnWidth = 80;
+            const btnWidth = 100;
             const btnHeight = 30;
-            const btnX = itemX + 110; // fixed offset from label
+            const btnX = itemX + 120; // fixed offset from label
             const btnY = itemY;
             
-            const keyName = controls[key].toUpperCase();
+            let keyName = '';
+            if (this.controlMode === 'keyboard') {
+                keyName = (controls[key] || '').toUpperCase();
+            } else {
+                keyName = this.getGamepadButtonName(controls[key]);
+            }
+            
             const isRebinding = this.rebindingAction === key;
             
             const mouseOver = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
@@ -208,7 +272,7 @@ export class SettingsPanel {
             this.ctx.textAlign = 'center';
             this.ctx.fillStyle = '#ffffff';
             this.ctx.font = 'bold 14px "Roboto Mono", monospace';
-            this.ctx.fillText(isRebinding ? '...' : keyName, btnX + btnWidth / 2, btnY + btnHeight / 2);
+            this.ctx.fillText(isRebinding ? 'Press...' : keyName, btnX + btnWidth / 2, btnY + btnHeight / 2);
             
             this.keybindButtons[key] = {
                 x: btnX,
@@ -254,7 +318,9 @@ export class SettingsPanel {
         
         // If rebinding, ignore other clicks unless it's a cancel mechanism
         if (this.rebindingAction) {
-            return true; // consume click
+            // Could allow clicking to cancel?
+            this.cancelRebind();
+            return true;
         }
 
         // Check back button
@@ -288,6 +354,20 @@ export class SettingsPanel {
                 return true;
             }
         } else if (this.currentView === 'controls') {
+            // Toggle Button
+            if (this.toggleButtonBounds &&
+                x >= this.toggleButtonBounds.x && x <= this.toggleButtonBounds.x + this.toggleButtonBounds.width &&
+                y >= this.toggleButtonBounds.y && y <= this.toggleButtonBounds.y + this.toggleButtonBounds.height) {
+                
+                const relativeX = x - this.toggleButtonBounds.x;
+                if (relativeX < this.toggleButtonBounds.width / 2) {
+                    this.controlMode = 'keyboard';
+                } else {
+                    this.controlMode = 'gamepad';
+                }
+                return true;
+            }
+            
             // Keybind buttons
             for (const key in this.keybindButtons) {
                 const btn = this.keybindButtons[key];
@@ -337,19 +417,31 @@ export class SettingsPanel {
         this.visible = false;
         this.draggingSlider = false;
         this.rebindingAction = null;
+        this.controlMode = 'keyboard';
+        // Check if inputSystem has a pending rebind and cancel it
+        inputSystem.cancelRebind();
         gameState.showSettingsPanel = false;
     }
     
     startRebind(action) {
         this.rebindingAction = action;
+        
+        if (this.controlMode === 'gamepad') {
+             inputSystem.startRebind((buttonIndex) => {
+                 this.handleGamepadRebind(buttonIndex);
+             });
+        }
     }
     
     cancelRebind() {
         this.rebindingAction = null;
+        if (this.controlMode === 'gamepad') {
+            inputSystem.cancelRebind();
+        }
     }
     
     handleRebind(key) {
-        if (!this.rebindingAction) return;
+        if (!this.rebindingAction || this.controlMode !== 'keyboard') return;
         
         // Prevent binding Escape
         if (key === 'Escape') {
@@ -361,5 +453,21 @@ export class SettingsPanel {
         this.settingsManager.setSetting('controls', this.rebindingAction, lowerKey);
         this.rebindingAction = null;
     }
+    
+    handleGamepadRebind(buttonIndex) {
+        if (!this.rebindingAction || this.controlMode !== 'gamepad') return;
+        
+        this.settingsManager.setSetting('gamepad', this.rebindingAction, buttonIndex);
+        this.rebindingAction = null;
+    }
+    
+    getGamepadButtonName(index) {
+        const names = [
+            'A', 'B', 'X', 'Y', 
+            'LB', 'RB', 'LT', 'RT', 
+            'View', 'Menu', 'L3', 'R3', 
+            'D-Up', 'D-Down', 'D-Left', 'D-Right'
+        ];
+        return names[index] !== undefined ? names[index] : `Btn ${index}`;
+    }
 }
-

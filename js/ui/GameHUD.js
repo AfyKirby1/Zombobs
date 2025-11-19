@@ -253,13 +253,13 @@ export class GameHUD {
         this.ctx.fillStyle = '#ff1744';
         this.ctx.shadowBlur = 30;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillText('ZOMBOBS', this.canvas.width / 2, this.canvas.height / 2 - 180);
+        this.ctx.fillText('ZOMBOBS', this.canvas.width / 2, this.canvas.height / 2 - 200);
         this.ctx.shadowBlur = 0;
         
         // Subtitle
         this.ctx.font = '18px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Survive the Horde', this.canvas.width / 2, this.canvas.height / 2 - 130);
+        this.ctx.fillText('Survive the Horde', this.canvas.width / 2, this.canvas.height / 2 - 150);
         
         // Button dimensions and positions (define early for username display)
         const buttonWidth = 240; // Reduced from 280
@@ -269,7 +269,7 @@ export class GameHUD {
         const centerY = this.canvas.height / 2;
         
         // Username display (clickable)
-        const usernameY = this.canvas.height / 2 - 90;
+        const usernameY = this.canvas.height / 2 - 110;
         const usernameHovered = this.hoveredButton === 'username';
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillStyle = usernameHovered ? '#ff9800' : '#cccccc';
@@ -284,10 +284,11 @@ export class GameHUD {
         }
         
         // Button positions (moved down more to add space after username)
-        const buttonStartY = centerY + 50; // Move buttons down by 50px from center
-        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing);
-        const settingsY = buttonStartY;
-        const multiplayerY = buttonStartY + buttonHeight + buttonSpacing;
+        const buttonStartY = centerY + 10; // Move buttons down by 50px from center
+        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 1.5;
+        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 0.5;
+        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 0.5;
+        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 1.5;
 
         // Single Player Button
         const singlePlayerHovered = this.hoveredButton === 'single';
@@ -299,6 +300,18 @@ export class GameHUD {
             buttonHeight,
             singlePlayerHovered,
             false
+        );
+
+        // Local Co-op Button
+        const coopHovered = this.hoveredButton === 'local_coop';
+        this.drawMenuButton(
+            'Local Co-op',
+            centerX - buttonWidth / 2,
+            coopY - buttonHeight / 2,
+            buttonWidth,
+            buttonHeight,
+            coopHovered,
+            false // enabled (clickable but does nothing)
         );
 
         // Settings Button
@@ -508,7 +521,7 @@ export class GameHUD {
         const centerY = this.canvas.height / 2;
         
         // Check username click area (above buttons)
-        const usernameY = this.canvas.height / 2 - 90;
+        const usernameY = this.canvas.height / 2 - 110;
         const usernameClickWidth = 300;
         const usernameClickHeight = 40;
         if (mouseX >= centerX - usernameClickWidth / 2 && mouseX <= centerX + usernameClickWidth / 2 &&
@@ -517,10 +530,11 @@ export class GameHUD {
         }
         
         // Button positions (match drawMainMenu positions)
-        const buttonStartY = centerY + 50; // Match drawMainMenu offset
-        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing);
-        const settingsY = buttonStartY;
-        const multiplayerY = buttonStartY + buttonHeight + buttonSpacing;
+        const buttonStartY = centerY + 10; // Match drawMainMenu offset
+        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 1.5;
+        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 0.5;
+        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 0.5;
+        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 1.5;
         
         // Check Single Player button
         const singlePlayerX = centerX - buttonWidth / 2;
@@ -528,6 +542,14 @@ export class GameHUD {
         if (mouseX >= singlePlayerX && mouseX <= singlePlayerX + buttonWidth &&
             mouseY >= singlePlayerYTop && mouseY <= singlePlayerYTop + buttonHeight) {
             return 'single';
+        }
+        
+        // Check Coop button
+        const coopX = centerX - buttonWidth / 2;
+        const coopYTop = coopY - buttonHeight / 2;
+        if (mouseX >= coopX && mouseX <= coopX + buttonWidth &&
+            mouseY >= coopYTop && mouseY <= coopYTop + buttonHeight) {
+            return 'local_coop';
         }
 
         // Check Settings button
