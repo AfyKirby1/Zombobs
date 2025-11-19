@@ -604,7 +604,10 @@
         // Element types with spawn configuration
         const elementTypes = [
             { type: 'zombie', speed: 0.8, size: 20, spawnInterval: 2000 },
+            { type: 'fast', speed: 1.0, size: 18, spawnInterval: 2200 },
             { type: 'armored', speed: 0.7, size: 22, spawnInterval: 2500 },
+            { type: 'exploding', speed: 0.75, size: 21, spawnInterval: 2800 },
+            { type: 'boss', speed: 0.6, size: 35, spawnInterval: 5000 },
             { type: 'grenade', speed: 0.9, size: 15, spawnInterval: 1800 },
             { type: 'health', speed: 0.85, size: 12, spawnInterval: 2200 },
             { type: 'ammo', speed: 0.75, size: 12, spawnInterval: 2100 },
@@ -667,6 +670,49 @@
             ctx.restore();
         }
         
+        function drawFastZombie(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Speed trail effect
+            const trailGradient = ctx.createLinearGradient(-s * 1.5, 0, 0, 0);
+            trailGradient.addColorStop(0, 'rgba(255, 100, 0, 0)');
+            trailGradient.addColorStop(1, 'rgba(255, 150, 0, 0.3)');
+            ctx.fillStyle = trailGradient;
+            ctx.fillRect(-s * 1.5, -s, s * 1.5, s * 2);
+            
+            // Reddish/orange aura (faster pulse)
+            const pulse = Math.sin(Date.now() / 150) * 0.4 + 0.6;
+            const auraGradient = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2);
+            auraGradient.addColorStop(0, `rgba(255, 100, 0, ${0.5 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Smaller, reddish body
+            const bodyGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, s);
+            bodyGradient.addColorStop(0, '#ff8c42');
+            bodyGradient.addColorStop(1, '#cc5500');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes (brighter, faster pulse)
+            const eyePulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 50, 50, ${eyePulse})`;
+            ctx.beginPath();
+            ctx.arc(-s * 0.35, -s * 0.2, s * 0.2, 0, Math.PI * 2);
+            ctx.arc(s * 0.35, -s * 0.2, s * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
         function drawArmoredZombie(x, y, size, scale) {
             const s = size * scale;
             ctx.save();
@@ -713,6 +759,111 @@
             ctx.arc(-s * 0.75, s * 0.3, s * 0.5, 0, Math.PI * 2);
             ctx.arc(s * 0.75, s * 0.3, s * 0.5, 0, Math.PI * 2);
             ctx.fill();
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function drawExplodingZombie(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Pulsing orange/yellow explosion glow
+            const pulse = Math.sin(Date.now() / 200) * 0.5 + 0.5;
+            const glowGradient = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2.5);
+            glowGradient.addColorStop(0, `rgba(255, 200, 0, ${0.7 * pulse})`);
+            glowGradient.addColorStop(0.5, `rgba(255, 150, 0, ${0.5 * pulse})`);
+            glowGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Orange/yellow body
+            const bodyGradient = ctx.createRadialGradient(-4, -4, 0, 0, 0, s);
+            bodyGradient.addColorStop(0, '#ffb347');
+            bodyGradient.addColorStop(1, '#ff8c00');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes (orange/red)
+            const eyePulse = Math.sin(Date.now() / 120) * 0.4 + 0.6;
+            ctx.fillStyle = `rgba(255, 100, 0, ${eyePulse})`;
+            ctx.beginPath();
+            ctx.arc(-s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
+            ctx.arc(s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Warning cracks/explosion lines
+            ctx.strokeStyle = `rgba(255, 200, 0, ${0.8 * pulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.6, -s * 0.6);
+            ctx.lineTo(s * 0.6, s * 0.6);
+            ctx.moveTo(s * 0.6, -s * 0.6);
+            ctx.lineTo(-s * 0.6, s * 0.6);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function drawBossZombie(x, y, size, scale) {
+            const s = size * scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Massive pulsing red aura
+            const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+            const auraGradient = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 3);
+            auraGradient.addColorStop(0, `rgba(200, 0, 0, ${0.6 * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(150, 0, 0, ${0.4 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Large dark body
+            const bodyGradient = ctx.createRadialGradient(-6, -6, 0, 0, 0, s);
+            bodyGradient.addColorStop(0, '#8b0000');
+            bodyGradient.addColorStop(1, '#4b0000');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Multiple glowing eyes (boss has more eyes)
+            const eyePulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 0, 0, ${eyePulse})`;
+            ctx.beginPath();
+            // Top row
+            ctx.arc(-s * 0.5, -s * 0.4, s * 0.3, 0, Math.PI * 2);
+            ctx.arc(0, -s * 0.4, s * 0.3, 0, Math.PI * 2);
+            ctx.arc(s * 0.5, -s * 0.4, s * 0.3, 0, Math.PI * 2);
+            // Bottom row
+            ctx.arc(-s * 0.3, s * 0.2, s * 0.25, 0, Math.PI * 2);
+            ctx.arc(s * 0.3, s * 0.2, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Spikes/horns on top
+            ctx.fillStyle = '#4b0000';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.4, -s * 1.2);
+            ctx.lineTo(0, -s * 1.5);
+            ctx.lineTo(s * 0.4, -s * 1.2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Crown/armor detail
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.8, s * 0.6, Math.PI, 0, false);
             ctx.stroke();
             
             ctx.restore();
@@ -910,8 +1061,17 @@
                         case 'zombie':
                             drawZombie(x, y, el.size, el.scale);
                             break;
+                        case 'fast':
+                            drawFastZombie(x, y, el.size, el.scale);
+                            break;
                         case 'armored':
                             drawArmoredZombie(x, y, el.size, el.scale);
+                            break;
+                        case 'exploding':
+                            drawExplodingZombie(x, y, el.size, el.scale);
+                            break;
+                        case 'boss':
+                            drawBossZombie(x, y, el.size, el.scale);
                             break;
                         case 'grenade':
                             drawGrenade(x, y, el.size, el.scale);
