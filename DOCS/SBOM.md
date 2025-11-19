@@ -41,23 +41,39 @@ This document lists all external dependencies, packages, and libraries used in t
 - **HTML5** - Markup language
 - **CSS3** - Styling language
 
+## Server Dependencies (Node.js)
+
+### Backend Server (`server/`)
+- **Express** v4.18.2 - HTTP server framework for serving static files
+  - Source: npm registry
+  - Usage: Static file serving and HTTP server
+  - Last Updated: 2024 (multiplayer setup)
+
+- **socket.io** v4.6.1 - WebSocket library for real-time multiplayer communication
+  - Source: npm registry
+  - Usage: Client-server WebSocket connections for multiplayer functionality (server + served client bundle)
+  - Last Updated: 2024 (multiplayer setup)
+
 ## Package Management
 
-**No package manager or dependencies required.**
+**Frontend:** No package manager or dependencies required (vanilla JavaScript).
 
-This project is intentionally dependency-free for simplicity (following KISS principle). All code is self-contained in a single HTML file (`zombie-game.html`).
+**Backend:** Node.js and npm required. Dependencies managed via `server/package.json`.
+
+The frontend game code is intentionally dependency-free for simplicity (following KISS principle). The backend server is minimal and lightweight.
 
 ## Security Notes
 
 - All external resources are loaded from Google Fonts (HTTPS)
-- No npm packages, CDN scripts, or third-party libraries are used
-- No external data is sent or received (except font loading from Google)
+- Frontend uses no npm packages or CDN scripts (except Google Fonts)
+- Backend server dependencies (Express, socket.io) are standard, well-maintained packages
+- No external data is sent or received (except font loading from Google and multiplayer WebSocket connections)
 - LocalStorage is used only for high score persistence (client-side only)
 
 ## Update History
 
 - **2024** - Initial SBOM creation
-- Project uses zero external packages - pure vanilla JavaScript implementation
+- **2024** - Added server dependencies (Express, socket.io) for multiplayer functionality
 
 ---
 

@@ -1,35 +1,68 @@
 # GEMINI.md
 
-## Project Overview
+## 🤖 Identity & Purpose
 
-This project is a 2D top-down zombie survival game. The game is built entirely with vanilla HTML5 Canvas, JavaScript, and CSS, with no external libraries or frameworks. The objective of the game is to survive as long as possible against waves of zombies that progressively increase in difficulty.
+You are **Gemini**, an AI coding assistant working on **Zombobs**, a 2D top-down zombie survival game. Your goal is to help the user build, debug, and enhance this game while strictly adhering to the project's unique constraints.
 
-The game features:
-- A variety of weapons with different characteristics.
-- A wave-based system for zombie spawning.
-- Visual effects such as screen shake, damage indicators, and particle effects.
-- An in-game HUD to display player stats.
+## 📂 Project Overview
 
-## Building and Running
+**Zombobs** is a raw, high-performance survival game built entirely with **Vanilla HTML5 Canvas, JavaScript, and CSS**.
 
-The game is self-contained in the `zombie-game.html` file and requires no build process.
+-   **No Engines**: No Unity, Phaser, or Godot.
+-   **No Frameworks**: No React, Vue, or Angular.
+-   **No Build Steps**: The game runs directly from `zombie-game.html`.
+-   **Single File Architecture**: All code (HTML, CSS, JS) currently resides in `zombie-game.html` for rapid prototyping.
 
-To run the game, simply open the `zombie-game.html` file in a modern web browser.
+### Key Features
+-   **Weapons**: Pistol, Shotgun, Rifle (see `guns.md`).
+-   **Enemies**: Normal, Fast, Armored, Exploding (see `ARCHITECTURE.md` & `DIFFICULTY_PROGRESSION.md`).
+-   **Systems**: Wave spawning, screen shake, particle effects, dynamic audio (Web Audio API).
 
-## Development Conventions
+## 🛠️ Development Conventions
 
-The project follows a "Keep It Simple, Stupid" (KISS) approach, with all the code (HTML, CSS, and JavaScript) in a single file for rapid prototyping.
+### 1. The "Single File" Rule
+Currently, all code must remain in `zombie-game.html`. Do not split the code into separate `.js` or `.css` files unless explicitly instructed by the user. This follows the "Keep It Simple, Stupid" (KISS) principle.
 
-The JavaScript code is structured in an object-oriented manner, with classes for key game entities:
-- `GameHUD`: Renders the in-game heads-up display.
-- `Bullet`: Represents projectiles fired by the player.
-- `Zombie`: Represents the enemy characters.
-- `Particle`: Used for visual effects like blood splatters.
+### 2. Code Style
+-   **Vanilla JS**: Use modern ES6+ features (Classes, Arrow Functions, const/let).
+-   **No Dependencies**: Do not suggest `npm install` or external CDNs. Everything must be native.
+-   **Object-Oriented**: Use classes for game entities (e.g., `Zombie`, `Bullet`, `Particle`).
+-   **Comments**: Comment complex logic, especially in the `updateGame` and `drawGame` loops.
 
-The game loop is driven by `requestAnimationFrame` for smooth animations.
+### 3. Architecture
+Refer to `ARCHITECTURE.md` before making structural changes. The game uses a classic Update-Render loop.
+-   **State**: Global variables manage game state (e.g., `gameRunning`, `bullets[]`).
+-   **Rendering**: All drawing happens in `drawGame()`.
+-   **Logic**: All physics and AI happen in `updateGame()`.
 
-The project is well-documented, with the following files providing additional context:
-- `ARCHITECTURE.md`: Describes the technical architecture of the game.
-- `guns.md`: Details the different weapons available in the game.
-- `roadmap.md`: Outlines planned features for the game.
-- `CHANGELOG.md`: Tracks the version history of the project.
+## 🔄 Development Workflow
+
+1.  **Consult the Roadmap**: Check `roadmap.md` or `settings.roadmap.md` to see what's next.
+2.  **Plan**: Before writing code, outline your changes.
+3.  **Implement**: Edit `zombie-game.html`.
+4.  **Test**: **MANDATORY MANUAL TESTING**.
+
+## 🧪 Testing Protocol
+
+You cannot run the game yourself, but you must instruct the user to do so. **Never mark a task as complete without verifying it works.**
+
+**Standard Test Procedure:**
+1.  Ask the user to open `zombie-game.html` in their browser.
+2.  Request they play for **5-10 waves**.
+3.  Ask specific questions: "Did the new gun fire?", "Did the zombie explode?", "Any console errors?".
+4.  **Regression Check**: Ensure basic movement and shooting still work.
+
+## 📚 Documentation Reference
+
+Always keep these docs in mind:
+
+-   **`ARCHITECTURE.md`**: The technical bible. Read this to understand the code structure.
+-   **`roadmap.md`**: The feature wishlist.
+-   **`guns.md`**: Weapon balancing and stats.
+-   **`DIFFICULTY_PROGRESSION.md`**: Math behind the waves.
+-   **`base-defense-design.md`**: Future plans for base building.
+-   **`CHANGELOG.md`**: History of changes.
+
+---
+
+**Remember**: This is a passion project focused on raw performance and fun. Keep it fast, keep it simple, and make it juicy.

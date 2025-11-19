@@ -5,8 +5,8 @@
 - [x] **Ammo System** - Limited bullets that require reloading (auto-reload when empty, weapon-specific ammo)
 - [x] **Health Pickups** - Medical kits/health packs spawn randomly on the map
 - [x] **Melee Attack** - Close-range melee attack (V key or right-click) with swipe animation, 500ms cooldown, 3 damage, 40px range
-- [ ] **Special Zombie Types** - Fast zombies, tank zombies, exploding zombies with different behaviors
-- [ ] **Zombie Slow-on-Hit** - Bullets briefly slow zombies (e.g., 0.5s at 30%) to create crowd-control moments
+- [x] **Special Zombie Types** - Fast zombies, tank zombies, exploding zombies with different behaviors
+- [x] **Zombie Slow-on-Hit** - Bullets briefly slow zombies (e.g., 0.5s at 30%) to create crowd-control moments
 - [ ] **Weapon Accuracy Degradation** - Continuous firing reduces accuracy, requiring periodic pauses
 - [x] **Ammo Pickups** - Ammo boxes spawn periodically when player has low ammo, restoring ammo for current weapon when collected
 - [ ] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds)
@@ -62,7 +62,7 @@
 - [x] **Kill Confirmed Sound** - Distinct audio feedback (satisfying "pop" or "thud") when zombie is killed, separate from hit sound
 - [ ] **Hit Markers & Impact SFX** - Quick visual marker and subtle sound on successful hits
 - [ ] **Zombie Spawn Flash** - Brief visual indicator (glow/flash) where zombie will spawn before it appears
-- [ ] **Zombie Death Sound** - Distinct sound effect when zombie is killed (different from hit sound) for kill confirmation
+- [x] **Zombie Death Sound** - Distinct sound effect when zombie is killed (different from hit sound) for kill confirmation
 - [x] **Shell Ejection** - Visual effect of bullet casings being ejected from the gun.
 
 ## UI & Feedback
@@ -72,7 +72,7 @@
 - [x] **Pause Menu** - Press ESC to pause, resume, or restart
 - [ ] **Reload Progress Indicator** - Visual progress bar or percentage showing reload completion time in HUD
 - [x] **Low Ammo Warning** - Visual pulse/flash on ammo counter when ammo drops below 25% of magazine capacity
-- [ ] **Wave Countdown Overlay** - 3-second overlay with reload hint between waves
+- [x] **Wave Countdown Overlay** - 3-second overlay with reload hint between waves
 - [x] **Wave Progress Indicator** - Visual display of remaining zombies in current wave
 - [x] **Floating Damage Numbers** - Show damage dealt as numbers that float up from zombies when hit
 - [x] **Aiming Crosshair** - Simple reticle/crosshair at mouse cursor position for better aiming reference
@@ -124,4 +124,3 @@
 - [ ] **Online Leaderboards** - Integrate a service to display global high scores.
 - [ ] **Achievements System** - Add in-game achievements for completing specific challenges.
 - [ ] **Daily/Weekly Challenges** - Offer special challenges with currency rewards (e.g., "Survive 5 waves with only a pistol").
-- [ ] **Seasonal Events** - Time-limited events with special themes, enemies, and rewards (e.g., a Halloween event with pumpkin-headed zombies).

@@ -1,0 +1,9 @@
+# Node.js
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Server
+server/node_modules/
+server/npm-debug.log
+server/package-lock.json

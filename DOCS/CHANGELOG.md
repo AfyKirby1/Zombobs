@@ -5,6 +5,53 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Multiplayer Lobby & Socket Sync**
+  - Clickable Multiplayer button now opens an in-canvas lobby (status pulses, player list, ready/back controls)
+  - Clients register usernames and receive live `lobby:update` payloads over socket.io
+  - Lobby blocks gameplay rendering until a run starts, preserving FPS
+- **Server Visibility Enhancements**
+  - PowerShell launcher relays colorized join/leave logs directly from `server.js`
+  - Express/socket.io server now tracks players, broadcasts lobby roster, and prints concise connection summaries
+- **Readme Glow-Up**
+  - Added Quick Start paths, multiplayer instructions, and tooling table to highlight `launch.bat` / `launch.ps1`
+
+- **Multiplayer Backend Server** - Node.js server with Express and socket.io
+  - Server folder with Express for static file serving
+  - Socket.io WebSocket server ready for multiplayer implementation
+  - Styled PowerShell launcher script (`launch.ps1`) with colored output
+  - Windows batch launcher (`launch.bat`) that calls PowerShell wrapper
+  - Automatic dependency installation on first launch
+  - Server runs on port 3000 (configurable via PORT env var)
+  - Server serves all game files (index.html, zombie-game.html, assets, css, js)
+  - Socket.io connection handling ready for multiplayer events
+
+### Refactoring
+- **Code Separation** - Split monolithic `zombie-game.html` into `css/style.css` and `js/game.js` to improve maintainability and development workflow.
+- **Modular Architecture** - Refactored `js/game.js` (~3,700 lines) into ES6 modules:
+  - `js/core/` - Core game state, constants, and canvas management
+  - `js/entities/` - Game entities (Bullet, Zombie, Particle, Pickup, Grenade, Shell)
+  - `js/systems/` - Game systems (Audio, Graphics, Particle, Settings)
+  - `js/ui/` - User interface components (GameHUD, SettingsPanel)
+  - `js/utils/` - Utility functions (combat, game utilities)
+  - `js/main.js` - Main game loop and initialization
+  - Updated HTML to use ES6 modules (`type="module"`)
+
+### Added
+- **Zombie Slow-on-Hit** - Bullets now briefly slow zombies (30% slow for 0.5s) to add a crowd-control element to gameplay.
+
+- **Special Zombie Types** - Multiple zombie variants with unique behaviors
+  - **Fast Zombie (The Runner)**: 1.6x speed, 60% health, smaller hitbox, reddish/orange visuals with speed trail particles
+  - **Exploding Zombie (The Boomer)**: Explodes on death dealing AOE damage (60 radius, 30 damage), orange/yellow pulsing glow, can damage player
+  - **Armored Zombie (The Tank)**: Slower but heavily armored, absorbs most damage before health is affected
+  - Wave-based spawning: Fast zombies appear at Wave 3+ (~15% chance), Exploding zombies at Wave 5+ (~10% chance), Armored zombies at Wave 3+ (scaling chance)
+  - Refactored explosion system into reusable `triggerExplosion()` function
+
+- **Controls & Keybinds System**
+  - Remappable keybinds in Settings menu
+  - Persistent control settings (saved to localStorage)
+  - Custom UI for rebinding keys
+  - Separate "Main" and "Controls" views in Settings
+
 - **Wave Break System**
   - 3-second pause between waves
   - "Wave Cleared!" notification with countdown
@@ -76,11 +123,13 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - Click or hold to shoot (continuous firing)
 - Bullet physics with weapon-specific damage
 - Zombie AI (tracks and chases player)
+- Multiple zombie types: Normal, Fast, Exploding, Armored
 - Collision detection (player-zombie, bullet-zombie)
-- Wave-based spawning
+- Wave-based spawning with type variety
 - Progressive difficulty scaling
 - Weapon switching (1/2/3 keys)
 - Manual reloading (R key)
+- Explosion system (grenades and exploding zombies)
 
 ### Visual Effects
 - Screen shake on shoot and damage
@@ -108,4 +157,3 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - Weapon state (current weapon, ammo, reload status)
 - Game over condition
 - Pause state
-

@@ -2,7 +2,37 @@
 
 *This file is for continuous reference and quick notes. Never delete, only compact old updates.*
 
-## 2024 - Active Development Notes
+## 2025 - Active Development Notes
+
+### Multiplayer Backend Setup [2025]
+- ✅ **Server Folder**: Created `server/` directory with Node.js backend
+- ✅ **Express Server**: Static file serving from project root
+- ✅ **Socket.io Setup**: WebSocket server attached to Express, ready for multiplayer events
+- ✅ **PowerShell Launcher**: Styled `launch.ps1` with colored output and ASCII art banner
+- ✅ **Windows Launcher**: `launch.bat` calls PowerShell wrapper
+- ✅ **Auto-Install**: Dependencies automatically installed on first launch
+- ✅ **Port Configuration**: Default port 3000 (configurable via PORT env var)
+- Server accessible at `http://localhost:3000`
+- Socket.io connection handlers in place for future multiplayer implementation
+
+### Multiplayer Lobby & Logging [2025-11-19]
+- ✅ **Canvas Lobby**: GameHUD renders lobby state (connecting pulse, player list, Ready/Back buttons)
+- ✅ **State Flags**: Added `showLobby`, `multiplayer` object, and `username` to `gameState`
+- ✅ **Client Wiring**: `connectToMultiplayer()` lazily loads socket.io and registers players
+- ✅ **Server Broadcasts**: `server.js` now tracks players, emits `lobby:update`, and prints join/leave summaries
+- ✅ **Launcher UX**: PowerShell window mirrors socket events so LAN sessions stay visible
+
+### Refactoring [2025-11-19]
+- ✅ **Phase 1**: Split `zombie-game.html` into `css/style.css` and `js/game.js`
+- ✅ **Phase 2**: Modularized `js/game.js` into ES6 modules:
+  - Core: constants, canvas, gameState
+  - Entities: Bullet, Zombie (all variants), Particle, Pickup, Grenade, Shell
+  - Systems: Audio, Graphics, Particle, Settings
+  - UI: GameHUD, SettingsPanel
+  - Utils: combatUtils, gameUtils
+  - Main: Entry point with game loop
+- Updated all documentation to reflect new structure
+- Logic remains identical, just organized for maintainability
 
 ### HUD Implementation
 - Created modular `GameHUD` class component
@@ -41,20 +71,25 @@
 - Gradient backgrounds and vignette
 
 ### Technical Notes
-- Canvas size: 800x600
+- Canvas size: Dynamic (fills window)
+- Render scale: 0.75 (performance optimization)
 - Game loop: requestAnimationFrame
 - Collision: Circle-based distance calculation
 - Zombies spawn from edges
 - Wave progression: +2 zombies per wave, speed/health scale
+- Zombie type spawning: Fast (Wave 3+, 15%), Exploding (Wave 5+, 10%), Armored (Wave 3+, scaling)
 - Particles: Supports both Particle class and custom objects (blood)
 - Reload system: Uses Date.now() for accurate timing
 - Mouse firing: Continuous check in update loop while mouse.isDown
+- Explosion handling: Zombie removed from array before explosion to avoid iteration issues
+- ES6 Modules: Native module system, no bundler required
 
 ### UI Systems
-- External HUD: Below canvas (HTML elements)
 - In-game HUD: On canvas (GameHUD component)
-- Game Over: Modal overlay
-- Both HUDs update via `updateUI()` function
+- Settings Panel: On canvas (SettingsPanel component)
+- Main Menu: On canvas (GameHUD component)
+- Game Over: On canvas (GameHUD component)
+- All UI rendered directly on canvas for consistency
 
 ### Color Scheme
 - Health: Red (#ff1744, brightens to #ff0000 when low)
@@ -69,7 +104,7 @@
 - 3 weapons: Pistol, Shotgun, Rifle
 - Unique damage, fire rate, ammo for each
 - Shotgun fires 5 spread bullets
-- Weapon switching with 1/2/3 keys
+- Weapon switching with 1/2/3 keys (customizable)
 - Weapon-specific reload times (all 1 second)
 
 ### Audio System
@@ -78,14 +113,26 @@
 - Gunshot, damage, footsteps, restart sounds
 - All programmatically generated
 - Initializes on first user interaction
+- Master volume control via SettingsPanel
 
 ### Input System
-- WASD/Arrow keys: Movement
+- WASD/Arrow keys: Movement (customizable)
 - Mouse: Aiming
 - Click/Hold: Shoot (continuous firing)
-- 1/2/3: Weapon switching
-- R: Reload (or restart when paused/game over)
+- 1/2/3: Weapon switching (customizable)
+- R: Reload (or restart when paused/game over) (customizable)
 - ESC: Pause/Resume
+- G: Grenade (customizable)
+- V: Melee (customizable)
+
+### Controls & Keybinds System
+- ✅ Added Keybinds UI in Settings
+- Remappable controls for movement, weapons, reload, etc.
+- Persistent settings via localStorage
+- Clean "Main" vs "Controls" view in Settings Panel
+- Prevents binding Escape key
+- Displays proper key names
+- Real-time volume control
 
 ### Wave Break System
 - ✅ Implemented
@@ -93,15 +140,27 @@
 - Visual countdown and "Wave Cleared" text
 - Allows reloading and mental break
 
+### Zombie Types
+- ✅ **Normal Zombie**: Default enemy, green tones with red eyes
+- ✅ **Armored Zombie**: Slower (0.75x speed), heavily armored, absorbs damage before health
+- ✅ **Fast Zombie**: Faster (1.6x speed), weaker (60% health), smaller hitbox, reddish/orange visuals
+- ✅ **Exploding Zombie**: Explodes on death, AOE damage (60 radius, 30 damage), can hurt player
+
+### Explosion System
+- ✅ Reusable `triggerExplosion(x, y, radius, damage, sourceIsPlayer)` function
+- Handles visual effects, audio, screen shake, AOE damage to zombies
+- Player damage support (50% damage when sourceIsPlayer = false)
+- Used by grenades and exploding zombies
+
 ### Known Areas for Enhancement
-- Special zombie types
 - Boss waves
 - Score multiplier
 
 ### Code Quality Notes
-- All-in-one file structure (KISS principle)
+- ✅ **Modular ES6 Architecture**: Clean separation of concerns
+- ✅ **Centralized State**: Single `gameState` object prevents globals
+- ✅ **No Circular Dependencies**: Careful import structure
 - Clean separation of classes
 - Consistent naming conventions
 - Comments for clarity
-- No external dependencies (pure vanilla JS)
-
+- No external dependencies (pure vanilla JS + ES6 modules)

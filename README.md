@@ -1,226 +1,152 @@
-# 🧟 Zombobs - Zombie Survival Game
+<div align="center">
 
-> A fast-paced 2D top-down zombie survival game built with **pure vanilla HTML5 Canvas and JavaScript**. No engines, no frameworks, no dependencies—just you, your weapons, and endless waves of the undead.
+# 🧟 ZOMBOBS
+### The Ultimate Vanilla JS Zombie Survival Experience
 
-[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
-[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Canvas](https://img.shields.io/badge/Canvas-2D-FF6B6B?style=flat)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Canvas](https://img.shields.io/badge/Canvas-2D-FF6B6B?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-![Gameplay](https://via.placeholder.com/800x450/1a1a1a/ff1744?text=ZOMBOBS+-+SURVIVE+THE+HORDE)
+![Gameplay Banner](https://via.placeholder.com/800x400/0f0f0f/ff0000?text=SURVIVE+THE+HORDE)
 
-## 🎮 Play Now
+<p align="center">
+  <b>No Engines. No Frameworks. Just Pure Adrenaline.</b><br>
+  A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.
+</p>
 
-**No installation required!** Simply open [`zombie-game.html`](zombie-game.html) in your web browser, or visit the [landing page](index.html) for a better experience.
+[🎮 Play Now](#-play-now) • [✨ Features](#-features) • [🕹️ Controls](#-controls) • [🛠️ Tech](#-technology-stack)
 
-## ✨ Features
-
-### 🎯 Core Gameplay
-- **Wave-Based Survival** - Endless waves of zombies with progressive difficulty scaling
-- **3 Unique Weapons** - Pistol, Shotgun, and Rifle, each with distinct damage, fire rate, and ammo capacity
-- **Ammo Management** - Limited ammo with manual/auto-reload mechanics
-- **Health Pickups** - Pulsing med-orbs spawn periodically to keep you alive (+25 HP)
-- **Ammo Pickups** - Yellow/orange ammo boxes restore ammo for current weapon (+15 ammo, also refills grenades)
-- **Grenades** - Throwable explosives with AOE damage (G key, 3 per game, 2s cooldown)
-- **Normal & Armored Zombies** - Standard infected plus slow, tanky armored variants that soak more damage
-
-### 🎨 Visual Polish
-- **Screen Shake** - Dynamic camera shake on shooting and taking damage
-- **Particle Effects** - Blood splatter, muzzle flash, and spark particles
-- **Glowing Zombies** - Animated red eyes and toxic green aura
-- **Damage Indicators** - Red screen flash on player damage
-- **Custom Crosshair** - Precise aiming with mouse-following reticle
-- **Wave Notifications** - Dramatic text overlay when new waves begin
-
-### 🔊 Audio System
-- **Web Audio API** - All sounds generated programmatically (no external files)
-- **Gunshot Sounds** - Sharp crack with low-frequency boom
-- **Damage Feedback** - Low-frequency grunt on player hit
-- **Footstep Audio** - Impact thuds while moving
-- **Explosion Sounds** - Dynamic boom for grenade detonations
-
-### 🖥️ UI & Feedback
-- **Main Menu** - Beautiful landing page with animated Star Wars-style background
-- **In-Game HUD** - Real-time stats overlay (Health, Ammo, Grenades, Kills, Wave, High Score)
-- **Low Ammo Warning** - Pulsing red indicator when ammo drops below 25%
-- **FPS Counter** - Performance monitor in top-right corner
-- **Pause Menu** - ESC to pause/resume with restart option
-- **Game Over Screen** - Final stats and high score tracking
-- **High Score Persistence** - Best run saved to localStorage
-- **Animated Landing Page** - Interactive background with game elements (zombies, bullets, grenades, pickups) flying out in Star Wars-style
-
-### ⚡ Performance
-- **Render Scaling** - Optimized canvas resolution for smooth 60+ FPS
-- **Particle Capping** - Intelligent particle limit to prevent slowdowns
-- **Cached Audio** - Pre-generated sound buffers for instant playback
-- **Efficient Collision** - Circle-based collision detection
-
-## 🎮 Controls
-
-| Action | Input |
-|--------|-------|
-| **Move** | `WASD` or `Arrow Keys` |
-| **Aim** | `Mouse` |
-| **Shoot** | `Left Click` (hold for continuous fire) |
-| **Switch Weapon** | `1` (Pistol), `2` (Shotgun), `3` (Rifle) |
-| **Throw Grenade** | `G` |
-| **Reload** | `R` |
-| **Pause** | `ESC` |
-| **Restart** | `R` (when paused/game over) |
-
-## 🛠️ Technology Stack
-
-- **HTML5 Canvas** - 2D rendering engine
-- **Vanilla JavaScript** - Pure ES6+ game logic
-- **CSS3** - Styling and animations
-- **Web Audio API** - Programmatic sound generation
-- **Google Fonts** - Creepster & Roboto Mono
-
-**Zero dependencies.** No build process. No package managers. Just open and play.
-
-## 📊 Weapon Stats
-
-| Weapon | Damage | Fire Rate | Ammo | Reload Time | Special |
-|--------|--------|-----------|------|-------------|---------|
-| **Pistol** | 1 | 400ms | 10 | 1s | Balanced starter |
-| **Shotgun** | 3×5 | 800ms | 5 | 1s | Spread fire (5 pellets) |
-| **Rifle** | 2 | 200ms | 30 | 1s | Rapid fire |
-
-## 🏗️ Project Structure
-
-```
-zombobs/
-├── zombie-game.html          # Main game (all-in-one)
-├── index.html                # Landing page
-├── README.md                 # This file
-├── DOCS/                     # Documentation
-│   ├── ARCHITECTURE.md       # Technical architecture
-│   ├── CHANGELOG.md          # Version history
-│   ├── roadmap.md            # Feature roadmap
-│   ├── SUMMARY.md            # Project overview
-│   ├── SCRATCHPAD.md         # Development notes
-│   ├── SBOM.md               # Software Bill of Materials
-│   └── guns.md               # Weapon system docs
-└── sounds/                   # (Empty - using Web Audio API)
-```
-
-## 🚀 Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AfyKirby1/Zombobs.git
-   cd Zombobs
-   ```
-
-2. **Open the game**
-   - Option 1: Open `zombie-game.html` directly in your browser
-   - Option 2: Open `index.html` for the landing page experience
-   - Option 3: Serve with a local server (optional):
-     ```bash
-     # Python
-     python -m http.server 8000
-     
-     # Node.js
-     npx serve
-     ```
-
-3. **Play!** No installation, no build step, just pure zombie-slaying fun.
-
-## 🎯 Game Mechanics
-
-### Health System
-- Start with **100 HP**
-- Lose **0.5 HP** per frame when touched by zombies
-- Collect **health pickups** (+25 HP) that spawn every 15 seconds
-- Health capped at 100
-
-### Wave Progression
-- **Wave 1**: 5 zombies
-- Each wave adds **+2 zombies**
-- Zombie speed: `1 + (wave × 0.1)`
-- Zombie health: `2 + floor(wave / 3)`
-- Auto-advance when all zombies are eliminated
-
-### Scoring
-- **10 points** per zombie kill
-- High score persists across sessions (localStorage)
-- Score displayed in HUD and game over screen
-
-## 🔧 Development
-
-Built following core principles:
-- **KISS** (Keep It Simple Stupid)
-- **DOTI** (Don't Over Think It)
-- **YAGI** (You Aren't Gonna Need It)
-
-### Architecture
-- **Single-file game** - All code in `zombie-game.html` for simplicity
-- **Object-oriented** - Classes for Bullet, Zombie, Particle, GameHUD
-- **Update-render loop** - Classic game loop pattern
-- **State management** - Global state variables with clear separation
-
-See [`DOCS/ARCHITECTURE.md`](DOCS/ARCHITECTURE.md) for detailed technical documentation.
-
-## 📈 Roadmap
-
-Check out [`DOCS/roadmap.md`](DOCS/roadmap.md) for the full feature list. Highlights:
-
-### ✅ Completed
-- Weapon variety (3 weapons)
-- Ammo system with reloading
-- Health & Ammo pickups
-- Grenades with AOE damage
-- Normal & Armored zombie variants
-- Main menu system
-- Animated landing page with Star Wars-style effects
-- Visual effects (screen shake, particles, blood, explosions)
-- Audio system (gunshots, explosions, footsteps)
-- HUD with pause/game over
-- Crosshair and FPS counter
-- Wave notifications
-
-### 🔜 Coming Soon
-- Additional special zombie types (spitter, summoner, crawler)
-- Boss waves (every 5 rounds)
-- Temporary power-up pickups
-- Melee attack
-- Floating damage numbers
-- Wave progress indicator
-
-## 🐛 Known Issues
-
-- Performance may vary on lower-end devices (render scaling helps)
-- Some browsers may have audio context restrictions (requires user interaction)
-
-## 📝 Documentation
-
-- **[ARCHITECTURE.md](DOCS/ARCHITECTURE.md)** - Technical deep-dive
-- **[CHANGELOG.md](DOCS/CHANGELOG.md)** - Version history
-- **[roadmap.md](DOCS/roadmap.md)** - Feature roadmap
-- **[SUMMARY.md](DOCS/SUMMARY.md)** - Project overview
-- **[guns.md](DOCS/guns.md)** - Weapon system details
-
-## 🤝 Contributing
-
-Contributions are welcome! This is a learning project, so feel free to:
-- Report bugs
-- Suggest features
-- Submit pull requests
-- Share your high scores!
-
-## 📄 License
-
-Free to use and modify! This project is open source and available under the MIT License.
-
-## 🎮 Credits
-
-- **Fonts**: [Creepster](https://fonts.google.com/specimen/Creepster) & [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono) via Google Fonts
-- **Audio**: Web Audio API** - All sounds generated programmatically
-- **Built with**: Pure HTML5 Canvas and JavaScript
+</div>
 
 ---
 
-**Made with ❤️ and zombies** 🧟
+## 💀 Survive the Night
 
-*Survive the horde. Beat your high score. Repeat.*
+**Zombobs** strips away the bloat of modern game engines to deliver a raw, high-performance survival experience. You are alone against an endless tide of the undead. How long can you last?
 
+> "It's like Left 4 Dead met a geometry textbook and had a very angry baby." - *Beta Tester*
+
+## ✨ Features
+
+### 🔫 Arsenal of Destruction
+*   **Pistol**: Reliable, accurate, infinite potential.
+*   **Shotgun**: Crowd control at its finest. Spread the love (and the lead).
+*   **Rifle**: High rate of fire for when precision isn't enough.
+*   **Grenades**: Clear the screen with satisfying AOE explosions.
+
+### 🧠 Intelligent Enemies
+*   **Standard Infected**: Relentless chasers.
+*   **Armored Tanks**: Soaks up damage like a sponge. Aim for the head? There is no head. Just shoot more.
+*   **Progressive Difficulty**: Waves get harder, faster, and more chaotic.
+
+### 🎨 Visual & Audio Feast
+*   **Juicy Combat**: Screen shake, particle blood splatters, and muzzle flashes.
+*   **Dynamic Audio**: Procedurally generated sound effects using the Web Audio API. No external assets!
+*   **Retro Aesthetics**: Glowing neon zombies against a dark, gritty backdrop.
+
+## ⚡ Quick Start
+
+> Pick your vibe: zero-setup arcade mode or the new socket.io-powered lobby.
+
+### Option A · Instant Arcade
+1.  **[Download the source](https://github.com/AfyKirby1/Zombobs/archive/refs/heads/main.zip)**
+2.  Open `zombie-game.html` in Chrome / Edge / Firefox
+3.  Blast zombies until the sun comes up
+
+### Option B · Multiplayer Lobby (New!)
+1.  Install [Node.js](https://nodejs.org/) if you don’t already have it  
+2.  Double-click `launch.bat`
+    ```powershell
+    # launch.bat
+    powershell.exe -ExecutionPolicy Bypass -File ".\launch.ps1"
+    ```
+    The PowerShell wrapper:
+    - Checks for Node.js
+    - Installs dependencies on first run
+    - Launches the Express + socket.io server
+    - Prints live connection logs with color-coded badges
+3.  Visit `http://localhost:3000/zombie-game.html`
+4.  Click **Multiplayer** → hang out in the neon lobby → hit **Start Game** when your squad is ready
+
+<sub>Want to theme the launcher banner or rename yourself? Edit `launch.ps1` or tweak `gameState.username` before connecting.</sub>
+
+## 🧑‍🤝‍🧑 Multiplayer Lobby Experience
+
+- Live player list with auto-generated names (or custom handles sent via socket.io)
+- Status pulses (`Connecting…`, `Connected!`) plus a minimalist spinner
+- Ready/Back controls drawn directly on the canvas UI
+- PowerShell logs mirror every join/leave with ids so LAN parties stay organized
+- Future-proof: lobby is already broadcasting `lobby:update` events for upcoming co-op syncing
+
+## 🕹️ Controls
+
+| Action | Key |
+| :--- | :---: |
+| **Move** | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> |
+| **Aim** | 🖱️ Mouse |
+| **Shoot** | 🖱️ Left Click |
+| **Reload** | <kbd>R</kbd> |
+| **Grenade** | <kbd>G</kbd> |
+| **Switch Weapon** | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> |
+| **Pause** | <kbd>ESC</kbd> |
+
+## 🛠️ Technology Stack
+
+We believe in the power of the platform.
+
+*   **Frontend Core**: 100% Vanilla JavaScript (ES6+)
+*   **Rendering**: HTML5 Canvas API (2D Context)
+*   **Audio**: Web Audio API (Oscillators & Gain Nodes)
+*   **Styling**: CSS3 for UI overlays
+*   **Backend Server** (Optional): Node.js + Express + socket.io for multiplayer
+*   **Client Dependencies**: **ZERO external runtime dependencies.** None. Nada.
+
+## 🧰 Power Tools
+
+| Script | What it does |
+| :--- | :--- |
+| `launch.bat` | One-click entry: opens the styled PowerShell wrapper |
+| `launch.ps1` | Checks Node.js, installs deps, prints neon banner + live socket.io logs |
+| `server/server.js` | Serves the entire game and coordinates lobby updates over socket.io |
+
+## 📊 Weapon Stats
+
+| Weapon | DMG | Fire Rate | Mag Size | Special |
+| :--- | :---: | :---: | :---: | :--- |
+| **Pistol** | 🩸 | ⚡ | 10 | Balanced & Reliable |
+| **Shotgun** | 🩸🩸🩸 | ⚡ | 5 | 5-Pellet Spread |
+| **Rifle** | 🩸🩸 | ⚡⚡⚡ | 30 | Full Auto Mayhem |
+
+## 🗺️ Roadmap
+
+The horde is growing. Here's what's coming next:
+
+- [ ] **Boss Waves**: Giant mutations every 5 rounds.
+- [ ] **Power-ups**: Temporary buffs like Quad Damage and Speed Boost.
+- [ ] **New Enemies**: Spitters and Exploders.
+- [ ] **Base Building**: Simple barricades to hold the line.
+
+See [DOCS/roadmap.md](DOCS/roadmap.md) for the full plan.
+
+## 🤝 Contributing
+
+Found a bug? Want to add a flamethrower?
+
+1.  Fork it.
+2.  Branch it (`git checkout -b feature/flamethrower`).
+3.  Code it.
+4.  Push it.
+5.  PR it.
+
+## 📄 License
+
+MIT License. Do whatever you want with it. Just don't get bitten.
+
+---
+
+<div align="center">
+
+**Made with 🩸, 💦, and 💻 by AfyKirby1**
+
+</div>
