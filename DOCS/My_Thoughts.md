@@ -5,7 +5,9 @@
 The project has just undergone a significant refactor to a modular ES6 architecture. This was a crucial step for maintainability and future feature additions. The documentation (docs/) is now well-structured and largely accurate.
 
 ### Recent Achievements
-1.  **Modularization**: The monolithic `zombie-game.html` is now a clean entry point, with logic distributed across `js/` modules.
+1.  **UI Repair**: Fixed a major layout regression in `zombie-game.html` caused by an accidental `css/style.css` inclusion that forced `display: flex` on the body.
+2.  **UX Polish**: The landing page is now much cleaner. The game canvas is hidden until requested, and the information density is improved.
+3.  **Modularization**: The monolithic `zombie-game.html` is now a clean entry point, with logic distributed across `js/` modules.
 2.  **Documentation**: `ARCHITECTURE.md`, `SUMMARY.md`, `CHANGELOG.md`, and `roadmap.md` are aligned with the codebase.
 3.  **Feature Parity**: All original features (and new ones like the HUD and Wave Break) are working in the new structure.
 

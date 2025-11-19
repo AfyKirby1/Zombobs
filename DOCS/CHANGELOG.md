@@ -2,7 +2,15 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
-## [Unreleased]
+## [0.2.0] - 2025-11-19
+
+### Changed
+- **Landing Page UI** - Major cleanup and layout fixes.
+  - Fixed a critical layout bug caused by conflicting external CSS (`display: flex` on body), restoring standard block flow.
+  - **Hidden Game Container**: The game canvas is now hidden by default and only reveals when "Play in Browser" is clicked, reducing visual clutter.
+  - **Compacted Design**: Further reduced padding, font sizes, and card dimensions to fit more content on screen.
+  - **Footer**: Ensured the "Made with..." footer is correctly positioned at the bottom of the page.
+  - Removed redundant "Play Zombobs" header and buttons from the game section.
 
 ### Added
 - **Multiplayer Lobby & Socket Sync**
@@ -36,7 +44,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - `js/main.js` - Main game loop and initialization
   - Updated HTML to use ES6 modules (`type="module"`)
 
-### Added
+### Added (Gameplay)
 - **Zombie Slow-on-Hit** - Bullets now briefly slow zombies (30% slow for 0.5s) to add a crowd-control element to gameplay.
 
 - **Special Zombie Types** - Multiple zombie variants with unique behaviors
