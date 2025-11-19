@@ -28,9 +28,14 @@ This document lists all external dependencies, packages, and libraries used in t
   - Standard browser API, no installation needed
   - Used for programmatic sound generation (gunshots, damage, footsteps, restart sounds)
 
+- **HTML5 Gamepad API** - Controller input
+  - Standard browser API, no installation needed
+  - Used for Xbox controller and other gamepad support
+  - Enables analog stick movement and aiming
+
 - **LocalStorage API** - Data persistence
   - Standard browser API, no installation needed
-  - Used for high score tracking
+  - Used for high score tracking and settings persistence
 
 ### JavaScript Runtime
 - **Vanilla JavaScript (ES6+)** - Core programming language
@@ -74,8 +79,9 @@ The frontend game code is intentionally dependency-free for simplicity (followin
 
 - **2024** - Initial SBOM creation
 - **2024** - Added server dependencies (Express, socket.io) for multiplayer functionality
+- **2025-11-19** - Added HTML5 Gamepad API to browser APIs section
 
 ---
 
-**Last Audited**: 2024
+**Last Audited**: 2025-11-19
 

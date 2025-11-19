@@ -6,10 +6,23 @@ A fast-paced 2D top-down zombie survival game built with vanilla HTML5 Canvas an
 
 ## 🎮 How to Play
 
+### Keyboard & Mouse
 - **WASD** or **Arrow Keys** - Move your character
 - **Mouse** - Aim your weapon
 - **Click** - Shoot at zombies
 - **Survive** - Don't let the zombies touch you!
+
+### Controller (Xbox/Gamepad)
+- **Left Stick** - Move your character (analog)
+- **Right Stick** - Aim your weapon (analog)
+- **RT** - Fire (hold for continuous)
+- **RB** - Throw grenade
+- **X** - Reload
+- **Y** - Next weapon
+- **LB** - Previous weapon
+- **R3** - Melee attack
+- **L3** - Sprint
+- **Start** - Pause/Resume
 
 ## ✨ Features
 
@@ -20,18 +33,20 @@ A fast-paced 2D top-down zombie survival game built with vanilla HTML5 Canvas an
 - ✅ Damage indicators (red flash on hit)
 - ✅ Particle effects (blood splatter, muzzle flash, spark particles)
 - ✅ In-game HUD component (Health, Weapon/Ammo, Kills, Wave, High Score)
+- ✅ **Controller Support (Beta)** - Full Xbox controller support with analog movement and aiming
 - ✅ **Complete Ammo System** - Limited bullets, manual/auto reload, weapon-specific ammo
 - ✅ **Weapon Variety** - 3 weapons (Pistol, Shotgun, Rifle) with unique stats
-- ✅ **Normal & Armored Zombies** - Standard infected plus slower, tankier armored variants
+- ✅ **Special Zombie Types** - Normal, Fast, Exploding, and Armored variants
 - ✅ **Health Pickups** - Pulsing healing orbs that restore player health (+25 HP)
 - ✅ **Ammo Pickups** - Yellow/orange ammo boxes that restore ammo for current weapon (+15 ammo)
 - ✅ **Grenades** - Throwable explosives with AOE damage (G key, 3 per game, 2s cooldown)
-- ✅ **Main Menu** - Landing page with single-player and multiplayer options
+- ✅ **Main Menu** - Landing page with single-player, local co-op (placeholder), settings, and multiplayer options
 - ✅ **Animated Landing Page** - Star Wars-style fly-out animation with game elements (zombies, bullets, grenades, pickups)
 - ✅ **Audio System** - Web Audio API generated sounds (gunshots, damage, footsteps, restart, explosions)
 - ✅ **High Score System** - Track and persist best run (localStorage)
 - ✅ **Pause System** - ESC to pause/resume, in-game menu
 - ✅ **Game Over Screen** - Integrated in HUD with restart option
+- ✅ **Settings System** - Remappable keybinds and controller button mapping
 - ✅ Beautiful visual effects and animations
 
 ### Coming Soon

@@ -4,6 +4,31 @@
 
 ## 2025 - Active Development Notes
 
+### Controller Support & UI Updates [2025-11-19]
+- ✅ **Controller Support (Beta)**: Full Xbox controller integration
+  - Left Stick: Analog movement
+  - Right Stick: Analog aiming (character direction now properly follows stick input)
+  - Automatic input source detection (switches between mouse/keyboard and gamepad)
+  - Virtual crosshair follows controller aim direction instead of being locked to mouse cursor
+  - Hot-plug support for controller connection/disconnection
+  - Controller keybind settings UI with rebind support
+- ✅ **Main Menu**: Added "Local Co-op" button (placeholder for future implementation)
+- ✅ **Graphics System**: 
+  - Renamed `initGrassPattern()` to `initGroundPattern()` for clarity
+  - Increased ground pattern opacity from 0.4 to 0.6 for better visibility
+
+### Version 0.2.0 Release [2025-11-19]
+- ✅ **Version Bump**: Updated to v0.2.0 across all relevant files
+- ✅ **Visual Upgrade**: Replaced procedural grass pattern with textured bloody dark floor tile
+- ✅ **GraphicsSystem Update**: Now loads and caches ground texture from `sample_assets/tiles/bloody_dark_floor.png`
+- ✅ **Landing Page Improvements**: 
+  - Widened page layout (1200px max-width, improved grid: 2.2fr / 1.2fr)
+  - Expanded feature grid to 10 items with detailed descriptions
+  - Enhanced roadmap section with 11 notable future features
+  - Updated run details with technical specs (Input, Perspective, Audio tech)
+- ✅ **Style Guide**: Created comprehensive `DOCS/STYLE_GUIDE.md` documenting color palette, typography, UI components, and visual effects
+- ✅ **Documentation Sync**: Updated CHANGELOG.md, SUMMARY.md, ARCHITECTURE.md, SCRATCHPAD.md, and My_Thoughts.md
+
 ### Multiplayer Backend Setup [2025]
 - ✅ **Server Folder**: Created `server/` directory with Node.js backend
 - ✅ **Express Server**: Static file serving from project root
@@ -116,14 +141,28 @@
 - Master volume control via SettingsPanel
 
 ### Input System
-- WASD/Arrow keys: Movement (customizable)
-- Mouse: Aiming
-- Click/Hold: Shoot (continuous firing)
-- 1/2/3: Weapon switching (customizable)
-- R: Reload (or restart when paused/game over) (customizable)
-- ESC: Pause/Resume
-- G: Grenade (customizable)
-- V: Melee (customizable)
+- **Keyboard/Mouse**:
+  - WASD/Arrow keys: Movement (customizable)
+  - Mouse: Aiming
+  - Click/Hold: Shoot (continuous firing)
+  - 1/2/3: Weapon switching (customizable)
+  - R: Reload (or restart when paused/game over) (customizable)
+  - ESC: Pause/Resume
+  - G: Grenade (customizable)
+  - V: Melee (customizable)
+- **Controller (Xbox/HTML5 Gamepad)**:
+  - Left Stick: Movement (analog)
+  - Right Stick: Aiming (analog, controls character direction)
+  - RT: Fire (continuous)
+  - RB: Grenade
+  - X: Reload
+  - Y: Next Weapon
+  - LB: Previous Weapon
+  - R3: Melee
+  - L3: Sprint
+  - Start: Pause
+  - Automatic input source detection
+  - Virtual crosshair follows right stick direction
 
 ### Controls & Keybinds System
 - ✅ Added Keybinds UI in Settings

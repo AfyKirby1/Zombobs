@@ -131,12 +131,18 @@ This modular structure improves maintainability, testability, and scalability.
 **Dependencies**: `systems/SettingsManager.js`
 
 #### GraphicsSystem.js
-**Purpose**: Graphics utilities
+**Purpose**: Graphics utilities and texture loading
 
 **Exports**:
-- `initGrassPattern()` - Create and cache grass pattern
+- `initGroundPattern()` - Load and cache ground texture pattern (renamed from `initGrassPattern`)
 
 **Dependencies**: `core/canvas.js`
+
+**Notes**:
+- Loads ground texture from `sample_assets/tiles/bloody_dark_floor.png`
+- Creates tiling pattern for canvas background
+- Replaces previous procedural grass generation
+- Ground pattern opacity set to 0.6 for better visibility
 
 #### ParticleSystem.js
 **Purpose**: Particle effects and blood splatter
@@ -161,6 +167,32 @@ This modular structure improves maintainability, testability, and scalability.
 - `setSetting(category, key, value)` - Set setting value
 
 **Dependencies**: None (localStorage only)
+
+**Settings Structure**:
+- `audio.masterVolume` - Master volume (0.0 to 1.0)
+- `controls.*` - Keyboard keybinds (moveUp, moveDown, etc.)
+- `gamepad.*` - Controller button mappings (fire, reload, etc.)
+
+#### InputSystem.js
+**Purpose**: Gamepad input handling via HTML5 Gamepad API
+
+**Exports**: `InputSystem` class, `inputSystem` singleton
+
+**Methods**:
+- `update(controlSettings)` - Poll gamepad state and update button/axis states
+- `getAimInput()` - Get right stick aim input (x, y)
+- `getMoveInput()` - Get left stick movement input (x, y)
+- `isConnected()` - Check if gamepad is connected
+- `startRebind(callback)` - Enter rebind mode for button mapping
+- `cancelRebind()` - Exit rebind mode
+
+**Dependencies**: None (uses browser Gamepad API)
+
+**Features**:
+- Hot-plug support (detects controller connection/disconnection)
+- Deadzone handling for analog sticks (prevents drift)
+- Button state tracking (pressed, justPressed, value)
+- Automatic input source detection
 
 ### UI Modules (`js/ui/`)
 
@@ -242,11 +274,16 @@ This modular structure improves maintainability, testability, and scalability.
 ## Game Systems
 
 ### Input System
-**Location**: `js/main.js`
-- Keyboard state tracking (`keys` object)
-- Mouse position tracking (`mouse` object)
-- Event listeners for keydown/keyup/mousemove/click
-- Settings-aware keybind handling
+**Location**: `js/main.js`, `js/systems/InputSystem.js`
+- **Keyboard**: State tracking (`keys` object), event listeners for keydown/keyup
+- **Mouse**: Position tracking (`mouse` object), event listeners for mousemove/click
+- **Gamepad**: HTML5 Gamepad API integration via `InputSystem`
+  - Left Stick: Movement (analog)
+  - Right Stick: Aiming (analog)
+  - Button mapping: RT (fire), RB (grenade), X (reload), Y (next weapon), LB (prev weapon), R3 (melee), L3 (sprint), Start (pause)
+- **Input Source Detection**: Automatically switches between mouse/keyboard and gamepad based on active input
+- **Virtual Crosshair**: When using controller, crosshair follows right stick aim direction
+- Settings-aware keybind handling (keyboard and gamepad)
 
 ### Collision Detection
 **Location**: `js/utils/gameUtils.js`
@@ -340,7 +377,7 @@ This modular structure improves maintainability, testability, and scalability.
 1. Check for settings panel or main menu (draw and return early if active)
 2. Apply screen shake transform
 3. Clear canvas with gradient background
-4. Draw grass pattern
+4. Draw ground pattern (textured tile)
 5. Draw vignette effect
 6. Draw damage indicator overlay (if active)
 7. Draw particles

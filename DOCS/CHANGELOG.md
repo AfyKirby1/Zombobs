@@ -11,12 +11,16 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - **Compacted Design**: Further reduced padding, font sizes, and card dimensions to fit more content on screen.
   - **Footer**: Ensured the "Made with..." footer is correctly positioned at the bottom of the page.
   - Removed redundant "Play Zombobs" header and buttons from the game section.
+- **Graphics System** - Ground pattern improvements
+  - Renamed `initGrassPattern()` to `initGroundPattern()` for better clarity
+  - Increased ground pattern opacity from 0.4 to 0.6 for better visibility
+  - Ground pattern now uses tile assets from `sample_assets/tiles/`
 
 ### Added
 - **Controller Support (Beta)**
   - Full Xbox controller support (and other HTML5 compatible gamepads).
   - **Movement**: Left Stick to move (analog).
-  - **Aiming**: Right Stick to aim.
+  - **Aiming**: Right Stick to aim (character direction now properly follows stick input).
   - **Actions**: 
     - RT: Fire (Continuous)
     - RB: Grenade
@@ -28,6 +32,11 @@ All notable changes to the Zombie Survival Game project will be documented in th
     - Start: Pause
   - Hot-plug support (detects controller connection/disconnection).
   - **Settings UI**: Added specific Controller settings tab with rebind support.
+  - **Input Source Detection**: Automatically switches between mouse/keyboard and gamepad based on active input
+  - **Virtual Crosshair**: When using controller, crosshair follows right stick aim direction instead of being locked to mouse cursor
+- **Main Menu** - Local Co-op button
+  - Added "Local Co-op" button to main menu (placeholder for future implementation)
+  - Positioned between Single Player and Settings buttons
 
 - **Multiplayer Lobby & Socket Sync**
   - Clickable Multiplayer button now opens an in-canvas lobby (status pulses, player list, ready/back controls)
@@ -142,8 +151,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## Game Features (Working)
 
 ### Core Mechanics
-- Player movement (WASD / Arrow keys)
-- Mouse aiming
+- Player movement (WASD / Arrow keys or Left Stick on controller)
+- Mouse aiming or Right Stick aiming (controller)
 - Click or hold to shoot (continuous firing)
 - Bullet physics with weapon-specific damage
 - Zombie AI (tracks and chases player)
@@ -151,9 +160,10 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - Collision detection (player-zombie, bullet-zombie)
 - Wave-based spawning with type variety
 - Progressive difficulty scaling
-- Weapon switching (1/2/3 keys)
-- Manual reloading (R key)
+- Weapon switching (1/2/3 keys or LB/Y buttons on controller)
+- Manual reloading (R key or X button on controller)
 - Explosion system (grenades and exploding zombies)
+- Controller support with automatic input source detection
 
 ### Visual Effects
 - Screen shake on shoot and damage
@@ -171,6 +181,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - Game Over screen integrated in HUD
 - Restart functionality (R key when paused or game over)
 - Instructions displayed at bottom of canvas
+- Main menu with Single Player, Local Co-op (placeholder), Settings, and Multiplayer options
+- Controller keybind settings UI with keyboard/controller toggle
 
 ### Game State
 - Health system (player takes damage from zombies)

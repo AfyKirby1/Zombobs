@@ -45,9 +45,10 @@ Zombobs/
 │   │   └── Shell.js              # Shell casing class
 │   ├── systems/
 │   │   ├── AudioSystem.js        # Web Audio API sound generation
-│   │   ├── GraphicsSystem.js     # Graphics utilities (grass pattern)
+│   │   ├── GraphicsSystem.js     # Graphics utilities (ground texture loading)
 │   │   ├── ParticleSystem.js     # Particle effects and blood splatter
-│   │   └── SettingsManager.js    # Settings persistence and management
+│   │   ├── SettingsManager.js    # Settings persistence and management
+│   │   └── InputSystem.js        # Gamepad input handling (HTML5 Gamepad API)
 │   ├── ui/
 │   │   ├── GameHUD.js            # In-game HUD component
 │   │   └── SettingsPanel.js      # Settings UI panel
@@ -57,12 +58,17 @@ Zombobs/
 ├── server/
 │   ├── server.js                 # Express + socket.io server
 │   └── package.json              # Node.js dependencies
+├── sample_assets/
+│   └── tiles/
+│       ├── bloody_dark_floor.png # Ground texture tile
+│       └── bloody_hospital_tile.png # Alternative texture
 ├── DOCS/
 │   ├── roadmap.md                # Feature roadmap
 │   ├── CHANGELOG.md              # Version history
 │   ├── ARCHITECTURE.md           # Technical architecture
 │   ├── SUMMARY.md                # This file
 │   ├── SCRATCHPAD.md             # Development notes
+│   ├── STYLE_GUIDE.md            # Design system documentation
 │   ├── SBOM.md                   # Software Bill of Materials
 │   ├── REFACTOR_PLAN.md          # Refactoring strategy
 │   └── ...                       # Other docs
@@ -78,7 +84,10 @@ Zombobs/
 - **GameHUD** - In-game overlay for stats, pause menu, game over screen
 
 ### Systems
-- **Input Handler** - Keyboard and mouse input (continuous firing support)
+- **Input Handler** - Keyboard, mouse, and gamepad input (continuous firing support)
+  - Automatic input source detection (mouse/keyboard vs gamepad)
+  - Controller support with analog sticks for movement and aiming
+  - Virtual crosshair for controller aiming
 - **Weapon System** - 3 weapons with unique stats, switching, reloading
 - **Ammo System** - Limited bullets, manual/auto reload, weapon-specific ammo
 - **Audio System** - Web Audio API sound generation
@@ -98,7 +107,26 @@ Zombobs/
 - Wave counter, score, high score (localStorage)
 - Game running/paused states
 
-## Recent Updates
+## Recent Updates (v0.2.0)
+- **Version Release**: Bumped to v0.2.0 with comprehensive feature set
+- **Controller Support (Beta)**: Full Xbox controller support with analog movement and aiming
+  - Left Stick: Movement (analog)
+  - Right Stick: Aiming (character direction follows stick input)
+  - Automatic input source detection (switches between mouse/keyboard and gamepad)
+  - Virtual crosshair follows controller aim direction
+  - Hot-plug support (detects controller connection/disconnection)
+  - Controller keybind settings UI with rebind support
+- **Main Menu Enhancement**: Added "Local Co-op" button (placeholder for future implementation)
+- **Visual Upgrade**: Replaced procedural grass with textured bloody dark floor tile for grittier atmosphere
+  - Renamed `initGrassPattern()` to `initGroundPattern()` for clarity
+  - Increased ground pattern opacity from 0.4 to 0.6 for better visibility
+- **Landing Page Improvements**: 
+  - Widened layout (1200px max-width, improved grid ratios)
+  - Enhanced feature grid with 10 items (added Melee, Crowd Control, Respite, Custom Controls)
+  - Expanded roadmap section with 11 future features
+  - Updated run details with more technical information
+- **Style Guide**: Created comprehensive `STYLE_GUIDE.md` documenting design system
+- **Documentation Updates**: Updated CHANGELOG.md, SUMMARY.md, ARCHITECTURE.md, and SCRATCHPAD.md
 - **Multiplayer Lobby**: GameHUD now renders a socket-powered lobby with live player list, start/back buttons, and connection states
 - **Server Visibility**: `server.js` tracks players, broadcasts `lobby:update`, and prints rich logs surfaced by `launch.ps1`
 - **Backend Server Setup**: Node.js server with Express and socket.io for multiplayer foundation
