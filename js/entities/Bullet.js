@@ -18,6 +18,15 @@ export class Bullet {
     }
 
     draw() {
+        // Bullet trail
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x - this.vx * 3, this.y - this.vy * 3);
+        ctx.strokeStyle = 'rgba(255, 200, 0, 0.3)';
+        ctx.lineWidth = this.radius;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
         // Bullet glow
         const bulletGlow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2);
         bulletGlow.addColorStop(0, 'rgba(255, 255, 0, 0.8)');

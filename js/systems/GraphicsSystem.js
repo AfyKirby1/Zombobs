@@ -1,4 +1,5 @@
 import { ctx } from '../core/canvas.js';
+import { settingsManager } from './SettingsManager.js';
 
 let groundPattern = null;
 const groundImage = new Image();
@@ -19,3 +20,11 @@ export function initGroundPattern() {
     }
     return groundPattern;
 }
+
+export const graphicsSettings = {
+    get quality() { return settingsManager.getSetting('video', 'qualityPreset'); },
+    get maxParticles() { return settingsManager.getSetting('video', 'particleCount'); },
+    get vignette() { return settingsManager.getSetting('video', 'vignette'); },
+    get shadows() { return settingsManager.getSetting('video', 'shadows'); },
+    get lighting() { return settingsManager.getSetting('video', 'lighting'); }
+};

@@ -2,12 +2,17 @@ import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { Particle } from '../entities/Particle.js';
 import { MAX_PARTICLES } from '../core/constants.js';
+import { graphicsSettings } from '../systems/GraphicsSystem.js';
 
 export function addParticle(particle) {
     gameState.particles.push(particle);
-    if (gameState.particles.length > MAX_PARTICLES) {
+    
+    // Use dynamic setting instead of constant
+    const limit = graphicsSettings ? graphicsSettings.maxParticles : MAX_PARTICLES;
+    
+    if (gameState.particles.length > limit) {
         // Drop oldest particles first (they are already nearly faded out)
-        gameState.particles.splice(0, gameState.particles.length - MAX_PARTICLES);
+        gameState.particles.splice(0, gameState.particles.length - limit);
     }
 }
 

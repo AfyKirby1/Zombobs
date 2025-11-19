@@ -1,5 +1,5 @@
-import { 
-    WEAPONS, MELEE_RANGE, MELEE_DAMAGE, MELEE_COOLDOWN, MELEE_SWIPE_DURATION, 
+import {
+    WEAPONS, MELEE_RANGE, MELEE_DAMAGE, MELEE_COOLDOWN, MELEE_SWIPE_DURATION,
     WAVE_BREAK_DURATION, PLAYER_MAX_HEALTH,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS,
@@ -7,22 +7,23 @@ import {
     PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY
 } from './core/constants.js';
 import { canvas, ctx, resizeCanvas } from './core/canvas.js';
-import { gameState, resetGameState } from './core/gameState.js';
+import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
-import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound } from './systems/AudioSystem.js';
+import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
 import { initGroundPattern } from './systems/GraphicsSystem.js';
 import { GameHUD } from './ui/GameHUD.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
-import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie } from './entities/Zombie.js';
-import { HealthPickup, AmmoPickup } from './entities/Pickup.js';
+import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie } from './entities/Zombie.js';
+import { BossZombie } from './entities/BossZombie.js';
+import { HealthPickup, AmmoPickup, DamagePickup, NukePickup, SpeedPickup, RapidFirePickup, ShieldPickup } from './entities/Pickup.js';
 import { DamageNumber } from './entities/Particle.js';
-import { 
+import {
     shootBullet, reloadWeapon, switchWeapon, throwGrenade, triggerExplosion,
     handleBulletZombieCollisions, handlePlayerZombieCollisions, handlePickupCollisions
 } from './utils/combatUtils.js';
-import { 
-    checkCollision, triggerDamageIndicator, triggerWaveNotification, 
-    loadHighScore, saveHighScore, loadUsername, saveUsername 
+import {
+    checkCollision, triggerDamageIndicator, triggerWaveNotification,
+    loadHighScore, saveHighScore, loadUsername, saveUsername
 } from './utils/gameUtils.js';
 import { createParticles, createBloodSplatter, addParticle } from './systems/ParticleSystem.js';
 import { inputSystem } from './systems/InputSystem.js';
@@ -36,7 +37,6 @@ const settingsPanel = new SettingsPanel(canvas, settingsManager);
 // Input state
 const keys = {};
 const mouse = { x: 0, y: 0, isDown: false };
-let activeInputSource = 'mouse'; // 'mouse' or 'gamepad'
 
 // Initial resize
 resizeCanvas(gameState.player);
@@ -44,14 +44,14 @@ window.addEventListener('resize', () => resizeCanvas(gameState.player));
 
 function connectToMultiplayer() {
     if (gameState.multiplayer.socket) return; // Already connected
-    
+
     gameState.multiplayer.active = true;
-    
+
     // Initialize socket.io
     if (typeof io !== 'undefined') {
         const socket = io();
         gameState.multiplayer.socket = socket;
-        
+
         socket.on('connect', () => {
             console.log('Connected to multiplayer server');
             gameState.multiplayer.connected = true;
@@ -60,18 +60,18 @@ function connectToMultiplayer() {
                 name: gameState.username || `Survivor-${socket.id.slice(-4)}`
             });
         });
-        
+
         socket.on('disconnect', () => {
             console.log('Disconnected from multiplayer server');
             gameState.multiplayer.connected = false;
             gameState.multiplayer.playerId = null;
             gameState.multiplayer.players = [];
         });
-        
+
         socket.on('lobby:update', (players) => {
             gameState.multiplayer.players = Array.isArray(players) ? players : [];
         });
-        
+
         socket.on('connect_error', (err) => {
             console.error('Multiplayer connection error:', err.message);
             gameState.multiplayer.connected = false;
@@ -82,20 +82,43 @@ function connectToMultiplayer() {
     }
 }
 
+function spawnBoss() {
+    gameState.isSpawningWave = true;
+    gameState.bossActive = true;
+
+    // Spawn boss at top center
+    const boss = new BossZombie(canvas.width / 2, -50);
+    gameState.boss = boss;
+    gameState.zombies.push(boss);
+
+    triggerWaveNotification("BOSS WAVE!", 180); // Longer notification
+
+    // Play boss sound (if we had one)
+    // playBossRoar();
+
+    gameState.isSpawningWave = false;
+}
+
 function spawnZombies(count) {
     // Clear any pending zombie spawn timeouts
     gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
     gameState.zombieSpawnTimeouts = [];
-    
+
+    // Check for Boss Wave (Every 5 waves)
+    if (gameState.wave % 5 === 0) {
+        spawnBoss();
+        return;
+    }
+
     // Mark that we're spawning a wave
     gameState.isSpawningWave = true;
-    
+
     // Spawn zombies with staggered timing
     for (let i = 0; i < count; i++) {
         const timeout = setTimeout(() => {
             let ZombieClass = NormalZombie; // Default
             const rand = Math.random();
-            
+
             // Wave 3+: Introduce Fast zombies (~15% chance)
             if (gameState.wave >= 3 && rand < 0.15) {
                 ZombieClass = FastZombie;
@@ -104,16 +127,20 @@ function spawnZombies(count) {
             else if (gameState.wave >= 5 && rand >= 0.15 && rand < 0.25) {
                 ZombieClass = ExplodingZombie;
             }
-            // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding)
-            else if (gameState.wave >= 3 && rand >= 0.25) {
+            // Wave 4+: Introduce Ghost zombies (~10% chance)
+            else if (gameState.wave >= 4 && rand >= 0.25 && rand < 0.35) {
+                ZombieClass = GhostZombie;
+            }
+            // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost)
+            else if (gameState.wave >= 3 && rand >= 0.35) {
                 const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
                 if (Math.random() < armoredChance) {
                     ZombieClass = ArmoredZombie;
                 }
             }
-            
+
             gameState.zombies.push(new ZombieClass(canvas.width, canvas.height));
-            
+
             // After the last zombie spawns, clear the flag
             if (i === count - 1) {
                 gameState.isSpawningWave = false;
@@ -144,52 +171,59 @@ function resumeGame() {
     gameHUD.hidePauseMenu();
 }
 
-function performMeleeAttack() {
+function performMeleeAttack(player) {
+    player = player || gameState.players[0];
     const now = Date.now();
-    
+
     // Check cooldown
-    if (now - gameState.lastMeleeTime < MELEE_COOLDOWN) {
+    if (now - player.lastMeleeTime < MELEE_COOLDOWN) {
         return;
     }
-    
+
     // Check if reloading
-    if (gameState.isReloading) {
+    if (player.isReloading) {
         return;
     }
-    
-    gameState.lastMeleeTime = now;
-    
+
+    player.lastMeleeTime = now;
+
     // Create swipe animation (right to left)
-    gameState.activeMeleeSwipe = {
+    player.activeMeleeSwipe = {
         startTime: now,
-        angle: gameState.player.angle,
+        angle: player.angle,
         duration: MELEE_SWIPE_DURATION
     };
-    
+
     // Play melee sound (using damage sound as placeholder)
     playDamageSound();
-    
+
     // Check for zombies in melee range
     let hitCount = 0;
     gameState.zombies.forEach((zombie, zombieIndex) => {
-        if (isInMeleeRange(zombie.x, zombie.y, gameState.player.x, gameState.player.y, gameState.player.angle)) {
-            const impactAngle = Math.atan2(zombie.y - gameState.player.y, zombie.x - gameState.player.x);
-            
+        if (isInMeleeRange(zombie.x, zombie.y, player.x, player.y, player.angle)) {
+            const impactAngle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
+
             // Store zombie position and type before damage (for exploding zombies)
             const zombieX = zombie.x;
             const zombieY = zombie.y;
             const isExploding = zombie.type === 'exploding';
-            
+
             // Check if zombie dies
             if (zombie.takeDamage(MELEE_DAMAGE)) {
                 // Remove zombie from array first
                 gameState.zombies.splice(zombieIndex, 1);
-                
+
+                // Check if boss was killed
+                if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    gameState.bossActive = false;
+                    gameState.boss = null;
+                }
+
                 // Handle exploding zombie explosion (after removal to avoid array issues)
                 if (isExploding) {
                     triggerExplosion(zombieX, zombieY, 60, 30, false);
                 }
-                
+
                 gameState.score += 10;
                 gameState.zombiesKilled++;
                 // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
@@ -205,11 +239,11 @@ function performMeleeAttack() {
             hitCount++;
         }
     });
-    
+
     // Screen shake on melee (stronger if hit something)
     if (hitCount > 0) {
         gameState.shakeAmount = 5;
-        createParticles(gameState.player.x, gameState.player.y, '#ffaa00', 5);
+        createParticles(player.x, player.y, '#ffaa00', 5);
     } else {
         gameState.shakeAmount = 2; // Light shake even on miss
     }
@@ -219,362 +253,481 @@ function isInMeleeRange(zombieX, zombieY, playerX, playerY, playerAngle) {
     const dx = zombieX - playerX;
     const dy = zombieY - playerY;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (distance > MELEE_RANGE) return false;
-    
+
     // Check if zombie is in front arc (120 degree arc)
     const angleToZombie = Math.atan2(dy, dx);
     const angleDiff = Math.abs(angleToZombie - playerAngle);
     const normalizedAngleDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
-    
+
     return normalizedAngleDiff < Math.PI / 3; // 60 degrees on each side = 120 degree arc
 }
 
-function updatePlayer() {
+function updatePlayers() {
     // Don't update player if main menu is showing
-    if (gameState.showMainMenu) return;
-    
+    if (gameState.showMainMenu || gameState.showCoopLobby || gameState.showLobby) return;
+
+    // Get shared controls settings
     const controls = settingsManager.settings.controls;
-    const gpMove = inputSystem.getMoveInput();
-    const gpAim = inputSystem.getAimInput();
 
-    // Detect Input Source
-    if (Math.abs(gpMove.x) > 0.1 || Math.abs(gpMove.y) > 0.1 || Math.abs(gpAim.x) > 0.1 || Math.abs(gpAim.y) > 0.1) {
-        activeInputSource = 'gamepad';
-    }
-    
-    // Check if player is moving
-    const isMoving = (keys[controls.moveUp] || keys['arrowup'] || keys[controls.moveDown] || keys['arrowdown'] || 
-                     keys[controls.moveLeft] || keys['arrowleft'] || keys[controls.moveRight] || keys['arrowright'] ||
-                     Math.abs(gpMove.x) > 0 || Math.abs(gpMove.y) > 0);
-    
-    // Sprint logic
-    const sprintKey = controls.sprint || 'shift';
-    const isSprintKeyDown = keys[sprintKey] || keys['shift'] || inputSystem.buttons.sprint.pressed; 
-    
-    // Check if we can sprint (must be moving, holding key, and have stamina)
-    if (isMoving && isSprintKeyDown && gameState.player.stamina > 0) {
-        gameState.player.isSprinting = true;
-        gameState.player.speed = PLAYER_SPRINT_SPEED;
-        gameState.player.stamina = Math.max(0, gameState.player.stamina - PLAYER_STAMINA_DRAIN);
-        gameState.player.lastSprintTime = Date.now();
-    } else {
-        gameState.player.isSprinting = false;
-        gameState.player.speed = PLAYER_BASE_SPEED;
-        
-        // Regen stamina if not sprinting for a while
-        if (Date.now() - gameState.player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
-            gameState.player.stamina = Math.min(PLAYER_STAMINA_MAX, gameState.player.stamina + PLAYER_STAMINA_REGEN);
+    gameState.players.forEach((player, index) => {
+        if (player.health <= 0) return;
+
+        let moveX = 0;
+        let moveY = 0;
+        let aimX = 0;
+        let aimY = 0;
+        let isSprintingInput = false;
+        let target = { x: player.x + Math.cos(player.angle) * 100, y: player.y + Math.sin(player.angle) * 100 };
+
+        // Player 1 Controls
+        if (index === 0) {
+            if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+                const gpState = inputSystem.getGamepad(player.gamepadIndex);
+                if (gpState) {
+                    moveX = gpState.axes.move.x;
+                    moveY = gpState.axes.move.y;
+                    if (Math.abs(gpState.axes.aim.x) > 0.1 || Math.abs(gpState.axes.aim.y) > 0.1) {
+                        player.angle = Math.atan2(gpState.axes.aim.y, gpState.axes.aim.x);
+                        target = {
+                            x: player.x + gpState.axes.aim.x * 200,
+                            y: player.y + gpState.axes.aim.y * 200
+                        };
+                    } else if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
+                        // Aim in movement direction if no right stick
+                        player.angle = Math.atan2(moveY, moveX);
+                    }
+                    if (gpState.buttons.sprint.pressed) isSprintingInput = true;
+                }
+            } else {
+                // Mouse/Keyboard
+                if (keys[controls.moveUp]) moveY -= 1;
+                if (keys[controls.moveDown]) moveY += 1;
+                if (keys[controls.moveLeft]) moveX -= 1;
+                if (keys[controls.moveRight]) moveX += 1;
+
+                const sprintKey = controls.sprint || 'shift';
+                if (keys[sprintKey] || keys['shift']) isSprintingInput = true;
+
+                target = mouse;
+                player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            }
+        }
+        // Player 2 Controls
+        else if (index === 1) {
+            if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+                const gpState = inputSystem.getGamepad(player.gamepadIndex);
+                if (gpState) {
+                    moveX = gpState.axes.move.x;
+                    moveY = gpState.axes.move.y;
+                    if (Math.abs(gpState.axes.aim.x) > 0.1 || Math.abs(gpState.axes.aim.y) > 0.1) {
+                        player.angle = Math.atan2(gpState.axes.aim.y, gpState.axes.aim.x);
+                        target = {
+                            x: player.x + gpState.axes.aim.x * 200,
+                            y: player.y + gpState.axes.aim.y * 200
+                        };
+                    } else if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
+                        player.angle = Math.atan2(moveY, moveX);
+                    }
+
+                    if (gpState.buttons.sprint.pressed) isSprintingInput = true;
+                }
+            } else {
+                // Keyboard Arrows
+                if (keys['arrowup']) moveY -= 1;
+                if (keys['arrowdown']) moveY += 1;
+                if (keys['arrowleft']) moveX -= 1;
+                if (keys['arrowright']) moveX += 1;
+
+                if (keys['control'] || keys['rcontrol']) isSprintingInput = true;
+
+                if (Math.abs(moveX) > 0 || Math.abs(moveY) > 0) {
+                    player.angle = Math.atan2(moveY, moveX);
+                }
+                target = {
+                    x: player.x + Math.cos(player.angle) * 200,
+                    y: player.y + Math.sin(player.angle) * 200
+                };
+            }
+        }
+
+        // Normalize movement vector
+        const len = Math.sqrt(moveX * moveX + moveY * moveY);
+        if (len > 1) {
+            moveX /= len;
+            moveY /= len;
+        }
+
+        // Sprint Logic (with speed boost buff)
+        const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
+
+        if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && isSprintingInput && player.stamina > 0) {
+            player.isSprinting = true;
+            player.speed = PLAYER_SPRINT_SPEED * speedBoostMultiplier;
+            player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
+            player.lastSprintTime = Date.now();
+        } else {
+            player.isSprinting = false;
+            player.speed = PLAYER_BASE_SPEED * speedBoostMultiplier;
+            if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
+                player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
+            }
+        }
+
+        // Apply Position
+        player.x += moveX * player.speed;
+        player.y += moveY * player.speed;
+
+        // Bounds
+        player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+        player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+
+        // Footstep sounds
+        if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {
+            const currentTime = Date.now();
+            if (currentTime - gameState.lastFootstepTime >= 350) {
+                playFootstepSound();
+                gameState.lastFootstepTime = currentTime;
+            }
+        }
+
+        // Handle Actions (Shooting, etc.)
+        // P1 Actions (if mouse) handled in event listeners mostly, but gamepad actions here
+        // P2 Actions
+
+        // Gamepad Actions (For either player if using gamepad)
+        if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+            const gpState = inputSystem.getGamepad(player.gamepadIndex);
+            if (gpState) {
+                if (gpState.buttons.fire.pressed) shootBullet(target, canvas, player);
+                if (gpState.buttons.melee.justPressed) performMeleeAttack(player);
+                if (gpState.buttons.reload.justPressed) reloadWeapon(player);
+                if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
+                if (gpState.buttons.prevWeapon.justPressed) cycleWeapon(-1, player);
+                if (gpState.buttons.nextWeapon.justPressed) cycleWeapon(1, player);
+            }
+        }
+
+        // Keyboard Actions P2
+        if (index === 1 && player.inputSource !== 'gamepad') {
+            if (keys['enter']) shootBullet(target, canvas, player);
+            if (keys['shift']) performMeleeAttack(player);
+            if (keys[']']) reloadWeapon(player);
+        }
+    });
+}
+
+function updateCoopLobby() {
+    if (!gameState.showCoopLobby) return;
+
+    inputSystem.update(); // Update inputs to check for joins
+    const gamepads = inputSystem.getConnectedGamepadIndices();
+    const p1 = gameState.players[0];
+    const p2 = gameState.players[1];
+
+    // P1 Input Source Detection
+    // If P1 moves mouse or presses keys, switch to mouse and release gamepad
+    const hasMouseOrKeyboardInput = mouse.isDown || Object.keys(keys).some(k => keys[k] && !['enter', ']'].includes(k));
+    if (hasMouseOrKeyboardInput) {
+        if (p1.inputSource === 'gamepad') {
+            p1.inputSource = 'mouse';
+            p1.gamepadIndex = null;
         }
     }
 
-    // Movement
-    let dx = 0;
-    let dy = 0;
-
-    // Keyboard
-    if (keys[controls.moveUp] || keys['arrowup']) dy -= 1;
-    if (keys[controls.moveDown] || keys['arrowdown']) dy += 1;
-    if (keys[controls.moveLeft] || keys['arrowleft']) dx -= 1;
-    if (keys[controls.moveRight] || keys['arrowright']) dx += 1;
-    
-    // Normalize keyboard vector
-    const kbdLen = Math.sqrt(dx*dx + dy*dy);
-    if (kbdLen > 0) {
-        dx /= kbdLen;
-        dy /= kbdLen;
-    }
-
-    // Add Gamepad (already normalized-ish, but let's clamp total)
-    dx += gpMove.x;
-    dy += gpMove.y;
-
-    // Clamp final length to 1
-    const len = Math.sqrt(dx*dx + dy*dy);
-    if (len > 1) {
-        dx /= len;
-        dy /= len;
-    }
-
-    // Apply speed
-    gameState.player.x += dx * gameState.player.speed;
-    gameState.player.y += dy * gameState.player.speed;
-
-    // Bounds
-    gameState.player.x = Math.max(gameState.player.radius, Math.min(canvas.width - gameState.player.radius, gameState.player.x));
-    gameState.player.y = Math.max(gameState.player.radius, Math.min(canvas.height - gameState.player.radius, gameState.player.y));
-
-    // Aim
-    if (activeInputSource === 'gamepad') {
-        if (Math.abs(gpAim.x) > 0.1 || Math.abs(gpAim.y) > 0.1) {
-            gameState.player.angle = Math.atan2(gpAim.y, gpAim.x);
-            // Project fake mouse position for crosshair visualization
-            const aimDist = 200;
-            mouse.x = gameState.player.x + gpAim.x * aimDist;
-            mouse.y = gameState.player.y + gpAim.y * aimDist;
+    // P1 Controller Assignment
+    // If P1 already has a gamepad assigned, stick with it
+    if (p1.gamepadIndex !== undefined && p1.gamepadIndex !== null) {
+        const p1Gp = inputSystem.getGamepad(p1.gamepadIndex);
+        if (!p1Gp) {
+            // Gamepad disconnected, switch to mouse
+            p1.inputSource = 'mouse';
+            p1.gamepadIndex = null;
+        } else {
+            // Verify it's still active (being used)
+            const isActive = Math.abs(p1Gp.axes.move.x) > 0.3 || Math.abs(p1Gp.axes.move.y) > 0.3 ||
+                Math.abs(p1Gp.axes.aim.x) > 0.3 || Math.abs(p1Gp.axes.aim.y) > 0.3 ||
+                p1Gp.buttons.select.pressed || p1Gp.buttons.fire.pressed;
+            if (isActive && !hasMouseOrKeyboardInput) {
+                p1.inputSource = 'gamepad';
+            }
         }
-    } else {
-        gameState.player.angle = Math.atan2(mouse.y - gameState.player.y, mouse.x - gameState.player.x);
-    }
-    
-    // Footstep sounds
-    if (isMoving && gameState.gameRunning && !gameState.gamePaused) {
-        const currentTime = Date.now();
-        const footstepInterval = 350;
-        if (currentTime - gameState.lastFootstepTime >= footstepInterval) {
-            playFootstepSound();
-            gameState.lastFootstepTime = currentTime;
+    } else if (!hasMouseOrKeyboardInput) {
+        // P1 doesn't have a gamepad yet - find first available one not used by P2
+        for (const index of gamepads) {
+            // Skip if this gamepad is already assigned to P2
+            if (p2 && p2.gamepadIndex === index) continue;
+
+            const gp = inputSystem.getGamepad(index);
+            if (!gp) continue;
+
+            // Check if this controller is being actively used
+            const isActive = Math.abs(gp.axes.move.x) > 0.5 || Math.abs(gp.axes.move.y) > 0.5 ||
+                Math.abs(gp.axes.aim.x) > 0.3 || Math.abs(gp.axes.aim.y) > 0.3 ||
+                gp.buttons.select.pressed || gp.buttons.fire.pressed || gp.buttons.start?.pressed;
+
+            if (isActive) {
+                // Assign this controller to P1
+                p1.inputSource = 'gamepad';
+                p1.gamepadIndex = index;
+                break; // Only assign one controller to P1
+            }
         }
-    } else {
-        gameState.lastFootstepTime = 0; // Reset when not moving
+    }
+
+    // P2 Joining Logic
+    // Check for 'A'/'Start' on any gamepad NOT used by P1
+    if (gameState.players.length < 2) {
+        // Check gamepads for join input
+        for (const index of gamepads) {
+            // Skip P1's gamepad
+            if (p1.gamepadIndex === index) continue;
+
+            const gp = inputSystem.getGamepad(index);
+            if (!gp) continue;
+
+            // Check for join button press
+            if (gp.buttons.select.justPressed || gp.buttons.pause?.justPressed) {
+                // Create P2 and assign this gamepad (with red color)
+                const newP2 = createPlayer(canvas.width / 2 + 50, canvas.height / 2, 1);
+                newP2.inputSource = 'gamepad';
+                newP2.gamepadIndex = index;
+                gameState.players.push(newP2);
+                break; // Only join with one controller
+            }
+        }
+
+        // Check for Keyboard Join (Enter) - only if no gamepad was used
+        if (gameState.players.length < 2 && keys['enter']) {
+            const p2Keyboard = createPlayer(canvas.width / 2 + 50, canvas.height / 2, 1);
+            p2Keyboard.inputSource = 'keyboard_arrow';
+            p2Keyboard.gamepadIndex = null;
+            gameState.players.push(p2Keyboard);
+        }
+    }
+
+    // P2 Dropping out (B/Back)
+    if (gameState.players.length > 1 && p2) {
+        if (p2.inputSource === 'gamepad' && p2.gamepadIndex !== undefined && p2.gamepadIndex !== null) {
+            const gp = inputSystem.getGamepad(p2.gamepadIndex);
+            if (gp && gp.buttons.back.justPressed) {
+                gameState.players.pop(); // Remove P2
+            }
+        }
+        // Keyboard drop out
+        if (p2.inputSource === 'keyboard_arrow' && keys['backspace']) {
+            gameState.players.pop();
+        }
     }
 }
 
-function drawPlayer() {
-    const player = gameState.player;
-    
-    // Shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.beginPath();
-    ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Outer glow
-    const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius * 1.5);
-    gradient.addColorStop(0, 'rgba(0, 136, 255, 0.4)');
-    gradient.addColorStop(1, 'rgba(0, 136, 255, 0)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.radius * 1.5, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Body
-    const bodyGradient = ctx.createRadialGradient(player.x - 5, player.y - 5, 0, player.x, player.y, player.radius);
-    bodyGradient.addColorStop(0, '#66b3ff');
-    bodyGradient.addColorStop(1, '#0066cc');
-    ctx.fillStyle = bodyGradient;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Body outline
-    ctx.strokeStyle = '#003d7a';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // Direction indicator (gun)
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
-    const gunX = player.x + Math.cos(player.angle) * player.radius * 1.8;
-    const gunY = player.y + Math.sin(player.angle) * player.radius * 1.8;
-    ctx.lineTo(gunX, gunY);
-    ctx.stroke();
-    
-    // Gun tip
-    ctx.fillStyle = '#ffaa00';
-    ctx.beginPath();
-    ctx.arc(gunX, gunY, 3, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Stamina bar (only if not full)
-    if (player.stamina < PLAYER_STAMINA_MAX) {
-        const barWidth = 40;
-        const barHeight = 4;
-        const barX = player.x - barWidth / 2;
-        const barY = player.y + player.radius + 12;
-        
-        // Background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
-        
-        // Fill
-        const fillWidth = (player.stamina / PLAYER_STAMINA_MAX) * barWidth;
-        ctx.fillStyle = '#00ffff'; // Cyan for stamina
-        ctx.fillRect(barX, barY, fillWidth, barHeight);
-    }
+function drawPlayers() {
+    gameState.players.forEach(player => {
+        if (player.health <= 0) return;
 
-    // Muzzle flash
-    if (gameState.muzzleFlash.active) {
-        const flashSize = 8 + (gameState.muzzleFlash.intensity * 12);
-        const flashOffset = -2; // Slightly in front of gun
-        const flashX = gameState.muzzleFlash.x + Math.cos(gameState.muzzleFlash.angle) * flashOffset;
-        const flashY = gameState.muzzleFlash.y + Math.sin(gameState.muzzleFlash.angle) * flashOffset;
-        
-        // Outer glow (bright white/yellow)
-        const flashGradient = ctx.createRadialGradient(
-            flashX, flashY, 0,
-            flashX, flashY, flashSize
-        );
-        flashGradient.addColorStop(0, `rgba(255, 255, 255, ${gameState.muzzleFlash.intensity * 0.9})`);
-        flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${gameState.muzzleFlash.intensity * 0.7})`);
-        flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${gameState.muzzleFlash.intensity * 0.4})`);
-        flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-        
-        ctx.fillStyle = flashGradient;
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.arc(flashX, flashY, flashSize, 0, Math.PI * 2);
+        ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Core flash (very bright)
-        const coreGradient = ctx.createRadialGradient(
-            flashX, flashY, 0,
-            flashX, flashY, flashSize * 0.4
-        );
-        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${gameState.muzzleFlash.intensity})`);
-        coreGradient.addColorStop(0.5, `rgba(255, 255, 150, ${gameState.muzzleFlash.intensity * 0.8})`);
-        coreGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
-        
-        ctx.fillStyle = coreGradient;
+
+        // Outer glow - use player color
+        const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius * 1.5);
+        gradient.addColorStop(0, player.color.glow);
+        gradient.addColorStop(1, player.color.glow.replace(/[\d.]+\)/, '0)'));
+        ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(flashX, flashY, flashSize * 0.4, 0, Math.PI * 2);
+        ctx.arc(player.x, player.y, player.radius * 1.5, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Spark particles (small bright dots)
-        for (let i = 0; i < 4; i++) {
-            const sparkAngle = gameState.muzzleFlash.angle + (Math.PI * 2 * i / 4) + Math.random() * 0.5;
-            const sparkDist = flashSize * 0.6;
-            const sparkX = flashX + Math.cos(sparkAngle) * sparkDist;
-            const sparkY = flashY + Math.sin(sparkAngle) * sparkDist;
-            
-            ctx.fillStyle = `rgba(255, 255, 200, ${gameState.muzzleFlash.intensity * 0.8})`;
+
+        // Body - use player color
+        const bodyGradient = ctx.createRadialGradient(player.x - 5, player.y - 5, 0, player.x, player.y, player.radius);
+        bodyGradient.addColorStop(0, player.color.light);
+        bodyGradient.addColorStop(1, player.color.dark);
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body outline - use player color
+        ctx.strokeStyle = player.color.outline;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Direction indicator (gun)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y);
+        const gunX = player.x + Math.cos(player.angle) * player.radius * 1.8;
+        const gunY = player.y + Math.sin(player.angle) * player.radius * 1.8;
+        ctx.lineTo(gunX, gunY);
+        ctx.stroke();
+
+        // Gun tip
+        ctx.fillStyle = '#ffaa00';
+        ctx.beginPath();
+        ctx.arc(gunX, gunY, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stamina bar
+        if (player.stamina < PLAYER_STAMINA_MAX) {
+            const barWidth = 40;
+            const barHeight = 4;
+            const barX = player.x - barWidth / 2;
+            const barY = player.y + player.radius + 12;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            const fillWidth = (player.stamina / PLAYER_STAMINA_MAX) * barWidth;
+            ctx.fillStyle = '#00ffff';
+            ctx.fillRect(barX, barY, fillWidth, barHeight);
+        }
+
+        // Muzzle flash
+        if (player.muzzleFlash.active) {
+            const flashSize = 8 + (player.muzzleFlash.intensity * 12);
+            const flashOffset = -2;
+            const flashX = player.muzzleFlash.x + Math.cos(player.muzzleFlash.angle) * flashOffset;
+            const flashY = player.muzzleFlash.y + Math.sin(player.muzzleFlash.angle) * flashOffset;
+
+            const flashGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize);
+            flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.9})`);
+            flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.7})`);
+            flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.4})`);
+            flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
+            ctx.fillStyle = flashGradient;
             ctx.beginPath();
-            ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+            ctx.arc(flashX, flashY, flashSize, 0, Math.PI * 2);
             ctx.fill();
         }
-    }
+
+        // Melee Swipe
+        if (player.activeMeleeSwipe) {
+            drawMeleeSwipe(player);
+        }
+    });
 }
 
-function drawMeleeSwipe() {
-    if (!gameState.activeMeleeSwipe) return;
-    
+function drawMeleeSwipe(player) {
     const now = Date.now();
-    const elapsed = now - gameState.activeMeleeSwipe.startTime;
-    const progress = Math.min(elapsed / gameState.activeMeleeSwipe.duration, 1);
-    
-    // Swipe goes from right side (0.0) to left side (1.0) of player
-    const startAngle = gameState.activeMeleeSwipe.angle - Math.PI / 2; // Right side
-    const endAngle = gameState.activeMeleeSwipe.angle + Math.PI / 2; // Left side
+    const elapsed = now - player.activeMeleeSwipe.startTime;
+    const progress = Math.min(elapsed / player.activeMeleeSwipe.duration, 1);
+
+    const startAngle = player.activeMeleeSwipe.angle - Math.PI / 2;
+    const endAngle = player.activeMeleeSwipe.angle + Math.PI / 2;
     const currentAngle = startAngle + (endAngle - startAngle) * progress;
-    
-    // Calculate swipe position (arc from right to left)
+
     const swipeRadius = MELEE_RANGE;
-    const swipeStartX = gameState.player.x + Math.cos(startAngle) * (gameState.player.radius + 5);
-    const swipeStartY = gameState.player.y + Math.sin(startAngle) * (gameState.player.radius + 5);
-    const swipeEndX = gameState.player.x + Math.cos(currentAngle) * swipeRadius;
-    const swipeEndY = gameState.player.y + Math.sin(currentAngle) * swipeRadius;
-    
-    // Draw swipe arc
+    const swipeStartX = player.x + Math.cos(startAngle) * (player.radius + 5);
+    const swipeStartY = player.y + Math.sin(startAngle) * (player.radius + 5);
+    const swipeEndX = player.x + Math.cos(currentAngle) * swipeRadius;
+    const swipeEndY = player.y + Math.sin(currentAngle) * swipeRadius;
+
     ctx.save();
     ctx.strokeStyle = '#ffaa00';
     ctx.lineWidth = 4;
-    ctx.globalAlpha = 1 - progress * 0.5; // Fade out as it completes
+    ctx.globalAlpha = 1 - progress * 0.5;
     ctx.shadowBlur = 15;
     ctx.shadowColor = '#ffaa00';
-    
-    // Draw arc from right to current position
+
     ctx.beginPath();
-    ctx.arc(gameState.player.x, gameState.player.y, swipeRadius, startAngle, currentAngle);
+    ctx.arc(player.x, player.y, swipeRadius, startAngle, currentAngle);
     ctx.stroke();
-    
-    // Draw swipe trail (thick line)
+
     ctx.beginPath();
     ctx.moveTo(swipeStartX, swipeStartY);
     ctx.lineTo(swipeEndX, swipeEndY);
     ctx.stroke();
-    
-    // Draw swipe tip (glowing circle)
+
     ctx.fillStyle = '#ffaa00';
     ctx.beginPath();
     ctx.arc(swipeEndX, swipeEndY, 6, 0, Math.PI * 2);
     ctx.fill();
-    
+
     ctx.restore();
 }
 
 function drawCrosshair() {
     if (!gameState.gameRunning || gameState.gamePaused) return;
+    if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) return;
+
+    // Only draw mouse crosshair if P1 is using mouse
+    // If P1 is gamepad, we might rely on projected laser (already drawn as player gun direction)
+
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
-    
-    // If using gamepad, don't draw cursor or draw different one?
-    // For now, let's keep it but it will be projected from player
-    
+
     ctx.save();
-    
     const crosshairSize = 12;
     const crosshairLineWidth = 2;
     const crosshairColor = '#ffffff';
     const crosshairOutlineColor = '#000000';
-    
-    const crosshairColorCurrent = gameState.isReloading ? '#888888' : crosshairColor;
-    
-    // Draw crosshair outline for better visibility
+
+    const crosshairColorCurrent = gameState.player.isReloading ? '#888888' : crosshairColor;
+
     ctx.strokeStyle = crosshairOutlineColor;
     ctx.lineWidth = crosshairLineWidth + 2;
     ctx.lineCap = 'round';
-    
+
     ctx.beginPath();
     ctx.moveTo(mouse.x - crosshairSize, mouse.y);
     ctx.lineTo(mouse.x + crosshairSize, mouse.y);
     ctx.stroke();
-    
+
     ctx.beginPath();
     ctx.moveTo(mouse.x, mouse.y - crosshairSize);
     ctx.lineTo(mouse.x, mouse.y + crosshairSize);
     ctx.stroke();
-    
-    // Draw crosshair main color
+
     ctx.strokeStyle = crosshairColorCurrent;
     ctx.lineWidth = crosshairLineWidth;
-    
+
     ctx.beginPath();
     ctx.moveTo(mouse.x - crosshairSize, mouse.y);
     ctx.lineTo(mouse.x + crosshairSize, mouse.y);
     ctx.stroke();
-    
+
     ctx.beginPath();
     ctx.moveTo(mouse.x, mouse.y - crosshairSize);
     ctx.lineTo(mouse.x, mouse.y + crosshairSize);
     ctx.stroke();
-    
-    // Small central dot
+
     ctx.fillStyle = crosshairColorCurrent;
     ctx.beginPath();
     ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
     ctx.fill();
-    
+
     ctx.restore();
 }
 
 function drawWaveBreak() {
     if (!gameState.waveBreakActive) return;
-    
+
     const remainingTime = Math.ceil((gameState.waveBreakEndTime - Date.now()) / 1000);
     if (remainingTime < 0) return;
 
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
-    // Draw "Wave Cleared" or similar
+
     ctx.font = 'bold 40px Creepster, system-ui';
     ctx.fillStyle = '#ffc107';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 10;
     ctx.fillText("Wave Cleared!", canvas.width / 2, canvas.height / 2 - 80);
-    
-    // Draw countdown
+
     ctx.font = '30px "Roboto Mono", monospace';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
-    
-    // Reload hint
+
     ctx.font = '20px "Roboto Mono", monospace';
     ctx.fillStyle = '#aaaaaa';
     ctx.fillText("Reload [R] | Heal Up", canvas.width / 2, canvas.height / 2 + 20);
-    
+
     ctx.restore();
 }
 
@@ -582,27 +735,23 @@ function drawWaveNotification() {
     if (!gameState.waveNotification.active) return;
 
     ctx.save();
-    
-    const alpha = Math.min(1, gameState.waveNotification.life / 30); // Fade in quickly
-    const fadeOut = Math.min(1, gameState.waveNotification.life / 40); // Fade out at end
+    const alpha = Math.min(1, gameState.waveNotification.life / 30);
+    const fadeOut = Math.min(1, gameState.waveNotification.life / 40);
     const finalAlpha = alpha * fadeOut;
 
-    // Background glow
     ctx.shadowBlur = 20;
     ctx.shadowColor = `rgba(255, 23, 68, ${finalAlpha * 0.6})`;
-    
-    // Main text
+
     ctx.fillStyle = `rgba(255, 255, 255, ${finalAlpha})`;
     ctx.font = 'bold 32px \"Roboto Mono\", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(gameState.waveNotification.text, canvas.width / 2, canvas.height / 2 - 40);
-    
-    // Subtitle
+
     ctx.fillStyle = `rgba(255, 200, 200, ${finalAlpha * 0.8})`;
     ctx.font = '14px \"Roboto Mono\", monospace';
     ctx.fillText('Get ready...', canvas.width / 2, canvas.height / 2 + 10);
-    
+
     ctx.shadowBlur = 0;
     ctx.restore();
 }
@@ -618,28 +767,69 @@ function drawFpsCounter() {
 }
 
 function updateGame() {
-    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby) return;
+    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) return;
 
     const now = Date.now();
+    const activePlayers = gameState.players.filter(p => p.health > 0);
+    const anyPlayerAlive = activePlayers.length > 0;
 
-    // Spawn health pickups periodically
+    if (!anyPlayerAlive) {
+        gameOver();
+        return;
+    }
+
+    // Spawn health pickups
     if (now - gameState.lastHealthPickupSpawnTime >= HEALTH_PICKUP_SPAWN_INTERVAL &&
-        gameState.healthPickups.length < MAX_HEALTH_PICKUPS &&
-        gameState.player.health < PLAYER_MAX_HEALTH) {
-        gameState.healthPickups.push(new HealthPickup(canvas.width, canvas.height));
-        gameState.lastHealthPickupSpawnTime = now;
-    }
-    
-    // Spawn ammo pickups periodically
-    if (now - gameState.lastAmmoPickupSpawnTime >= AMMO_PICKUP_SPAWN_INTERVAL &&
-        gameState.ammoPickups.length < MAX_AMMO_PICKUPS &&
-        gameState.currentAmmo < gameState.maxAmmo * 0.5) {
-        gameState.ammoPickups.push(new AmmoPickup(canvas.width, canvas.height));
-        gameState.lastAmmoPickupSpawnTime = now;
+        gameState.healthPickups.length < MAX_HEALTH_PICKUPS) {
+        // Only spawn if some player is hurt
+        if (gameState.players.some(p => p.health < PLAYER_MAX_HEALTH && p.health > 0)) {
+            gameState.healthPickups.push(new HealthPickup(canvas.width, canvas.height));
+            gameState.lastHealthPickupSpawnTime = now;
+        }
     }
 
-    // Update player
-    updatePlayer();
+    // Spawn ammo pickups
+    if (now - gameState.lastAmmoPickupSpawnTime >= AMMO_PICKUP_SPAWN_INTERVAL &&
+        gameState.ammoPickups.length < MAX_AMMO_PICKUPS) {
+        if (gameState.players.some(p => p.currentAmmo < p.maxAmmo * 0.5 && p.health > 0)) {
+            gameState.ammoPickups.push(new AmmoPickup(canvas.width, canvas.height));
+            gameState.lastAmmoPickupSpawnTime = now;
+        }
+    }
+
+    // Spawn powerups (Rare)
+    if (now - gameState.lastPowerupSpawnTime >= 30000) { // Every 30 seconds check
+        if (Math.random() < 0.6) { // 60% chance
+            const rand = Math.random();
+
+            // Distribution: Damage (20%), Nuke (8%), Speed (24%), RapidFire (24%), Shield (24%)
+            if (rand < 0.20) { // Damage
+                if (gameState.damagePickups.length < 1) {
+                    gameState.damagePickups.push(new DamagePickup(canvas.width, canvas.height));
+                }
+            } else if (rand < 0.28) { // Nuke
+                if (gameState.nukePickups.length < 1) {
+                    gameState.nukePickups.push(new NukePickup(canvas.width, canvas.height));
+                }
+            } else if (rand < 0.52) { // Speed
+                if (gameState.speedPickups.length < 1) {
+                    gameState.speedPickups.push(new SpeedPickup(canvas.width, canvas.height));
+                }
+            } else if (rand < 0.76) { // RapidFire
+                if (gameState.rapidFirePickups.length < 1) {
+                    gameState.rapidFirePickups.push(new RapidFirePickup(canvas.width, canvas.height));
+                }
+            } else { // Shield
+                if (gameState.shieldPickups.length < 1) {
+                    gameState.shieldPickups.push(new ShieldPickup(canvas.width, canvas.height));
+                }
+            }
+        }
+        gameState.lastPowerupSpawnTime = now;
+    }
+
+    // Update players
+    updatePlayers();
 
     // Update bullets
     gameState.bullets = gameState.bullets.filter(bullet => {
@@ -653,15 +843,32 @@ function updateGame() {
         return !grenade.exploded;
     });
 
-    // Update zombies
-    gameState.zombies.forEach(zombie => zombie.update(gameState.player));
+    // Update zombies (Find target for each)
+    gameState.zombies.forEach(zombie => {
+        // Find closest living player
+        let closestPlayer = null;
+        let minDist = Infinity;
+
+        gameState.players.forEach(p => {
+            if (p.health > 0) {
+                const d = (p.x - zombie.x) ** 2 + (p.y - zombie.y) ** 2;
+                if (d < minDist) {
+                    minDist = d;
+                    closestPlayer = p;
+                }
+            }
+        });
+
+        if (closestPlayer) {
+            zombie.update(closestPlayer);
+        }
+    });
 
     // Update particles
     gameState.particles = gameState.particles.filter(particle => {
         if (particle.update) {
             particle.update();
         } else {
-            // Handle custom particles if any remain (legacy support)
             particle.x += particle.vx;
             particle.y += particle.vy;
             particle.life--;
@@ -680,8 +887,8 @@ function updateGame() {
         num.update();
         return num.life > 0;
     });
-    
-    // Update damage indicator
+
+    // Update damage indicator (Visual only, global logic is fine but intensity depends on triggers)
     if (gameState.damageIndicator.active) {
         gameState.damageIndicator.intensity *= gameState.damageIndicator.decay;
         if (gameState.damageIndicator.intensity < 0.1) {
@@ -689,14 +896,30 @@ function updateGame() {
         }
     }
 
-    // Update muzzle flash
-    if (gameState.muzzleFlash.active) {
-        gameState.muzzleFlash.life--;
-        gameState.muzzleFlash.intensity = gameState.muzzleFlash.life / gameState.muzzleFlash.maxLife;
-        if (gameState.muzzleFlash.life <= 0) {
-            gameState.muzzleFlash.active = false;
+    // Update muzzle flashes for all players
+    gameState.players.forEach(p => {
+        if (p.muzzleFlash.active) {
+            p.muzzleFlash.life--;
+            p.muzzleFlash.intensity = p.muzzleFlash.life / p.muzzleFlash.maxLife;
+            if (p.muzzleFlash.life <= 0) {
+                p.muzzleFlash.active = false;
+            }
         }
-    }
+        // Update melee swipes
+        if (p.activeMeleeSwipe) {
+            const swipeElapsed = now - p.activeMeleeSwipe.startTime;
+            if (swipeElapsed >= p.activeMeleeSwipe.duration) {
+                p.activeMeleeSwipe = null;
+            }
+        }
+        // Update reload
+        if (p.isReloading) {
+            if (now - p.reloadStartTime >= p.currentWeapon.reloadTime) {
+                p.isReloading = false;
+                p.currentAmmo = p.currentWeapon.maxAmmo;
+            }
+        }
+    });
 
     // Update wave notification
     if (gameState.waveNotification.active) {
@@ -706,25 +929,12 @@ function updateGame() {
         }
     }
 
-    // Update melee swipe animation
-    if (gameState.activeMeleeSwipe) {
-        const swipeElapsed = now - gameState.activeMeleeSwipe.startTime;
-        if (swipeElapsed >= gameState.activeMeleeSwipe.duration) {
-            gameState.activeMeleeSwipe = null;
-        }
-    }
-
-    // Update reload timer
-    if (gameState.isReloading) {
-        if (now - gameState.reloadStartTime >= gameState.currentWeapon.reloadTime) {
-            gameState.isReloading = false;
-            gameState.currentAmmo = gameState.currentWeapon.maxAmmo;
-        }
-    }
-
-    // Continuous firing
+    // Continuous firing (P1 Mouse)
     if (mouse.isDown && gameState.gameRunning && !gameState.gamePaused) {
-        shootBullet(mouse, canvas);
+        const p1 = gameState.players[0];
+        if (p1 && p1.health > 0 && p1.inputSource === 'mouse') {
+            shootBullet(mouse, canvas, p1);
+        }
     }
 
     // Collisions
@@ -732,18 +942,12 @@ function updateGame() {
     handlePlayerZombieCollisions();
     handlePickupCollisions();
 
-    if (gameState.player.health <= 0) {
-        gameOver();
-    }
-
     // Check for next wave
     if (gameState.zombies.length === 0 && gameState.gameRunning && !gameState.isSpawningWave) {
         if (!gameState.waveBreakActive) {
-            // Start wave break
             gameState.waveBreakActive = true;
             gameState.waveBreakEndTime = Date.now() + WAVE_BREAK_DURATION;
         } else if (Date.now() >= gameState.waveBreakEndTime) {
-            // End wave break and start next wave
             gameState.waveBreakActive = false;
             gameState.wave++;
             gameState.zombiesPerWave += 2;
@@ -754,14 +958,12 @@ function updateGame() {
 }
 
 function drawGame() {
-    // Draw settings panel if showing
     if (gameState.showSettingsPanel) {
         canvas.style.cursor = 'default';
         settingsPanel.draw(mouse);
         return;
     }
-    
-    // Draw main menu if showing
+
     if (gameState.showMainMenu) {
         gameHUD.mainMenu = true;
         canvas.style.cursor = 'default';
@@ -769,7 +971,6 @@ function drawGame() {
         return;
     }
 
-    // Draw lobby if showing
     if (gameState.showLobby) {
         gameHUD.mainMenu = false;
         canvas.style.cursor = 'default';
@@ -777,15 +978,22 @@ function drawGame() {
         return;
     }
 
+    if (gameState.showCoopLobby) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        gameHUD.draw();
+        return;
+    }
+
     gameHUD.mainMenu = false;
-    
-    // Hide cursor if using gamepad
+
+    // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
     if (activeInputSource === 'gamepad') {
         canvas.style.cursor = 'none';
     } else {
-        canvas.style.cursor = 'none'; // We draw our own crosshair anyway
+        canvas.style.cursor = 'none';
     }
-    
+
     ctx.save();
     // Apply screen shake
     if (gameState.shakeAmount > 0.1) {
@@ -796,43 +1004,38 @@ function drawGame() {
     } else {
         gameState.shakeAmount = 0;
     }
-    
-    // Clear canvas with dark gradient
+
+    // Background
     const maxDimension = Math.max(canvas.width, canvas.height);
     const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, maxDimension / 1.5);
     bgGradient.addColorStop(0, '#1a1a1a');
     bgGradient.addColorStop(1, '#0d0d0d');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw ground pattern
+
     const groundPattern = initGroundPattern();
     if (groundPattern) {
-        ctx.globalAlpha = 0.6; // Slightly transparent to blend with dark background
+        ctx.globalAlpha = 0.6;
         ctx.fillStyle = groundPattern;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1.0;
     }
-    
-    // Add subtle vignette
+
     const vignette = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, maxDimension / 3, canvas.width / 2, canvas.height / 2, maxDimension);
     vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
     vignette.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw damage indicator
+
     if (gameState.damageIndicator.active) {
         ctx.fillStyle = `rgba(255, 0, 0, ${gameState.damageIndicator.intensity * 0.3})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Draw particles
     gameState.particles.forEach(particle => {
         if (particle.draw) {
             particle.draw();
         } else {
-            // Custom particle fallback
             const maxLife = particle.maxLife || 30;
             ctx.fillStyle = particle.color;
             ctx.globalAlpha = Math.max(0, particle.life / maxLife);
@@ -843,23 +1046,22 @@ function drawGame() {
         }
     });
 
-    // Draw entities
     gameState.shells.forEach(shell => shell.draw(ctx));
     gameState.bullets.forEach(bullet => bullet.draw());
     gameState.grenades.forEach(grenade => grenade.draw());
     gameState.healthPickups.forEach(pickup => pickup.draw());
     gameState.ammoPickups.forEach(pickup => pickup.draw());
+    gameState.damagePickups.forEach(pickup => pickup.draw());
+    gameState.nukePickups.forEach(pickup => pickup.draw());
+    gameState.speedPickups.forEach(pickup => pickup.draw());
+    gameState.rapidFirePickups.forEach(pickup => pickup.draw());
+    gameState.shieldPickups.forEach(pickup => pickup.draw());
     gameState.zombies.forEach(zombie => zombie.draw());
 
-    if (gameState.activeMeleeSwipe) {
-        drawMeleeSwipe();
-    }
+    drawPlayers();
 
-    drawPlayer();
-    
     ctx.restore();
 
-    // Draw UI elements
     gameState.damageNumbers.forEach(num => num.draw(ctx));
     drawCrosshair();
     gameHUD.draw();
@@ -871,45 +1073,88 @@ function drawGame() {
 function gameOver() {
     gameState.gameRunning = false;
     saveHighScore();
-    gameHUD.showGameOver(`You survived ${gameState.wave} waves and killed ${gameState.zombiesKilled} zombies!\nHigh Score: ${gameState.highScore} zombies`);
+
+    const p1 = gameState.players[0];
+    const p2 = gameState.players[1];
+
+    let scoreMsg = `You survived ${gameState.wave} waves!\nKilled: ${gameState.zombiesKilled}`;
+
+    if (gameState.isCoop && p2) {
+        scoreMsg = `Team survived ${gameState.wave} waves!\nTotal Kills: ${gameState.zombiesKilled}`;
+    }
+
+    gameHUD.showGameOver(scoreMsg);
 }
 
 function restartGame() {
     playRestartSound();
-    
+    playMenuMusic();
     gameState.showMainMenu = true;
     gameState.gameRunning = false;
     gameState.gamePaused = false;
+    gameState.showCoopLobby = false;
+    gameState.showLobby = false;
     gameHUD.hidePauseMenu();
     gameHUD.hideGameOver();
-    
     resetGameState(canvas.width, canvas.height);
 }
 
 function startGame() {
+    stopMenuMusic();
     gameState.gameRunning = true;
     gameState.gamePaused = false;
     gameState.showLobby = false;
-    
-    resetGameState(canvas.width, canvas.height);
-    gameState.showMainMenu = false; // Explicitly hide menu
-    
+    gameState.showCoopLobby = false;
+
+    // Do NOT reset players here for coop, we want to keep the lobby configuration
+    if (!gameState.isCoop) {
+        resetGameState(canvas.width, canvas.height);
+    } else {
+        // Just reset game objects, keep players
+        gameState.score = 0;
+        gameState.wave = 1;
+        gameState.zombiesKilled = 0;
+        gameState.bullets = [];
+        gameState.zombies = [];
+        gameState.particles = [];
+        gameState.healthPickups = [];
+        gameState.ammoPickups = [];
+        gameState.damagePickups = [];
+        gameState.nukePickups = [];
+        gameState.grenades = [];
+
+        gameState.players.forEach(p => {
+            p.health = PLAYER_MAX_HEALTH;
+            p.stamina = PLAYER_STAMINA_MAX;
+            p.x = canvas.width / 2;
+            p.y = canvas.height / 2;
+        });
+
+        // Offset P2 slightly
+        if (gameState.players[1]) gameState.players[1].x += 50;
+    }
+
+    gameState.showMainMenu = false;
+
     triggerWaveNotification();
     spawnZombies(gameState.zombiesPerWave);
 }
 
-function cycleWeapon(direction) {
+function cycleWeapon(direction, player) {
+    player = player || gameState.players[0];
     const weaponKeys = Object.keys(WEAPONS);
-    let currentIndex = weaponKeys.findIndex(key => WEAPONS[key] === gameState.currentWeapon);
-    
+    let currentIndex = weaponKeys.findIndex(key => WEAPONS[key] === player.currentWeapon);
+
     if (currentIndex === -1) currentIndex = 0;
-    
+
     let newIndex = currentIndex + direction;
     if (newIndex >= weaponKeys.length) newIndex = 0;
     if (newIndex < 0) newIndex = weaponKeys.length - 1;
-    
-    switchWeapon(WEAPONS[weaponKeys[newIndex]]);
+
+    switchWeapon(WEAPONS[weaponKeys[newIndex]], player);
 }
+
+let activeInputSource = 'mouse';
 
 function gameLoop() {
     const now = performance.now();
@@ -920,186 +1165,202 @@ function gameLoop() {
         gameState.lastFpsUpdateTime = now;
     }
 
-    if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby) {
-        updateGame();
+    if (gameState.showCoopLobby) {
+        updateCoopLobby();
+        gameHUD.draw(); // Draw lobby
     }
-    
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby) {
+        updateGame();
+        drawGame(); // Only draw game if not in lobby
+    }
+    // Only draw game if not in lobbies/main menu (drawGame handles mainmenu/lobby drawing internally too but structured oddly)
+    // Let's rely on drawGame() for everything except pure lobby updates
+    else if (gameState.showMainMenu || gameState.showLobby) {
+        drawGame();
+    }
+    // If paused
+    else if (gameState.gamePaused) {
+        drawGame();
+    }
+
     // Update Input
     inputSystem.update(settingsManager.settings.gamepad);
-    
-    // Handle Gamepad Actions
-    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && gameState.gameRunning) {
-        // Update active input source based on buttons too
-        if (inputSystem.buttons.fire.pressed || inputSystem.buttons.reload.pressed || inputSystem.buttons.sprint.pressed) {
+
+    // Check for Gamepad Actions (Mostly P1 if we allow it, or Global Menus)
+    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && gameState.gameRunning) {
+
+        const p1 = gameState.players[0];
+
+        // If P1 uses gamepad
+        if (p1 && p1.inputSource !== 'mouse') {
             activeInputSource = 'gamepad';
+            // Use stored index if available, else 0
+            const gpIndex = p1.gamepadIndex !== undefined && p1.gamepadIndex !== null ? p1.gamepadIndex : 0;
+            const gpState = inputSystem.getGamepad(gpIndex);
+
+            if (!gameState.gamePaused && gpState) {
+                if (gpState.buttons.reload.justPressed) reloadWeapon(p1);
+                if (gpState.buttons.grenade.justPressed) {
+                    const gpAim = gpState.axes.aim;
+                    let target = {
+                        x: p1.x + gpAim.x * 300,
+                        y: p1.y + gpAim.y * 300
+                    };
+                    throwGrenade(target, canvas, p1);
+                }
+                if (gpState.buttons.prevWeapon.justPressed) cycleWeapon(-1, p1);
+                if (gpState.buttons.nextWeapon.justPressed) cycleWeapon(1, p1);
+                if (gpState.buttons.melee.justPressed) performMeleeAttack(p1);
+                if (gpState.buttons.fire.pressed) {
+                    const gpAim = gpState.axes.aim;
+                    let target = {
+                        x: p1.x + gpAim.x * 200,
+                        y: p1.y + gpAim.y * 200
+                    };
+                    shootBullet(target, canvas, p1);
+                }
+                if (gpState.buttons.pause.justPressed) togglePause();
+            }
         }
 
-        if (!gameState.gamePaused) {
-             // Reload
-            if (inputSystem.buttons.reload.justPressed) reloadWeapon();
-            
-            // Grenade
-            if (inputSystem.buttons.grenade.justPressed) {
-                // For grenade throw, we need a target. 
-                // If using controller, throw at a fixed distance in aim direction
-                const gpAim = inputSystem.getAimInput();
-                let target = { x: mouse.x, y: mouse.y };
-                
-                if (Math.abs(gpAim.x) > 0 || Math.abs(gpAim.y) > 0) {
-                     target.x = gameState.player.x + gpAim.x * 300;
-                     target.y = gameState.player.y + gpAim.y * 300;
-                }
-                throwGrenade(target, canvas);
-            }
-            
-            // Weapon Switching
-            if (inputSystem.buttons.prevWeapon.justPressed) cycleWeapon(-1);
-            if (inputSystem.buttons.nextWeapon.justPressed) cycleWeapon(1);
-            
-            // Melee
-            if (inputSystem.buttons.melee.justPressed) performMeleeAttack();
-            
-            // Fire
-            if (inputSystem.buttons.fire.pressed) {
-                 // Construct virtual mouse for shooting
-                 const gpAim = inputSystem.getAimInput();
-                 let target = { x: mouse.x, y: mouse.y };
-                 
-                 if (Math.abs(gpAim.x) > 0 || Math.abs(gpAim.y) > 0) {
-                     target.x = gameState.player.x + gpAim.x * 200;
-                     target.y = gameState.player.y + gpAim.y * 200;
-                 } else {
-                     // If no aim input, shoot in facing direction
-                     target.x = gameState.player.x + Math.cos(gameState.player.angle) * 200;
-                     target.y = gameState.player.y + Math.sin(gameState.player.angle) * 200;
-                 }
-                 shootBullet(target, canvas);
-            }
-        }
-        
-        // Pause
-        if (inputSystem.buttons.pause.justPressed) {
-             togglePause();
-        }
-    } else if (gameState.gamePaused) {
-        // Menu navigation handling for pause menu could go here
-        if (inputSystem.buttons.pause.justPressed) {
-            resumeGame();
-        }
-        if (inputSystem.buttons.reload.justPressed) {
-             restartGame(); // X to restart
+        // Pause handling for P2 too?
+        // Iterate all players to check for pause?
+        // For now just global pause from any gamepad is fine
+        const gpState = inputSystem.getAnyGamepad();
+        if (gpState && gpState.buttons.pause.justPressed && gameState.gameRunning) {
+            togglePause();
         }
     }
-    
-    drawGame();
+
+    // Pause Menu Navigation
+    if (gameState.gamePaused) {
+        const gpState = inputSystem.getAnyGamepad();
+        if (gpState) {
+            if (gpState.buttons.pause.justPressed) resumeGame();
+            if (gpState.buttons.reload.justPressed) restartGame();
+        }
+    }
+
+    // drawGame(); // Removed duplicate call
     requestAnimationFrame(gameLoop);
 }
 
 // Event Listeners
 document.addEventListener('keydown', (e) => {
-    activeInputSource = 'mouse'; // Switch to keyboard/mouse on key press
-    
-    // Handle ESC key for settings panel first
+    activeInputSource = 'mouse';
+
     if (e.key === 'Escape') {
         if (gameState.showSettingsPanel) {
-            // If we are rebinding, cancel it
             if (settingsPanel.rebindingAction) {
                 settingsPanel.cancelRebind();
                 return;
             }
-            
             gameState.showSettingsPanel = false;
             settingsPanel.close();
             return;
         }
     }
-    
-    // Handle key rebinding if active
+
     if (gameState.showSettingsPanel && settingsPanel.rebindingAction) {
         e.preventDefault();
         settingsPanel.handleRebind(e.key);
         return;
     }
-    
-    // Don't process game keys if main menu is showing
+
     if (gameState.showMainMenu) return;
-    
-    // Don't process game keys if settings panel is showing
     if (gameState.showSettingsPanel) return;
-    
+
     const key = e.key.toLowerCase();
     keys[key] = true;
-    
-    // Pause/unpause on ESC key
+
     if (e.key === 'Escape') {
         togglePause();
     }
 
     const controls = settingsManager.settings.controls;
+    const p1 = gameState.players[0]; // P1 uses Keyboard
 
     // Weapon switching
-    if (key === controls.weapon1) switchWeapon(WEAPONS.pistol);
-    if (key === controls.weapon2) switchWeapon(WEAPONS.shotgun);
-    if (key === controls.weapon3) switchWeapon(WEAPONS.rifle);
-    
-    // Actions
-    if (key === controls.grenade) throwGrenade(mouse, canvas);
-    if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused) reloadWeapon();
-    if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused) performMeleeAttack();
+    if (key === controls.weapon1 && p1) switchWeapon(WEAPONS.pistol, p1);
+    if (key === controls.weapon2 && p1) switchWeapon(WEAPONS.shotgun, p1);
+    if (key === controls.weapon3 && p1) switchWeapon(WEAPONS.rifle, p1);
 
-    // Handle keys for paused/game over state
+    // Actions
+    if (key === controls.grenade && p1) throwGrenade(mouse, canvas, p1);
+    if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && p1) reloadWeapon(p1);
+    if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && p1) performMeleeAttack(p1);
+
     if (gameState.gamePaused || !gameState.gameRunning) {
         if (key === controls.reload) restartGame();
-        if (gameState.gamePaused && (key === 'm')) restartGame(); // M to return to menu
+        if (gameState.gamePaused && (key === 'm')) restartGame();
     }
 });
 
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-canvas.addEventListener('mousemove', (e) => {
-    activeInputSource = 'mouse'; // Switch to mouse on movement
-    
+// Helper function to get accurate mouse coordinates accounting for canvas scaling
+function getCanvasMousePos(e) {
     const rect = canvas.getBoundingClientRect();
+
+    // Calculate scale factors between internal canvas resolution and displayed size
+    // This accounts for RENDER_SCALE and any CSS scaling
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    mouse.x = (e.clientX - rect.left) * scaleX;
-    mouse.y = (e.clientY - rect.top) * scaleY;
-    
+
+    // Get mouse position relative to canvas element
+    // rect.left/top account for any CSS positioning, borders, or padding
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    return { x, y };
+}
+
+canvas.addEventListener('mousemove', (e) => {
+    activeInputSource = 'mouse';
+
+    const pos = getCanvasMousePos(e);
+    mouse.x = pos.x;
+    mouse.y = pos.y;
+
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
-    } else if (gameState.showMainMenu || gameState.showLobby) {
+    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
 });
 
 canvas.addEventListener('mousedown', (e) => {
-    activeInputSource = 'mouse'; // Switch to mouse on click
-    
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-    
+    activeInputSource = 'mouse';
+
+    const pos = getCanvasMousePos(e);
+    const clickX = pos.x;
+    const clickY = pos.y;
+
     if (gameState.showSettingsPanel) {
         settingsPanel.handleClick(clickX, clickY);
         return;
     }
-    
+
+    // Main Menu
     if (gameState.showMainMenu) {
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+
+        // Try to start menu music on first interaction if it's not playing
+        initAudio();
+        playMenuMusic();
+
         if (clickedButton === 'single') {
-            gameState.showMainMenu = false;
-            initAudio();
+            gameState.isCoop = false;
             startGame();
         } else if (clickedButton === 'local_coop') {
-            // Placeholder for Local Coop
-            // alert("Local Co-op coming soon!");
+            gameState.showMainMenu = false;
+            gameState.showCoopLobby = true;
+            // Reset to P1
+            gameState.players = [gameState.players[0]];
         } else if (clickedButton === 'settings') {
             gameState.showSettingsPanel = true;
             settingsPanel.open();
         } else if (clickedButton === 'username') {
-            // Prompt for new username
             const newUsername = window.prompt('Enter your name:', gameState.username);
             if (newUsername !== null && newUsername.trim() !== '') {
                 gameState.username = newUsername.trim();
@@ -1113,28 +1374,46 @@ canvas.addEventListener('mousedown', (e) => {
         return;
     }
 
+    // Multiplayer Lobby
     if (gameState.showLobby) {
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
         if (clickedButton === 'lobby_back') {
             gameState.showLobby = false;
             gameState.showMainMenu = true;
-            // Optional: Disconnect from multiplayer if going back? 
-            // For now we keep connection alive
+            playMenuMusic();
         } else if (clickedButton === 'lobby_start') {
-            gameState.showLobby = false;
+            gameState.isCoop = false;
             initAudio();
-            startGame(); // Start multiplayer game (same as single for now)
+            startGame();
         }
         return;
     }
-    
+
+    // Coop Lobby
+    if (gameState.showCoopLobby) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'coop_back') {
+            gameState.showCoopLobby = false;
+            gameState.showMainMenu = true;
+            playMenuMusic();
+        } else if (clickedButton === 'coop_start') {
+            // Start coop game
+            gameState.showCoopLobby = false;
+            gameState.isCoop = true;
+            initAudio();
+            startGame();
+        }
+        return;
+    }
+
     if (gameState.gameRunning && !gameState.gamePaused) {
         if (e.button === 0) {
             initAudio();
             mouse.isDown = true;
-            shootBullet(mouse, canvas);
+            // Handled in updateGame loop
         } else if (e.button === 2) {
-            performMeleeAttack();
+            const p1 = gameState.players[0];
+            if (p1) performMeleeAttack(p1);
         }
     }
 });

@@ -68,19 +68,30 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Methods**:
 - `update()` - Move bullet
-- `draw()` - Render bullet
+- `draw()` - Render bullet with visual trail
 - `isOffScreen(canvasWidth, canvasHeight)` - Boundary check
+
+**Features**:
+- Visual trail rendering based on velocity
+- Weapon-specific damage (can be modified by damage multiplier)
 
 **Dependencies**: `core/canvas.js`
 
 #### Zombie.js
 **Purpose**: Zombie enemy classes
 
-**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`
+**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`
+
+**Zombie Variants**:
+- **NormalZombie**: Default enemy type
+- **FastZombie**: 1.6x speed, 60% health, smaller hitbox, reddish/orange visuals
+- **ExplodingZombie**: Explodes on death, AOE damage, orange/yellow pulsing glow
+- **ArmoredZombie**: Slower, heavily armored, absorbs damage before health
+- **GhostZombie**: Semi-transparent (50% opacity), 1.3x speed, spectral blue/white, wobble animation
 
 **Methods**:
 - `update(player)` - AI pathfinding
-- `draw()` - Complex rendering
+- `draw()` - Complex rendering (variant-specific visuals)
 - `takeDamage(bulletDamage)` - Damage handling
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `systems/*`
@@ -93,9 +104,15 @@ This modular structure improves maintainability, testability, and scalability.
 **Dependencies**: `core/canvas.js`
 
 #### Pickup.js
-**Purpose**: Health and ammo pickup classes
+**Purpose**: Pickup and power-up classes
 
-**Exports**: `HealthPickup`, `AmmoPickup`
+**Exports**: `HealthPickup`, `AmmoPickup`, `DamagePickup`, `NukePickup`
+
+**Pickup Types**:
+- **HealthPickup**: Red cross icon, restores player health
+- **AmmoPickup**: Yellow/orange bullet icon, restores ammo and grenades
+- **DamagePickup**: Purple "2x" icon, doubles weapon damage for 10 seconds
+- **NukePickup**: Yellow/black radiation symbol, instantly kills all active zombies
 
 **Dependencies**: `core/canvas.js`
 
@@ -296,7 +313,7 @@ This modular structure improves maintainability, testability, and scalability.
 - `shakeAmount` - Current intensity
 - `shakeDecay` - Decay rate (0.9)
 - Applied via canvas transform in `drawGame()`
-- Triggered on: shooting (intensity 3), damage (intensity 8), explosions (intensity 15), melee (intensity 2-5)
+- Triggered on: shooting (intensity 3), damage (intensity 8), explosions (intensity 15), melee (intensity 2-5), nuke (intensity 30)
 
 ### Damage Indicator System
 **Location**: `js/core/gameState.js`, `js/utils/gameUtils.js`
@@ -313,6 +330,7 @@ This modular structure improves maintainability, testability, and scalability.
 - Type-based spawning:
   - Wave 3+: Fast zombies (~15% chance)
   - Wave 5+: Exploding zombies (~10% chance)
+  - Wave 4+: Ghost zombies (~10% chance)
   - Wave 3+: Armored zombies (scaling chance, 10%+ up to 50%)
 - Auto-spawns next wave when all zombies killed
 
@@ -324,6 +342,7 @@ This modular structure improves maintainability, testability, and scalability.
 - `currentWeapon` tracks active weapon
 - `lastShotTime` enforces fire rate cooldowns
 - Shotgun fires 5 spread bullets per shot
+- Damage multiplier system: Bullet damage multiplied by `gameState.damageMultiplier` (applies double damage buff)
 
 **Weapon Properties:**
 - **Pistol**: 1 damage, 400ms fire rate, 10 ammo, 1000ms reload
@@ -361,6 +380,32 @@ This modular structure improves maintainability, testability, and scalability.
 - Master volume control via `masterGainNode`
 - No external audio files required
 
+### Power-up System
+**Location**: `js/core/gameState.js`, `js/utils/combatUtils.js`, `js/main.js`
+- **Damage Pickup**: Purple "2x" icon, doubles weapon damage for 10 seconds
+  - Spawns every 30 seconds (50% chance, 80% of powerup spawns)
+  - `damageMultiplier` state variable (default 1, becomes 2 when active)
+  - `damageBuffEndTime` tracks expiration timestamp
+  - HUD displays remaining buff time
+- **Nuke Pickup**: Yellow/black radiation symbol, instantly kills all zombies
+  - Very rare spawn (every 30 seconds, 50% chance, 20% of powerup spawns)
+  - Triggers massive screen shake (30 units) and explosion effects
+  - Clears entire zombie array instantly
+- Powerup arrays: `damagePickups[]`, `nukePickups[]` in game state
+- Spawn logic checks every 30 seconds for powerup opportunities
+
+### Kill Streak System
+**Location**: `js/core/gameState.js`, `js/utils/combatUtils.js`
+- Tracks consecutive kills within 1.5 second window
+- `killStreak` counter increments on rapid kills
+- `lastKillTime` timestamp tracks timing between kills
+- Resets streak if more than 1.5 seconds pass between kills
+- Visual feedback: Floating combo text for streaks 3+
+  - "3 HIT COMBO!", "4 HIT COMBO!", etc.
+  - "5 KILL RAMPAGE!" at 5 kills
+  - "UNSTOPPABLE!" at 10+ kills
+- Uses `DamageNumber` class for floating text display
+
 ### Pause System
 **Location**: `js/core/gameState.js`, `js/main.js`
 - `gamePaused` boolean flag
@@ -384,7 +429,7 @@ This modular structure improves maintainability, testability, and scalability.
 8. Draw shells (bullet casings)
 9. Draw bullets
 10. Draw grenades
-11. Draw pickups (health, ammo)
+11. Draw pickups (health, ammo, damage, nuke)
 12. Draw zombies
 13. Draw melee swipe (if active)
 14. Draw player
@@ -395,7 +440,8 @@ This modular structure improves maintainability, testability, and scalability.
 **updateGame() Function**:
 1. Check pause state (skip if paused)
 2. Spawn health/ammo pickups periodically
-3. Update player movement
+3. Spawn powerups (damage/nuke) periodically
+4. Update player movement
 4. Handle continuous mouse firing (if mouse.isDown)
 5. Update bullets (filter off-screen)
 6. Update grenades (filter exploded)
@@ -409,11 +455,12 @@ This modular structure improves maintainability, testability, and scalability.
 14. Update wave notification
 15. Update melee swipe animation
 16. Check reload timer completion
-17. Handle bullet-zombie collisions
-18. Handle player-zombie collisions
-19. Handle player-pickup collisions
-20. Check for game over condition
-21. Check wave completion
+17. Update damage buff timer (expire if time elapsed)
+18. Handle bullet-zombie collisions (includes kill streak tracking)
+19. Handle player-zombie collisions
+20. Handle player-pickup collisions (health, ammo, damage, nuke)
+21. Check for game over condition
+22. Check wave completion
 
 ## State Management
 
@@ -441,10 +488,16 @@ All game state is managed through the `gameState` object:
 - `grenades[]` - Active grenades array
 - `healthPickups[]` - Active health pickups
 - `ammoPickups[]` - Active ammo pickups
+- `damagePickups[]` - Active damage buff pickups
+- `nukePickups[]` - Active nuke pickups
 - `shakeAmount` - Screen shake intensity
 - `damageIndicator` - Damage flash state
 - `muzzleFlash` - Muzzle flash effect state
 - `waveNotification` - Wave start notification state
+- `damageMultiplier` - Current damage multiplier (default 1, 2 when buffed)
+- `damageBuffEndTime` - Timestamp when damage buff expires
+- `killStreak` - Current kill streak count
+- `lastKillTime` - Timestamp of last kill (for streak tracking)
 - `fps` - FPS counter value
 
 ## Event Flow

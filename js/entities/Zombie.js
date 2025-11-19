@@ -447,3 +447,58 @@ export class ExplodingZombie extends Zombie {
     }
 }
 
+// Ghost zombie - Semi-transparent, fast, slightly ethereal
+export class GhostZombie extends Zombie {
+    constructor(canvasWidth, canvasHeight) {
+        super(canvasWidth, canvasHeight);
+        this.type = 'ghost';
+        this.speed *= 1.3;
+        this.health = Math.floor(this.health * 0.8);
+        this.radius *= 0.9;
+        this.wobbleOffset = Math.random() * 1000;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+
+        // Wobble effect
+        const wobbleX = Math.sin((Date.now() + this.wobbleOffset) / 200) * 2;
+        
+        // Pale blue aura
+        const pulse = Math.sin(Date.now() / 300) * 0.4 + 0.6;
+        const auraGradient = ctx.createRadialGradient(this.x + wobbleX, this.y, this.radius * 0.5, this.x + wobbleX, this.y, this.radius * 2);
+        auraGradient.addColorStop(0, `rgba(150, 200, 255, ${0.6 * pulse})`);
+        auraGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = auraGradient;
+        ctx.beginPath();
+        ctx.arc(this.x + wobbleX, this.y, this.radius * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body (Pale blue/white)
+        const bodyGradient = ctx.createRadialGradient(this.x + wobbleX - 2, this.y - 2, 0, this.x + wobbleX, this.y, this.radius);
+        bodyGradient.addColorStop(0, '#e0f7fa');
+        bodyGradient.addColorStop(0.6, '#80deea');
+        bodyGradient.addColorStop(1, '#0097a7');
+        ctx.fillStyle = bodyGradient;
+        
+        ctx.beginPath();
+        ctx.ellipse(this.x + wobbleX, this.y + 10, this.radius * 0.8, this.radius * 1.2, 0, 0, Math.PI * 2);
+        ctx.fill(); // Body
+        
+        ctx.beginPath();
+        ctx.arc(this.x + wobbleX, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill(); // Head
+
+        // Eyes (White glowing holes)
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.x + wobbleX - 4, this.y - 2, 2, 0, Math.PI * 2);
+        ctx.arc(this.x + wobbleX + 4, this.y - 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+}

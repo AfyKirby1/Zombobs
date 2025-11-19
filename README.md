@@ -36,27 +36,47 @@
 *   **Grenades**: Clear the screen with satisfying AOE explosions.
 
 ### 🧠 Intelligent Enemies
-*   **Standard Infected**: Relentless chasers.
-*   **Armored Tanks**: Soaks up damage like a sponge. Aim for the head? There is no head. Just shoot more.
-*   **Progressive Difficulty**: Waves get harder, faster, and more chaotic.
+*   **5 Zombie Variants**: Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), and Ghost (Spectral)
+*   **Boss Waves**: Epic boss zombies spawn periodically with massive health and devastating attacks
+*   **Progressive Difficulty**: Waves get harder, faster, and more chaotic
+*   **Crowd Control**: Bullets slow zombies on hit, allowing strategic kiting
 
 ### 🎨 Visual & Audio Feast
-*   **Juicy Combat**: Screen shake, particle blood splatters, and muzzle flashes.
-*   **Dynamic Audio**: Procedurally generated sound effects using the Web Audio API. No external assets!
-*   **Retro Aesthetics**: Glowing neon zombies against a dark, gritty backdrop.
+*   **Juicy Combat**: Screen shake, particle blood splatters, muzzle flashes, and bullet trails
+*   **Dynamic Audio**: Procedurally generated sound effects using the Web Audio API + menu music
+*   **Retro Aesthetics**: Glowing neon zombies against a dark, gritty backdrop
+*   **Horror Atmosphere**: Animated menu backgrounds with pulsing effects, scanlines, and dynamic blood splatters
+*   **Theme Toggle**: Light/dark mode with Material Design toggle button
+
+### 💪 Power-Up System
+*   **Double Damage Buff**: Purple pickup that doubles weapon damage for 10 seconds
+*   **Nuke Pickup**: Rare yellow/black radiation symbol that instantly clears all zombies
+*   **Kill Streak Combos**: Chain kills within 1.5s for combo notifications ("RAMPAGE!", "UNSTOPPABLE!")
+
+### 👥 Multiplayer & Co-op
+*   **Local Co-op**: 2-player shared screen mode with split HUD and distinct player colors
+*   **Multiplayer Lobby**: Socket.io powered matchmaking with live player list and connection tracking
+*   **Controller Support**: Full Xbox/gamepad support with analog sticks and automatic input detection
 
 ## ⚡ Quick Start
 
-> Pick your vibe: zero-setup arcade mode or the new socket.io-powered lobby.
+> Pick your vibe: zero-setup arcade mode, local co-op, or the socket.io-powered multiplayer lobby.
 
 ### Option A · Instant Arcade
 1.  **[Download the source](https://github.com/AfyKirby1/Zombobs/archive/refs/heads/main.zip)**
-2.  Open `zombie-game.html` in Chrome / Edge / Firefox
+2.  Open `index.html` for the landing page or `zombie-game.html` directly
 3.  Blast zombies until the sun comes up
 
-### Option B · Multiplayer Lobby (New!)
-1.  Install [Node.js](https://nodejs.org/) if you don’t already have it  
-2.  Double-click `launch.bat`
+### Option B · Local Co-op
+1.  Open `zombie-game.html` in your browser
+2.  Click **Local Co-op** from the main menu
+3.  Player 1: Use Mouse/Keyboard or Gamepad 1
+4.  Player 2: Press Start/A/Enter to join, use Keyboard (Arrow keys) or Gamepad 2
+5.  Survive together!
+
+### Option C · Multiplayer Lobby
+1.  Install [Node.js](https://nodejs.org/) if you don't already have it  
+2.  Double-click `launch.bat` (Windows) or run `launch.ps1` directly
     ```powershell
     # launch.bat
     powershell.exe -ExecutionPolicy Bypass -File ".\launch.ps1"
@@ -71,25 +91,54 @@
 
 <sub>Want to theme the launcher banner or rename yourself? Edit `launch.ps1` or tweak `gameState.username` before connecting.</sub>
 
-## 🧑‍🤝‍🧑 Multiplayer Lobby Experience
+## 🎮 Game Modes
 
-- Live player list with auto-generated names (or custom handles sent via socket.io)
-- Status pulses (`Connecting…`, `Connected!`) plus a minimalist spinner
+### Single Player
+Classic survival mode. Just you against the horde. How long can you last?
+
+### Local Co-op (2 Players)
+- Shared screen gameplay with split HUD
+- Distinct player colors (Blue/Red)
+- Smart input assignment (mix keyboard and gamepads)
+- Zombies target the closest living player
+- Both players must die for Game Over
+
+### Multiplayer Lobby
+- Live player list with auto-generated names (or custom handles)
+- Status pulses (`Connecting…`, `Connected!`) with minimalist spinner
 - Ready/Back controls drawn directly on the canvas UI
-- PowerShell logs mirror every join/leave with ids so LAN parties stay organized
-- Future-proof: lobby is already broadcasting `lobby:update` events for upcoming co-op syncing
+- PowerShell logs mirror every join/leave with IDs for LAN parties
+- Future-proof: lobby broadcasts `lobby:update` events for upcoming networked gameplay
 
 ## 🕹️ Controls
 
+### Keyboard & Mouse
 | Action | Key |
 | :--- | :---: |
-| **Move** | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> |
+| **Move** | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or <kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd> |
 | **Aim** | 🖱️ Mouse |
-| **Shoot** | 🖱️ Left Click |
+| **Shoot** | 🖱️ Left Click (hold for continuous) |
+| **Melee** | <kbd>V</kbd> |
 | **Reload** | <kbd>R</kbd> |
 | **Grenade** | <kbd>G</kbd> |
 | **Switch Weapon** | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> |
 | **Pause** | <kbd>ESC</kbd> |
+
+### Controller (Xbox/Gamepad)
+| Action | Button |
+| :--- | :---: |
+| **Move** | 🕹️ Left Stick (analog) |
+| **Aim** | 🕹️ Right Stick (analog) |
+| **Shoot** | <kbd>RT</kbd> (hold for continuous) |
+| **Melee** | <kbd>R3</kbd> |
+| **Reload** | <kbd>X</kbd> |
+| **Grenade** | <kbd>RB</kbd> |
+| **Next Weapon** | <kbd>Y</kbd> |
+| **Previous Weapon** | <kbd>LB</kbd> |
+| **Sprint** | <kbd>L3</kbd> |
+| **Pause** | <kbd>Start</kbd> |
+
+*All controls are fully customizable in the Settings menu*
 
 ## 🛠️ Technology Stack
 
@@ -122,10 +171,14 @@ We believe in the power of the platform.
 
 The horde is growing. Here's what's coming next:
 
-- [ ] **Boss Waves**: Giant mutations every 5 rounds.
-- [ ] **Power-ups**: Temporary buffs like Quad Damage and Speed Boost.
-- [ ] **New Enemies**: Spitters and Exploders.
-- [ ] **Base Building**: Simple barricades to hold the line.
+- [ ] **Online Multiplayer**: Full networked gameplay (lobby system ready)
+- [ ] **Base Building**: Walls, gates, and auto-turrets
+- [ ] **New Arsenal**: Flamethrower, Rocket Launcher, Crossbow, Chainsaw
+- [ ] **More Zombie Variants**: Crawlers, Jumpers, Swarmers, Spitters, Summoners
+- [ ] **Progression System**: Skill trees and permanent perks
+- [ ] **More Power-ups**: Quad-damage, Speed Boost, Shield
+- [ ] **Dynamic World**: Day/Night cycle and weather effects
+- [ ] **Multiple Maps**: Urban, forest, military base environments
 
 See [DOCS/roadmap.md](DOCS/roadmap.md) for the full plan.
 

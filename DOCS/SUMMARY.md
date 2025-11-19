@@ -5,13 +5,16 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 
 ## Current Status
 ✅ **Playable** - Core gameplay loop is functional
-✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators
-✅ **Audio System** - Gunshots, damage sounds, footsteps, restart sounds (Web Audio API)
+✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
+✅ **Audio System** - Gunshots, damage sounds, footsteps, restart sounds, menu music (Web Audio API + HTMLAudioElement)
 ✅ **Weapon System** - 3 weapons (Pistol, Shotgun, Rifle) with unique stats
 ✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts
 ✅ **UI Systems** - In-game HUD component with pause menu and game over screens
 ✅ **Multiplayer Lobby** - Canvas-driven lobby tied to socket.io backend (PowerShell launcher)
 ✅ **Modular Architecture** - ES6 modules with organized file structure
+✅ **Power-ups** - Double damage buff and nuke pickup system
+✅ **Kill Streaks** - Combo tracking with visual feedback
+✅ **Enemy Variety** - 5 zombie types including new Ghost variant
 
 ## Technology Stack
 - **Frontend**: HTML5 Canvas, Vanilla JavaScript (ES6 Modules)
@@ -38,9 +41,9 @@ Zombobs/
 │   │   └── gameState.js          # Centralized game state management
 │   ├── entities/
 │   │   ├── Bullet.js             # Bullet projectile class
-│   │   ├── Zombie.js             # Zombie classes (Normal, Fast, Exploding, Armored)
+│   │   ├── Zombie.js             # Zombie classes (Normal, Fast, Exploding, Armored, Ghost)
 │   │   ├── Particle.js           # Particle and damage number classes
-│   │   ├── Pickup.js             # Health and ammo pickup classes
+│   │   ├── Pickup.js             # Health, ammo, damage, and nuke pickup classes
 │   │   ├── Grenade.js            # Grenade class
 │   │   └── Shell.js              # Shell casing class
 │   ├── systems/
@@ -78,14 +81,17 @@ Zombobs/
 ## Key Components
 
 ### Game Classes
-- **Bullet** - Projectile physics and rendering (weapon-specific damage)
-- **Zombie** - Enemy AI, pathfinding, visual design (with variants)
+- **Bullet** - Projectile physics and rendering (weapon-specific damage, visual trails)
+- **Zombie** - Enemy AI, pathfinding, visual design (5 variants: Normal, Fast, Exploding, Armored, Ghost)
+- **Player** - Supports multiple player instances (P1/P2) with independent input and state
 - **Particle** - Visual effects system (supports custom blood particles)
-- **GameHUD** - In-game overlay for stats, pause menu, game over screen
+- **Pickup** - Power-up system (Health, Ammo, Damage Buff, Nuke)
+- **GameHUD** - In-game overlay for stats, pause menu, game over screen, buff indicators, co-op split layout
 
 ### Systems
 - **Input Handler** - Keyboard, mouse, and gamepad input (continuous firing support)
   - Automatic input source detection (mouse/keyboard vs gamepad)
+  - Multi-gamepad support for local co-op
   - Controller support with analog sticks for movement and aiming
   - Virtual crosshair for controller aiming
 - **Weapon System** - 3 weapons with unique stats, switching, reloading
@@ -97,6 +103,8 @@ Zombobs/
 - **Damage Indicator** - Visual feedback on damage
 - **Blood Splatter** - Directional blood particle effects
 - **Pause System** - ESC to pause/resume, game state management
+- **Power-up System** - Temporary buffs (double damage) and instant effects (nuke)
+- **Kill Streak System** - Combo tracking with visual feedback for rapid kills
 
 ### Game State
 - Player position, health, angle
@@ -104,10 +112,43 @@ Zombobs/
 - Bullets array
 - Zombies array
 - Particles array (supports custom blood objects)
+- Pickups arrays (health, ammo, damage, nuke)
 - Wave counter, score, high score (localStorage)
+- Damage multiplier and buff timers
+- Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (v0.2.0)
+## Recent Updates (v0.2.2)
+- **Local Co-op**: 
+  - 2-player shared screen gameplay
+  - Dynamic split-screen HUD
+  - Dedicated Lobby for P2 joining
+  - Distinct player colors (Blue/Red)
+  - Smart input assignment (Keyboard/Gamepad mixing)
+- **Horror Atmosphere**:
+  - Creepy animated main menu background (pulsing red, scanlines, noise)
+  - Dynamic blood splatter effects on menu
+- **Menu Music**: Added background music for main menu ("Shadows of the Wasteland.mp3")
+  - Loops continuously while in menu
+  - Automatically stops when game starts
+  - Connected to master volume control
+- **Main Menu UI**: Enhanced with music tip and improved layout
+  - Visible music activation prompt with red glow effect
+  - Fixed button positioning to prevent overlap
+- **Documentation**: Created Itch.io publishing guide for web distribution
+
+## Previous Updates (v0.2.1)
+- **New Features**: Added 5 quick-impact features for enhanced gameplay variety
+  - Bullet trails for improved visual feedback
+  - Ghost zombie variant (semi-transparent, fast, Wave 4+)
+  - Double damage pickup (10-second damage buff)
+  - Nuke pickup (instant clear all zombies)
+  - Kill streak system with combo notifications
+- **Power-up System**: Rare powerup spawns every 30 seconds (damage buff or nuke)
+- **Enhanced Combat**: Damage multiplier system integrated, kill streak tracking
+- **Visual Polish**: Bullet trails, buff indicators in HUD, combo text notifications
+
+## Previous Updates (v0.2.0)
 - **Version Release**: Bumped to v0.2.0 with comprehensive feature set
 - **Controller Support (Beta)**: Full Xbox controller support with analog movement and aiming
   - Left Stick: Movement (analog)

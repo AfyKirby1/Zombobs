@@ -4,6 +4,47 @@
 
 ## 2025 - Active Development Notes
 
+### Menu Music & UI Polish [2025-11-19]
+- ✅ **Menu Music**: Added "Shadows of the Wasteland.mp3" background music
+  - Plays on main menu, loops continuously
+  - Stops when game starts, resumes when returning to menu
+  - Connected to master volume control
+  - Browser autoplay-friendly (requires user interaction)
+- ✅ **Main Menu UI**: Enhanced with music tip and improved layout
+  - Added visible music tip text with red glow effect
+  - Fixed button positioning to prevent overlap with username hover text
+  - Added creepy background effects (pulsing gradient, scanlines, static, vignette)
+- ✅ **Itch.io Guide**: Created publishing documentation for web distribution
+
+### Local Co-op & Horror UI [2025-11-19]
+- ✅ **Local Co-op Mode**: Implemented full 2-player shared screen support
+  - P1 (Mouse/Keys or Gamepad) + P2 (Keys or Gamepad)
+  - Dedicated Co-op lobby with join/leave mechanics
+  - Split-screen HUD stats + Shared central game stats
+  - Distinct player colors (P1 Blue, P2 Red)
+- ✅ **Main Menu Overhaul**: 
+  - Replaced static background with animated "horror monitor" effect
+  - Pulsing red gradient, scanlines, and static noise
+  - Dynamic blood splatter system (random spawning/fading stains)
+  - Improved UI layout and music tooltips
+
+### Quick Feature Additions [2025-01-XX]
+- ✅ **Bullet Trails**: Added visual trail rendering behind bullets for better direction/speed feedback
+- ✅ **Ghost Zombie**: New semi-transparent enemy variant (Wave 4+, ~10% spawn chance)
+  - 50% opacity, pale blue/white spectral appearance
+  - 1.3x speed, 80% health, wobble animation effect
+- ✅ **Double Damage Pickup**: Purple power-up that doubles weapon damage for 10 seconds
+  - HUD displays remaining buff time
+  - Rare spawn (30s interval, 50% chance, 80% of powerups)
+- ✅ **Nuke Pickup**: Yellow/black hazard-styled instant clear power-up
+  - Kills all active zombies instantly
+  - Massive screen shake and explosion effects
+  - Very rare spawn (30s interval, 50% chance, 20% of powerups)
+- ✅ **Kill Streak System**: Combo tracking with visual feedback
+  - Tracks consecutive kills within 1.5s window
+  - Floating combo text for streaks 3+ ("3 HIT COMBO!", "RAMPAGE!", "UNSTOPPABLE!")
+  - Encourages aggressive playstyle
+
 ### Controller Support & UI Updates [2025-11-19]
 - ✅ **Controller Support (Beta)**: Full Xbox controller integration
   - Left Stick: Analog movement
@@ -136,9 +177,12 @@
 - ✅ Fully implemented
 - Web Audio API generated sounds (no external files)
 - Gunshot, damage, footsteps, restart sounds
-- All programmatically generated
+- Menu music: "Shadows of the Wasteland.mp3" (HTMLAudioElement)
+- Music loops on main menu, stops when game starts
+- All programmatically generated sounds
 - Initializes on first user interaction
 - Master volume control via SettingsPanel
+- Music connected to Web Audio API gain node for volume control
 
 ### Input System
 - **Keyboard/Mouse**:
@@ -184,6 +228,7 @@
 - ✅ **Armored Zombie**: Slower (0.75x speed), heavily armored, absorbs damage before health
 - ✅ **Fast Zombie**: Faster (1.6x speed), weaker (60% health), smaller hitbox, reddish/orange visuals
 - ✅ **Exploding Zombie**: Explodes on death, AOE damage (60 radius, 30 damage), can hurt player
+- ✅ **Ghost Zombie**: Semi-transparent (50% opacity), faster (1.3x speed), spectral blue/white, wobble effect, Wave 4+
 
 ### Explosion System
 - ✅ Reusable `triggerExplosion(x, y, radius, damage, sourceIsPlayer)` function
@@ -191,9 +236,22 @@
 - Player damage support (50% damage when sourceIsPlayer = false)
 - Used by grenades and exploding zombies
 
+### Pickup System
+- ✅ **Health Pickup**: Red cross icon, restores health
+- ✅ **Ammo Pickup**: Yellow/orange bullet icon, restores ammo and grenades
+- ✅ **Damage Pickup**: Purple "2x" icon, doubles damage for 10 seconds
+- ✅ **Nuke Pickup**: Yellow/black radiation symbol, instantly kills all zombies
+- Powerup spawn logic: Checks every 30 seconds, 50% chance, then 80% damage / 20% nuke
+
+### Kill Streak System
+- ✅ Tracks consecutive kills within 1.5 second window
+- ✅ Resets if time between kills exceeds threshold
+- ✅ Visual feedback: Floating combo text for streaks 3+
+- ✅ Special messages: "RAMPAGE!" at 5 kills, "UNSTOPPABLE!" at 10+
+
 ### Known Areas for Enhancement
 - Boss waves
-- Score multiplier
+- Score multiplier (partially implemented via kill streaks)
 
 ### Code Quality Notes
 - ✅ **Modular ES6 Architecture**: Clean separation of concerns

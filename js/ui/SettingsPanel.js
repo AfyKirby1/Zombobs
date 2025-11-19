@@ -10,8 +10,9 @@ export class SettingsPanel {
         this.ctx = canvas.getContext('2d');
         this.settingsManager = settingsManager;
         this.visible = false;
-        this.currentView = 'main'; // main, controls
+        this.currentView = 'main'; // main, controls, video
         this.draggingSlider = false;
+        this.draggingSliderId = null;
         this.sliderX = 0;
         this.sliderY = 0;
         this.sliderWidth = 200;
@@ -20,6 +21,8 @@ export class SettingsPanel {
         this.sliderBounds = null;
         this.backButtonBounds = null;
         this.controlsButtonBounds = null;
+        this.videoButtonBounds = null;
+        this.videoControls = {};
         this.keybindButtons = {};
         
         this.controlMode = 'keyboard'; // 'keyboard' or 'gamepad'
@@ -55,6 +58,8 @@ export class SettingsPanel {
             this.drawMainView(panelX, panelY, panelWidth, panelHeight, mouse);
         } else if (this.currentView === 'controls') {
             this.drawControlsView(panelX, panelY, panelWidth, panelHeight, mouse);
+        } else if (this.currentView === 'video') {
+            this.drawVideoView(panelX, panelY, panelWidth, panelHeight, mouse);
         }
     }
 
@@ -66,7 +71,7 @@ export class SettingsPanel {
         this.ctx.fillText('SETTINGS', x + width / 2, y + 50);
 
         // Master Volume Setting
-        const settingY = y + 120;
+        const settingY = y + 100;
         const settingX = x + 130;
         const sliderWidth = width - 260;
         this.sliderWidth = sliderWidth;
@@ -112,7 +117,7 @@ export class SettingsPanel {
         };
 
         // Controls Button
-        const controlsY = y + 200;
+        const controlsY = y + 170;
         const buttonWidth = 240;
         const buttonHeight = 50;
         const controlsX = x + (width - buttonWidth) / 2;
@@ -134,6 +139,31 @@ export class SettingsPanel {
         this.controlsButtonBounds = {
             x: controlsX,
             y: controlsY,
+            width: buttonWidth,
+            height: buttonHeight
+        };
+
+        // Video Settings Button
+        const videoY = controlsY + 70;
+        const videoX = controlsX;
+
+        const videoMouseOver = mouse.x >= videoX && mouse.x <= videoX + buttonWidth &&
+                               mouse.y >= videoY && mouse.y <= videoY + buttonHeight;
+
+        this.ctx.fillStyle = videoMouseOver ? '#ff1744' : 'rgba(255, 23, 68, 0.3)';
+        this.ctx.fillRect(videoX, videoY, buttonWidth, buttonHeight);
+        this.ctx.strokeStyle = '#ff1744';
+        this.ctx.strokeRect(videoX, videoY, buttonWidth, buttonHeight);
+
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.font = 'bold 18px "Roboto Mono", monospace';
+        this.ctx.fillText('Video Settings', videoX + buttonWidth / 2, videoY + buttonHeight / 2);
+
+        this.videoButtonBounds = {
+            x: videoX,
+            y: videoY,
             width: buttonWidth,
             height: buttonHeight
         };
@@ -285,6 +315,132 @@ export class SettingsPanel {
         this.drawBackButton(x, y, width, height, mouse);
     }
 
+    drawVideoView(x, y, width, height, mouse) {
+        // Title
+        this.ctx.font = 'bold 32px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.fillText('VIDEO SETTINGS', x + width / 2, y + 50);
+
+        this.videoControls = {};
+        let currentY = y + 100;
+        const centerX = x + width / 2;
+
+        // Presets
+        this.ctx.font = '16px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText('Quality Preset', centerX, currentY);
+        
+        currentY += 30;
+        const presets = ['low', 'medium', 'high'];
+        const presetWidth = 80;
+        const presetHeight = 30;
+        const totalPresetWidth = presets.length * (presetWidth + 10) - 10;
+        let startX = centerX - totalPresetWidth / 2;
+
+        const currentPreset = this.settingsManager.getSetting('video', 'qualityPreset');
+
+        presets.forEach((preset, index) => {
+            const btnX = startX + index * (presetWidth + 10);
+            const btnY = currentY;
+            
+            const isSelected = currentPreset === preset;
+            const isHover = mouse.x >= btnX && mouse.x <= btnX + presetWidth &&
+                            mouse.y >= btnY && mouse.y <= btnY + presetHeight;
+
+            this.ctx.fillStyle = isSelected ? '#ff1744' : (isHover ? 'rgba(255, 23, 68, 0.4)' : 'rgba(40, 40, 40, 0.8)');
+            this.ctx.fillRect(btnX, btnY, presetWidth, presetHeight);
+            this.ctx.strokeStyle = isSelected ? '#ffffff' : '#666';
+            this.ctx.strokeRect(btnX, btnY, presetWidth, presetHeight);
+
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '12px "Roboto Mono", monospace';
+            this.ctx.fillText(preset.toUpperCase(), btnX + presetWidth / 2, btnY + presetHeight / 2);
+
+            this.videoControls[`preset_${preset}`] = { x: btnX, y: btnY, width: presetWidth, height: presetHeight, type: 'preset', value: preset };
+        });
+
+        currentY += 60;
+
+        // Particle Count Slider
+        const particleCount = this.settingsManager.getSetting('video', 'particleCount');
+        this.drawSlider(x, width, currentY, 'Max Particles', particleCount, 50, 500, 'particleCount');
+        currentY += 60;
+
+        // Toggles
+        const toggles = [
+            { label: 'Vignette', key: 'vignette' },
+            { label: 'Shadows', key: 'shadows' },
+            { label: 'Lighting', key: 'lighting' }
+        ];
+
+        toggles.forEach((toggle) => {
+            const isOn = this.settingsManager.getSetting('video', toggle.key);
+            
+            this.ctx.textAlign = 'left';
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillText(toggle.label, x + 100, currentY + 15);
+
+            const toggleWidth = 50;
+            const toggleHeight = 26;
+            const toggleX = x + width - 150;
+            
+            const isHover = mouse.x >= toggleX && mouse.x <= toggleX + toggleWidth &&
+                            mouse.y >= currentY && mouse.y <= currentY + toggleHeight;
+
+            this.ctx.fillStyle = isOn ? '#ff1744' : '#333';
+            if (isHover) this.ctx.fillStyle = isOn ? '#ff4569' : '#444';
+            
+            this.ctx.fillRect(toggleX, currentY, toggleWidth, toggleHeight);
+            this.ctx.strokeStyle = '#666';
+            this.ctx.strokeRect(toggleX, currentY, toggleWidth, toggleHeight);
+
+            // Toggle handle
+            this.ctx.fillStyle = '#fff';
+            const handleX = isOn ? toggleX + toggleWidth - 20 : toggleX + 4;
+            this.ctx.fillRect(handleX, currentY + 4, 16, 18);
+
+            this.videoControls[`toggle_${toggle.key}`] = { x: toggleX, y: currentY, width: toggleWidth, height: toggleHeight, type: 'toggle', key: toggle.key };
+
+            currentY += 40;
+        });
+
+        this.drawBackButton(x, y, width, height, mouse);
+    }
+
+    drawSlider(x, width, y, label, value, min, max, settingKey) {
+        const settingX = x + 100;
+        const sliderWidth = width - 200;
+        
+        this.ctx.textAlign = 'left';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText(label, settingX, y);
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText(value, x + width - 100, y);
+
+        const sliderY = y + 15;
+        const sliderX = settingX;
+        
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(sliderX, sliderY, sliderWidth, 8);
+
+        const normalized = (value - min) / (max - min);
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.fillRect(sliderX, sliderY, sliderWidth * normalized, 8);
+        
+        // Slider handle
+        const handleX = sliderX + sliderWidth * normalized;
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(handleX, sliderY + 4, 8, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.videoControls[`slider_${settingKey}`] = { 
+            x: sliderX, y: sliderY - 5, width: sliderWidth, height: 18, 
+            type: 'slider', min, max, value, setting: settingKey 
+        };
+    }
+
     drawBackButton(x, y, width, height, mouse) {
         const btnWidth = 120;
         const btnHeight = 40;
@@ -328,10 +484,10 @@ export class SettingsPanel {
             x >= this.backButtonBounds.x && x <= this.backButtonBounds.x + this.backButtonBounds.width &&
             y >= this.backButtonBounds.y && y <= this.backButtonBounds.y + this.backButtonBounds.height) {
             
-            if (this.currentView === 'controls') {
-                this.currentView = 'main';
-            } else {
+            if (this.currentView === 'main') {
                 this.close();
+            } else {
+                this.currentView = 'main';
             }
             return true;
         }
@@ -342,6 +498,7 @@ export class SettingsPanel {
                 x >= this.sliderBounds.x && x <= this.sliderBounds.x + this.sliderBounds.width &&
                 y >= this.sliderBounds.y && y <= this.sliderBounds.y + this.sliderBounds.height) {
                 this.draggingSlider = true;
+                this.draggingSliderId = null; // Main volume slider has no ID
                 this.updateSlider(x);
                 return true;
             }
@@ -351,6 +508,14 @@ export class SettingsPanel {
                 x >= this.controlsButtonBounds.x && x <= this.controlsButtonBounds.x + this.controlsButtonBounds.width &&
                 y >= this.controlsButtonBounds.y && y <= this.controlsButtonBounds.y + this.controlsButtonBounds.height) {
                 this.currentView = 'controls';
+                return true;
+            }
+
+            // Video Button
+            if (this.videoButtonBounds &&
+                x >= this.videoButtonBounds.x && x <= this.videoButtonBounds.x + this.videoButtonBounds.width &&
+                y >= this.videoButtonBounds.y && y <= this.videoButtonBounds.y + this.videoButtonBounds.height) {
+                this.currentView = 'video';
                 return true;
             }
         } else if (this.currentView === 'controls') {
@@ -377,6 +542,22 @@ export class SettingsPanel {
                     return true;
                 }
             }
+        } else if (this.currentView === 'video') {
+            for (const key in this.videoControls) {
+                const ctrl = this.videoControls[key];
+                if (x >= ctrl.x && x <= ctrl.x + ctrl.width && y >= ctrl.y && y <= ctrl.y + ctrl.height) {
+                    if (ctrl.type === 'preset') {
+                        this.settingsManager.applyVideoPreset(ctrl.value);
+                    } else if (ctrl.type === 'toggle') {
+                        this.settingsManager.setSetting('video', ctrl.key, !this.settingsManager.getSetting('video', ctrl.key));
+                    } else if (ctrl.type === 'slider') {
+                        this.draggingSlider = true;
+                        this.draggingSliderId = ctrl.setting;
+                        this.updateVideoSlider(x, ctrl);
+                    }
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -386,12 +567,19 @@ export class SettingsPanel {
         if (!this.visible) return;
         
         if (this.draggingSlider) {
-            this.updateSlider(x);
+            if (this.currentView === 'main') {
+                this.updateSlider(x);
+            } else if (this.currentView === 'video' && this.draggingSliderId) {
+                const ctrlKey = `slider_${this.draggingSliderId}`;
+                const ctrl = this.videoControls[ctrlKey];
+                if (ctrl) this.updateVideoSlider(x, ctrl);
+            }
         }
     }
 
     handleMouseUp() {
         this.draggingSlider = false;
+        this.draggingSliderId = null;
     }
 
     updateSlider(x) {
@@ -408,6 +596,13 @@ export class SettingsPanel {
         }
     }
 
+    updateVideoSlider(x, ctrl) {
+        const relativeX = x - ctrl.x;
+        const percent = Math.max(0, Math.min(1, relativeX / ctrl.width));
+        const value = Math.round(ctrl.min + percent * (ctrl.max - ctrl.min));
+        this.settingsManager.setSetting('video', ctrl.setting, value);
+    }
+
     open() {
         this.visible = true;
         this.currentView = 'main';
@@ -416,6 +611,7 @@ export class SettingsPanel {
     close() {
         this.visible = false;
         this.draggingSlider = false;
+        this.draggingSliderId = null;
         this.rebindingAction = null;
         this.controlMode = 'keyboard';
         // Check if inputSystem has a pending rebind and cancel it

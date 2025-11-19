@@ -10,7 +10,7 @@
 - [ ] **Weapon Accuracy Degradation** - Continuous firing reduces accuracy, requiring periodic pauses
 - [x] **Ammo Pickups** - Ammo boxes spawn periodically when player has low ammo, restoring ammo for current weapon when collected
 - [ ] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds)
-- [ ] **Stamina/Sprint System** - A stamina bar that depletes when sprinting, forcing players to manage their movement more carefully.
+- [x] **Stamina/Sprint System** - A stamina bar that depletes when sprinting, forcing players to manage their movement more carefully.
 
 ## Base Defense System
 - [ ] **Base Perimeter Walls** - Four protective walls around player's base that absorb zombie damage ([Design Doc](base-defense-design.md))
@@ -25,7 +25,7 @@
 ## Progression & Difficulty
 - [x] **Wave Break System** - Brief pause between waves to catch your breath and reload
 - [ ] **Score Multiplier** - Combo system for consecutive kills without taking damage
-- [ ] **Boss Waves** - Every 5 waves, spawn a massive boss zombie with high health
+- [x] **Boss Waves** - Every 5 waves, spawn a massive boss zombie with high health
 - [x] **Difficulty Scaling** - Zombies get progressively faster, tougher, and more numerous (implemented: speed = 1 + wave*0.1, health = 2 + floor(wave/3), zombiesPerWave increases)
 - [ ] **Ammo Scarcity Scaling** - Gradually reduce ammo drop chance with higher waves for tension
 - [ ] **Zombie Attraction System** - Noise from gunfire attracts more zombies over time

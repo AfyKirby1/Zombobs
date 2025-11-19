@@ -4,6 +4,9 @@ import { settingsManager } from './SettingsManager.js';
 let audioContext = null;
 let gunshotBuffer = null; // Cache gunshot audio buffer
 let masterGainNode = null; // Master volume control
+let menuMusic = null; // HTMLAudioElement for menu music
+let menuMusicSource = null; // MediaElementSourceNode
+let menuMusicGain = null; // Gain node for menu music
 
 // Initialize audio context (needs user interaction first)
 export function initAudio() {
@@ -27,6 +30,42 @@ export function initAudio() {
 
 export function getMasterGainNode() {
     return masterGainNode;
+}
+
+export function playMenuMusic() {
+    if (!menuMusic) {
+        menuMusic = new Audio('assets/Shadows of the Wasteland.mp3');
+        menuMusic.loop = true;
+    }
+
+    if (!audioContext) {
+        initAudio();
+    }
+
+    if (audioContext && !menuMusicSource) {
+        // Connect to Web Audio API if possible for volume control
+        try {
+            menuMusicSource = audioContext.createMediaElementSource(menuMusic);
+            menuMusicGain = audioContext.createGain();
+            menuMusicGain.gain.value = 0.5; // Lower default volume for music
+            menuMusicSource.connect(menuMusicGain);
+            menuMusicGain.connect(masterGainNode || audioContext.destination);
+        } catch (e) {
+            console.log("Could not connect menu music to audio context", e);
+        }
+    }
+
+    // Play if not already playing
+    if (menuMusic.paused) {
+        menuMusic.play().catch(e => console.log("Menu music play failed (likely autoplay block):", e));
+    }
+}
+
+export function stopMenuMusic() {
+    if (menuMusic) {
+        menuMusic.pause();
+        menuMusic.currentTime = 0;
+    }
 }
 
 // Create and cache the gunshot sound buffer (called once)
@@ -304,4 +343,3 @@ export function playRestartSound() {
         // Silently fail if audio can't play
     }
 }
-

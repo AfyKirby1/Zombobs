@@ -1,9 +1,5 @@
-export class InputSystem {
+export class GamepadState {
     constructor() {
-        this.gamepadIndex = null;
-        this.deadzone = 0.2; // Ignore small stick movements (drift)
-        
-        // State storage
         this.buttons = {
             fire: { pressed: false, justPressed: false, value: 0 },
             reload: { pressed: false, justPressed: false, value: 0 },
@@ -13,89 +9,134 @@ export class InputSystem {
             prevWeapon: { pressed: false, justPressed: false, value: 0 },
             nextWeapon: { pressed: false, justPressed: false, value: 0 },
             sprint: { pressed: false, justPressed: false, value: 0 },
-            melee: { pressed: false, justPressed: false, value: 0 }
+            melee: { pressed: false, justPressed: false, value: 0 },
+            // Menu/Navigation
+            select: { pressed: false, justPressed: false, value: 0 }, // A
+            back: { pressed: false, justPressed: false, value: 0 },   // B
+            up: { pressed: false, justPressed: false, value: 0 },
+            down: { pressed: false, justPressed: false, value: 0 },
+            left: { pressed: false, justPressed: false, value: 0 },
+            right: { pressed: false, justPressed: false, value: 0 }
         };
         
         this.axes = {
             move: { x: 0, y: 0 },
             aim: { x: 0, y: 0 }
         };
+    }
+    
+    resetJustPressed() {
+        for (const key in this.buttons) {
+            this.buttons[key].justPressed = false;
+        }
+    }
+}
+
+export class InputSystem {
+    constructor() {
+        this.gamepadStates = new Map(); // index -> GamepadState
+        this.deadzone = 0.2; 
         
         this.rebindMode = false;
         this.rebindCallback = null;
 
-        // Event listeners for connection
         window.addEventListener("gamepadconnected", (e) => {
-            console.log(`Gamepad connected: ${e.gamepad.id}`);
-            this.gamepadIndex = e.gamepad.index;
+            console.log(`Gamepad connected: ${e.gamepad.id} (Index: ${e.gamepad.index})`);
+            // Ensure state exists
+            if (!this.gamepadStates.has(e.gamepad.index)) {
+                this.gamepadStates.set(e.gamepad.index, new GamepadState());
+            }
         });
 
         window.addEventListener("gamepaddisconnected", (e) => {
-            console.log("Gamepad disconnected");
-            if (this.gamepadIndex === e.gamepad.index) {
-                this.gamepadIndex = null;
-            }
+            console.log(`Gamepad disconnected: ${e.gamepad.index}`);
+            this.gamepadStates.delete(e.gamepad.index);
         });
     }
 
     update(controlSettings) {
-        // Reset 'justPressed' flags every frame
-        for (const key in this.buttons) {
-            this.buttons[key].justPressed = false;
-        }
-
-        if (this.gamepadIndex === null) return;
-
-        const gamepad = navigator.getGamepads()[this.gamepadIndex];
-        if (!gamepad) return;
+        const gamepads = navigator.getGamepads();
         
-        // If we are in rebind mode, listen for any button press
+        // If we are in rebind mode, specialized handling
         if (this.rebindMode && this.rebindCallback) {
-            for (let i = 0; i < gamepad.buttons.length; i++) {
-                if (gamepad.buttons[i].pressed) {
-                    // Debounce slightly or wait for release? 
-                    // For simplicity, trigger on press.
-                    this.rebindCallback(i);
-                    this.rebindMode = false;
-                    this.rebindCallback = null;
-                    return;
-                }
-            }
-            return; // Don't process normal inputs while rebinding
+             // Check all gamepads for any button press
+             for (let i = 0; i < gamepads.length; i++) {
+                 const gp = gamepads[i];
+                 if (gp) {
+                     for (let b = 0; b < gp.buttons.length; b++) {
+                         if (gp.buttons[b].pressed) {
+                             this.rebindCallback(b);
+                             this.rebindMode = false;
+                             this.rebindCallback = null;
+                             return;
+                         }
+                     }
+                 }
+             }
+             return; 
         }
 
-        // --- Axes Processing ---
-        // Left Stick (Move): Axes 0 (X) & 1 (Y)
-        this.applyDeadzone(gamepad.axes[0], gamepad.axes[1], this.axes.move);
+        for (let i = 0; i < gamepads.length; i++) {
+            const gp = gamepads[i];
+            if (!gp) {
+                // Handle disconnected gamepad slot if state exists? 
+                // Usually gamepaddisconnected handles this, but navigator.getGamepads() can return nulls for empty slots.
+                continue;
+            }
+            
+            // Force ensure state if we see a gamepad (sometimes events miss)
+            if (!this.gamepadStates.has(i)) {
+                this.gamepadStates.set(i, new GamepadState());
+            }
+            
+            const state = this.gamepadStates.get(i);
+            state.resetJustPressed();
+            
+            this.updateGamepadState(state, gp, controlSettings);
+        }
+    }
+    
+    updateGamepadState(state, gamepad, settings) {
+        // Axes
+        this.applyDeadzone(gamepad.axes[0], gamepad.axes[1], state.axes.move);
+        this.applyDeadzone(gamepad.axes[2], gamepad.axes[3], state.axes.aim);
         
-        // Right Stick (Aim): Axes 2 (X) & 3 (Y)
-        this.applyDeadzone(gamepad.axes[2], gamepad.axes[3], this.axes.aim);
-
-        // --- Button Mapping ---
-        // Use the provided control settings or fallback to defaults
-        // controlSettings should map action -> buttonIndex
-        // e.g. { fire: 7, reload: 2, ... }
+        // Default mapping if settings not provided
+        // Assuming Xbox-style controller standard mapping
+        const map = settings || {
+            fire: 7, // RT
+            reload: 2, // X
+            grenade: 4, // LB
+            interact: 3, // Y
+            pause: 9, // Start
+            prevWeapon: 14, // D-Left
+            nextWeapon: 15, // D-Right
+            sprint: 10, // L-Stick Click
+            melee: 5, // RB
+            
+            select: 0, // A
+            back: 1,   // B
+            up: 12, down: 13, left: 14, right: 15
+        };
         
-        if (controlSettings) {
-            for (const action in this.buttons) {
-                const buttonIndex = controlSettings[action];
-                if (buttonIndex !== undefined && gamepad.buttons[buttonIndex]) {
-                    this.updateButton(action, gamepad.buttons[buttonIndex]);
-                }
+        // Process mapped actions
+        for (const action in state.buttons) {
+            const idx = map[action];
+            if (idx !== undefined && gamepad.buttons[idx]) {
+                this.updateButton(state.buttons[action], gamepad.buttons[idx]);
             }
         }
     }
 
-    updateButton(name, gamepadButton) {
-        // Handle case where button is an object or raw value
-        const pressed = typeof gamepadButton === 'object' ? gamepadButton.pressed : gamepadButton > 0.5;
-        const value = typeof gamepadButton === 'object' ? gamepadButton.value : (pressed ? 1 : 0);
+    updateButton(buttonState, rawButton) {
+        const pressed = typeof rawButton === 'object' ? rawButton.pressed : rawButton > 0.5;
+        const value = typeof rawButton === 'object' ? rawButton.value : (pressed ? 1 : 0);
         
-        if (pressed && !this.buttons[name].pressed) {
-            this.buttons[name].justPressed = true;
+        if (pressed && !buttonState.pressed) {
+            buttonState.justPressed = true;
         }
-        this.buttons[name].pressed = pressed;
-        this.buttons[name].value = value;
+        buttonState.pressed = pressed;
+        buttonState.value = value;
     }
 
     applyDeadzone(x, y, target) {
@@ -109,9 +150,31 @@ export class InputSystem {
         }
     }
     
-    getAimInput() { return this.axes.aim; }
-    getMoveInput() { return this.axes.move; }
-    isConnected() { return this.gamepadIndex !== null; }
+    getGamepad(index) {
+        return this.gamepadStates.get(index);
+    }
+    
+    getAnyGamepad() {
+        if (this.gamepadStates.size === 0) return null;
+        return this.gamepadStates.values().next().value;
+    }
+
+    // New helper to get all active indices
+    getConnectedGamepadIndices() {
+        return Array.from(this.gamepadStates.keys());
+    }
+    
+    // Backward compatibility for P1 (assumes first gamepad)
+    getAimInput() { return this.getAnyGamepad()?.axes.aim || {x:0, y:0}; }
+    getMoveInput() { return this.getAnyGamepad()?.axes.move || {x:0, y:0}; }
+    
+    // Proxy for buttons of first available gamepad
+    get buttons() { 
+        const gp = this.getAnyGamepad();
+        return gp ? gp.buttons : new GamepadState().buttons;
+    }
+    
+    isConnected() { return this.gamepadStates.size > 0; }
     
     startRebind(callback) {
         this.rebindMode = true;
@@ -125,4 +188,3 @@ export class InputSystem {
 }
 
 export const inputSystem = new InputSystem();
-

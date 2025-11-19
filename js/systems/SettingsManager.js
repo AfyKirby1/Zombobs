@@ -4,6 +4,14 @@ export class SettingsManager {
             audio: {
                 masterVolume: 1.0
             },
+            video: {
+                qualityPreset: 'high', // low, medium, high, custom
+                particleCount: 200,
+                resolutionScale: 1.0,
+                vignette: true,
+                shadows: true,
+                lighting: true
+            },
             controls: {
                 moveUp: 'w',
                 moveDown: 's',
@@ -49,6 +57,8 @@ export class SettingsManager {
 
     mergeSettings(defaults, saved) {
         const merged = JSON.parse(JSON.stringify(defaults));
+        
+        // Merge saved values
         for (const category in saved) {
             if (merged[category]) {
                 for (const key in saved[category]) {
@@ -56,6 +66,20 @@ export class SettingsManager {
                 }
             }
         }
+        
+        // Ensure all default categories and keys exist (handles new updates)
+        for (const category in defaults) {
+            if (!merged[category]) {
+                merged[category] = JSON.parse(JSON.stringify(defaults[category]));
+            } else {
+                for (const key in defaults[category]) {
+                    if (merged[category][key] === undefined) {
+                        merged[category][key] = defaults[category][key];
+                    }
+                }
+            }
+        }
+        
         return merged;
     }
 
@@ -76,6 +100,36 @@ export class SettingsManager {
             this.settings[category] = {};
         }
         this.settings[category][key] = value;
+        
+        // If a video setting changes that isn't the preset itself, switch preset to 'custom'
+        if (category === 'video' && key !== 'qualityPreset') {
+            this.settings.video.qualityPreset = 'custom';
+        }
+        
+        this.saveSettings();
+    }
+    
+    applyVideoPreset(preset) {
+        if (preset === 'low') {
+            this.settings.video.particleCount = 50;
+            this.settings.video.resolutionScale = 0.75;
+            this.settings.video.vignette = false;
+            this.settings.video.shadows = false;
+            this.settings.video.lighting = false;
+        } else if (preset === 'medium') {
+            this.settings.video.particleCount = 100;
+            this.settings.video.resolutionScale = 1.0;
+            this.settings.video.vignette = true;
+            this.settings.video.shadows = true;
+            this.settings.video.lighting = false;
+        } else if (preset === 'high') {
+            this.settings.video.particleCount = 200;
+            this.settings.video.resolutionScale = 1.0;
+            this.settings.video.vignette = true;
+            this.settings.video.shadows = true;
+            this.settings.video.lighting = true;
+        }
+        this.settings.video.qualityPreset = preset;
         this.saveSettings();
     }
 }
