@@ -21,8 +21,8 @@
   <a href="https://socket.io/">
     <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" height="30" alt="Socket.io" />
   </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" height="30" alt="License" />
+  <a href="#-proprietary-license--agreement">
+    <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
 </p>
 
@@ -35,6 +35,10 @@
   <br><br>
   <a href="https://afykirby1.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://otterdays.itch.io/zombobs">
+    <img src="https://img.shields.io/badge/PLAY_ON_ITCH.IO-FA5C5C?style=for-the-badge&logo=itch.io&logoColor=white&labelColor=101010" height="50" alt="Play on Itch.io" />
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="https://otterdays.itch.io/zombobs">
@@ -322,13 +326,13 @@ We welcome contributions! Check out the [roadmap](DOCS/roadmap.md) for ideas, or
 
 ---
 
-## 🔒 Proprietary License & Agreement
+## 🚫 PROPRIETARY & CLOSED SOURCE
 
 **Copyright © 2025 AfyKirby1 (OtterDays). All Rights Reserved.**
 
 This project (ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS) and all associated source code, assets, design, and documentation are the sole intellectual property of **AfyKirby1**.
 
-**⚠️ ACCESS AGREEMENT:**
+**⚠️ STRICT ACCESS AGREEMENT:**
 
 By downloading, cloning, forking, or viewing this repository, you explicitly agree to the following terms:
 
