@@ -33,10 +33,6 @@
   <b>No Engines. No Frameworks. Just Pure Adrenaline.</b><br>
   A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.
   <br><br>
-  <a href="https://github.com/AfyKirby1/Zombobs/archive/refs/heads/main.zip">
-    <img src="https://img.shields.io/badge/DOWNLOAD_SOURCE-FF0000?style=for-the-badge&logo=github&logoColor=white&labelColor=101010" height="50" alt="Download Source" />
-  </a>
-  &nbsp;&nbsp;&nbsp;
   <a href="https://afykirby1.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
   </a>
