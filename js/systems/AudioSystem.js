@@ -211,7 +211,7 @@ export function playKillSound() {
 }
 
 // Generate walking/footstep sound using Web Audio API
-export function playFootstepSound() {
+export function playFootstepSound(isSprinting = false) {
     if (!audioContext) {
         initAudio();
         if (!audioContext) return; // Still can't create, skip sound
@@ -230,15 +230,18 @@ export function playFootstepSound() {
             let sample = 0;
             
             // Initial impact (high frequency tap)
-            const impactFreq = 800 + Math.random() * 200; // Random between 800-1000Hz
+            // Sprinting footsteps have slightly higher frequency for more impact
+            const impactFreq = isSprinting ? (900 + Math.random() * 200) : (800 + Math.random() * 200);
             sample += Math.sin(t * impactFreq * 2 * Math.PI) * 0.3 * Math.exp(-t * 30);
             
-            // Low frequency thud (bass)
-            sample += Math.sin(t * 80 * 2 * Math.PI) * 0.4;
-            sample += Math.sin(t * 120 * 2 * Math.PI) * 0.2;
+            // Low frequency thud (bass) - louder when sprinting
+            const bassVolume = isSprinting ? 0.5 : 0.4;
+            sample += Math.sin(t * 80 * 2 * Math.PI) * bassVolume;
+            sample += Math.sin(t * 120 * 2 * Math.PI) * (bassVolume * 0.5);
             
-            // Add texture with filtered noise (like ground contact)
-            const noise = (Math.random() * 2 - 1) * 0.15;
+            // Add texture with filtered noise (like ground contact) - more noise when sprinting
+            const noiseAmount = isSprinting ? 0.2 : 0.15;
+            const noise = (Math.random() * 2 - 1) * noiseAmount;
             const noiseFilter = Math.exp(-t * 15); // High frequency decays quickly
             sample += noise * noiseFilter;
             
@@ -253,7 +256,8 @@ export function playFootstepSound() {
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.375; // Volume level (increased by 25%)
+        // Sprinting footsteps are louder (50% increase vs normal)
+        gainNode.gain.value = isSprinting ? 0.5625 : 0.375; // 0.375 * 1.5 = 0.5625
         source.connect(gainNode);
         gainNode.connect(masterGainNode || audioContext.destination);
         source.start(0);

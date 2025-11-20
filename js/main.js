@@ -388,6 +388,10 @@ function updatePlayers() {
         }
         // AI Player Controls
         if (player.inputSource === 'ai') {
+            const p1 = gameState.players[0];
+            const distToP1 = Math.sqrt((player.x - p1.x) ** 2 + (player.y - p1.y) ** 2);
+            const leashDistance = 500; // Max distance from P1 before forcing return
+
             // Find nearest zombie
             let nearestZombie = null;
             let minDist = Infinity;
@@ -402,21 +406,69 @@ function updatePlayers() {
                     nearestZombie = zombie;
                 }
             });
+
+            // Default: Follow P1 if too far
+            let wantsToMove = false;
             
-            // Move away from nearest zombie
             if (nearestZombie) {
-                const dx = player.x - nearestZombie.x;
-                const dy = player.y - nearestZombie.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const dx = nearestZombie.x - player.x;
+                const dy = nearestZombie.y - player.y;
+                const dist = minDist;
                 
-                // Normalize and move away
-                moveX = (dx / dist);
-                moveY = (dy / dist);
-                
-                // Face away from zombie
+                // Face the zombie
                 player.angle = Math.atan2(dy, dx);
+
+                // Combat movement logic
+                if (dist < 200) {
+                    // Too close! Back away (Kite)
+                    moveX = -(dx / dist);
+                    moveY = -(dy / dist);
+                    wantsToMove = true;
+                } else if (distToP1 > leashDistance) {
+                    // Too far from squad, regroup towards P1 (ignoring zombie positioning slightly)
+                    const dxP1 = p1.x - player.x;
+                    const dyP1 = p1.y - player.y;
+                    const distP1 = Math.sqrt(dxP1 * dxP1 + dyP1 * dyP1);
+                    moveX = dxP1 / distP1;
+                    moveY = dyP1 / distP1;
+                    wantsToMove = true;
+                } else if (dist > 350) {
+                    // Close the gap slightly if safe
+                    moveX = (dx / dist) * 0.5; // Move slower when approaching
+                    moveY = (dy / dist) * 0.5;
+                    wantsToMove = true;
+                }
+
+                // Shooting Logic
+                // Check if we have ammo and are not reloading
+                if (!player.isReloading && player.currentAmmo > 0 && dist < 500) {
+                     // Add a small random delay or check to prevent perfect laser aim fire rate
+                     // For now, just fire if cooldown allows (shootBullet handles fire rate)
+                     const targetPos = { x: nearestZombie.x, y: nearestZombie.y };
+                     // Random inaccuracy
+                     targetPos.x += (Math.random() - 0.5) * 20;
+                     targetPos.y += (Math.random() - 0.5) * 20;
+                     
+                     shootBullet(targetPos, canvas, player);
+                } else if (player.currentAmmo <= 0 && !player.isReloading) {
+                    reloadWeapon(player);
+                }
+
             } else {
-                // No zombies nearby, move randomly or stay still
+                // No enemies, stick close to P1
+                if (distToP1 > 150) {
+                    const dx = p1.x - player.x;
+                    const dy = p1.y - player.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    moveX = dx / dist;
+                    moveY = dy / dist;
+                    wantsToMove = true;
+                    // Face movement direction when just walking
+                    player.angle = Math.atan2(moveY, moveX);
+                }
+            }
+            
+            if (!wantsToMove) {
                 moveX = 0;
                 moveY = 0;
             }
@@ -494,11 +546,13 @@ function updatePlayers() {
         player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
         player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
 
-        // Footstep sounds
+        // Footstep sounds (more frequent and louder when sprinting)
         if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {
             const currentTime = Date.now();
-            if (currentTime - gameState.lastFootstepTime >= 350) {
-                playFootstepSound();
+            // Sprinting: faster footsteps (200ms), Walking: normal footsteps (350ms)
+            const footstepInterval = player.isSprinting ? 200 : 350;
+            if (currentTime - gameState.lastFootstepTime >= footstepInterval) {
+                playFootstepSound(player.isSprinting);
                 gameState.lastFootstepTime = currentTime;
             }
         }
@@ -696,6 +750,18 @@ function drawPlayers() {
             const fillWidth = (player.stamina / PLAYER_STAMINA_MAX) * barWidth;
             ctx.fillStyle = '#00ffff';
             ctx.fillRect(barX, barY, fillWidth, barHeight);
+        }
+
+        // Player Name (for AI)
+        if (player.name && player.inputSource === 'ai') {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 4;
+            ctx.fillText(player.name, player.x, player.y - player.radius - 8);
+            ctx.shadowBlur = 0;
         }
 
         // Muzzle flash

@@ -12,12 +12,20 @@ const PLAYER_COLORS = [
     { name: 'purple', light: '#cc66ff', dark: '#8800cc', outline: '#55007a', glow: 'rgba(136, 0, 255, 0.4)' }
 ];
 
+const AI_NAMES = [
+    "Rook", "Bishop", "Knight", "Pawn", "Sarge", "Doc", "Tex", "Tank", "Scout", "Viper", 
+    "Ghost", "Soap", "Price", "Gaz", "Roach", "Frost", "Sandman", "Grinch", "Truck", "Yuri",
+    "Delta", "Echo", "Foxtrot", "Kilo", "Sierra", "Tango", "Victor", "Whiskey", "X-Ray", "Yankee"
+];
+
 export function createPlayer(x, y, colorIndex = 0) {
     const color = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length];
+    const randomName = AI_NAMES[Math.floor(Math.random() * AI_NAMES.length)];
 
     return {
         x, y,
         radius: 15,
+        name: randomName,
         speed: PLAYER_BASE_SPEED,
         health: PLAYER_MAX_HEALTH,
         maxHealth: PLAYER_MAX_HEALTH,
