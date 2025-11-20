@@ -2,7 +2,7 @@
 
 ## Overview
 
-The zombie survival game features a weapon system with **3 unique firearms**, each with distinct characteristics designed for different combat situations. All weapons use weapon-specific ammo counters and have individual reload mechanics.
+The zombie survival game features a weapon system with **4 unique firearms**, each with distinct characteristics designed for different combat situations. All weapons use weapon-specific ammo counters, persistent ammo tracking, and individual reload mechanics with background reload support.
 
 ---
 
@@ -71,8 +71,10 @@ The zombie survival game features a weapon system with **3 unique firearms**, ea
 | **Pistol** | 1 | 400ms | 10 | 1000ms | 2.5 | 10 |
 | **Shotgun** | 3×5 | 800ms | 5 | 1000ms | ~9.4 | 75 (ideal) |
 | **Rifle** | 2 | 200ms | 30 | 1000ms | 10 | 60 |
+| **Flamethrower** | 0.5×3 | 50ms | 100 | 2000ms | ~30 | 150 (plus burn DoT) |
 
 *DPS calculated assuming all shots hit and accounting for fire rate only (not reload time)
+*Flamethrower DPS includes burn damage over time
 
 ---
 
@@ -82,31 +84,38 @@ The zombie survival game features a weapon system with **3 unique firearms**, ea
 - **Press `1`**: Switch to Pistol
 - **Press `2`**: Switch to Shotgun  
 - **Press `3`**: Switch to Rifle
+- **Press `4`**: Switch to Flamethrower
+- **Scroll Wheel** (Up/Down): Cycle through weapons (toggleable in Settings)
 
 **Switching Behavior:**
 - Switching weapons **cancels any ongoing reload**
 - Fire rate cooldown is **reset** when switching
-- Ammo count updates to the selected weapon's current ammo
-- Each weapon maintains its own ammo state
+- **Persistent Ammo**: Each weapon maintains its own ammo state that persists when switched away
+- **Background Reload**: If a weapon is holstered for longer than its reload time, it automatically reloads
+  - When switching back, weapon is fully loaded if enough time has passed
+  - Otherwise, weapon restores its previous ammo count
+- Scroll wheel switching can be enabled/disabled in Settings > Controls
 
 ### Shooting
 - **Left Click**: Fire weapon
-- Auto-reloads when ammo reaches 0
+- **Auto-reload on empty**: Automatically begins reloading immediately when ammo reaches 0
 - Respects fire rate cooldown (can't spam click)
 - Shooting is blocked during reload animation
 
 ### Reloading
 - **Press `R`**: Manual reload (when game is running)
-- **Auto-reload**: Automatically triggers when ammo reaches 0
+- **Auto-reload on empty**: Automatically triggers immediately when ammo reaches 0 after a shot
+- **Background reload**: Weapons automatically reload when holstered for >= reload time
 - **Reload Blocking**: Cannot fire while reloading
 - Each weapon has independent reload timing
 
 **Reload Mechanics:**
 - Reload cannot be interrupted by shooting (will queue reload)
-- All weapons have 1 second (1000ms) reload time
+- All weapons have 1 second (1000ms) reload time (Flamethrower: 2 seconds)
 - Ammo refills to full capacity after reload completes
 - HUD shows "Reloading..." during reload animation
 - Reload can be cancelled by switching weapons
+- **Tactical switching**: Switch to another weapon during reload downtime to allow background reload
 
 ---
 
@@ -215,7 +224,10 @@ The zombie survival game features a weapon system with **3 unique firearms**, ea
 - Each weapon maintains independent ammo count
 - `currentAmmo` tracks remaining rounds
 - `maxAmmo` defined per weapon
+- **Persistent ammo tracking**: `player.weaponStates` map stores ammo and holster time for each weapon
 - Switching weapons preserves ammo state (each weapon has its own)
+- **Background reload**: Weapons auto-reload when holstered for >= reload time
+- **Auto-reload on empty**: Triggers immediately when ammo depletes to 0
 
 ### Fire Rate System
 - `lastShotTime` tracks timestamp of last shot
@@ -227,7 +239,11 @@ The zombie survival game features a weapon system with **3 unique firearms**, ea
 - `isReloading` boolean flag
 - `reloadStartTime` timestamp for reload duration
 - Reload completes when `(currentTime - reloadStartTime) >= reloadTime`
-- Auto-reload triggers when `currentAmmo <= 0` and player attempts to shoot
+- **Auto-reload on empty**: Triggers immediately when `currentAmmo` reaches 0 after a shot
+- **Background reload**: When switching weapons, checks if `(now - lastHolsteredTime) >= reloadTime`
+  - If true: Weapon auto-reloaded, restore max ammo
+  - If false: Restore saved ammo count
+- Weapon state synced when reload completes (updates `weaponStates` map)
 
 ---
 
@@ -287,6 +303,57 @@ A close-range melee attack system that provides a fallback option when out of am
 - High damage but requires close range
 - Can hit multiple zombies in arc
 - Cooldown prevents spam
+
+---
+
+### 4. **Flamethrower** 🔥
+**Short-Range, High Fire Rate**
+
+- **Damage**: `0.5` points per tick (damage over time)
+- **Fire Rate**: `50ms` between shots (20 shots/second)
+- **Ammo Capacity**: `100` rounds per tank
+- **Reload Time**: `2000ms` (2 seconds)
+- **Range**: `200px` (short range)
+- **Fire Pattern**: **3 flame particles** with spread pattern
+- **Best For**: Close-range crowd control, applying burn effects, sustained damage
+
+**Unique Mechanics:**
+- Fires **3 flame particles** simultaneously with spread
+- Applies **burn effect**: Zombies take damage over time (3 seconds)
+- Burn damage: `bullet.damage * 2` over time
+- Very high fire rate compensates for low per-tick damage
+- Short range requires close positioning
+- Best for applying status effects and area denial
+
+---
+
+## Advanced Features
+
+### Persistent Ammo System
+- Each weapon maintains its own ammo state in `player.weaponStates` map
+- Ammo count persists when switching weapons (no longer resets to full)
+- Structure: `{ ammo: number, lastHolsteredTime: timestamp }`
+- Enables tactical weapon management and ammo conservation
+
+### Background Reload System
+- Weapons automatically reload when holstered for >= reload time
+- When switching back to a weapon:
+  - If holstered long enough: Weapon is fully loaded (background reload completed)
+  - If not enough time: Weapon restores its previous ammo count
+- Encourages strategic weapon switching during reload downtime
+- Example: Switch to Pistol while Shotgun reloads, then switch back to fully loaded Shotgun
+
+### Auto-Reload on Empty
+- Automatically triggers reload immediately when ammo reaches 0 after a shot
+- No need to manually press reload when clip is empty
+- Seamless combat flow during intense firefights
+- Works in conjunction with background reload for optimal weapon management
+
+### Scroll Wheel Weapon Switching
+- Cycle weapons using mouse scroll wheel (up/down)
+- Toggleable in Settings > Controls (enabled by default)
+- Only active during gameplay (disabled in menus/pause)
+- Provides quick weapon access during combat
 
 ---
 

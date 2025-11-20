@@ -401,13 +401,15 @@ This modular structure improves maintainability, testability, and scalability.
 **Location**: `js/core/constants.js`, `js/utils/combatUtils.js`
 - Four weapon types: Pistol, Shotgun, Rifle, Flamethrower
 - Each weapon has unique: damage, fire rate, ammo capacity, reload time, range
-- Weapon switching with 1/2/3/4 keys (customizable)
+- Weapon switching with 1/2/3/4 keys (customizable) or scroll wheel (toggleable)
 - `currentWeapon` tracks active weapon
 - `lastShotTime` enforces fire rate cooldowns
 - Shotgun fires 5 spread bullets per shot
 - Flamethrower fires 3 flame particles with spread pattern
 - Damage multiplier system: Bullet damage multiplied by `gameState.damageMultiplier` (applies double damage buff)
 - Burning mechanic: Flame bullets apply damage over time (burn timer) instead of instant damage
+- **Persistent ammo tracking**: Each weapon maintains its own ammo state in `player.weaponStates` map
+- **Background reload**: Weapons auto-reload when holstered for longer than reload time
 
 **Weapon Properties:**
 - **Pistol**: 1 damage, 400ms fire rate, 10 ammo, 1000ms reload
@@ -415,23 +417,36 @@ This modular structure improves maintainability, testability, and scalability.
 - **Rifle**: 2 damage, 200ms fire rate, 30 ammo, 1000ms reload
 - **Flamethrower**: 0.5 damage per tick, 50ms fire rate, 100 ammo, 2000ms reload, 200px range, applies burn effect
 
+**Weapon Switching:**
+- Keyboard: 1/2/3/4 keys (customizable in settings)
+- Scroll wheel: Up/down to cycle weapons (toggleable in settings, enabled by default)
+- Switching saves current weapon's ammo state and restores target weapon's saved state
+- Background reload: If weapon was holstered for >= reload time, it auto-reloaded and restores max ammo
+- Fire rate cooldown resets on weapon switch
+- Reload animation cancelled on weapon switch
+
 ### Ammo System
 **Location**: `js/core/gameState.js`, `js/utils/combatUtils.js`
 - Weapon-specific ammo counts (`currentAmmo`, `maxAmmo`)
-- Each weapon maintains independent ammo state
+- Each weapon maintains independent ammo state in `player.weaponStates` map
+- Ammo state structure: `{ ammo: number, lastHolsteredTime: timestamp }`
 - Ammo consumption on each shot
-- Auto-reload when ammo reaches 0
+- **Auto-reload on empty**: Triggers immediately when ammo reaches 0 after a shot
 - Manual reload with R key (customizable)
 - Ammo displayed in HUD with reload status
+- **Persistent ammo**: Switching weapons preserves each weapon's ammo count
 
 ### Reload System
 **Location**: `js/core/gameState.js`, `js/utils/combatUtils.js`
 - `isReloading` boolean flag tracks reload state
 - `reloadStartTime` timestamp for reload duration
-- All weapons have 1000ms (1 second) reload time
+- All weapons have 1000ms (1 second) reload time (Flamethrower: 2000ms)
 - Reload blocks shooting during animation
 - HUD displays "Reloading..." during reload
 - Reload can be cancelled by weapon switch
+- **Background reload**: Weapons automatically reload when holstered for >= reload time
+- **Auto-reload on empty**: Automatically triggers when ammo depletes to 0
+- Weapon state synced when reload completes (updates `weaponStates` map)
 
 ### Audio System
 **Location**: `js/systems/AudioSystem.js`
@@ -440,7 +455,7 @@ This modular structure improves maintainability, testability, and scalability.
 - **Gunshot Sound**: Sharp crack with low-frequency boom
 - **Damage Sound**: Low-frequency grunt (175Hz) on player hit
 - **Kill Sound**: Satisfying pop/thud (350Hz) on zombie kill
-- **Footstep Sound**: Impact thud with bass (every 350ms while moving)
+- **Footstep Sound**: Impact thud with bass (350ms while walking, 130ms while sprinting)
 - **Explosion Sound**: Low rumble with high crack (400ms duration)
 - **Restart Sound**: Rising tone (200-800Hz) on game restart
 - Master volume control via `masterGainNode`

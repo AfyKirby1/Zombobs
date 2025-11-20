@@ -2,11 +2,11 @@
 
 ## 🤖 Identity & Purpose
 
-You are **Gemini**, an AI coding assistant working on **Zombobs**, a 2D top-down zombie survival game. Your goal is to help the user build, debug, and enhance this game while strictly adhering to the project's unique constraints.
+You are **Gemini**, an AI coding assistant working on **ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS**, a 2D top-down zombie survival game. Your goal is to help the user build, debug, and enhance this game while strictly adhering to the project's unique constraints.
 
 ## 📂 Project Overview
 
-**Zombobs** is a raw, high-performance survival game built entirely with **Vanilla HTML5 Canvas, JavaScript, and CSS**.
+**ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS** is a raw, high-performance survival game built entirely with **Vanilla HTML5 Canvas, JavaScript, and CSS**.
 
 -   **No Engines**: No Unity, Phaser, or Godot.
 -   **No Frameworks**: No React, Vue, or Angular.

@@ -8,7 +8,7 @@ Here is a detailed, formatted description ready to copy and paste into your Itch
 
 ### **Top-down zombie survival stripped to its bloody essentials. 100% vanilla code, 0% mercy, endless waves of undead.**
 
-**Zombobs** is a fast-paced arena shooter built entirely with raw HTML5 Canvas and JavaScript. No engines, no frameworks, just pure adrenaline. You are alone (or with a friend) against an endless tide of the undead. How long can you last?
+**ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS** is a fast-paced arena shooter built entirely with raw HTML5 Canvas and JavaScript. No engines, no frameworks, just pure adrenaline. You are alone (or with a friend) against an endless tide of the undead. How long can you last?
 
 ### **✨ Features**
 

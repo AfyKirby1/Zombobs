@@ -2,6 +2,59 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.2.6] - 2025-01-XX
+
+### Added
+- **Landing Page Fly-out Animation** - Restored Star Wars-style fly-out effect on main landing page
+  - Icons (Zombie, Bullet, Health Pickup) fly out from screen center in random directions
+  - Elements fade and scale as they move away from center
+  - Creates dynamic, engaging background effect
+
+### Changed
+- **Landing Page UI Transparency** - Increased panel transparency for better visual depth
+  - Dark mode card background opacity reduced from 0.65 to 0.45
+  - Light mode card background opacity reduced from 0.85 to 0.65
+  - Allows background animations to show through more prominently
+
+### Added
+- **Scroll Wheel Weapon Switching** - Cycle weapons using mouse scroll wheel during combat
+  - Toggleable in Settings > Controls (enabled by default)
+  - Scroll up: Previous weapon, Scroll down: Next weapon
+  - Only active during gameplay (disabled in menus)
+  - Respects game pause state
+
+- **Persistent Weapon Ammo System** - Weapons maintain their ammo count when switched away
+  - Each weapon tracks its own ammo state independently
+  - Ammo persists when switching between weapons
+  - Weapon states stored in `player.weaponStates` map
+
+- **Background Reload System** - Weapons automatically reload when sheathed long enough
+  - If a weapon is holstered for longer than its reload time, it auto-reloads in the background
+  - When switching back, weapon is fully loaded if enough time has passed
+  - Otherwise, weapon restores its previous ammo count
+  - Encourages tactical weapon switching during reload downtime
+
+- **Auto-Reload on Empty** - Weapons automatically begin reloading when ammo reaches 0
+  - Triggers immediately after the shot that depletes ammo
+  - No need to manually press reload when clip is empty
+  - Seamless combat flow during intense firefights
+
+### Changed
+- **Weapon Switching** - Enhanced with state persistence and background reload mechanics
+  - Weapons now save their ammo state when holstered
+  - Switching weapons no longer resets ammo to full (preserves actual ammo count)
+  - Background reload occurs automatically if weapon is holstered for reload duration
+
+- **Settings Panel** - Added scroll wheel toggle control
+  - New toggle in Controls view (keyboard mode only)
+  - Allows players to disable scroll wheel weapon switching if desired
+  - Setting persists across sessions
+
+- **Footstep Sound Rate** - Adjusted sprint footstep frequency for better audio feedback
+  - Sprinting footsteps now play at 130ms intervals (faster than walking)
+  - Walking footsteps remain at 350ms intervals
+  - Provides clearer audio distinction between walking and sprinting
+
 ## [0.2.5] - 2025-01-XX
 
 ### Changed

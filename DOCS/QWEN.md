@@ -1,7 +1,7 @@
-# Zombobs - Zombie Survival Game Project Context
+# ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS - Project Context
 
 ## Project Overview
-Zombobs is a fast-paced, 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. The game features wave-based gameplay where the player must survive as long as possible by shooting zombies that spawn from the edges of the screen. The project emphasizes performance and visual polish with features like screen shake, particle effects, damage indicators, and audio generated via the Web Audio API.
+ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS is a fast-paced, 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. The game features wave-based gameplay where the player must survive as long as possible by shooting zombies that spawn from the edges of the screen. The project emphasizes performance and visual polish with features like screen shake, particle effects, damage indicators, and audio generated via the Web Audio API.
 
 ## Technology Stack
 - **Frontend Core**: 100% Vanilla JavaScript (ES6+)
@@ -14,7 +14,7 @@ Zombobs is a fast-paced, 2D top-down zombie survival game built with vanilla HTM
 
 ## Project Structure
 ```
-Zombobs/
+ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ├── zombie-game.html              # Main entry point
 ├── index.html                    # Landing page
 ├── launch.bat                    # Windows launcher (calls PowerShell)
@@ -180,7 +180,7 @@ Zombobs/
 All sound effects are generated programmatically using the Web Audio API:
 - Gunshot: Sharp crack with low-frequency boom
 - Damage: Low-frequency grunt sound (175Hz)
-- Footsteps: Impact thud with bass (every 350ms while moving)
+- Footsteps: Impact thud with bass (350ms while walking, 130ms while sprinting)
 - Explosion: Low rumble with high crack (400ms duration)
 - Restart: Rising tone (200-800Hz)
 

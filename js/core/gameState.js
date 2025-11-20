@@ -42,6 +42,14 @@ export function createPlayer(x, y, colorIndex = 0) {
         reloadStartTime: 0,
         currentAmmo: WEAPONS.pistol.ammo,
         maxAmmo: WEAPONS.pistol.maxAmmo,
+        
+        // Per-weapon ammo tracking (for persistence when switching)
+        weaponStates: {
+            pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
+            shotgun: { ammo: WEAPONS.shotgun.ammo, lastHolsteredTime: 0 },
+            rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
+            flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
+        },
 
         // Melee state
         lastMeleeTime: 0,

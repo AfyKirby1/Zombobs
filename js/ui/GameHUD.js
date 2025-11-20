@@ -2,6 +2,7 @@ import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION } from '../core/constants.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 
 export class GameHUD {
     constructor(canvas) {
@@ -628,12 +629,12 @@ export class GameHUD {
     drawMainMenu() {
         this.drawCreepyBackground();
 
-        this.ctx.font = 'bold 64px "Creepster", cursive';
+        this.ctx.font = 'bold 40px "Creepster", cursive';
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
         this.ctx.shadowBlur = 30;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillText('ZOMBOBS', this.canvas.width / 2, this.canvas.height / 2 - 200);
+        this.ctx.fillText('ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS', this.canvas.width / 2, this.canvas.height / 2 - 200);
         this.ctx.shadowBlur = 0;
 
         this.ctx.font = '18px "Roboto Mono", monospace';
@@ -1044,4 +1045,30 @@ export class GameHUD {
 
     showMainMenu() { this.mainMenu = true; }
     hideMainMenu() { this.mainMenu = false; this.hoveredButton = null; }
+
+    drawLowHealthVignette(player) {
+        if (!settingsManager.getSetting('video', 'lowHealthWarning')) return;
+        
+        const healthPercent = player.health / player.maxHealth;
+        if (healthPercent >= 0.3) return; // Only show when health < 30%
+
+        const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7; // Pulse between 0.4 and 1.0
+        const intensity = (0.3 - healthPercent) / 0.3; // 0 to 1 based on how low health is
+        const alpha = intensity * pulse * 0.4; // Max 40% opacity
+
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const maxRadius = Math.max(this.canvas.width, this.canvas.height) * 0.8;
+
+        const vignette = this.ctx.createRadialGradient(
+            centerX, centerY, this.canvas.height * 0.2,
+            centerX, centerY, maxRadius
+        );
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(0.5, `rgba(255, 0, 0, ${alpha * 0.3})`);
+        vignette.addColorStop(1, `rgba(255, 0, 0, ${alpha})`);
+
+        this.ctx.fillStyle = vignette;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
 }

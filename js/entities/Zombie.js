@@ -4,6 +4,7 @@ import { MAX_PARTICLES } from '../core/constants.js';
 import { playDamageSound, playKillSound, playExplosionSound } from '../systems/AudioSystem.js';
 import { triggerDamageIndicator } from '../utils/gameUtils.js';
 import { createExplosion, createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 
 // Base Zombie class (shared behaviour for all zombie types)
 export class Zombie {
@@ -18,12 +19,16 @@ export class Zombie {
         this.radius = 12;
         this.speed = 1 + (gameState.wave * 0.1);
         this.health = 2 + Math.floor(gameState.wave / 3);
+        this.maxHealth = this.health;
         this.type = 'base';
         
         // Burning state
         this.burnTimer = 0; // ms remaining
         this.burnDamage = 0; // damage per tick
         this.baseSpeed = null; // Will be set on first update for night cycle
+        
+        // Health bar display
+        this.lastDamageTime = 0; // Timestamp when last damaged
     }
 
     update(player) {
@@ -202,10 +207,48 @@ export class Zombie {
             ctx.ellipse(this.x + 7, this.y + 8 + dripAnim * 0.5, 1, 2, 0, 0, Math.PI * 2);
             ctx.fill();
         }
+        
+        // Health bar (if recently damaged and setting enabled)
+        if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
+            const timeSinceDamage = Date.now() - this.lastDamageTime;
+            if (timeSinceDamage < 2000 && this.maxHealth) { // Show for 2 seconds
+                const barWidth = this.radius * 2.5;
+                const barHeight = 3;
+                const barX = this.x - barWidth / 2;
+                const barY = this.y - this.radius - 8;
+                
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                // Health fill
+                const healthPercent = Math.max(0, this.health / this.maxHealth);
+                const fillWidth = barWidth * healthPercent;
+                
+                // Color gradient: green -> yellow -> red
+                const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                if (healthPercent > 0.5) {
+                    gradient.addColorStop(0, '#4caf50'); // Green
+                    gradient.addColorStop(1, '#ffeb3b'); // Yellow
+                } else {
+                    gradient.addColorStop(0, '#ffeb3b'); // Yellow
+                    gradient.addColorStop(1, '#f44336'); // Red
+                }
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(barX, barY, fillWidth, barHeight);
+                
+                // Border
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
+        }
     }
 
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
         return this.health <= 0;
     }
 }
@@ -276,6 +319,7 @@ export class ArmoredZombie extends Zombie {
 
         if (remaining > 0) {
             this.health -= remaining;
+            this.lastDamageTime = Date.now();
         }
 
         return this.health <= 0;
@@ -477,6 +521,7 @@ export class ExplodingZombie extends Zombie {
 
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
         return this.health <= 0;
     }
 }
@@ -675,6 +720,7 @@ export class SpitterZombie extends Zombie {
 
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
         return this.health <= 0;
     }
 }

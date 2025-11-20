@@ -34,8 +34,12 @@ import {
 
 // Make triggerDamageIndicator available globally for AcidPool
 window.triggerDamageIndicator = triggerDamageIndicator;
-import { createParticles, createBloodSplatter, addParticle } from './systems/ParticleSystem.js';
+import { createParticles, createBloodSplatter, spawnParticle, updateParticles, drawParticles } from './systems/ParticleSystem.js';
 import { inputSystem } from './systems/InputSystem.js';
+import { GameEngine } from './core/GameEngine.js';
+
+// Initialize Game Engine
+const gameEngine = new GameEngine();
 
 // Initialize HUD
 const gameHUD = new GameHUD(canvas);
@@ -549,8 +553,8 @@ function updatePlayers() {
         // Footstep sounds (more frequent and louder when sprinting)
         if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {
             const currentTime = Date.now();
-            // Sprinting: faster footsteps (200ms), Walking: normal footsteps (350ms)
-            const footstepInterval = player.isSprinting ? 200 : 350;
+            // Sprinting: faster footsteps (130ms), Walking: normal footsteps (350ms)
+            const footstepInterval = player.isSprinting ? 130 : 350;
             if (currentTime - gameState.lastFootstepTime >= footstepInterval) {
                 playFootstepSound(player.isSprinting);
                 gameState.lastFootstepTime = currentTime;
@@ -752,6 +756,31 @@ function drawPlayers() {
             ctx.fillRect(barX, barY, fillWidth, barHeight);
         }
 
+        // Reload bar
+        if (settingsManager.getSetting('video', 'reloadBar') !== false && player.isReloading) {
+            const now = Date.now();
+            const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
+            
+            const barWidth = 40;
+            const barHeight = 4;
+            const barX = player.x - barWidth / 2;
+            const barY = player.y + player.radius + (player.stamina < PLAYER_STAMINA_MAX ? 20 : 12);
+
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Progress fill
+            const fillWidth = barWidth * reloadProgress;
+            ctx.fillStyle = '#ff9800'; // Orange color for reload
+            ctx.fillRect(barX, barY, fillWidth, barHeight);
+            
+            // Border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
+
         // Player Name (for AI)
         if (player.name && player.inputSource === 'ai') {
             ctx.fillStyle = '#ffffff';
@@ -847,12 +876,34 @@ function drawCrosshair() {
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
 
     ctx.save();
-    const crosshairSize = 12;
+    const baseCrosshairSize = 12;
     const crosshairLineWidth = 2;
     const crosshairColor = '#ffffff';
     const crosshairOutlineColor = '#000000';
 
-    const crosshairColorCurrent = gameState.player.isReloading ? '#888888' : crosshairColor;
+    const crosshairColorCurrent = gameState.players[0]?.isReloading ? '#888888' : crosshairColor;
+    
+    // Dynamic crosshair: expand when moving or shooting
+    let crosshairSize = baseCrosshairSize;
+    const dynamicCrosshair = settingsManager.getSetting('video', 'dynamicCrosshair') !== false;
+    
+    if (dynamicCrosshair && gameState.players[0]) {
+        const player = gameState.players[0];
+        // Check if player is moving (approximate by checking if they moved recently)
+        const isMoving = Math.abs(player.x - (player.lastX || player.x)) > 0.1 || 
+                        Math.abs(player.y - (player.lastY || player.y)) > 0.1;
+        player.lastX = player.x;
+        player.lastY = player.y;
+        
+        // Expand crosshair when moving or recently shot
+        const timeSinceLastShot = Date.now() - (player.lastShotTime || 0);
+        const recentlyShot = timeSinceLastShot < 200; // 200ms after shooting
+        
+        if (isMoving || recentlyShot) {
+            const expansion = isMoving ? 4 : (recentlyShot ? 6 : 0);
+            crosshairSize = baseCrosshairSize + expansion;
+        }
+    }
 
     ctx.strokeStyle = crosshairOutlineColor;
     ctx.lineWidth = crosshairLineWidth + 2;
@@ -1096,16 +1147,7 @@ function updateGame() {
     });
 
     // Update particles
-    gameState.particles = gameState.particles.filter(particle => {
-        if (particle.update) {
-            particle.update();
-        } else {
-            particle.x += particle.vx;
-            particle.y += particle.vy;
-            particle.life--;
-        }
-        return particle.life > 0;
-    });
+    updateParticles();
 
     // Update shells
     gameState.shells = gameState.shells.filter(shell => {
@@ -1162,6 +1204,12 @@ function updateGame() {
             if (now - p.reloadStartTime >= p.currentWeapon.reloadTime) {
                 p.isReloading = false;
                 p.currentAmmo = p.currentWeapon.maxAmmo;
+                // Update weapon state with reloaded ammo
+                const weaponKeys = Object.keys(WEAPONS);
+                const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === p.currentWeapon);
+                if (currentWeaponKey && p.weaponStates[currentWeaponKey]) {
+                    p.weaponStates[currentWeaponKey].ammo = p.currentAmmo;
+                }
             }
         }
     });
@@ -1308,19 +1356,7 @@ function drawGame() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    gameState.particles.forEach(particle => {
-        if (particle.draw) {
-            particle.draw();
-        } else {
-            const maxLife = particle.maxLife || 30;
-            ctx.fillStyle = particle.color;
-            ctx.globalAlpha = Math.max(0, particle.life / maxLife);
-            ctx.beginPath();
-            ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-        }
-    });
+    drawParticles();
 
     // Draw spawn indicators
     gameState.spawnIndicators.forEach(indicator => {
@@ -1372,6 +1408,12 @@ function drawGame() {
 
     gameState.damageNumbers.forEach(num => num.draw(ctx));
     drawCrosshair();
+    
+    // Draw low health vignette before HUD
+    if (gameState.players.length > 0 && gameState.players[0].health > 0) {
+        gameHUD.drawLowHealthVignette(gameState.players[0]);
+    }
+    
     gameHUD.draw();
     drawWaveNotification();
     drawWaveBreak();
@@ -1467,31 +1509,14 @@ function cycleWeapon(direction, player) {
 
 let activeInputSource = 'mouse';
 
-function gameLoop() {
-    const now = performance.now();
-    gameState.framesSinceFpsUpdate++;
-    if (now - gameState.lastFpsUpdateTime >= 500) {
-        gameState.fps = Math.round((gameState.framesSinceFpsUpdate * 1000) / (now - gameState.lastFpsUpdateTime));
-        gameState.framesSinceFpsUpdate = 0;
-        gameState.lastFpsUpdateTime = now;
-    }
+gameEngine.update = (dt) => {
+    // FPS is calculated in draw
 
     if (gameState.showCoopLobby) {
         updateCoopLobby();
-        gameHUD.draw(); // Draw lobby
     }
     else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
         updateGame();
-        drawGame(); // Only draw game if not in lobby
-    }
-    // Only draw game if not in lobbies/main menu (drawGame handles mainmenu/lobby drawing internally too but structured oddly)
-    // Let's rely on drawGame() for everything except pure lobby updates
-    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby) {
-        drawGame();
-    }
-    // If paused
-    else if (gameState.gamePaused) {
-        drawGame();
     }
 
     // Update Input
@@ -1551,10 +1576,33 @@ function gameLoop() {
             if (gpState.buttons.reload.justPressed) restartGame();
         }
     }
+};
 
-    // drawGame(); // Removed duplicate call
-    requestAnimationFrame(gameLoop);
-}
+gameEngine.draw = () => {
+    const now = performance.now();
+    gameState.framesSinceFpsUpdate++;
+    if (now - gameState.lastFpsUpdateTime >= 500) {
+        gameState.fps = Math.round((gameState.framesSinceFpsUpdate * 1000) / (now - gameState.lastFpsUpdateTime));
+        gameState.framesSinceFpsUpdate = 0;
+        gameState.lastFpsUpdateTime = now;
+    }
+
+    if (gameState.showCoopLobby) {
+        gameHUD.draw(); // Draw lobby
+    }
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
+        drawGame(); // Only draw game if not in lobby
+    }
+    // Only draw game if not in lobbies/main menu (drawGame handles mainmenu/lobby drawing internally too but structured oddly)
+    // Let's rely on drawGame() for everything except pure lobby updates
+    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby) {
+        drawGame();
+    }
+    // If paused
+    else if (gameState.gamePaused) {
+        drawGame();
+    }
+};
 
 // Event Listeners
 document.addEventListener('keydown', (e) => {
@@ -1765,7 +1813,26 @@ canvas.addEventListener('mouseup', (e) => {
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('mouseleave', () => mouse.isDown = false);
 
+canvas.addEventListener('wheel', (e) => {
+    // Only handle scroll wheel weapon switching if enabled and game is running
+    if (!settingsManager.getSetting('controls', 'scrollWheelSwitch')) return;
+    if (!gameState.gameRunning || gameState.gamePaused) return;
+    if (gameState.showMainMenu || gameState.showSettingsPanel || gameState.showLobby || 
+        gameState.showCoopLobby || gameState.showAILobby) return;
+    
+    const p1 = gameState.players[0];
+    if (!p1 || p1.health <= 0) return;
+    
+    // Prevent default scrolling
+    e.preventDefault();
+    
+    // Cycle weapon based on scroll direction
+    // deltaY > 0 means scrolling down (next weapon), < 0 means scrolling up (previous weapon)
+    const direction = Math.sign(e.deltaY);
+    cycleWeapon(direction, p1);
+});
+
 // Initialization
 loadHighScore();
 loadUsername();
-gameLoop();
+gameEngine.start();

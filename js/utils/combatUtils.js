@@ -1,4 +1,6 @@
 import { gameState } from '../core/gameState.js';
+import { canvas } from '../core/canvas.js';
+import { Quadtree } from './Quadtree.js';
 import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
@@ -11,6 +13,7 @@ import { Bullet, FlameBullet } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 
 export function shootBullet(target, canvas, player) {
     // Fallback to p1 for backward compat if player not provided
@@ -23,6 +26,12 @@ export function shootBullet(target, canvas, player) {
         if (now - player.reloadStartTime >= player.currentWeapon.reloadTime) {
             player.isReloading = false;
             player.currentAmmo = player.currentWeapon.maxAmmo;
+            // Update weapon state with reloaded ammo
+            const weaponKeys = Object.keys(WEAPONS);
+            const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === player.currentWeapon);
+            if (currentWeaponKey && player.weaponStates[currentWeaponKey]) {
+                player.weaponStates[currentWeaponKey].ammo = player.currentAmmo;
+            }
         } else {
             return; // Still reloading
         }
@@ -75,6 +84,11 @@ export function shootBullet(target, canvas, player) {
     // Consume ammo
     player.currentAmmo--;
 
+    // Auto-reload if ammo is empty after this shot
+    if (player.currentAmmo === 0) {
+        reloadWeapon(player);
+    }
+
     // Update last shot time
     player.lastShotTime = now;
 
@@ -112,11 +126,43 @@ export function reloadWeapon(player) {
 export function switchWeapon(weapon, player) {
     player = player || gameState.players[0];
     if (weapon !== player.currentWeapon) {
+        const now = Date.now();
+        
+        // Find the current weapon key to save its state
+        const weaponKeys = Object.keys(WEAPONS);
+        const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === player.currentWeapon);
+        
+        // Save current weapon's ammo state before switching
+        if (currentWeaponKey && player.weaponStates[currentWeaponKey]) {
+            player.weaponStates[currentWeaponKey].ammo = player.currentAmmo;
+            player.weaponStates[currentWeaponKey].lastHolsteredTime = now;
+        }
+        
+        // Find the new weapon key
+        const newWeaponKey = weaponKeys.find(key => WEAPONS[key] === weapon);
+        
+        // Switch to new weapon
         player.currentWeapon = weapon;
-        player.currentAmmo = player.currentWeapon.ammo;
         player.maxAmmo = player.currentWeapon.maxAmmo;
         player.lastShotTime = 0; // Reset fire rate cooldown
         player.isReloading = false; // Cancel any ongoing reload
+        
+        // Check if the new weapon was holstered long enough for background reload
+        if (newWeaponKey && player.weaponStates[newWeaponKey]) {
+            const weaponState = player.weaponStates[newWeaponKey];
+            const timeHolstered = now - weaponState.lastHolsteredTime;
+            
+            // If weapon was holstered for longer than reload time, it auto-reloaded
+            if (timeHolstered >= weapon.reloadTime && weaponState.lastHolsteredTime > 0) {
+                player.currentAmmo = weapon.maxAmmo;
+            } else {
+                // Restore saved ammo state
+                player.currentAmmo = weaponState.ammo;
+            }
+        } else {
+            // Fallback: initialize with weapon's default ammo
+            player.currentAmmo = weapon.ammo;
+        }
     }
 }
 
@@ -219,9 +265,53 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true) {
 
 // Collision handlers
 export function handleBulletZombieCollisions() {
+    // Initialize Quadtree for spatial partitioning
+    // Capacity 4 per node seems reasonable for zombies
+    const qt = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+    
+    // Insert all zombies into Quadtree
+    gameState.zombies.forEach(zombie => qt.insert(zombie));
+
     gameState.bullets.forEach((bullet, bulletIndex) => {
-        gameState.zombies.forEach((zombie, zombieIndex) => {
+        // Define query range for the bullet (using a safe bounding box)
+        const range = {
+            x: bullet.x - 20, // Arbitrary padding around bullet
+            y: bullet.y - 20,
+            width: 40,
+            height: 40
+        };
+
+        // Query potential collisions
+        const candidates = qt.query(range);
+
+        candidates.forEach(zombie => {
+            // Verify the zombie is still alive (might have been killed by another bullet in this same frame)
+            // Although candidates are references to objects in gameState.zombies, 
+            // if we splice from gameState.zombies, the reference is still valid but we need to ensure
+            // we don't process a dead zombie if we handle death by setting health <= 0 before splicing.
+            // However, we splice immediately. 
+            // Problem: If a bullet kills a zombie, it's removed from gameState.zombies. 
+            // But it's still in the local `candidates` list for *other* bullets?
+            // No, we are inside the bullet loop. 
+            // If bullet A kills zombie Z, zombie Z is removed from gameState.zombies.
+            // But logic uses references. 
+            
+            // We need to check if zombie is still in gameState.zombies to be safe, 
+            // or just check health > 0.
+            if (zombie.health <= 0) return;
+
+            // Also checking if bullet is still active (it might have hit another zombie in spread?)
+            // The bullet loop continues? No, we usually splice bullet on impact.
+            if (bullet.hit) return; // Add a hit flag if we want to stop processing this bullet
+
+            const zombieIndex = gameState.zombies.indexOf(zombie);
+            if (zombieIndex === -1) return; // Already removed
+
             if (checkCollision(bullet, zombie)) {
+                // Mark bullet as hit to prevent multiple collisions if it's not piercing
+                // (Flamethrower is piercing-ish, handled separately)
+                if (bullet.type !== 'flame') bullet.hit = true;
+
                 // Get bullet angle for directional blood splatter
                 const impactAngle = Math.atan2(bullet.vy, bullet.vx);
 
@@ -238,8 +328,8 @@ export function handleBulletZombieCollisions() {
                     // Also apply instant damage
                     if (zombie.takeDamage(bullet.damage)) {
                         // Zombie dies from flame hit
-                        const zombieX = zombie.x;
-                        const zombieY = zombie.y;
+                        // const zombieX = zombie.x; // Already stored
+                        // const zombieY = zombie.y;
                         gameState.zombies.splice(zombieIndex, 1);
                         
                         if (zombie.type === 'boss' || zombie === gameState.boss) {
@@ -277,8 +367,24 @@ export function handleBulletZombieCollisions() {
                         gameState.hitMarker.active = true;
                         gameState.hitMarker.life = gameState.hitMarker.maxLife;
                     }
-                    gameState.bullets.splice(bulletIndex, 1);
-                    return; // Skip normal bullet handling
+                    // Don't destroy flame bullets immediately? 
+                    // Original code: gameState.bullets.splice(bulletIndex, 1);
+                    // But wait, flame passes through?
+                    // The original code spliced it. So it's not piercing multiple enemies in one frame easily 
+                    // unless we structured it differently.
+                    // Let's keep original behavior: remove bullet.
+                    // But we are in a forEach loop for bullets. Splicing inside forEach is dangerous in JS 
+                    // if we don't handle index shifts.
+                    // The outer loop is `gameState.bullets.forEach`. 
+                    // If we splice `bulletIndex`, the next element is skipped.
+                    // The original code had this bug!
+                    // "gameState.bullets.splice(bulletIndex, 1);" inside forEach.
+                    
+                    // Better approach: mark for removal and filter later, or loop backwards.
+                    // For now, I'll stick to the original logic but acknowledge the flaw, 
+                    // or fix it by marking `bullet.markedForRemoval = true` and filtering after.
+                    bullet.markedForRemoval = true;
+                    return; 
                 }
 
                 // Critical hit chance (10%)
@@ -361,10 +467,16 @@ export function handleBulletZombieCollisions() {
                 gameState.hitMarker.active = true;
                 gameState.hitMarker.life = gameState.hitMarker.maxLife;
                 
-                gameState.bullets.splice(bulletIndex, 1);
+                bullet.markedForRemoval = true;
             }
         });
     });
+
+    // Remove marked bullets
+    // We need to filter the main array
+    // Since we can't easily replace the array in place if it's const (it's not, it's a prop of gameState), 
+    // we can do:
+    gameState.bullets = gameState.bullets.filter(b => !b.markedForRemoval);
 }
 
 export function handlePlayerZombieCollisions() {
@@ -400,6 +512,8 @@ export function handlePlayerZombieCollisions() {
 }
 
 export function handlePickupCollisions() {
+    const showFloatingText = settingsManager.getSetting('video', 'floatingText') !== false;
+
     // Check player-health pickup collisions
     if (gameState.healthPickups.length > 0) {
         gameState.healthPickups = gameState.healthPickups.filter(pickup => {
@@ -411,6 +525,9 @@ export function handlePickupCollisions() {
                         player.health + HEALTH_PICKUP_HEAL_AMOUNT
                     );
                     createParticles(pickup.x, pickup.y, '#ff1744', 8);
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(pickup.x, pickup.y - 20, `+${HEALTH_PICKUP_HEAL_AMOUNT} HP`, false, '#ff1744'));
+                    }
                     collected = true;
                     break; // Only one player picks it up
                 }
@@ -430,6 +547,9 @@ export function handlePickupCollisions() {
                     // Also refill grenades
                     player.grenadeCount = MAX_GRENADES;
                     createParticles(pickup.x, pickup.y, '#ff9800', 8);
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(pickup.x, pickup.y - 20, `+${AMMO_PICKUP_AMOUNT} AMMO`, false, '#00ffff'));
+                    }
                     collected = true;
                     break;
                 }

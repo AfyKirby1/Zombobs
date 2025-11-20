@@ -7,8 +7,11 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Playable** - Core gameplay loop is functional
 ✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
 ✅ **Audio System** - Gunshots, damage sounds, footsteps, restart sounds, menu music (Web Audio API + HTMLAudioElement)
-✅ **Weapon System** - 3 weapons (Pistol, Shotgun, Rifle) with unique stats
-✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts
+✅ **Weapon System** - 4 weapons (Pistol, Shotgun, Rifle, Flamethrower) with unique stats
+✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts, persistent ammo tracking
+✅ **Weapon Controls** - Keyboard switching (1/2/3/4) and scroll wheel cycling (toggleable)
+✅ **Background Reload** - Weapons auto-reload when holstered long enough
+✅ **Auto-Reload** - Automatic reload when ammo reaches 0
 ✅ **UI Systems** - In-game HUD component with pause menu and game over screens
 ✅ **Multiplayer Lobby** - Canvas-driven lobby tied to socket.io backend (PowerShell launcher)
 ✅ **Modular Architecture** - ES6 modules with organized file structure
@@ -27,7 +30,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 
 ## File Structure
 ```
-Zombobs/
+ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ├── zombie-game.html              # Main entry point
 ├── index.html                    # Landing page
 ├── launch.bat                    # Windows launcher (calls PowerShell)
@@ -129,7 +132,15 @@ Zombobs/
 - Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (v0.2.5)
+## Recent Updates (v0.2.6)
+
+- **Landing Page Visual Enhancements**:
+  - Increased UI panel transparency (dark mode: 0.45, light mode: 0.65) for better visual depth
+  - Restored Star Wars-style fly-out animation with 3 icon types (Zombie, Bullet, Health Pickup)
+  - Icons spawn from screen center and fly out in random directions
+  - Dynamic background effect creates engaging landing page atmosphere
+
+## Previous Updates (v0.2.5)
 - **Day/Night Cycle**: 
   - 2-minute cycle transitioning between day and night
   - Visual dark overlay during night (0.5-0.7 alpha)

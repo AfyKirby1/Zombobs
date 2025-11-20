@@ -10,7 +10,12 @@ export class SettingsManager {
                 resolutionScale: 1.0,
                 vignette: true,
                 shadows: true,
-                lighting: true
+                lighting: true,
+                lowHealthWarning: true,
+                floatingText: true,
+                dynamicCrosshair: true,
+                enemyHealthBars: true,
+                reloadBar: true
             },
             controls: {
                 moveUp: 'w',
@@ -24,7 +29,8 @@ export class SettingsManager {
                 weapon1: '1',
                 weapon2: '2',
                 weapon3: '3',
-                weapon4: '4'
+                weapon4: '4',
+                scrollWheelSwitch: true
             },
             gamepad: {
                 fire: 7, // RT

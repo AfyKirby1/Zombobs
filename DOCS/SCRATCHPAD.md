@@ -4,6 +4,17 @@
 
 ## 2025 - Active Development Notes
 
+### Landing Page Visual Updates [2025-01-XX]
+- ✅ **UI Transparency**: Increased panel transparency for better visual depth
+  - Dark mode card background opacity reduced from 0.65 to 0.45
+  - Light mode card background opacity reduced from 0.85 to 0.65
+  - Background animations now show through more prominently
+- ✅ **Fly-out Animation**: Restored Star Wars-style fly-out effect
+  - Icons (Zombie, Bullet, Health Pickup) spawn from screen center
+  - Elements fly out in random directions, fade and scale as they move away
+  - Fixed center point (not mouse-tracking) for consistent visual effect
+  - Creates dynamic, engaging background on landing page
+
 ### Power-up UI Polish [2025-01-XX]
 - ✅ **HUD Improvements**: Added remaining time indicators for power-ups
   - **Speed Boost**: Timer displayed in shared stats area

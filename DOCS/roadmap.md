@@ -7,8 +7,10 @@
 - [x] **Melee Attack** - Close-range melee attack (V key or right-click) with swipe animation, 500ms cooldown, 3 damage, 40px range
 - [x] **Special Zombie Types** - Fast zombies, tank zombies, exploding zombies with different behaviors
 - [x] **Zombie Slow-on-Hit** - Bullets briefly slow zombies (e.g., 0.5s at 30%) to create crowd-control moments
-- [ ] **Weapon Accuracy Degradation** - Continuous firing reduces accuracy, requiring periodic pauses
+- [x] **Weapon Accuracy Degradation** - Continuous firing reduces accuracy, requiring periodic pauses
 - [x] **Ammo Pickups** - Ammo boxes spawn periodically when player has low ammo, restoring ammo for current weapon when collected
+- [x] **Scroll Wheel Switching** - Cycle weapons with mouse wheel (toggleable in settings)
+- [x] **Background Reload** - Weapons reload automatically when holstered
 - [ ] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds)
 - [x] **Stamina/Sprint System** - A stamina bar that depletes when sprinting, forcing players to manage their movement more carefully.
 
@@ -36,14 +38,14 @@
 
 ## Enemies
 - [x] **Armored Zombies** - Slower, heavily armored zombies whose armor absorbs most incoming damage before their health is affected.
-- [ ] **Spitter Zombies** - Ranged infected that lob corrosive projectiles, forcing the player to move and break out of safe positions.
+- [x] **Spitter Zombies** - Ranged infected that lob corrosive projectiles, forcing the player to move and break out of safe positions.
 - [ ] **Summoner/Necromancer Zombies** - Rare support enemies that periodically revive or buff nearby zombies if not prioritized and killed quickly.
 - [ ] **Crawler Variants** - Low-profile crawlers that are hard to spot in the grass and can slip through tight gaps in base defenses.
 
 ## Weapons
 - [x] **Grenades** - Throwable explosives (G key) with arc trajectory, AOE damage, and fuse timer. 3 per game, 2s cooldown.
 - [ ] **Rocket Launcher** - More powerful explosive weapon with self-damage risk
-- [ ] **Flamethrower / DoT Weapons** - Short-range weapons that apply burning damage over time to groups of zombies at close range.
+- [x] **Flamethrower / DoT Weapons** - Short-range weapons that apply burning damage over time to groups of zombies at close range.
 - [ ] **Alternate Fire Modes** - Weapons with secondary fire (burst, single-shot, charged shot) toggled via right-click or a hotkey.
 - [ ] **Elemental Ammo Types** - Special ammo pickups (incendiary, shock, freeze) that temporarily change how the current weapon behaves.
 
@@ -61,7 +63,7 @@
 - [x] **Muzzle Flash** - Visual effect when player shoots
 - [x] **Kill Confirmed Sound** - Distinct audio feedback (satisfying "pop" or "thud") when zombie is killed, separate from hit sound
 - [ ] **Hit Markers & Impact SFX** - Quick visual marker and subtle sound on successful hits
-- [ ] **Zombie Spawn Flash** - Brief visual indicator (glow/flash) where zombie will spawn before it appears
+- [x] **Zombie Spawn Flash** - Brief visual indicator (glow/flash) where zombie will spawn before it appears
 - [x] **Zombie Death Sound** - Distinct sound effect when zombie is killed (different from hit sound) for kill confirmation
 - [x] **Shell Ejection** - Visual effect of bullet casings being ejected from the gun.
 
@@ -70,7 +72,7 @@
 - [x] **Damage Indicators** - Red flash or directional arrows when hit
 - [x] **High Score System** - Track and display best run (localStorage)
 - [x] **Pause Menu** - Press ESC to pause, resume, or restart
-- [ ] **Reload Progress Indicator** - Visual progress bar or percentage showing reload completion time in HUD
+- [x] **Reload Progress Indicator** - Visual progress bar or percentage showing reload completion time in HUD
 - [x] **Low Ammo Warning** - Visual pulse/flash on ammo counter when ammo drops below 25% of magazine capacity
 - [x] **Wave Countdown Overlay** - 3-second overlay with reload hint between waves
 - [x] **Wave Progress Indicator** - Visual display of remaining zombies in current wave
@@ -78,7 +80,7 @@
 - [x] **Aiming Crosshair** - Simple reticle/crosshair at mouse cursor position for better aiming reference
 - [x] **Wave Start Notification** - Brief text overlay showing "Wave X Starting!" when new wave begins
 - [ ] **Weapon Accuracy Indicator** - Visual feedback showing current weapon accuracy level during burst-fire sequences
-- [ ] **Off-screen Zombie Indicator** - Arrows or icons at the edge of the screen pointing towards off-screen zombies that are close to the player.
+- [x] **Off-screen Zombie Indicator** - Arrows or icons at the edge of the screen pointing towards off-screen zombies that are close to the player.
 
 ## New Features
 - [ ] **Zombie Horde Mechanic** - Periodic large groups of zombies attack simultaneously

@@ -1,9 +1,9 @@
-# Zombobs Style Guide & Design System
+# ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS Style Guide & Design System
 
 ## 1. Design Philosophy
 **"Retro-Future Arcade Horror"**
 
-Zombobs combines the raw, pixel-perfect feel of classic arcade shooters with modern web aesthetics. The design language balances "gritty survival" with "slick, high-tech interface".
+ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS combines the raw, pixel-perfect feel of classic arcade shooters with modern web aesthetics. The design language balances "gritty survival" with "slick, high-tech interface".
 
 - **Core Pillars**: Dark, Neon, Glitch, Glass.
 - **Atmosphere**: Oppressive darkness punctuated by vibrant, dangerous lights.
@@ -95,4 +95,130 @@ A global grain effect applied to the viewport to reduce banding and add texture.
 - **Zombies**: Radial gradients for "toxic aura" and body.
 - **Projectiles**: High contrast cores (white/yellow) with colored outer glows.
 - **Lighting**: Additive blending (implicit in some particle effects) and radial gradient overlays for vignettes.
+
+## 7. Canvas UI System
+*Canvas-based UI components (Settings Panel, HUD elements)*
+
+Canvas UI elements must maintain visual consistency with DOM-based UI while working within Canvas rendering constraints.
+
+### Color Constants
+All Canvas UI components should use the standardized color palette:
+
+```javascript
+const COLORS = {
+    bgStart: '#02040a',
+    bgEnd: '#051b1f',
+    accent: '#ff1744',
+    accentSoft: '#ff5252',
+    cardBg: 'rgba(10, 12, 16, 0.9)',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
+    textMain: '#f5f5f5',
+    textMuted: '#9e9e9e',
+    glassBg: 'rgba(10, 12, 16, 0.9)',
+    glassBorder: 'rgba(255, 255, 255, 0.12)'
+};
+```
+
+### Typography (Canvas)
+
+#### Headers
+- **Font**: `'bold 36px "Creepster", cursive'`
+- **Usage**: Main panel titles (SETTINGS, CONTROLS, VIDEO SETTINGS)
+- **Styling**:
+  - Gradient fill: `#ff5252` → `#ff1744`
+  - Shadow blur: `20px`
+  - Shadow color: `rgba(255, 23, 68, 0.8)`
+  - Text align: `center`, baseline: `middle`
+
+#### Body Text
+- **Font**: `'14px "Roboto Mono", monospace'` (regular) or `'bold 16px "Roboto Mono", monospace'` (buttons)
+- **Usage**: Labels, button text, descriptions
+- **Colors**: `COLORS.textMain` for primary, `COLORS.textMuted` for secondary
+
+### Standard Components
+
+#### Buttons
+**Method**: `drawButton(x, y, width, height, text, isHovered, isActive)`
+
+**Styling**:
+- **Default**: `rgba(255, 23, 68, 0.2)` background, `rgba(255, 255, 255, 0.12)` border
+- **Hover**: `rgba(255, 23, 68, 0.4)` background, `#ff1744` border with `8px` glow
+- **Active**: Gradient `#ff5252` → `#ff1744`, `#ff1744` border with glow
+- **Text**: `bold 16px "Roboto Mono"`, `#f5f5f5` color, centered
+
+**Example**:
+```javascript
+this.drawButton(x, y, width, height, 'Button Text', isHovered, isActive);
+```
+
+#### Toggle Switches
+**Method**: `drawToggle(x, y, width, height, isOn, isHovered)`
+
+**Styling**:
+- **Track (OFF)**: `rgba(40, 40, 40, 0.8)` background, `rgba(255, 255, 255, 0.12)` border
+- **Track (ON)**: `#ff1744` background, `#ff5252` border with `6px` glow
+- **Handle**: White square (`#f5f5f5`), slides left/right
+- **Handle Glow (ON)**: `rgba(255, 255, 255, 0.3)` radial glow around handle
+- **Dimensions**: Standard `50x26px`, handle `20x20px` with `3px` padding
+
+**Example**:
+```javascript
+this.drawToggle(x, y, 50, 26, isOn, isHovered);
+```
+
+#### Sliders
+**Method**: `drawSlider(x, width, y, label, value, min, max, settingKey)`
+
+**Styling**:
+- **Track Background**: `rgba(255, 255, 255, 0.15)`, `6px` height
+- **Fill**: Gradient `#ff5252` → `#ff1744` with `8px` glow (`rgba(255, 23, 68, 0.6)`)
+- **Handle**: White circle (`#f5f5f5`), `8px` radius
+- **Handle Glow**: `10px` blur, `rgba(255, 23, 68, 0.8)` color
+- **Handle Border**: `#ff1744`, `2px` width
+- **Label**: `14px "Roboto Mono"`, `#f5f5f5` (left-aligned)
+- **Value**: `14px "Roboto Mono"`, `#9e9e9e` (right-aligned)
+
+**Example**:
+```javascript
+this.drawSlider(x, width, y, 'Max Particles', value, 50, 500, 'particleCount');
+```
+
+### Panel Backgrounds
+
+#### Glass-morphism Panel
+- **Background**: `rgba(10, 12, 16, 0.9)` solid fill
+- **Outer Border**: `#ff1744`, `2px` width, `10px` glow (`rgba(255, 23, 68, 0.5)`)
+- **Inner Border**: `rgba(255, 255, 255, 0.12)`, `1px` width, offset by `1px`
+
+#### Overlay
+- **Type**: Radial gradient from center
+- **Colors**: `rgba(2, 4, 10, 0.92)` → `rgba(0, 0, 0, 0.95)`
+- **Purpose**: Darken background while maintaining slight red tint
+
+### Interaction States
+
+#### Hover
+- Buttons: Increased opacity/glow
+- Toggles: Slight background brightening
+- Sliders: Handle glow intensifies
+
+#### Active/Selected
+- Buttons: Full gradient fill with strong glow
+- Toggles: Red track with handle glow
+- Preset buttons: Same as active button state
+
+#### Rebinding (Controls)
+- Keybind buttons: Full gradient fill (`#ff5252` → `#ff1744`)
+- Border: White (`#f5f5f5`), `2px` width
+- Glow: `12px` blur, `rgba(255, 23, 68, 0.8)`
+- Text: "Press..." in white
+
+### Best Practices
+
+1. **Consistency**: Always use helper methods (`drawButton`, `drawToggle`, `drawSlider`) for consistency
+2. **Colors**: Reference `COLORS` constant object, never hardcode hex values
+3. **Typography**: Use Creepster only for main headers, Roboto Mono for all other text
+4. **Glow Effects**: Use `shadowBlur` and `shadowColor` for neon glow effects, reset to `0` after use
+5. **Spacing**: Maintain consistent padding (`100px` from edges, `40px` between elements)
+6. **State Management**: Track hover/active states via mouse position checks
 
