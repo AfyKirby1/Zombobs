@@ -112,6 +112,8 @@ export const gameState = {
     shells: [],
     damageNumbers: [],
     grenades: [],
+    acidProjectiles: [],
+    acidPools: [],
 
     // Visual effects
     shakeAmount: 0,

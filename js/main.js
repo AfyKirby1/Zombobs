@@ -1246,6 +1246,7 @@ function startGame() {
     gameState.gamePaused = false;
     gameState.showLobby = false;
     gameState.showCoopLobby = false;
+    gameState.showAILobby = false;
 
     // Do NOT reset players here for coop, we want to keep the lobby configuration
     if (!gameState.isCoop) {
@@ -1263,6 +1264,8 @@ function startGame() {
         gameState.damagePickups = [];
         gameState.nukePickups = [];
         gameState.grenades = [];
+        gameState.acidProjectiles = [];
+        gameState.acidPools = [];
 
         // Reset all players (including AI)
         gameState.players.forEach((p, index) => {
@@ -1465,7 +1468,7 @@ canvas.addEventListener('mousemove', (e) => {
 
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
-    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) {
+    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
 });
