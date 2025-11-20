@@ -95,6 +95,9 @@ A global grain effect applied to the viewport to reduce banding and add texture.
 - **Zombies**: Radial gradients for "toxic aura" and body.
 - **Projectiles**: High contrast cores (white/yellow) with colored outer glows.
 - **Lighting**: Additive blending (implicit in some particle effects) and radial gradient overlays for vignettes.
+- **Shadows**: Dark ellipses offset below entities (zombies and players) when shadows enabled.
+- **Lighting Overlay**: Radial gradient lighting effect that follows player position when lighting enabled.
+- **Vignette**: Dark radial gradient overlay at screen edges (toggleable via settings).
 
 ## 7. Canvas UI System
 *Canvas-based UI components (Settings Panel, HUD elements)*

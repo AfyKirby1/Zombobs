@@ -1,4 +1,5 @@
 import { RENDER_SCALE } from './constants.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 
 export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d');
@@ -8,9 +9,13 @@ export function resizeCanvas(player) {
     const displayWidth = window.innerWidth;
     const displayHeight = window.innerHeight;
 
-    // Internal canvas resolution (scaled down for performance)
-    canvas.width = Math.floor(displayWidth * RENDER_SCALE);
-    canvas.height = Math.floor(displayHeight * RENDER_SCALE);
+    // Get resolution scale from settings (default 1.0 = 100%)
+    const resolutionScale = settingsManager.getSetting('video', 'resolutionScale') ?? 1.0;
+    
+    // Internal canvas resolution (scaled down for performance, multiplied by resolution scale)
+    const effectiveScale = RENDER_SCALE * resolutionScale;
+    canvas.width = Math.floor(displayWidth * effectiveScale);
+    canvas.height = Math.floor(displayHeight * effectiveScale);
 
     // Visual size still fills the window
     canvas.style.width = displayWidth + 'px';

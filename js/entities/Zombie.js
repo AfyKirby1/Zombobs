@@ -5,6 +5,7 @@ import { playDamageSound, playKillSound, playExplosionSound } from '../systems/A
 import { triggerDamageIndicator } from '../utils/gameUtils.js';
 import { createExplosion, createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { graphicsSettings } from '../systems/GraphicsSystem.js';
 
 // Base Zombie class (shared behaviour for all zombie types)
 export class Zombie {
@@ -76,11 +77,13 @@ export class Zombie {
     }
 
     draw() {
-        // Shadow (larger and more ominous)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Shadow (larger and more ominous) - only if shadows enabled
+        if (graphicsSettings.shadows !== false) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
         
         // Toxic aura (pulsing outer glow)
         const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;

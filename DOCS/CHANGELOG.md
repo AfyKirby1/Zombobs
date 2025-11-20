@@ -2,6 +2,39 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.2.10] - 2025-01-XX
+
+### Added
+- **Wired Settings Implementation** - Fully functional settings integration
+  - **Vignette Toggle**: Now properly controls dark edge overlay rendering
+  - **Shadows Toggle**: Controls shadow rendering under zombies and players
+  - **Lighting Toggle**: Controls radial gradient lighting overlay that follows player position
+  - **Resolution Scale Slider**: Adjusts canvas internal resolution (50%-200%) for performance/quality balance
+  - **Floating Text Toggle**: Controls health/ammo pickup collection messages
+  - All settings apply immediately without requiring game restart
+  - Settings persist across sessions via localStorage
+
+### Changed
+- **Canvas Rendering**: Resolution scale now affects canvas dimensions dynamically
+  - Canvas resizes immediately when resolution scale slider is adjusted
+  - Lower scale = better performance, higher scale = better quality
+- **Graphics System**: Added `graphicsSettings` getter object for reactive setting access
+  - Provides centralized access to video settings (vignette, shadows, lighting, etc.)
+  - Used throughout rendering pipeline for conditional effect rendering
+
+### Technical
+- **Rendering Pipeline Updates**:
+  - Vignette overlay now checks `graphicsSettings.vignette` before rendering
+  - Lighting overlay added after vignette, follows player position with radial gradient
+  - Shadow rendering added to zombie and player draw methods with setting check
+  - Resolution scale applied in `resizeCanvas()` function via `effectiveScale` calculation
+- **Settings Panel**: Added resolution scale slider to custom quality preset section
+  - Slider displays percentage (50%-200%)
+  - Triggers immediate canvas resize on change
+- **Entity Rendering**: Shadow rendering conditional on `graphicsSettings.shadows`
+  - Shadows drawn as dark ellipses offset below entities
+  - Consistent shadow style across zombies and players
+
 ## [0.2.9] - 2025-01-XX
 
 ### Refactoring

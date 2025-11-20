@@ -114,6 +114,7 @@ export class SettingsPanel {
         currentY = this.drawDropdown("Quality Preset", "video", "qualityPreset", ['low', 'medium', 'high', 'custom'], currentY, mouse);
         if (this.settingsManager.getSetting('video', 'qualityPreset') === 'custom') {
             currentY = this.drawSlider("Particle Count", "video", "particleCount", 50, 500, currentY, mouse, 0);
+            currentY = this.drawSlider("Resolution Scale", "video", "resolutionScale", 0.5, 2.0, currentY, mouse);
             currentY = this.drawToggle("Vignette", "video", "vignette", currentY, mouse);
             currentY = this.drawToggle("Shadows", "video", "shadows", currentY, mouse);
             currentY = this.drawToggle("Lighting", "video", "lighting", currentY, mouse);
@@ -343,6 +344,7 @@ export class SettingsPanel {
         let displayValue = value;
         if (max <= 1) displayValue = Math.round(value * 100) + '%';
         else if (key === 'fpsLimit') displayValue = value === 0 ? 'OFF' : value.toString();
+        else if (key === 'resolutionScale') displayValue = Math.round(value * 100) + '%';
         else displayValue = Math.round(value);
         
         this.ctx.fillText(displayValue, this.panelX + this.panelWidth - this.padding, y + 20);
@@ -788,6 +790,9 @@ export class SettingsPanel {
             // Keep as float 0-1
         } else if (ctrl.category === 'video' && (ctrl.key === 'particleCount' || ctrl.key === 'fpsLimit')) {
              value = Math.round(value);
+        } else if (ctrl.category === 'video' && ctrl.key === 'resolutionScale') {
+            // Keep as float, but clamp to 0.5-2.0 range
+            value = Math.max(0.5, Math.min(2.0, value));
         } else if (ctrl.category === 'audio') {
             // Keep as float 0-1
         }
@@ -797,6 +802,14 @@ export class SettingsPanel {
         // Live updates
         if (ctrl.category === 'audio') {
             updateAudioSettings();
+        }
+        
+        // Apply resolution scale immediately if changed
+        if (ctrl.category === 'video' && ctrl.key === 'resolutionScale') {
+            // Trigger canvas resize to apply new resolution scale
+            if (gameState.players.length > 0) {
+                resizeCanvas(gameState.players[0]);
+            }
         }
     }
 

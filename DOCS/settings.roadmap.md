@@ -59,9 +59,11 @@ A beginner-friendly settings panel that allows players to customize their gaming
 | **Crosshair Style** | Dropdown | Default/Dot/Cross/Circle | Default | ✅ Implemented |
 | **Dynamic Crosshair** | Toggle | On/Off | On | ✅ Implemented |
 | **Damage Numbers** | Dropdown | Floating/Stacking/Off | Floating | ✅ Implemented |
-| **Vignette** | Toggle | On/Off | On | ✅ Implemented (Custom preset only) |
-| **Shadows** | Toggle | On/Off | On | ✅ Implemented (Custom preset only) |
-| **Lighting** | Toggle | On/Off | On | ✅ Implemented (Custom preset only) |
+| **Vignette** | Toggle | On/Off | On | ✅ Implemented (Custom preset only, fully wired) |
+| **Shadows** | Toggle | On/Off | On | ✅ Implemented (Custom preset only, fully wired) |
+| **Lighting** | Toggle | On/Off | On | ✅ Implemented (Custom preset only, fully wired) |
+| **Resolution Scale** | Slider | 50%-200% | 100% | ✅ Implemented (Custom preset only, fully wired) |
+| **Floating Text** | Toggle | On/Off | On | ✅ Implemented (fully wired for health/ammo pickups) |
 | **Low Health Warning** | Toggle | On/Off | On | ✅ Implemented |
 | **Enemy Health Bars** | Toggle | On/Off | On | ✅ Implemented |
 | **Reload Bar** | Toggle | On/Off | On | ✅ Implemented |
@@ -73,6 +75,11 @@ A beginner-friendly settings panel that allows players to customize their gaming
 - ✅ Custom preset allows granular control over individual settings
 - ✅ Screen shake slider: 0% = no shake, 100% = default intensity
 - ✅ FPS limit applies immediately when changed
+- ✅ Vignette toggle controls dark edge overlay rendering
+- ✅ Shadows toggle controls shadow rendering under zombies and players
+- ✅ Lighting toggle controls radial gradient lighting overlay that follows player
+- ✅ Resolution scale slider adjusts canvas internal resolution (50%-200%, affects performance/quality)
+- ✅ Floating text toggle controls health/ammo pickup collection messages
 - ✅ All settings persist to localStorage
 
 **Storage Key**: `zombobs_settings` (unified storage)

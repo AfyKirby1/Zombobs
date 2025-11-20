@@ -204,14 +204,17 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Exports**:
 - `initGroundPattern()` - Load and cache ground texture pattern (renamed from `initGrassPattern`)
+- `graphicsSettings` - Getter object for video settings (quality, maxParticles, vignette, shadows, lighting)
 
-**Dependencies**: `core/canvas.js`
+**Dependencies**: `core/canvas.js`, `systems/SettingsManager.js`
 
 **Notes**:
 - Loads ground texture from `sample_assets/tiles/bloody_dark_floor.png`
 - Creates tiling pattern for canvas background
 - Replaces previous procedural grass generation
 - Ground pattern opacity set to 0.6 for better visibility
+- Provides reactive getters for video settings that check SettingsManager
+- Used throughout rendering pipeline for conditional effect rendering
 
 #### ParticleSystem.js
 **Purpose**: Particle effects and blood splatter
@@ -234,11 +237,17 @@ This modular structure improves maintainability, testability, and scalability.
 - `saveSettings()` - Save to localStorage
 - `getSetting(category, key)` - Get setting value
 - `setSetting(category, key, value)` - Set setting value
+- `applyVideoPreset(preset)` - Apply quality preset (low/medium/high/custom)
 
 **Dependencies**: None (localStorage only)
 
 **Settings Structure**:
 - `audio.masterVolume` - Master volume (0.0 to 1.0)
+- `video.vignette` - Enable/disable vignette overlay
+- `video.shadows` - Enable/disable shadows under entities
+- `video.lighting` - Enable/disable lighting overlay
+- `video.resolutionScale` - Canvas resolution scale (0.5 to 2.0)
+- `video.floatingText` - Enable/disable floating pickup text
 - `controls.*` - Keyboard keybinds (moveUp, moveDown, etc.)
 - `gamepad.*` - Controller button mappings (fire, reload, etc.)
 
@@ -546,9 +555,11 @@ This modular structure improves maintainability, testability, and scalability.
 2. Apply screen shake transform
 3. Clear canvas with gradient background
 4. Draw ground pattern (textured tile)
-5. Draw vignette effect
-6. Draw damage indicator overlay (if active)
-7. Draw particles
+5. Draw vignette effect (if enabled via settings)
+6. Draw lighting overlay (if enabled via settings, follows player position)
+7. Draw day/night cycle overlay
+8. Draw damage indicator overlay (if active)
+9. Draw particles
 8. Draw shells (bullet casings)
 9. Draw bullets (including flame bullets)
 10. Draw grenades

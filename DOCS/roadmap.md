@@ -10,9 +10,9 @@
 
 **Status Legend (Roadmap Summary):**
 
- - Total items: 682
- - Completed items: 54 (7.9%)
- - Uncompleted items: 628
+ - Total items: 723
+ - Completed items: 54 (7.5%)
+ - Uncompleted items: 669
  - Phases completed: 0 / 14 (0.0%)
 
 ---
@@ -82,6 +82,9 @@
 - [ ] **Explosion Shockwaves** - Physics objects blown away with GPU-computed force fields 🟡
  - [ ] **Bullet Penetration** - Shoot through multiple zombies with raycast compute shaders (zombie-only) 🟡
 - [ ] **Ricochet System** - Bullets bounce off metal surfaces with realistic physics 🟡
+- [ ] **GPU-Accelerated Ballistics** - Compute shader-based projectile physics for thousands of bullets simultaneously 🔴
+- [ ] **Weapon Recoil Simulation** - GPU-computed recoil patterns with procedural weapon sway 🟡
+- [ ] **Muzzle Flash Lighting** - Dynamic light emission from weapon fire affecting nearby surfaces 🟡
 
 ---
 
@@ -144,6 +147,10 @@
 - [ ] **Heat Vision** - Special zombie type sees player through walls via thermal signature 🟡
 - [ ] **Motion Detection** - Zombies react specifically to movement patterns and speed 🟡
 - [ ] **Peripheral Vision** - Zombies have realistic blind spots and limited peripheral awareness 🟡
+- [ ] **GPU Crowd Simulation** - Simulate 100,000+ zombie crowd behaviors with emergent patterns 🔴
+- [ ] **Neural Network Behavior** - ML-based zombie decision making that adapts to player tactics 🔴
+- [ ] **Spatial Hashing on GPU** - Ultra-fast neighbor queries for AI and physics using GPU hash grids 🔴
+- [ ] **Asynchronous Pathfinding** - Multi-frame pathfinding spread across compute passes for zero frame drops 🔴
 
 ---
 
@@ -198,10 +205,10 @@
 
 ### Network Optimization & Synchronization 🌐
 
-- [ ] **Client-Side Prediction** - Smooth movement despite lag using predictive algorithms for responsive gameplay 🔴
+- [ ] **Client-Side Prediction** - Smooth movement despite lag using predictive algorithms for responsive gameplay (core netcode) 🔴
 - [ ] **Server Reconciliation** - Correct mispredictions gracefully without jarring teleports 🔴
 - [ ] **Entity Interpolation** - Smooth other players' movement between network updates 🟡
-- [ ] **Lag Compensation** - Hit detection accounts for ping differences between players 🔴
+- [ ] **Lag Compensation** - Hit detection accounts for ping differences between players (core netcode) 🔴
 - [ ] **Delta Compression** - Only send changed data over network to minimize bandwidth usage 🔴
 - [ ] **Interest Management** - Only sync nearby entities to reduce network overhead 🟡
 - [ ] **Snapshot Interpolation** - Smooth state updates between server ticks 🟡
@@ -313,6 +320,7 @@
 - [ ] **Resource Scavenging** - Collect supplies from defeated zombies for crafting/upgrades 🟡
 - [ ] **Inventory Management** - Limited carrying capacity, item weight system 🟡
 - [ ] **Crafting System** - Players can collect resources to craft ammo, health kits, or even basic weapons 🔴
+ - [ ] **Crafting System** - Players can collect resources to craft ammo, health kits, or even basic weapons (baseline crafting) 🔴
 - [ ] **Selectable Difficulty Modes** - Introduce "Easy", "Normal", and "Hard" modes that adjust zombie stats and spawn rates 🟡
 - [ ] **Character Selection** - Choose from characters with unique starting weapons or passive abilities 🟡
 - [ ] **Narrative Story Mode** - A separate mode with handcrafted levels and specific objectives 🔴
@@ -333,6 +341,7 @@
 - [ ] **Multiplayer Cooperative Mode** - Full online co-op with shared objectives, synchronized wave progression, and team-based rewards 🔴
 - [ ] **Competitive PvP Arena** - Player vs player combat modes with ranking system, seasonal leaderboards, and skill-based matchmaking 🔴
 - [ ] **Crafting System** - Resource gathering from environment and enemies, combined with blueprints to create weapons, ammo, and utility items 🟡
+ - [ ] **Crafting System** - Resource gathering from environment and enemies, combined with blueprints to create weapons, ammo, and utility items (expanded blueprint system) 🟡
  - [ ] **Day/Night Cycle** - Dynamic time progression affecting zombie aggression, spawn rates, and special nocturnal enemy types (advanced; baseline completed in Phase 3) 🟡
 - [ ] **Interactive Environmental Objects** - Physics-enabled objects like explosive barrels, destructible walls, and movable barricades 🟡
 - [ ] **Mini-Games & Side Activities** - Skill-based challenges between waves offering unique rewards and temporary buffs 🟢
@@ -485,6 +494,10 @@
 - [ ] **Wind Simulation** - Grass, trees, particles react to dynamic wind vectors 🟡
 - [ ] **Dust Motes** - Floating particles visible in light shafts for atmosphere 🟢
 - [ ] **Heat Haze** - Distortion above hot surfaces like fire and explosions 🟡
+- [ ] **GPU-Driven Weather System** - Real-time weather simulation with particle rain/snow and wind vectors 🔴
+- [ ] **Atmospheric Fog Volumes** - 3D fog density fields computed on GPU with light scattering 🔴
+- [ ] **Dynamic Sky Rendering** - Physically-based sky with real-time cloud formation 🔴
+- [ ] **Lightning System** - Procedural lightning bolts with branching and illumination 🟡
 
 ### Interactive World 🌍
 
@@ -595,7 +608,12 @@
 - [ ] **Bindless Resources** - Access any texture/buffer without binding overhead 🔴
 - [ ] **Shader Compilation Caching** - Pre-compile shaders for instant load times 🟡
 - [ ] **Pipeline State Objects (PSO)** - Pre-compiled render states for fast switching 🟡
-- [ ] **Descriptor Indexing** - Dynamic shader resource access without rebinding 🔴
+ - [ ] **Descriptor Indexing** - Dynamic shader resource access without rebinding 🔴
+ - [ ] **GPU Memory Pooling** - Custom allocators for efficient buffer management 🔴
+ - [ ] **Command Buffer Reuse** - Pre-record and reuse command buffers for static geometry 🟡
+ - [ ] **GPU Timestamp Queries** - Precise performance profiling of GPU work 🟡
+ - [ ] **Subgroup Operations** - Leverage wave/warp intrinsics for faster compute 🔴
+ - [ ] **Shader Specialization Constants** - Compile-time shader variants for optimization 🟡
 
 ### Backend & Multiplayer Infrastructure 🖥️
 
@@ -741,6 +759,10 @@
  - [ ] **Variable Rate Shading** - Render peripheral vision at lower quality for performance 🔴
  - [ ] **Foveated Rendering** - For VR: ultra-sharp center, blurry edges matching eye fovea 🔴
  - [ ] **Reprojection/ASW** - Fake high framerates by warping previous frames using motion vectors 🔴
+ - [ ] **Stochastic Rendering** - Use random sampling for effects like transparency and AO 🔴
+ - [ ] **Blue Noise Sampling** - High-quality noise patterns for dithering and sampling 🟡
+ - [ ] **Temporal Upsampling** - Render at lower res, upscale with temporal data 🔴
+ - [ ] **Checkerboard Rendering** - Render half pixels per frame, reconstruct full image 🔴
  
  ### Massive Scale (The "Horde" Update) 🧟‍♂️
  
@@ -820,6 +842,20 @@
  - [ ] **Procedural Animation** - IK systems, procedural walk cycles 🔴
  - [ ] **Procedural Audio** - Synthesize sounds on GPU (experimental feature!) 🔴
  
+ ### Advanced Compute Techniques 🧮
+ 
+ - [ ] **Compute Shader Pipelines** - Multi-stage compute pipelines for complex simulations 🔴
+ - [ ] **GPU Sort Algorithms** - Radix sort, bitonic sort for particle/transparency sorting 🔴
+ - [ ] **Parallel Reduction** - Sum, min, max operations across millions of elements 🔴
+ - [ ] **Prefix Sum (Scan)** - GPU-based scan for stream compaction and allocation 🔴
+ - [ ] **Histogram Generation** - Real-time histograms for auto-exposure and color grading 🟡
+ - [ ] **GPU Culling Pipeline** - Multi-stage culling: frustum → occlusion → LOD selection 🔴
+ - [ ] **Indirect Command Generation** - GPU generates its own draw/dispatch commands 🔴
+ - [ ] **GPU-Driven LOD Selection** - Automatic detail level based on screen coverage 🔴
+ - [ ] **Texture Atlasing on GPU** - Dynamic texture atlas packing and updates 🔴
+ - [ ] **GPU Skinning & Animation** - Vertex skinning and blend shapes on GPU 🟡
+ - [ ] **Compute-Based Culling** - Frustum, occlusion, and backface culling in compute shaders 🔴
+ 
  ---
  
  ## Phase 9: Experimental & Future Tech 🔬
@@ -839,6 +875,14 @@
   - [ ] **WebTransport** - Ultra-low latency networking for competitive multiplayer (future tech) 🔴
  - [ ] **Shared Array Buffers** - True multi-threaded JavaScript for parallel processing 🔴
  - [ ] **Atomics** - Lock-free data structures for high-performance threading 🔴
+ - [ ] **WebGPU Subgroups** - Wave/warp-level operations for extreme performance 🔴
+ - [ ] **Mesh Shader Pipeline** - Next-gen geometry pipeline replacing vertex shaders 🔴
+ - [ ] **Sampler Feedback** - Track which texture mips are actually used for streaming 🔴
+ - [ ] **GPU-Accelerated Compression** - Real-time texture/data compression on GPU 🔴
+ - [ ] **Hardware Ray Tracing API** - Native RT when WebGPU extensions arrive 🔴
+ - [ ] **Variable Rate Shading (VRS)** - Adaptive shading density for performance 🔴
+ - [ ] **DirectStorage for Web** - Fast asset streaming bypassing CPU 🔴
+ - [ ] **GPU Work Graphs** - Dynamic work generation and scheduling 🔴
  
  ---
  

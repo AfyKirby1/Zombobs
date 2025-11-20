@@ -10,7 +10,7 @@ import { canvas, ctx, resizeCanvas } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
-import { initGroundPattern } from './systems/GraphicsSystem.js';
+import { initGroundPattern, graphicsSettings } from './systems/GraphicsSystem.js';
 import { GameHUD } from './ui/GameHUD.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
 import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie } from './entities/Zombie.js';
@@ -633,11 +633,13 @@ function drawPlayers() {
     gameState.players.forEach(player => {
         if (player.health <= 0) return;
 
-        // Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.beginPath();
-        ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Shadow - only if shadows enabled
+        if (graphicsSettings.shadows !== false) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Outer glow - use player color
         const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius * 1.5);
@@ -1376,11 +1378,30 @@ function drawGame() {
         ctx.globalAlpha = 1.0;
     }
 
-    const vignette = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, maxDimension / 3, canvas.width / 2, canvas.height / 2, maxDimension);
-    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Vignette overlay (if enabled)
+    if (graphicsSettings.vignette !== false) {
+        const vignette = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, maxDimension / 3, canvas.width / 2, canvas.height / 2, maxDimension);
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Lighting overlay (if enabled) - follows player position
+    if (graphicsSettings.lighting !== false && gameState.players.length > 0 && gameState.players[0].health > 0) {
+        const player = gameState.players[0];
+        const lightingRadius = Math.max(canvas.width, canvas.height) * 0.8;
+        const lightingGradient = ctx.createRadialGradient(
+            player.x, player.y, 0,
+            player.x, player.y, lightingRadius
+        );
+        lightingGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+        lightingGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
+        lightingGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.02)');
+        lightingGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = lightingGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Day/Night Cycle Overlay
     // Calculate ambient light level based on gameTime
