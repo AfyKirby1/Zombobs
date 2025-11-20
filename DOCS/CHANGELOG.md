@@ -2,6 +2,41 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.3.1] - 2025-11-20
+
+### Added
+- **4-Player Local Co-op** - Expanded from 2-player to 4-player support
+  - **Grid HUD**: Dynamic 2x2 grid layout for player stats
+  - **Lobby Upgrade**: Support for 4 players joining/leaving
+  - **Input Handling**: Generalized input system for N players
+  - **Smart Controls**: P1 (Mouse/Keys), P2 (Arrows/Gamepad), P3-4 (Gamepad)
+
+- **WebGPU Rendering Foundation** - Dual-canvas architecture supporting next-gen graphics
+  - **WebGPURenderer**: dedicated WebGPU context handling background and heavy compute
+  - **Canvas 2D Fallback**: Graceful degradation if WebGPU is unsupported or disabled
+  - **Procedural "Void" Background**: GPU-accelerated animated noise, fog, and vignette shader
+  - **Bloom Post-Processing**: Physically based bloom effect for glowing elements
+  - **Live Settings Integration**: WebGPU features controllable via new settings menu
+
+- **Settings Overhaul** - Complete redesign of the settings interface
+  - **Tabbed Layout**: Video, Audio, Gameplay, Controls tabs for better organization
+  - **Compact UI**: Dense, cyber-industrial aesthetic with reduced padding
+  - **New Video Settings**:
+    - `webgpuEnabled`: Master toggle for next-gen features
+    - `bloomIntensity`: Slider for glow effect strength
+    - `particleCount`: Low (CPU) / High (GPU) / Ultra (GPU) selection
+    - `lightingQuality`: Off/Simple/Advanced modes
+    - `distortionEffects`: Toggle for shockwaves
+  - **New Gameplay Settings**:
+    - `autoReload`: Toggle to disable auto-reload for hardcore mode
+  - **New Audio Settings**:
+    - `spatialAudio`: Toggle for 3D positional audio
+
+### Changed
+- **GameHUD**: Updated WebGPU status icon to reflect both availability AND user setting
+- **Main Loop**: Integrated WebGPU render pass with delta-time updates
+- **SettingsManager**: Added callback system for real-time setting updates
+
 ## [0.3.0] - 2025-01-XX
 
 ### Changed
@@ -121,6 +156,11 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Auto-sprint setting automatically migrated from video to gameplay category
   - Backward compatibility maintained for existing saved settings
   - New settings merge seamlessly with existing preferences
+
+- **Landing Page Requirements** - Added technical specifications section
+  - Added "Graphical Requirements" block to sidebar
+  - Lists Minimum and Recommended specs for WebGPU/Canvas
+  - Specifies API targets and browser requirements
 
 ### Technical
 - **SettingsPanel Class** - Major refactoring

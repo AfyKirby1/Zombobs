@@ -4,7 +4,8 @@ import {
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS,
     PLAYER_BASE_SPEED, PLAYER_SPRINT_SPEED,
-    PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY
+    PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY,
+    MAX_LOCAL_PLAYERS
 } from './core/constants.js';
 import { canvas, ctx, resizeCanvas } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
@@ -75,8 +76,30 @@ window.webgpuRenderer = webgpuRenderer;
 webgpuRenderer.init().then(initialized => {
     if (initialized) {
         console.log('WebGPU renderer ready');
+        // Apply initial settings
+        applyWebGPUSettings();
     } else {
         console.log('WebGPU renderer unavailable, using Canvas 2D fallback');
+    }
+});
+
+// Function to apply WebGPU settings from SettingsManager
+function applyWebGPUSettings() {
+    if (!webgpuRenderer || !webgpuRenderer.isAvailable()) return;
+    
+    const bloomIntensity = settingsManager.getSetting('video', 'bloomIntensity') ?? 0.5;
+    webgpuRenderer.setBloomIntensity(bloomIntensity);
+}
+
+// Listen for settings changes and update WebGPU renderer
+settingsManager.addChangeListener((category, key, value) => {
+    if (category === 'video') {
+        if (key === 'bloomIntensity') {
+            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
+                webgpuRenderer.setBloomIntensity(value);
+            }
+        }
+        // Add more WebGPU setting handlers here as needed
     }
 });
 
@@ -381,81 +404,62 @@ function updatePlayers() {
         let isSprintingInput = false;
         let target = { x: player.x + Math.cos(player.angle) * 100, y: player.y + Math.sin(player.angle) * 100 };
 
-        // Player 1 Controls
-        if (index === 0) {
-            if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
-                const gpState = inputSystem.getGamepad(player.gamepadIndex);
-                if (gpState) {
-                    moveX = gpState.axes.move.x;
-                    moveY = gpState.axes.move.y;
-                    if (Math.abs(gpState.axes.aim.x) > 0.1 || Math.abs(gpState.axes.aim.y) > 0.1) {
-                        player.angle = Math.atan2(gpState.axes.aim.y, gpState.axes.aim.x);
-                        target = {
-                            x: player.x + gpState.axes.aim.x * 200,
-                            y: player.y + gpState.axes.aim.y * 200
-                        };
-                    } else if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
-                        // Aim in movement direction if no right stick
-                        player.angle = Math.atan2(moveY, moveX);
-                    }
-                    if (gpState.buttons.sprint.pressed) isSprintingInput = true;
-                }
-            } else {
-                // Mouse/Keyboard
-                if (keys[controls.moveUp]) moveY -= 1;
-                if (keys[controls.moveDown]) moveY += 1;
-                if (keys[controls.moveLeft]) moveX -= 1;
-                if (keys[controls.moveRight]) moveX += 1;
-
-                const sprintKey = controls.sprint || 'shift';
-                if (keys[sprintKey] || keys['shift']) isSprintingInput = true;
-
-                target = mouse;
-                player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-            }
-        }
         // AI Player Controls
         if (player.inputSource === 'ai') {
             const aiMovement = companionSystem.update(player);
             moveX = aiMovement.moveX;
             moveY = aiMovement.moveY;
         }
-        // Player 2 Controls
-        else if (index === 1) {
-            if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
-                const gpState = inputSystem.getGamepad(player.gamepadIndex);
-                if (gpState) {
-                    moveX = gpState.axes.move.x;
-                    moveY = gpState.axes.move.y;
-                    if (Math.abs(gpState.axes.aim.x) > 0.1 || Math.abs(gpState.axes.aim.y) > 0.1) {
-                        player.angle = Math.atan2(gpState.axes.aim.y, gpState.axes.aim.x);
-                        target = {
-                            x: player.x + gpState.axes.aim.x * 200,
-                            y: player.y + gpState.axes.aim.y * 200
-                        };
-                    } else if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
-                        player.angle = Math.atan2(moveY, moveX);
-                    }
-
-                    if (gpState.buttons.sprint.pressed) isSprintingInput = true;
-                }
-            } else {
-                // Keyboard Arrows
-                if (keys['arrowup']) moveY -= 1;
-                if (keys['arrowdown']) moveY += 1;
-                if (keys['arrowleft']) moveX -= 1;
-                if (keys['arrowright']) moveX += 1;
-
-                if (keys['control'] || keys['rcontrol']) isSprintingInput = true;
-
-                if (Math.abs(moveX) > 0 || Math.abs(moveY) > 0) {
+        // Gamepad Controls (for any player using gamepad)
+        else if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+            const gpState = inputSystem.getGamepad(player.gamepadIndex);
+            if (gpState) {
+                moveX = gpState.axes.move.x;
+                moveY = gpState.axes.move.y;
+                if (Math.abs(gpState.axes.aim.x) > 0.1 || Math.abs(gpState.axes.aim.y) > 0.1) {
+                    player.angle = Math.atan2(gpState.axes.aim.y, gpState.axes.aim.x);
+                    target = {
+                        x: player.x + gpState.axes.aim.x * 200,
+                        y: player.y + gpState.axes.aim.y * 200
+                    };
+                } else if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
+                    // Aim in movement direction if no right stick
                     player.angle = Math.atan2(moveY, moveX);
                 }
-                target = {
-                    x: player.x + Math.cos(player.angle) * 200,
-                    y: player.y + Math.sin(player.angle) * 200
-                };
+                if (gpState.buttons.sprint.pressed) isSprintingInput = true;
             }
+        }
+        // Mouse/Keyboard Controls (P1 only)
+        else if (index === 0 && player.inputSource === 'mouse') {
+            // Mouse/Keyboard
+            if (keys[controls.moveUp]) moveY -= 1;
+            if (keys[controls.moveDown]) moveY += 1;
+            if (keys[controls.moveLeft]) moveX -= 1;
+            if (keys[controls.moveRight]) moveX += 1;
+
+            const sprintKey = controls.sprint || 'shift';
+            if (keys[sprintKey] || keys['shift']) isSprintingInput = true;
+
+            target = mouse;
+            player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+        }
+        // Keyboard Arrow Controls (P2 only, for backward compatibility)
+        else if (index === 1 && player.inputSource === 'keyboard_arrow') {
+            // Keyboard Arrows
+            if (keys['arrowup']) moveY -= 1;
+            if (keys['arrowdown']) moveY += 1;
+            if (keys['arrowleft']) moveX -= 1;
+            if (keys['arrowright']) moveX += 1;
+
+            if (keys['control'] || keys['rcontrol']) isSprintingInput = true;
+
+            if (Math.abs(moveX) > 0 || Math.abs(moveY) > 0) {
+                player.angle = Math.atan2(moveY, moveX);
+            }
+            target = {
+                x: player.x + Math.cos(player.angle) * 200,
+                y: player.y + Math.sin(player.angle) * 200
+            };
         }
 
         // Normalize movement vector
@@ -529,11 +533,11 @@ function updatePlayers() {
             }
         }
 
-        // Keyboard Actions P2 (only if not AI)
-        if (index === 1 && player.inputSource !== 'gamepad' && player.inputSource !== 'ai') {
+        // Keyboard Arrow Actions (Any player using keyboard_arrow input)
+        if (player.inputSource === 'keyboard_arrow') {
             if (keys['enter']) shootBullet(target, canvas, player);
-            if (keys['shift']) performMeleeAttack(player);
-            if (keys[']']) reloadWeapon(player);
+            if (keys['delete']) performMeleeAttack(player);
+            if (keys['end'] || keys[']'] || keys['\\']) reloadWeapon(player);
         }
     });
 }
@@ -544,7 +548,6 @@ function updateCoopLobby() {
     inputSystem.update(); // Update inputs to check for joins
     const gamepads = inputSystem.getConnectedGamepadIndices();
     const p1 = gameState.players[0];
-    const p2 = gameState.players[1];
 
     // P1 Input Source Detection
     // If P1 moves mouse or presses keys, switch to mouse and release gamepad
@@ -574,10 +577,11 @@ function updateCoopLobby() {
             }
         }
     } else if (!hasMouseOrKeyboardInput) {
-        // P1 doesn't have a gamepad yet - find first available one not used by P2
+        // P1 doesn't have a gamepad yet - find first available one not used by other players
         for (const index of gamepads) {
-            // Skip if this gamepad is already assigned to P2
-            if (p2 && p2.gamepadIndex === index) continue;
+            // Skip if this gamepad is already assigned to any player
+            const isAssigned = gameState.players.some(p => p.gamepadIndex === index);
+            if (isAssigned) continue;
 
             const gp = inputSystem.getGamepad(index);
             if (!gp) continue;
@@ -596,48 +600,67 @@ function updateCoopLobby() {
         }
     }
 
-    // P2 Joining Logic
-    // Check for 'A'/'Start' on any gamepad NOT used by P1
-    if (gameState.players.length < 2) {
+    // Player Joining Logic (P2 - P4)
+    if (gameState.players.length < MAX_LOCAL_PLAYERS) {
         // Check gamepads for join input
         for (const index of gamepads) {
-            // Skip P1's gamepad
-            if (p1.gamepadIndex === index) continue;
+            // Skip if gamepad is already assigned to any player
+            const isAssigned = gameState.players.some(p => p.gamepadIndex === index);
+            if (isAssigned) continue;
 
             const gp = inputSystem.getGamepad(index);
             if (!gp) continue;
 
-            // Check for join button press
+            // Check for join button press (Start/A)
             if (gp.buttons.select.justPressed || gp.buttons.pause?.justPressed) {
-                // Create P2 and assign this gamepad (with red color)
-                const newP2 = createPlayer(canvas.width / 2 + 50, canvas.height / 2, 1);
-                newP2.inputSource = 'gamepad';
-                newP2.gamepadIndex = index;
-                gameState.players.push(newP2);
-                break; // Only join with one controller
+                // Create new player and assign this gamepad
+                // Offset spawn position based on player count
+                const playerIndex = gameState.players.length;
+                const spawnX = canvas.width / 2 + (playerIndex * 50);
+                const newPlayer = createPlayer(spawnX, canvas.height / 2, playerIndex);
+                newPlayer.inputSource = 'gamepad';
+                newPlayer.gamepadIndex = index;
+                gameState.players.push(newPlayer);
+                break; // Only join one player per frame
             }
         }
 
-        // Check for Keyboard Join (Enter) - only if no gamepad was used
-        if (gameState.players.length < 2 && keys['enter']) {
-            const p2Keyboard = createPlayer(canvas.width / 2 + 50, canvas.height / 2, 1);
-            p2Keyboard.inputSource = 'keyboard_arrow';
-            p2Keyboard.gamepadIndex = null;
-            gameState.players.push(p2Keyboard);
+        // Check for Keyboard Join (Enter) - only if no keyboard player exists beyond P1
+        // P1 is always index 0. If P1 is keyboard, P2 can be keyboard arrows.
+        // If P1 is gamepad, P2 can be keyboard arrows.
+        const keyboardPlayerExists = gameState.players.some((p, i) => i > 0 && p.inputSource === 'keyboard_arrow');
+        if (!keyboardPlayerExists && keys['enter']) {
+             // Check if P1 is already using keyboard (WASD) - P2 can still use Arrows
+             // Actually P1 uses 'mouse' source which implies keyboard WASD.
+             // So P2 can safely use 'keyboard_arrow' source.
+             
+             const playerIndex = gameState.players.length;
+             const spawnX = canvas.width / 2 + (playerIndex * 50);
+             const newPlayer = createPlayer(spawnX, canvas.height / 2, playerIndex);
+             newPlayer.inputSource = 'keyboard_arrow';
+             newPlayer.gamepadIndex = null;
+             gameState.players.push(newPlayer);
         }
     }
 
-    // P2 Dropping out (B/Back)
-    if (gameState.players.length > 1 && p2) {
-        if (p2.inputSource === 'gamepad' && p2.gamepadIndex !== undefined && p2.gamepadIndex !== null) {
-            const gp = inputSystem.getGamepad(p2.gamepadIndex);
+    // Player Dropping Out (Back/B/Backspace)
+    // Iterate backwards to safely remove
+    for (let i = gameState.players.length - 1; i > 0; i--) {
+        const player = gameState.players[i];
+        
+        if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+            const gp = inputSystem.getGamepad(player.gamepadIndex);
             if (gp && gp.buttons.back.justPressed) {
-                gameState.players.pop(); // Remove P2
+                gameState.players.splice(i, 1);
+                // Re-assign colors/positions? No, keep them as is until reset
+                // Actually, if P2 drops and P3 remains, P3 becomes new P2?
+                // Array splice handles index shift.
             }
         }
+        
         // Keyboard drop out
-        if (p2.inputSource === 'keyboard_arrow' && keys['backspace']) {
-            gameState.players.pop();
+        if (player.inputSource === 'keyboard_arrow' && keys['backspace']) {
+            gameState.players.splice(i, 1);
         }
     }
 }
@@ -1377,7 +1400,10 @@ function drawGame() {
 
     // Background - transparent if WebGPU is handling it, otherwise use Canvas 2D fallback
     const maxDimension = Math.max(canvas.width, canvas.height);
-    if (!webgpuRenderer || !webgpuRenderer.isAvailable()) {
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    const webgpuActive = webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable();
+    
+    if (!webgpuActive) {
         const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, maxDimension / 1.5);
         bgGradient.addColorStop(0, '#1a1a1a');
         bgGradient.addColorStop(1, '#0d0d0d');
@@ -1727,9 +1753,11 @@ gameEngine.draw = () => {
         gameState.lastFpsUpdateTime = now;
     }
 
-    // Render WebGPU layer (background/compute)
-    if (webgpuRenderer && webgpuRenderer.isAvailable()) {
-        webgpuRenderer.render(0); // dt not needed for basic clear
+    // Render WebGPU layer (background/compute) if enabled
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    if (webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable()) {
+        const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
+        webgpuRenderer.render(dt);
     }
 
     if (gameState.showCoopLobby) {

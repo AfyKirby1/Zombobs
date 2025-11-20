@@ -57,9 +57,17 @@
 
 > **The horde is evolving. Are you?**
 
+- **⚡ WebGPU Rendering Engine** - Next-generation graphics with GPU-accelerated background shaders, bloom post-processing, and procedural "Void" effects. Automatic Canvas 2D fallback for compatibility.
+- **🎨 Settings Overhaul** - Complete redesign with compact tabbed interface (Video, Audio, Gameplay, Controls) and 10+ new customization options.
+- **💫 Bloom & Post-Processing** - Physically based bloom effects for glowing elements and cinematic visuals.
+- **🎛️ Advanced Settings** - New options including WebGPU toggle, bloom intensity, particle count modes, lighting quality, distortion effects, damage number scale, screen shake multiplier, crosshair color, auto-reload toggle, and spatial audio.
+- **📊 WebGPU Status Indicator** - Real-time status icon showing WebGPU availability and current state.
+
+## 🔥 Previously in V0.3.0 ALPHA
+
 - **🔥 Flamethrower Weapon** - Burn through crowds with short-range, high-fire-rate devastation. Sets zombies ablaze with damage-over-time effects.
 - **🌙 Day/Night Cycle** - Dynamic 2-minute cycle where zombies move 20% faster at night. Survive the darkness.
-- **👥 Local Co-op** - Full 2-player shared-screen mode with split HUD, distinct player colors, and smart input detection.
+- **👥 Local Co-op** - Full 4-player shared-screen mode with grid HUD, distinct player colors, and smart input detection.
 - **⚡ Background Reloading** - Weapons auto-reload when holstered. Switch weapons tactically during downtime.
 - **🎯 Weapon Persistence** - Each weapon maintains its own ammo count. No more losing progress when switching.
 - **🎵 Menu Music** - Atmospheric background music sets the mood before the chaos begins.
@@ -129,12 +137,12 @@
 
 ### 👥 Multiplayer & Co-op
 
-- **Local Co-op**: 2-player shared screen mode with split HUD and distinct player colors
+- **Local Co-op**: 4-player shared screen mode with grid HUD and distinct player colors
   - Player 1: Mouse/Keyboard or Gamepad 1
-  - Player 2: Keyboard (Arrows) or Gamepad 2
+  - Player 2-4: Gamepad 2-4 or Keyboard (Arrows for P2)
   - Smart input assignment (mix keyboard and gamepads)
   - Zombies target closest living player
-  - Both players must die for Game Over
+  - All players must die for Game Over
 
 - **Multiplayer Lobby**: Socket.io powered matchmaking with live player list
   - Real-time connection tracking
@@ -161,7 +169,7 @@
 1. Open `zombie-game.html` in your browser
 2. Click **Local Co-op** from the main menu
 3. **Player 1**: Use Mouse/Keyboard or Gamepad 1
-4. **Player 2**: Press Start/A/Enter to join, use Keyboard (Arrow keys) or Gamepad 2
+4. **Players 2-4**: Press Start/A/Enter to join, use Keyboard (Arrow keys) or Gamepads
 5. Survive together!
 
 ### Option C · Multiplayer Lobby
@@ -189,12 +197,12 @@
 ### Single Player
 Classic survival mode. Just you against the horde. How long can you last?
 
-### Local Co-op (2 Players) ✅ **FULLY FUNCTIONAL**
-- Shared screen gameplay with split HUD
-- Distinct player colors (Blue/Red)
+### Local Co-op (Up to 4 Players) ✅ **FULLY FUNCTIONAL**
+- Shared screen gameplay with 2x2 grid HUD
+- Distinct player colors (Blue/Red/Green/Orange)
 - Smart input assignment (mix keyboard and gamepads)
 - Zombies target the closest living player
-- Both players must die for Game Over
+- All players must die for Game Over
 
 ### Multiplayer Lobby 🔄 **LOBBY ONLY** (Full gameplay coming soon)
 - Live player list with auto-generated names (or custom handles)
@@ -238,15 +246,29 @@ Classic survival mode. Just you against the horde. How long can you last?
 
 ### ⚙️ Settings & Customization
 
-The game features a comprehensive settings panel with vertical scrolling and organized sections:
+The game features a comprehensive **tabbed settings panel** with compact, organized sections:
 
-- **Audio Settings**: Master, Music, and SFX volume controls with independent sliders
-- **Video Settings**: Quality presets, screen shake intensity, crosshair styles, damage number display, FPS limits, and visual toggles
-- **Gameplay Settings**: Auto-sprint, FPS counter, pause on focus loss
-- **Controls**: Keyboard/Controller toggle with separate keybind configuration for each input method
-  - Switch between keyboard and gamepad modes with a single click
-  - Rebind any key or button to your preference
-  - Settings persist across sessions via localStorage
+**Video Tab:**
+- **WebGPU Settings**: Enable/disable WebGPU features, bloom intensity slider, particle count modes (Low/High/Ultra), lighting quality (Off/Simple/Advanced), distortion effects toggle
+- **Quality Presets**: Low, Medium, High, or Custom configurations
+- **Visual Effects**: Resolution scale, vignette, shadows, lighting toggles
+- **Gameplay Visuals**: Screen shake multiplier, crosshair style & color, damage number style & scale, low health warning, enemy health bars, reload bar
+- **Performance**: FPS limit options, debug stats toggle
+
+**Audio Tab:**
+- **Volume Controls**: Master, Music, and SFX volume sliders with independent control
+- **Advanced**: Spatial audio toggle for 3D positional sound
+
+**Gameplay Tab:**
+- **Controls**: Auto-sprint, auto-reload toggle
+- **UI**: FPS counter visibility, pause on focus loss
+
+**Controls Tab:**
+- **Input Mode Toggle**: Switch between Keyboard and Controller modes
+- **Keybinds**: Fully remappable keys and buttons
+  - Keyboard: Movement, Sprint, Reload, Grenade, Melee, Weapon hotkeys (1-4), Scroll wheel toggle
+  - Controller: Fire, Reload, Grenade, Sprint, Melee, Prev/Next Weapon, Pause
+- All settings apply in real-time and persist across sessions via localStorage
 
 ---
 
@@ -256,7 +278,8 @@ We believe in the power of the platform.
 
 ### Frontend Core
 - **100% Vanilla JavaScript (ES6+)** - No frameworks, no libraries, no bloat
-- **HTML5 Canvas API (2D Context)** - Hand-optimized rendering pipeline
+- **HTML5 Canvas API (2D Context)** - Hand-optimized rendering pipeline for gameplay/UI
+- **WebGPU** - Next-generation graphics API for GPU-accelerated background shaders and post-processing (automatic Canvas 2D fallback)
 - **Web Audio API** - Procedurally generated sound effects (Oscillators & Gain Nodes)
 - **CSS3** - UI overlays and styling
 - **Client Dependencies**: **ZERO external runtime dependencies.** None. Nada.
@@ -292,10 +315,14 @@ Every system is custom-built:
 The horde is growing. Here's what's coming next:
 
 ### ✅ Recently Completed
+- [x] **WebGPU Rendering Engine** - GPU-accelerated background shaders and post-processing
+- [x] **Settings Overhaul** - Compact tabbed interface with 10+ new options
+- [x] **Bloom Post-Processing** - Physically based glow effects
+- [x] **Procedural "Void" Background** - Animated shader-based atmospheric effects
 - [x] **Flamethrower** - Short-range DoT weapon with burning effects
 - [x] **Spitter Zombies** - Ranged enemies with acid projectiles
 - [x] **Day/Night Cycle** - Dynamic atmosphere with difficulty scaling
-- [x] **Local Co-op** - Full 2-player shared-screen mode
+- [x] **Local Co-op** - Full 4-player shared-screen mode
 - [x] **Background Reloading** - Tactical weapon switching
 - [x] **Weapon Persistence** - Independent ammo tracking
 

@@ -1,14 +1,23 @@
 export class SettingsManager {
     constructor() {
+        this.callbacks = []; // Array of callback functions to call when settings change
         this.defaultSettings = {
             audio: {
                 masterVolume: 1.0,
                 musicVolume: 0.5,
-                sfxVolume: 1.0
+                sfxVolume: 1.0,
+                spatialAudio: false // Stereo panning based on position
             },
             video: {
+                // WebGPU Settings
+                webgpuEnabled: true,
+                bloomIntensity: 0.5, // 0.0 to 1.0
+                particleCount: 'high', // 'low' (CPU), 'high' (GPU 10k), 'ultra' (GPU 50k)
+                lightingQuality: 'simple', // 'off', 'simple', 'advanced'
+                distortionEffects: true,
+                
+                // General Video Settings
                 qualityPreset: 'high', // low, medium, high, custom
-                particleCount: 200,
                 resolutionScale: 1.0,
                 vignette: true,
                 shadows: true,
@@ -19,13 +28,16 @@ export class SettingsManager {
                 enemyHealthBars: true,
                 reloadBar: true,
                 crosshairStyle: 'default', // default, dot, cross, circle
-                screenShakeIntensity: 1.0, // 0.0 to 1.0
+                crosshairColor: '#00ff00', // Hex color code
+                screenShakeMultiplier: 1.0, // 0.0 to 2.0 (expanded from screenShakeIntensity)
                 damageNumberStyle: 'floating', // floating, stacking, off
+                damageNumberScale: 1.0, // 0.5 to 2.0
                 fpsLimit: 0, // 0 = unlimited, 30, 60, 120
                 showDebugStats: false
             },
             gameplay: {
                 autoSprint: false,
+                autoReload: true, // Disable for "hardcore" feel
                 pauseOnFocusLoss: true,
                 showFps: false
             },
@@ -138,27 +150,53 @@ export class SettingsManager {
         }
         
         this.saveSettings();
+        
+        // Notify callbacks
+        this.callbacks.forEach(callback => callback(category, key, value));
+    }
+    
+    addChangeListener(callback) {
+        this.callbacks.push(callback);
+    }
+    
+    removeChangeListener(callback) {
+        const index = this.callbacks.indexOf(callback);
+        if (index > -1) {
+            this.callbacks.splice(index, 1);
+        }
     }
     
     applyVideoPreset(preset) {
         if (preset === 'low') {
-            this.settings.video.particleCount = 50;
+            this.settings.video.particleCount = 'low';
             this.settings.video.resolutionScale = 0.75;
             this.settings.video.vignette = false;
             this.settings.video.shadows = false;
             this.settings.video.lighting = false;
+            this.settings.video.webgpuEnabled = false;
+            this.settings.video.bloomIntensity = 0;
+            this.settings.video.lightingQuality = 'off';
+            this.settings.video.distortionEffects = false;
         } else if (preset === 'medium') {
-            this.settings.video.particleCount = 100;
+            this.settings.video.particleCount = 'low';
             this.settings.video.resolutionScale = 1.0;
             this.settings.video.vignette = true;
             this.settings.video.shadows = true;
             this.settings.video.lighting = false;
+            this.settings.video.webgpuEnabled = true;
+            this.settings.video.bloomIntensity = 0.3;
+            this.settings.video.lightingQuality = 'simple';
+            this.settings.video.distortionEffects = true;
         } else if (preset === 'high') {
-            this.settings.video.particleCount = 200;
+            this.settings.video.particleCount = 'high';
             this.settings.video.resolutionScale = 1.0;
             this.settings.video.vignette = true;
             this.settings.video.shadows = true;
             this.settings.video.lighting = true;
+            this.settings.video.webgpuEnabled = true;
+            this.settings.video.bloomIntensity = 0.5;
+            this.settings.video.lightingQuality = 'simple';
+            this.settings.video.distortionEffects = true;
         }
         this.settings.video.qualityPreset = preset;
         this.saveSettings();

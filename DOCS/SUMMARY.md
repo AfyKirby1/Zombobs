@@ -134,6 +134,20 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
+## Recent Updates (V0.3.1)
+- **WebGPU Rendering Foundation**:
+  - Dedicated WebGPURenderer with Canvas 2D fallback
+  - Procedural "Void" background with GPU shaders
+  - Bloom post-processing and lighting effects
+  - Live settings integration for graphics features
+- **Settings Overhaul**:
+  - Complete redesign with tabbed layout (Video, Audio, Gameplay, Controls)
+  - Compact, industrial UI aesthetic
+  - Comprehensive video settings (Bloom, Lighting, Particles, Distortion)
+- **Landing Page Requirements**:
+  - Added "Graphical Requirements" block to sidebar
+  - Specs for WebGPU/Canvas and hardware targets
+
 ## Recent Updates (V0.3.0 ALPHA)
 
 - **Engine Naming & Version Update**: 
@@ -178,10 +192,10 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 
 ## Previous Updates (v0.2.2)
 - **Local Co-op**: 
-  - 2-player shared screen gameplay
-  - Dynamic split-screen HUD
-  - Dedicated Lobby for P2 joining
-  - Distinct player colors (Blue/Red)
+  - 4-player shared screen gameplay
+  - Dynamic grid HUD (2x2)
+  - Dedicated Lobby for joining
+  - Distinct player colors
   - Smart input assignment (Keyboard/Gamepad mixing)
 - **Horror Atmosphere**:
   - Creepy animated main menu background (pulsing red, scanlines, noise)

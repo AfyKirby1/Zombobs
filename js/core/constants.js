@@ -48,6 +48,9 @@ export const CROSSHAIR_LINE_WIDTH = 2;
 export const CROSSHAIR_COLOR = '#ffffff';
 export const CROSSHAIR_OUTLINE_COLOR = '#000000';
 
+// Multiplayer settings
+export const MAX_LOCAL_PLAYERS = 4;
+
 // Weapon definitions
 export const WEAPONS = {
     pistol: {

@@ -213,18 +213,39 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.bossActive = false;
     gameState.boss = null;
 
-    // Initialize Players with different colors
-    const p1 = createPlayer(canvasWidth / 2, canvasHeight / 2, 0); // Blue
-    // P1 defaults to mouse/keyboard
-    p1.inputSource = 'mouse';
-
-    if (gameState.isCoop) {
-        const p2 = createPlayer(canvasWidth / 2 + 50, canvasHeight / 2, 1); // Red
-        // P2 defaults to arrows/numpad or gamepad. 
-        // We'll determine specific input in main.js or InputSystem
-        p2.inputSource = 'keyboard_arrow';
-        gameState.players = [p1, p2];
+    // Preserve existing players from lobby if in co-op mode
+    if (gameState.isCoop && gameState.players.length > 0) {
+        // Reset each player's stats but keep their input configuration
+        gameState.players.forEach((player, index) => {
+            player.health = PLAYER_MAX_HEALTH;
+            player.maxHealth = PLAYER_MAX_HEALTH;
+            player.stamina = PLAYER_STAMINA_MAX;
+            player.maxStamina = PLAYER_STAMINA_MAX;
+            player.shield = 0;
+            player.currentWeapon = WEAPONS.pistol;
+            player.currentAmmo = WEAPONS.pistol.ammo;
+            player.maxAmmo = WEAPONS.pistol.maxAmmo;
+            player.isReloading = false;
+            player.grenadeCount = MAX_GRENADES;
+            
+            // Reset weapon states
+            player.weaponStates = {
+                pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
+                shotgun: { ammo: WEAPONS.shotgun.ammo, lastHolsteredTime: 0 },
+                rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
+                flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
+            };
+            
+            // Position players in a circle around center
+            const angleOffset = (Math.PI * 2 / gameState.players.length) * index;
+            const radius = 50;
+            player.x = canvasWidth / 2 + Math.cos(angleOffset) * radius;
+            player.y = canvasHeight / 2 + Math.sin(angleOffset) * radius;
+        });
     } else {
+        // Initialize single player
+        const p1 = createPlayer(canvasWidth / 2, canvasHeight / 2, 0); // Blue
+        p1.inputSource = 'mouse';
         gameState.players = [p1];
     }
 

@@ -100,18 +100,29 @@ export class GameHUD {
     }
 
     drawCoopHUD() {
-        // P1 Left
-        this.drawPlayerStats(gameState.players[0], this.padding, this.padding, "P1");
-
-        // Additional players (P2+) stacked on the right side
+        // 2x2 grid layout for up to 4 players
+        // Top-left: P1, Top-right: P2, Bottom-left: P3, Bottom-right: P4
         const width = 160;
-            const rightX = this.canvas.width - width - this.padding;
-        let rightY = this.padding;
+        const statsHeight = (50 + this.itemSpacing) * 3; // 3 stats per player (health, ammo, grenades)
         
-        for (let i = 1; i < gameState.players.length; i++) {
-            const playerLabel = i === 1 ? "P2" : `Bot${i}`;
-            this.drawPlayerStats(gameState.players[i], rightX, rightY, playerLabel);
-            rightY += (50 + this.itemSpacing) * 3 + this.itemSpacing; // 3 stats per player
+        // Calculate positions for 2x2 grid
+        const leftX = this.padding;
+        const rightX = this.canvas.width - width - this.padding;
+        const topY = this.padding;
+        const bottomY = this.canvas.height - statsHeight - this.padding;
+        
+        // Draw players in grid positions
+        if (gameState.players.length >= 1) {
+            this.drawPlayerStats(gameState.players[0], leftX, topY, "P1");
+        }
+        if (gameState.players.length >= 2) {
+            this.drawPlayerStats(gameState.players[1], rightX, topY, "P2");
+        }
+        if (gameState.players.length >= 3) {
+            this.drawPlayerStats(gameState.players[2], leftX, bottomY, "P3");
+        }
+        if (gameState.players.length >= 4) {
+            this.drawPlayerStats(gameState.players[3], rightX, bottomY, "P4");
         }
 
         // Shared stats in Top Center
@@ -384,7 +395,8 @@ export class GameHUD {
 
         // Max 4 players total (P1 + 3 bots)
         const canAddBot = gameState.players.length < 4;
-        this.drawMenuButton('Add Bot', centerX - buttonWidth / 2, addBotY, buttonWidth, buttonHeight, addBotHovered, !canAddBot);
+        const addBotText = canAddBot ? 'Add Bot' : 'Max Players (4)';
+        this.drawMenuButton(addBotText, centerX - buttonWidth / 2, addBotY, buttonWidth, buttonHeight, addBotHovered, !canAddBot);
         
         const canStart = gameState.players.length > 1;
         this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, startHovered, !canStart);
@@ -400,66 +412,83 @@ export class GameHUD {
         this.ctx.fillStyle = '#ff1744';
         this.ctx.shadowBlur = 20;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillText('LOCAL CO-OP', this.canvas.width / 2, 100);
+        this.ctx.fillText('LOCAL CO-OP (UP TO 4 PLAYERS)', this.canvas.width / 2, 80);
         this.ctx.shadowBlur = 0;
 
-        this.ctx.font = '24px "Roboto Mono", monospace';
-        this.ctx.fillStyle = '#ffffff';
+        // 2x2 grid layout for 4 player slots
+        const slotWidth = 350;
+        const slotHeight = 150;
+        const spacing = 30;
+        const gridWidth = slotWidth * 2 + spacing;
+        const gridHeight = slotHeight * 2 + spacing;
+        const startX = (this.canvas.width - gridWidth) / 2;
+        const startY = 150;
 
-        const p1 = gameState.players[0];
-        const p2 = gameState.players[1]; // Might be undefined
+        const playerColors = ['#66b3ff', '#ff6666', '#66ff66', '#ffaa66'];
+        const playerLabels = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
 
-        // P1 Info
-        this.ctx.fillStyle = '#66b3ff';
-        this.ctx.fillText('Player 1', this.canvas.width / 4, this.canvas.height / 2 - 50);
-        this.ctx.font = '16px "Roboto Mono", monospace';
-        this.ctx.fillStyle = '#cccccc';
-
-        const p1Controls = p1.inputSource === 'mouse' ? 'WASD + Mouse' :
-            (p1.inputSource === 'gamepad' ? `Gamepad (ID: ${p1.gamepadIndex})` : 'Keyboard');
-        this.ctx.fillText(`Controls: ${p1Controls}`, this.canvas.width / 4, this.canvas.height / 2);
-        this.ctx.fillText('Status: Ready', this.canvas.width / 4, this.canvas.height / 2 + 30);
-
-        // P2 Info
-        this.ctx.font = '24px "Roboto Mono", monospace';
-        this.ctx.fillStyle = '#ffcc00';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('Player 2', (this.canvas.width / 4) * 3, this.canvas.height / 2 - 50);
-        this.ctx.font = '16px "Roboto Mono", monospace';
-        this.ctx.fillStyle = '#cccccc';
-
-        if (p2) {
-            const p2Controls = p2.inputSource === 'gamepad' ? `Gamepad (ID: ${p2.gamepadIndex})` : 'Arrows + Enter';
-            this.ctx.fillText(`Controls: ${p2Controls}`, (this.canvas.width / 4) * 3, this.canvas.height / 2);
-            this.ctx.fillStyle = '#76ff03';
-            this.ctx.fillText('Status: Ready', (this.canvas.width / 4) * 3, this.canvas.height / 2 + 30);
-
-            this.ctx.fillStyle = '#888888';
-            this.ctx.font = '12px "Roboto Mono", monospace';
-            this.ctx.fillText('(Press Back/B to Leave)', (this.canvas.width / 4) * 3, this.canvas.height / 2 + 60);
-        } else {
-            this.ctx.fillText('Controls: Arrows + Enter', (this.canvas.width / 4) * 3, this.canvas.height / 2);
-            this.ctx.fillText('OR Any Other Gamepad', (this.canvas.width / 4) * 3, this.canvas.height / 2 + 25);
-
-            this.ctx.fillStyle = '#888888';
-            this.ctx.fillText('Status: Press Enter/A to Join', (this.canvas.width / 4) * 3, this.canvas.height / 2 + 60);
+        // Draw 4 player slots in 2x2 grid
+        for (let i = 0; i < 4; i++) {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const x = startX + col * (slotWidth + spacing);
+            const y = startY + row * (slotHeight + spacing);
+            
+            const player = gameState.players[i];
+            
+            // Slot background
+            this.ctx.fillStyle = 'rgba(15, 15, 20, 0.8)';
+            this.ctx.fillRect(x, y, slotWidth, slotHeight);
+            this.ctx.strokeStyle = player ? playerColors[i] : 'rgba(255, 255, 255, 0.2)';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(x, y, slotWidth, slotHeight);
+            
+            // Player label
+            this.ctx.font = '24px "Roboto Mono", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = playerColors[i];
+            this.ctx.fillText(playerLabels[i], x + slotWidth / 2, y + 30);
+            
+            // Player status
+            this.ctx.font = '16px "Roboto Mono", monospace';
+            
+            if (player) {
+                // Player joined
+                const controls = player.inputSource === 'mouse' ? 'WASD + Mouse' :
+                    (player.inputSource === 'gamepad' ? `Gamepad ${player.gamepadIndex + 1}` : 'Keyboard');
+                this.ctx.fillStyle = '#cccccc';
+                this.ctx.fillText(`Controls: ${controls}`, x + slotWidth / 2, y + 70);
+                this.ctx.fillStyle = '#76ff03';
+                this.ctx.fillText('✓ Ready', x + slotWidth / 2, y + 100);
+                
+                if (i > 0) {
+                    this.ctx.fillStyle = '#888888';
+                    this.ctx.font = '12px "Roboto Mono", monospace';
+                    this.ctx.fillText('(Press Back/B to Leave)', x + slotWidth / 2, y + 125);
+                }
+            } else {
+                // Empty slot
+                this.ctx.fillStyle = '#888888';
+                this.ctx.fillText('Press A/Enter to Join', x + slotWidth / 2, y + 70);
+                this.ctx.font = '14px "Roboto Mono", monospace';
+                this.ctx.fillText('(Any Gamepad or Keyboard)', x + slotWidth / 2, y + 100);
+            }
         }
 
         // Start Button
         const buttonWidth = 200;
         const buttonHeight = 50;
         const centerX = this.canvas.width / 2;
-        const startY = this.canvas.height - 150;
+        const buttonY = this.canvas.height - 100;
 
         const startHovered = this.hoveredButton === 'coop_start';
         const backHovered = this.hoveredButton === 'coop_back';
 
-        // Only enable start if P2 joined? Or allow solo on coop mode (weird but ok)?
-        // Let's require 2 players for Coop Start
+        // Require at least 2 players to start
         const canStart = gameState.players.length > 1;
 
-        this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, startHovered, !canStart);
-        this.drawMenuButton('Back', centerX - buttonWidth / 2, startY + 70, buttonWidth, buttonHeight, backHovered, false);
+        this.drawMenuButton('Start Game', centerX - buttonWidth / 2, buttonY - 70, buttonWidth, buttonHeight, startHovered, !canStart);
+        this.drawMenuButton('Back', centerX - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, backHovered, false);
     }
 
     drawGameOver() {
@@ -865,16 +894,16 @@ export class GameHUD {
 
         // Check Coop Lobby
         if (gameState.showCoopLobby) {
-            const startY = this.canvas.height - 150;
+            const startY = this.canvas.height - 100;
 
             // Start Game
             if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
-                mouseY >= startY && mouseY <= startY + buttonHeight) {
+                mouseY >= startY - 70 && mouseY <= startY - 70 + buttonHeight) {
                 return 'coop_start';
             }
             // Back
             if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
-                mouseY >= startY + 70 && mouseY <= startY + 70 + buttonHeight) {
+                mouseY >= startY && mouseY <= startY + buttonHeight) {
                 return 'coop_back';
             }
             return null;
@@ -1239,9 +1268,10 @@ export class GameHUD {
     drawWebGPUStatusIcon() {
         this.ctx.save();
         
-        // Check if WebGPU renderer is available
+        // Check if WebGPU renderer is available AND enabled
         const webgpuRenderer = window.webgpuRenderer;
-        const isWebGPUActive = webgpuRenderer && webgpuRenderer.isAvailable();
+        const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+        const isWebGPUActive = webgpuRenderer && webgpuRenderer.isAvailable() && webgpuEnabled;
         
         const padding = 15;
         const iconWidth = 75;
