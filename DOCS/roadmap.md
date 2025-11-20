@@ -10,10 +10,10 @@
 
 **Status Legend (Roadmap Summary):**
 
-- Total items: 672
-- Completed items: 53 (7.9%)
-- Uncompleted items: 619
-- Phases completed: 0 / 14 (0.0%)
+ - Total items: 682
+ - Completed items: 54 (7.9%)
+ - Uncompleted items: 628
+ - Phases completed: 0 / 14 (0.0%)
 
 ---
 
@@ -35,7 +35,7 @@
 - [x] **Wave Start Notification** - Brief text overlay showing "Wave X Starting!" when new wave begins 🟢
 - [x] **Aiming Crosshair** - Simple reticle/crosshair at mouse cursor position for better aiming reference 🟢
 - [x] **Off-screen Zombie Indicator** - Arrows or icons at the edge of the screen pointing towards off-screen zombies that are close to the player 🟡
-- [ ] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds) 🟡
+ - [x] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds) (duplicate of Phase 1 "Health Regeneration") 🟡
 - [ ] **Weapon Accuracy Indicator** - Visual feedback showing current weapon accuracy level during burst-fire sequences 🟡
 - [ ] **Minimap/Compass** - A simple UI element to show player position relative to the base 🟡
 - [ ] **Prone/Crouch System** - Multiple stance options affecting visibility and accuracy for tactical positioning 🟡
@@ -78,9 +78,9 @@
 - [ ] **Soft Body Deformation** - Zombies squish when crushed with GPU physics simulation 🔴
 - [ ] **Dismemberment System** - Limbs separate with realistic physics simulation and collision 🟡
 - [ ] **Gore System** - Persistent blood, guts, organs rendered with GPU particles and decals 🟡
-- [ ] **Fire Propagation** - Fire spreads realistically using cellular automata on GPU 🔴
+ - [ ] **Fire Propagation** - Fire spreads realistically using cellular automata on GPU (engine-level) 🔴
 - [ ] **Explosion Shockwaves** - Physics objects blown away with GPU-computed force fields 🟡
-- [ ] **Bullet Penetration** - Shoot through multiple zombies with raycast compute shaders 🟡
+ - [ ] **Bullet Penetration** - Shoot through multiple zombies with raycast compute shaders (zombie-only) 🟡
 - [ ] **Ricochet System** - Bullets bounce off metal surfaces with realistic physics 🟡
 
 ---
@@ -333,7 +333,7 @@
 - [ ] **Multiplayer Cooperative Mode** - Full online co-op with shared objectives, synchronized wave progression, and team-based rewards 🔴
 - [ ] **Competitive PvP Arena** - Player vs player combat modes with ranking system, seasonal leaderboards, and skill-based matchmaking 🔴
 - [ ] **Crafting System** - Resource gathering from environment and enemies, combined with blueprints to create weapons, ammo, and utility items 🟡
-- [ ] **Day/Night Cycle** - Dynamic time progression affecting zombie aggression, spawn rates, and special nocturnal enemy types 🟡
+ - [ ] **Day/Night Cycle** - Dynamic time progression affecting zombie aggression, spawn rates, and special nocturnal enemy types (advanced; baseline completed in Phase 3) 🟡
 - [ ] **Interactive Environmental Objects** - Physics-enabled objects like explosive barrels, destructible walls, and movable barricades 🟡
 - [ ] **Mini-Games & Side Activities** - Skill-based challenges between waves offering unique rewards and temporary buffs 🟢
 - [ ] **Dynamic Difficulty Adjustment** - AI-driven system analyzing player performance to adjust spawn rates, enemy health, and loot frequency in real-time 🔴
@@ -347,7 +347,7 @@
 - [ ] **Network Synchronization Framework** - Robust state synchronization for multiplayer with lag compensation, prediction, and conflict resolution 🔴
 - [ ] **Automated Performance Profiling** - Built-in tools monitoring frame rates, memory usage, and network latency with detailed analytics 🟡
 - [ ] **Localization Support** - Infrastructure for multiple languages, regional settings, and culturally appropriate content adaptation 🟡
-- [ ] **Replay System Architecture** - Recording and playback functionality for gameplay analysis, bug reporting, and content creation 🔴
+ - [ ] **Replay System Architecture** - Recording and playback functionality for gameplay analysis, bug reporting, and content creation (architecture) 🔴
 - [ ] **AI Behavior Tree Implementation** - Hierarchical AI system enabling complex enemy behaviors, coordinated attacks, and adaptive strategies 🔴
 - [ ] **Cross-Platform Rendering** - Abstraction layer supporting multiple graphics APIs and hardware configurations for maximum compatibility 🔴
 - [ ] **Observer Pattern for Game Events** - Decouple event listeners for cleaner code and easier maintenance 🟡
@@ -413,7 +413,7 @@
 - [ ] **Post-Game Team Stats & Heatmaps** - Detailed summary: damage, revives, accuracy, role contributions, movement heatmaps 🟢
 - [ ] **Kill Feed & Combo Highlights** - On-screen feed for elite kills, clutch revives, and activated team combos 🟢
 - [ ] **Accessibility Suite** - Colorblind filters, text scaling, audio mix presets, aim assist options for inclusive co-op 🟢
-- [ ] **Netcode: Client Prediction & Lag Compensation** - Hit reconciliation and interpolation to improve online feel 🔴
+ - [ ] **Netcode: Client Prediction & Lag Compensation** - Hit reconciliation and interpolation to improve online feel (co-op integration) 🔴
 - [ ] **Anti-Grief Tools** - Vote kick/restart, friendly-fire toggle, idle detection, and item-sharing locks to prevent griefing 🟡
 - [ ] **AI Companion Command System** - Give tactical commands to AI companions via hotkeys or radial menu: "Follow", "Hold Position", "Cover Me", "Scavenge", "Defend Area", "Focus Fire". Visual indicators (command icons above companions) and brief audio confirmations for better control 🟡
 - [ ] **AI Companion Upgrade System** - Upgrade AI companions between waves with improved stats, abilities, or equipment. Progression system that enhances companion effectiveness over time 🟡
@@ -458,7 +458,7 @@
 - [ ] **Aurora Borealis** - Rare night sky event that lights up the darkness with colorful ribbons 🟢
 - [ ] **Dynamic Lighting System** - Real-time light sources with shadows and illumination. Muzzle flashes, explosions, and fire create dynamic lighting. Day/night cycle affects ambient lighting. Light occlusion and shadow casting for depth 🟡
 - [ ] **Particle System Overhaul** - Enhanced particle effects with physics-based movement, wind effects, and collision. Layered particle systems for complex effects (smoke, fire, blood). GPU-accelerated particle rendering for thousands of particles 🔴
-- [ ] **Screen Space Reflections** - Reflective surfaces using screen-space reflection techniques. Puddles, glass, and metal surfaces reflect environment. Adds visual depth and realism to the game world 🔴
+ - [ ] **Screen Space Reflections** - Reflective surfaces using screen-space reflection techniques. Puddles, glass, and metal surfaces reflect environment. Adds visual depth and realism to the game world (general SSR) 🔴
 - [ ] **Motion Blur & Temporal Effects** - Motion blur for fast-moving entities and camera movement. Temporal anti-aliasing for smoother edges. Motion trails for bullets and projectiles. Cinematic visual polish 🟡
 - [ ] **Procedural Animation System** - Procedural animations for entities (walking, running, aiming). IK (Inverse Kinematics) for natural limb movement. Dynamic animation blending based on movement speed and direction 🟡
 - [ ] **Canvas Post-Processing Pipeline** - Advanced effects including bloom, vignette, chromatic aberration for cinematic quality 🟡
@@ -490,7 +490,7 @@
 
 - [ ] **Shatterable Glass** - Windows and glass surfaces break dynamically when shot or impacted 🟡
 - [ ] **Debris Physics** - Shell casings, magazines, and small objects react to explosions and movement 🟡
-- [ ] **Fire Propagation** - Fire from flamethrowers or explosions spreads to nearby flammable materials 🔴
+ - [ ] **Fire Propagation** - Fire from flamethrowers or explosions spreads to nearby flammable materials (gameplay-level) 🔴
 - [ ] **Destructible Lights** - Shoot out streetlights or lamps to create darkness for stealth or ambush 🟡
 - [ ] **Environmental Traps** - Interactable objects like hanging logs or cars that can be triggered to crush enemies 🟡
 - [ ] **Wildlife System** - Neutral animals (rats, crows, deer) that react to gunfire and zombie presence 🟡
@@ -504,14 +504,14 @@
 - [ ] **Lockpicking Minigame** - Interactive system to open locked doors or crates for high-tier loot 🟡
 - [ ] **Binoculars / Scouting** - Tool to observe distant enemy types and numbers before engaging 🟢
 - [ ] **Photo Mode** - Pause the action to take cinematic screenshots with camera controls and filters 🟢
-- [ ] **Replay System** - Watch back and analyze previous play sessions 🔴
+ - [ ] **Replay System** - Watch back and analyze previous play sessions (user-facing playback) 🔴
 
 ### Advanced Physics & Tech 🧪
 
 - [ ] **Fluid Dynamics** - Blood and water flow downhill, pool in depressions, and react to explosions 🔴
 - [ ] **Wind System** - Wind speed affects projectile trajectory and spreads smoke/fire dynamically 🔴
-- [ ] **Bullet Penetration** - High-caliber rounds shoot through thin walls, doors, and multiple zombies 🟡
-- [ ] **Ricochets** - Bullets can bounce off metal surfaces, creating sparks and potential collateral damage 🟡
+ - [ ] **Bullet Penetration** - High-caliber rounds shoot through thin walls, doors, and multiple zombies (environment + zombie) 🟡
+ - [ ] **Ricochets** - Bullets can bounce off metal surfaces, creating sparks and potential collateral damage (environment reactions) 🟡
 - [ ] **Mud & Dirt Accumulation** - Mud and gore build up on character models and weapons over time 🟢
 - [ ] **Procedural Skybox** - Real-time cloud generation and accurate star maps based on in-game time/season 🟡
 
@@ -600,10 +600,10 @@
 ### Backend & Multiplayer Infrastructure 🖥️
 
 - [ ] **Authoritative Server Architecture** - Move game logic to server-side to prevent cheating and sync state 🔴
-- [ ] **Client-Side Prediction** - Implement movement smoothing and input prediction to hide network latency 🔴
+ - [ ] **Client-Side Prediction** - Implement movement smoothing and input prediction to hide network latency (backend implementation) 🔴
 - [ ] **Delta Compression** - Only transmit changed state data over the network to minimize bandwidth usage 🔴
 - [ ] **Area of Interest (AoI) Management** - Network culling system to only send updates for entities visible to the player 🔴
-- [ ] **WebTransport Support** - Experiment with HTTP/3 WebTransport for lower latency and unreliable data streams 🔴
+ - [ ] **WebTransport Support** - Experiment with HTTP/3 WebTransport for lower latency and unreliable data streams (backend) 🔴
 - [ ] **Redis State Layer** - Use Redis for fast, ephemeral game state storage (lobbies, player presence) 🔴
 - [ ] **Database Sharding** - Prepare database architecture for horizontal scaling of player profiles 🔴
 - [ ] **Anti-Cheat Verification** - Server-side validation of movement speed, fire rate, and hit detection 🔴
@@ -705,7 +705,7 @@
  - [ ] **Dynamic Global Illumination (GI)** - Light bounces off surfaces, coloring nearby objects (e.g., red emergency light tinting nearby walls) 🔴
  - [ ] **Bindless Texture Arrays** - Access thousands of unique zombie textures/decals in a single shader without context switching overhead 🔴
  - [ ] **Volumetric Fog & God Rays** - Raymarched lighting through fog volumes that react to dynamic lights and shadows 🔴
- - [ ] **Screen-Space Reflections (SSR)** - Puddles, blood, and metallic surfaces reflect the world and dynamic entities 🔴
+  - [ ] **Screen-Space Reflections (SSR)** - Puddles, blood, and metallic surfaces reflect the world and dynamic entities (WebGPU pipeline) 🔴
  - [ ] **Normal Mapped 2D Sprites** - Dynamic lighting interaction on 2D sprites using generated normal/depth maps 🟡
  - [ ] **Emissive Material System** - Glowing zombie eyes and toxic sludge actually emit light into the GI solution 🟡
  - [ ] **Order-Independent Transparency (OIT)** - Correctly render overlapping smoke, glass, and fire without sorting artifacts 🔴
@@ -777,10 +777,10 @@
  
  ### Advanced Systems 🧠
  
- - [ ] **GPU Audio Spatialization** - Ray-traced audio occlusion (sound muffles behind walls accurately based on geometry) 🔴
- - [ ] **Vision/Light Field Computation** - Calculate stealth visibility for every pixel on the map instantly 🔴
- - [ ] **Cellular Automata Fire Propagation** - Fire spreads pixel-by-pixel based on material flammability and wind 🔴
- - [ ] **Weather Simulation** - Rain/Snow simulated as individual particles with collision and wind interaction 🔴
+- [ ] **GPU Audio Spatialization** - Ray-traced audio occlusion (sound muffles behind walls accurately based on geometry) 🔴
+- [ ] **Vision/Light Field Computation** - Calculate stealth visibility for every pixel on the map instantly 🔴
+ - [ ] **Cellular Automata Fire Propagation** - Fire spreads pixel-by-pixel based on material flammability and wind (engine-level, WebGPU context) 🔴
+- [ ] **Weather Simulation** - Rain/Snow simulated as individual particles with collision and wind interaction 🔴
  - [ ] **Texture Streaming/Virtual Texturing** - Stream gigabytes of high-res assets seamlessly without loading screens 🔴
  - [ ] **Neural Network Inference (WebNN)** - Run AI models for zombie behavior or chat generation directly on GPU 🔴
  - [ ] **HRTF (Head-Related Transfer Function)** - 3D audio positioning that accounts for head shape 🔴
@@ -836,7 +836,7 @@
  - [ ] **Quantum-Inspired Algorithms** - Experimental optimization techniques for pathfinding 🔴
  - [ ] **WebAssembly SIMD** - CPU code 4x faster with SIMD instructions 🟡
  - [ ] **WebCodecs for Video** - Hardware-accelerated in-game video playback 🟡
- - [ ] **WebTransport** - Ultra-low latency networking for competitive multiplayer 🔴
+  - [ ] **WebTransport** - Ultra-low latency networking for competitive multiplayer (future tech) 🔴
  - [ ] **Shared Array Buffers** - True multi-threaded JavaScript for parallel processing 🔴
  - [ ] **Atomics** - Lock-free data structures for high-performance threading 🔴
  
