@@ -21,7 +21,7 @@
   <a href="https://socket.io/">
     <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" height="30" alt="Socket.io" />
   </a>
-  <a href="#-proprietary-license--agreement">
+  <a href="LEGAL/LICENSE.md">
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
 </p>
@@ -331,6 +331,8 @@ We welcome contributions! Check out the [roadmap](DOCS/roadmap.md) for ideas, or
 **Copyright © 2025 AfyKirby1 (OtterDays). All Rights Reserved.**
 
 This project (ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS) and all associated source code, assets, design, and documentation are the sole intellectual property of **AfyKirby1**.
+
+**[📄 CLICK HERE TO READ THE FULL LICENSE AGREEMENT](LEGAL/LICENSE.md)**
 
 **⚠️ STRICT ACCESS AGREEMENT:**
 
