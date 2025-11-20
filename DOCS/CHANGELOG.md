@@ -2,9 +2,24 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.2.5] - 2025-01-XX
+
+### Changed
+- **Version Bump**: Updated all version references across the project to v0.2.5
+  - Updated `index.html` landing page version display
+  - Updated `server/package.json` version
+  - Updated `launch.ps1` server banner version
+  - Updated documentation files (SUMMARY.md, My_Thoughts.md, SCRATCHPAD.md, ITCH_IO_GUIDE.md)
+
 ## [0.2.3] - 2025-01-XX
 
 ### Added
+- **UI Feedback for Power-ups** - Enhanced HUD to show active buff statuses
+  - **Speed Boost**: Shows remaining time in HUD shared stats (e.g., "Speed: >> 8s")
+  - **Rapid Fire**: Shows remaining time in HUD shared stats (e.g., "Rapid: >>> 10s")
+  - **Shield**: Displays current shield value above ammo count (only visible when shield > 0)
+  - Consistent styling with existing Damage buff indicator
+
 - **Day/Night Cycle System** - Dynamic time-based atmosphere
   - 2-minute cycle (120 seconds) transitioning between day and night
   - Visual overlay: Dark blue/black overlay during night (0.5-0.7 alpha)
@@ -298,7 +313,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Limited bullets per weapon
   - Ammo consumption on each shot
   - Manual reload with R key
-  - Auto-reload when ammo depleted
+  - Auto-reload when empty
   - 1 second reload time for all weapons
   - Reload timer runs independently in game loop
   - "Reloading..." status display in HUD

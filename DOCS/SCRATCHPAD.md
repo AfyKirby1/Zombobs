@@ -4,6 +4,13 @@
 
 ## 2025 - Active Development Notes
 
+### Power-up UI Polish [2025-01-XX]
+- ✅ **HUD Improvements**: Added remaining time indicators for power-ups
+  - **Speed Boost**: Timer displayed in shared stats area
+  - **Rapid Fire**: Timer displayed in shared stats area
+  - **Shield**: Dynamic shield bar in player stats area
+- ✅ **Consistency**: Matched styling with existing Damage buff UI
+
 ### Menu Music & UI Polish [2025-11-19]
 - ✅ **Menu Music**: Added "Shadows of the Wasteland.mp3" background music
   - Plays on main menu, loops continuously
@@ -58,8 +65,8 @@
   - Renamed `initGrassPattern()` to `initGroundPattern()` for clarity
   - Increased ground pattern opacity from 0.4 to 0.6 for better visibility
 
-### Version 0.2.0 Release [2025-11-19]
-- ✅ **Version Bump**: Updated to v0.2.0 across all relevant files
+### Version 0.2.5 Release [2025-01-XX]
+- ✅ **Version Bump**: Updated to v0.2.5 across all relevant files
 - ✅ **Visual Upgrade**: Replaced procedural grass pattern with textured bloody dark floor tile
 - ✅ **GraphicsSystem Update**: Now loads and caches ground texture from `sample_assets/tiles/bloody_dark_floor.png`
 - ✅ **Landing Page Improvements**: 
@@ -78,8 +85,8 @@
 - ✅ **Windows Launcher**: `launch.bat` calls PowerShell wrapper
 - ✅ **Auto-Install**: Dependencies automatically installed on first launch
 - ✅ **Port Configuration**: Default port 3000 (configurable via PORT env var)
-- Server accessible at `http://localhost:3000`
-- Socket.io connection handlers in place for future multiplayer implementation
+- ✅ **Server accessible at `http://localhost:3000`**
+- ✅ **Socket.io connection handlers in place for future multiplayer implementation**
 
 ### Multiplayer Lobby & Logging [2025-11-19]
 - ✅ **Canvas Lobby**: GameHUD renders lobby state (connecting pulse, player list, Ready/Back buttons)

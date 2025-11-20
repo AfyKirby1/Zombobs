@@ -564,7 +564,7 @@
             <div class="hero-card-inner">
                 <div class="title-row">
                     <h1 class="title">Zombobs</h1>
-                    <span class="tagline">v0.2.2 · Canvas prototype</span>
+                    <span class="tagline">v0.2.6 · Canvas prototype</span>
                 </div>
 
                 <div class="pill-row">
@@ -575,20 +575,23 @@
                 </div>
 
                 <p class="hero-text">
-                    Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 3 unique weapons, 
-                    throw grenades, collect health and ammo pickups, and face off against 5 zombie variants including Ghost, 
-                    Exploding, and Armored types. Features local co-op mode, kill streak combos, power-ups (damage buff & nuke), 
-                    controller support, boss waves, and a multiplayer lobby system. Enhanced with bullet trails, screen shake, 
-                    directional blood splatter, menu music, and horror atmosphere effects. Built with pure HTML5 Canvas and 
-                    JavaScript — no engines, no frameworks, just you and the horde.
+                    Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 4 unique weapons including 
+                    the devastating Flamethrower, throw grenades, collect health and ammo pickups, and face off against 6 zombie variants 
+                    including Ghost, Exploding, Armored, and Spitter types. Features local co-op mode, AI squad mode, kill streak combos, 
+                    comprehensive power-up system (damage buff, speed boost, rapid fire, shield & nuke) with real-time HUD timers showing 
+                    remaining duration, controller support, boss waves, day/night cycle with dynamic difficulty, sprint system with stamina 
+                    management, and a multiplayer lobby system. Enhanced with critical hits, hit markers, spawn indicators, off-screen threat 
+                    warnings, reload progress bars, floating damage numbers, bullet trails, shell casings, screen shake, directional blood 
+                    splatter, menu music, and horror atmosphere effects. Built with pure HTML5 Canvas and JavaScript — no engines, no frameworks, 
+                    just you and the horde.
                 </p>
 
                 <div class="feature-grid">
                     <div class="feature">
                         <div class="feature-icon">🔫</div>
                         <div>
-                            <div class="feature-label">3 Distinct Weapons</div>
-                            <div>Pistol (Standard), Shotgun (Spread), Rifle (Rapid). Switch with 1/2/3 keys.</div>
+                            <div class="feature-label">4 Distinct Weapons</div>
+                            <div>Pistol (Standard), Shotgun (Spread), Rifle (Rapid), Flamethrower (DoT). Switch with 1/2/3/4 keys.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -608,8 +611,8 @@
                     <div class="feature">
                         <div class="feature-icon">🛡️</div>
                         <div>
-                            <div class="feature-label">5 Zombie Variants</div>
-                            <div>Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), and Ghost (Spectral) zombies.</div>
+                            <div class="feature-label">6 Zombie Variants</div>
+                            <div>Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), Ghost (Spectral), and Spitter (Acid) zombies.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -664,8 +667,8 @@
                     <div class="feature">
                         <div class="feature-icon">💨</div>
                         <div>
-                            <div class="feature-label">Bullet Trails</div>
-                            <div>Visual velocity-based trails behind bullets for improved direction and speed feedback.</div>
+                            <div class="feature-label">Advanced Ballistics</div>
+                            <div>Visual velocity-based bullet trails and shell casings ejected from weapons for improved direction and speed feedback.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -717,6 +720,97 @@
                             <div>Full key rebinding support and persistent settings.</div>
                         </div>
                     </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌙</div>
+                        <div>
+                            <div class="feature-label">Day/Night Cycle</div>
+                            <div>Dynamic time transitions with night difficulty scaling. Zombies move 20% faster during night phases.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">⚡</div>
+                        <div>
+                            <div class="feature-label">Sprint System</div>
+                            <div>Stamina management for tactical movement. Sprint drains stamina, regenerates when idle. Speed boost power-ups available.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">💥</div>
+                        <div>
+                            <div class="feature-label">Critical Hits</div>
+                            <div>10% chance for critical hits dealing 2x damage with distinctive yellow/red gradient damage numbers and "CRIT!" notifications.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">✨</div>
+                        <div>
+                            <div class="feature-label">Hit Markers</div>
+                            <div>Visual "X" indicator appears on crosshair when shots connect, providing instant feedback on successful hits.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">👁️</div>
+                        <div>
+                            <div class="feature-label">Spawn Indicators</div>
+                            <div>Pulsing red glow appears 1 second before zombies spawn, giving you time to react and position strategically.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📍</div>
+                        <div>
+                            <div class="feature-label">Off-Screen Indicators</div>
+                            <div>Arrows at screen edges point toward nearby off-screen zombies, color-coded by distance for tactical awareness.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📊</div>
+                        <div>
+                            <div class="feature-label">Reload Progress Bar</div>
+                            <div>Visual progress bar shows reload completion percentage instead of text, providing clear feedback during combat.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🛡️</div>
+                        <div>
+                            <div class="feature-label">Shield System</div>
+                            <div>Shield pickups grant temporary overshield that absorbs damage before health. Visual blue particles on shield hits.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔥</div>
+                        <div>
+                            <div class="feature-label">Rapid Fire Power-Up</div>
+                            <div>Temporary fire rate boost that doubles your shooting speed for 10 seconds, perfect for clearing hordes.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🤖</div>
+                        <div>
+                            <div class="feature-label">AI Squad Mode</div>
+                            <div>Play with AI companions! Add up to 3 AI bots to your squad for cooperative survival gameplay.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">💢</div>
+                        <div>
+                            <div class="feature-label">Floating Damage Numbers</div>
+                            <div>Visual damage feedback with floating numbers that show exactly how much damage you're dealing to enemies.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">☠️</div>
+                        <div>
+                            <div class="feature-label">Acid Pools</div>
+                            <div>Spitter zombies create hazardous acid pools on impact that damage players standing in them for 5 seconds.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🎯</div>
+                        <div>
+                            <div class="feature-label">Damage Indicators</div>
+                            <div>Red screen flash and directional feedback when taking damage, helping you identify threat direction quickly.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="cta-row">
@@ -724,7 +818,7 @@
                         <span>Play now</span>
                     </button>
                     <div class="btn-secondary">
-                        <div><strong>Keyboard:</strong> WASD move · Mouse aim · Click shoot · <strong>V</strong> melee · <strong>1/2/3</strong> weapons · <strong>G</strong> grenade · <strong>R</strong> reload · <strong>ESC</strong> pause</div>
+                        <div><strong>Keyboard:</strong> WASD move · Mouse aim · Click shoot · <strong>V</strong> melee · <strong>1/2/3/4</strong> weapons · <strong>G</strong> grenade · <strong>R</strong> reload · <strong>ESC</strong> pause</div>
                         <div style="margin-top: 4px;"><strong>Controller:</strong> Left Stick move · Right Stick aim · <strong>RT</strong> shoot · <strong>RB</strong> grenade · <strong>X</strong> reload · <strong>Y/LB</strong> weapons · <strong>R3</strong> melee · <strong>Start</strong> pause</div>
                     </div>
                 </div>
@@ -773,25 +867,40 @@
             </div>
 
             <div>
-                <div class="side-heading">v0.2.2 Features</div>
+                <div class="side-heading">v0.2.6 Features</div>
                 <ul class="mini-list">
+                    <li><span>✔</span> <strong>Day/Night Cycle</strong>: Dynamic time transitions with night difficulty scaling</li>
+                    <li><span>✔</span> <strong>Flamethrower</strong>: Short-range DoT weapon with burning mechanics</li>
+                    <li><span>✔</span> <strong>Spitter Zombie</strong>: Ranged enemy with acid projectiles &amp; pools</li>
+                    <li><span>✔</span> <strong>Sprint System</strong>: Stamina-based movement with tactical management</li>
                     <li><span>✔</span> <strong>Local Co-op</strong>: 2-player shared screen with split HUD</li>
                     <li><span>✔</span> <strong>Menu Music</strong>: Background music with volume control</li>
                     <li><span>✔</span> <strong>Horror UI</strong>: Animated menu with blood splatters &amp; effects</li>
                     <li><span>✔</span> <strong>Kill Streaks</strong>: Combo system with visual notifications</li>
-                    <li><span>✔</span> <strong>Power-ups</strong>: Damage buff (2x) &amp; Nuke pickup</li>
+                    <li><span>✔</span> <strong>Power-ups</strong>: Damage buff (2x, 10s), Speed Boost (8s), Rapid Fire (10s), Shield (+50), Nuke (instant clear). All show HUD timers.</li>
                     <li><span>✔</span> <strong>Ghost Zombies</strong>: Semi-transparent spectral enemies</li>
                     <li><span>✔</span> <strong>Boss Waves</strong>: Epic boss battles</li>
-                    <li><span>✔</span> <strong>Bullet Trails</strong>: Velocity-based visual trails</li>
+                    <li><span>✔</span> <strong>Bullet Trails</strong>: Velocity-based visual trails &amp; shell casings</li>
                     <li><span>✔</span> <strong>Controller Support</strong>: Full gamepad integration</li>
                     <li><span>✔</span> <strong>Multiplayer Lobby</strong>: Socket.io powered matchmaking</li>
+                    <li><span>✔</span> <strong>Critical Hits</strong>: 10% crit chance with 2x damage &amp; special visuals</li>
+                    <li><span>✔</span> <strong>Hit Markers</strong>: Crosshair "X" indicator on successful hits</li>
+                    <li><span>✔</span> <strong>Spawn Indicators</strong>: Visual warnings before zombie spawns</li>
+                    <li><span>✔</span> <strong>Off-Screen Indicators</strong>: Edge arrows pointing to nearby threats</li>
+                    <li><span>✔</span> <strong>Reload Progress Bar</strong>: Visual reload completion feedback</li>
+                    <li><span>✔</span> <strong>Shield System</strong>: Overshield pickups &amp; damage absorption</li>
+                    <li><span>✔</span> <strong>Rapid Fire Power-Up</strong>: Temporary fire rate boost</li>
+                    <li><span>✔</span> <strong>AI Squad Mode</strong>: Play with AI companions</li>
+                    <li><span>✔</span> <strong>Floating Damage Numbers</strong>: Visual damage feedback</li>
+                    <li><span>✔</span> <strong>Acid Pools</strong>: Environmental hazards from Spitter zombies</li>
+                    <li><span>✔</span> <strong>Damage Indicators</strong>: Red flash &amp; directional feedback</li>
                 </ul>
             </div>
             <div>
                 <div class="side-heading">Core Features</div>
                 <ul class="mini-list">
-                    <li><span>✔</span> 3 weapons: Pistol, Shotgun, Rifle (unique stats)</li>
-                    <li><span>✔</span> 5 zombie types: Normal, Fast, Armored, Exploding, Ghost</li>
+                    <li><span>✔</span> 4 weapons: Pistol, Shotgun, Rifle, Flamethrower (unique stats)</li>
+                    <li><span>✔</span> 6 zombie types: Normal, Fast, Armored, Exploding, Ghost, Spitter</li>
                     <li><span>✔</span> Melee combat with swipe animation</li>
                     <li><span>✔</span> Grenades with physics &amp; AOE damage</li>
                     <li><span>✔</span> Health &amp; Ammo pickups</li>
@@ -799,6 +908,7 @@
                     <li><span>✔</span> Progressive difficulty scaling</li>
                     <li><span>✔</span> Screen shake &amp; visual effects</li>
                     <li><span>✔</span> Blood splatter &amp; particle system</li>
+                    <li><span>✔</span> High-res ground tile assets</li>
                     <li><span>✔</span> Customizable keybinds &amp; settings</li>
                     <li><span>✔</span> High score persistence (localStorage)</li>
                     <li><span>✔</span> Pause menu &amp; game over screens</li>
@@ -808,11 +918,13 @@
             <div>
                 <div class="side-heading">Roadmap & Future Updates</div>
                 <ul class="mini-list">
-                    <li><span>○</span> <strong>Base Building</strong>: Walls, gates &amp; auto-turrets</li>
+                    <li><span>○</span> <strong>Base Building</strong>: Perimeter walls, gates &amp; wall repair mechanics</li>
+                    <li><span>○</span> <strong>Automated Turrets</strong>: Placeable turrets that auto-fire at zombies</li>
+                    <li><span>○</span> <strong>Wall Upgrades</strong>: Reinforce walls to increase health &amp; resistance</li>
                     <li><span>○</span> <strong>Online Multiplayer</strong>: Full networked gameplay (lobby ready)</li>
-                    <li><span>○</span> <strong>New Arsenal</strong>: Flamethrower &amp; Rocket Launcher</li>
-                    <li><span>○</span> <strong>Dynamic World</strong>: Day/Night cycle &amp; Weather</li>
-                    <li><span>○</span> <strong>Special Infected</strong>: Spitters &amp; Summoners</li>
+                    <li><span>○</span> <strong>New Arsenal</strong>: Rocket Launcher &amp; more explosive weapons</li>
+                    <li><span>○</span> <strong>Dynamic World</strong>: Weather effects &amp; environmental hazards</li>
+                    <li><span>○</span> <strong>Special Infected</strong>: Summoners &amp; Necromancer zombies</li>
                     <li><span>○</span> <strong>Progression</strong>: Skill trees &amp; permanent perks</li>
                     <li><span>○</span> <strong>More Power-ups</strong>: Quad-damage, Speed, &amp; Shield</li>
                     <li><span>○</span> <strong>Destruction</strong>: Smashable fences &amp; props</li>

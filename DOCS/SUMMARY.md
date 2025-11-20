@@ -129,7 +129,7 @@ Zombobs/
 - Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (v0.2.3)
+## Recent Updates (v0.2.5)
 - **Day/Night Cycle**: 
   - 2-minute cycle transitioning between day and night
   - Visual dark overlay during night (0.5-0.7 alpha)

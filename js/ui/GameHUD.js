@@ -78,6 +78,7 @@ export class GameHUD {
             } else {
                 this.drawSinglePlayerHUD();
             }
+            this.drawOffScreenIndicators();
         }
 
         if (this.gameOver) {
@@ -136,6 +137,13 @@ export class GameHUD {
         this.drawStat(healthLabel, healthValue, '❤️', healthColor, x, currentY, width);
         currentY += height + this.itemSpacing;
 
+        // Shield
+        if (player.shield > 0) {
+            const shieldValue = Math.ceil(player.shield);
+            this.drawStat('Shield', shieldValue, '🛡️', '#29b6f6', x, currentY, width);
+            currentY += height + this.itemSpacing;
+        }
+
         // Ammo
         let ammoColor;
         if (player.isReloading) {
@@ -149,9 +157,49 @@ export class GameHUD {
         } else {
             ammoColor = '#ff9800';
         }
-        const ammoText = player.isReloading ? `Reload...` : `${player.currentAmmo}/${player.maxAmmo}`;
+        
         const weaponLabel = labelPrefix ? `${labelPrefix} ${player.currentWeapon.name}` : player.currentWeapon.name;
-        this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
+        
+        if (player.isReloading) {
+            // Draw reload progress bar
+            const now = Date.now();
+            const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
+            const progressBarWidth = width - 20;
+            const progressBarHeight = 6;
+            const progressBarX = x + 10;
+            const progressBarY = currentY + 35;
+            
+            // Background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
+            
+            // Progress fill
+            const fillWidth = progressBarWidth * reloadProgress;
+            const progressGradient = this.ctx.createLinearGradient(progressBarX, progressBarY, progressBarX + fillWidth, progressBarY);
+            progressGradient.addColorStop(0, '#ff9800');
+            progressGradient.addColorStop(1, '#ffc107');
+            this.ctx.fillStyle = progressGradient;
+            this.ctx.fillRect(progressBarX, progressBarY, fillWidth, progressBarHeight);
+            
+            // Border
+            this.ctx.strokeStyle = ammoColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
+            
+            // Text
+            const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = this.font;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(`${weaponLabel}:`, x + 10, currentY + 15);
+            this.ctx.fillStyle = ammoColor;
+            this.ctx.font = `700 ${this.fontSize + 2}px 'Roboto Mono', monospace`;
+            this.ctx.fillText(ammoText, x + 10, currentY + 35);
+        } else {
+            const ammoText = `${player.currentAmmo}/${player.maxAmmo}`;
+            this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
+        }
 
         // Grenades (Optional to show per player, maybe skip to save space in coop or show small)
         currentY += height + this.itemSpacing;
@@ -194,6 +242,18 @@ export class GameHUD {
             currentY += height + this.itemSpacing;
             const timeLeft = Math.ceil((gameState.damageBuffEndTime - Date.now()) / 1000);
             this.drawStat('Damage', 'x2 ' + timeLeft + 's', '⚡', '#e040fb', x, currentY, width);
+        }
+
+        if (gameState.speedBoostEndTime > Date.now()) {
+            currentY += height + this.itemSpacing;
+            const timeLeft = Math.ceil((gameState.speedBoostEndTime - Date.now()) / 1000);
+            this.drawStat('Speed', '>> ' + timeLeft + 's', '👟', '#00bcd4', x, currentY, width);
+        }
+
+        if (gameState.rapidFireEndTime > Date.now()) {
+            currentY += height + this.itemSpacing;
+            const timeLeft = Math.ceil((gameState.rapidFireEndTime - Date.now()) / 1000);
+            this.drawStat('Rapid', '>>> ' + timeLeft + 's', '🔥', '#ff9800', x, currentY, width);
         }
     }
 
@@ -839,6 +899,147 @@ export class GameHUD {
             return;
         }
         this.hoveredButton = this.checkMenuButtonClick(mouseX, mouseY);
+    }
+
+    drawOffScreenIndicators() {
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+        if (gameState.zombies.length === 0) return;
+
+        const indicatorDistance = 800; // Distance threshold
+        const indicatorSize = 12;
+        const edgePadding = 20;
+
+        gameState.zombies.forEach(zombie => {
+            // Find closest living player
+            let closestPlayer = null;
+            let minDist = Infinity;
+
+            gameState.players.forEach(p => {
+                if (p.health > 0) {
+                    const dx = p.x - zombie.x;
+                    const dy = p.y - zombie.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestPlayer = p;
+                    }
+                }
+            });
+
+            if (!closestPlayer) return;
+
+            const dx = zombie.x - closestPlayer.x;
+            const dy = zombie.y - closestPlayer.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Only show indicator if zombie is off-screen but within threshold distance
+            if (distance > indicatorDistance) return;
+
+            const isOnScreen = zombie.x >= 0 && zombie.x <= this.canvas.width &&
+                               zombie.y >= 0 && zombie.y <= this.canvas.height;
+
+            if (isOnScreen) return; // Don't show indicator if zombie is on screen
+
+            // Calculate angle to zombie
+            const angle = Math.atan2(dy, dx);
+
+            // Find intersection point with screen edge
+            let indicatorX, indicatorY;
+
+            // Check which edge the line intersects
+            const slope = dy / dx;
+            const playerX = closestPlayer.x;
+            const playerY = closestPlayer.y;
+
+            // Calculate intersections with all four edges
+            let intersections = [];
+
+            // Top edge (y = 0)
+            const topX = playerX + (0 - playerY) / slope;
+            if (topX >= 0 && topX <= this.canvas.width) {
+                intersections.push({ x: topX, y: 0 });
+            }
+
+            // Bottom edge (y = canvas.height)
+            const bottomX = playerX + (this.canvas.height - playerY) / slope;
+            if (bottomX >= 0 && bottomX <= this.canvas.width) {
+                intersections.push({ x: bottomX, y: this.canvas.height });
+            }
+
+            // Left edge (x = 0)
+            const leftY = playerY + slope * (0 - playerX);
+            if (leftY >= 0 && leftY <= this.canvas.height) {
+                intersections.push({ x: 0, y: leftY });
+            }
+
+            // Right edge (x = canvas.width)
+            const rightY = playerY + slope * (this.canvas.width - playerX);
+            if (rightY >= 0 && rightY <= this.canvas.height) {
+                intersections.push({ x: this.canvas.width, y: rightY });
+            }
+
+            // Use the closest intersection to the zombie
+            if (intersections.length > 0) {
+                let closestIntersection = intersections[0];
+                let closestDist = Math.sqrt(
+                    Math.pow(intersections[0].x - zombie.x, 2) +
+                    Math.pow(intersections[0].y - zombie.y, 2)
+                );
+
+                intersections.forEach(int => {
+                    const dist = Math.sqrt(
+                        Math.pow(int.x - zombie.x, 2) +
+                        Math.pow(int.y - zombie.y, 2)
+                    );
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIntersection = int;
+                    }
+                });
+
+                indicatorX = closestIntersection.x;
+                indicatorY = closestIntersection.y;
+            } else {
+                // Fallback: use angle to place indicator at edge
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    indicatorX = dx > 0 ? this.canvas.width - edgePadding : edgePadding;
+                    indicatorY = playerY + slope * (indicatorX - playerX);
+                } else {
+                    indicatorY = dy > 0 ? this.canvas.height - edgePadding : edgePadding;
+                    indicatorX = playerX + (indicatorY - playerY) / slope;
+                }
+            }
+
+            // Clamp to screen bounds
+            indicatorX = Math.max(edgePadding, Math.min(this.canvas.width - edgePadding, indicatorX));
+            indicatorY = Math.max(edgePadding, Math.min(this.canvas.height - edgePadding, indicatorY));
+
+            // Draw arrow indicator
+            this.ctx.save();
+            this.ctx.translate(indicatorX, indicatorY);
+            this.ctx.rotate(angle);
+
+            // Arrow color based on distance (closer = more red)
+            const distanceRatio = distance / indicatorDistance;
+            const red = Math.floor(255 * (1 - distanceRatio));
+            const green = Math.floor(100 * distanceRatio);
+            const color = `rgb(${red}, ${green}, 0)`;
+
+            this.ctx.fillStyle = color;
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 1;
+
+            // Draw arrow triangle
+            this.ctx.beginPath();
+            this.ctx.moveTo(indicatorSize, 0);
+            this.ctx.lineTo(-indicatorSize / 2, -indicatorSize / 2);
+            this.ctx.lineTo(-indicatorSize / 2, indicatorSize / 2);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            this.ctx.restore();
+        });
     }
 
     showMainMenu() { this.mainMenu = true; }

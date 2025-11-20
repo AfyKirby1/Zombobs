@@ -272,13 +272,24 @@ export function handleBulletZombieCollisions() {
                         // Zombie survives but is burning
                         gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
                         createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                        
+                        // Trigger hit marker
+                        gameState.hitMarker.active = true;
+                        gameState.hitMarker.life = gameState.hitMarker.maxLife;
                     }
                     gameState.bullets.splice(bulletIndex, 1);
                     return; // Skip normal bullet handling
                 }
 
+                // Critical hit chance (10%)
+                const isCrit = Math.random() < 0.1;
+                let finalDamage = bullet.damage;
+                if (isCrit) {
+                    finalDamage = bullet.damage * 2; // 2x damage on crit
+                }
+
                 // Check if zombie dies from this hit
-                if (zombie.takeDamage(bullet.damage)) {
+                if (zombie.takeDamage(finalDamage)) {
                     // Remove zombie from array first
                     gameState.zombies.splice(zombieIndex, 1);
 
@@ -317,13 +328,23 @@ export function handleBulletZombieCollisions() {
                     if (!isExploding) {
                         playKillSound();
                     }
-                    // Create floating damage number
-                    gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(bullet.damage)));
+                    // Create floating damage number (with crit styling if crit)
+                    if (isCrit) {
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage), true));
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 25, "CRIT!", true));
+                    } else {
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage)));
+                    }
                     // Create blood splatter on kill
                     createBloodSplatter(zombieX, zombieY, impactAngle, true);
                 } else {
-                    // Create floating damage number
-                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                    // Create floating damage number (with crit styling if crit)
+                    if (isCrit) {
+                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, Math.floor(finalDamage), true));
+                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y - 25, "CRIT!", true));
+                    } else {
+                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                    }
                     // Create blood splatter on hit (not kill)
                     createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
 
@@ -335,6 +356,11 @@ export function handleBulletZombieCollisions() {
                     zombie.slowedUntil = Date.now() + 500; // for 0.5 seconds
                     // --- END: Apply Slow-on-Hit ---
                 }
+                
+                // Trigger hit marker
+                gameState.hitMarker.active = true;
+                gameState.hitMarker.life = gameState.hitMarker.maxLife;
+                
                 gameState.bullets.splice(bulletIndex, 1);
             }
         });

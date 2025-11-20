@@ -49,8 +49,8 @@
 
 ## Pickups
 - [x] **Ammo Pickups** - Yellow/orange ammo boxes that spawn periodically when ammo is low, restoring 15 ammo for current weapon
-- [ ] **Temporary Power-Up Pickups** - Short-duration buffs like double damage, rapid fire, or movement speed boost that drop rarely from zombies.
-- [ ] **Armor / Shield Pickups** - Pickups that grant a temporary overshield layer which absorbs a portion of incoming damage before health.
+- [x] **Temporary Power-Up Pickups** - Short-duration buffs like double damage, rapid fire, or movement speed boost that drop rarely from zombies.
+- [x] **Armor / Shield Pickups** - Pickups that grant a temporary overshield layer which absorbs a portion of incoming damage before health.
 - [ ] **Ammo Crates** - Rare, high-value pickups that fully refill ammo for the current weapon or all weapons in your inventory.
 - [ ] **Risk/Reward Pickups** - Powerful pickups placed in dangerous positions (edges of the map or near spawners) to encourage risky plays.
 

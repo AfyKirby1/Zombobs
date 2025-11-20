@@ -2,9 +2,9 @@
 
 ## Current State [2025-11-19]
 
-The project has reached **v0.2.0** with a solid foundation. The modular ES6 architecture is working well, and we've added visual polish, controller support, and comprehensive documentation.
+The project has reached **v0.2.5** with a solid foundation. The modular ES6 architecture is working well, and we've added visual polish, controller support, and comprehensive documentation.
 
-### Recent Achievements (v0.2.2)
+### Recent Achievements (v0.2.5)
 1.  **Local Co-op Implementation**: Successfully added 2-player local co-op mode
     - Solved input handling complexity by allowing flexible assignment (P1 Mouse + P2 Gamepad, or P1 Gamepad + P2 Gamepad)
     - Refactored core `gameState` to support N players without breaking single-player logic
@@ -28,7 +28,8 @@ The project has reached **v0.2.0** with a solid foundation. The modular ES6 arch
     - Improved technical details display
 7.  **Style Guide**: Created comprehensive design system documentation (`STYLE_GUIDE.md`) to maintain visual consistency
 8.  **Documentation Sync**: All major docs (CHANGELOG, SUMMARY, ARCHITECTURE, SCRATCHPAD, SBOM) updated and aligned
-9.  **Version Management**: Properly versioned to 0.2.0 across package.json, launch.ps1, and landing page
+9.  **Version Management**: Properly versioned to 0.2.5 across package.json, launch.ps1, and landing page
+10. **HUD Polish**: Added UI indicators for all power-ups (Speed, Rapid Fire, Shield), ensuring players know exactly how long buffs last.
 
 ### Immediate Focus
 - **Local Co-op Polish**: Ensure controller assignment remains robust in edge cases (disconnects)

@@ -22,7 +22,7 @@ function Write-Banner {
     Write-Colored "                                                    " "Cyan"
     Write-Colored "       Z O M B O B S   S E R V E R                  " "Cyan"
     Write-Colored "                                                    " "Cyan"
-    Write-Colored "       Multiplayer Backend Server v0.2.0              " "Cyan"
+    Write-Colored "       Multiplayer Backend Server v0.2.5              " "Cyan"
     Write-Colored "                                                    " "Cyan"
     Write-Colored "=====================================================" "Cyan"
     Write-Host ""

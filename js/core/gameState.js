@@ -114,6 +114,7 @@ export const gameState = {
     grenades: [],
     acidProjectiles: [],
     acidPools: [],
+    spawnIndicators: [],
 
     // Visual effects
     shakeAmount: 0,
@@ -123,6 +124,12 @@ export const gameState = {
         active: false,
         intensity: 0,
         decay: 0.95
+    },
+
+    hitMarker: {
+        active: false,
+        life: 0,
+        maxLife: 10
     },
 
     // Buffs & Streaks
@@ -218,6 +225,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.acidPools = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
+    gameState.spawnIndicators = [];
 
     // Clear timeouts
     gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));

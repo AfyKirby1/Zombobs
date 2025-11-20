@@ -124,6 +124,33 @@ function spawnZombies(count) {
 
     // Spawn zombies with staggered timing
     for (let i = 0; i < count; i++) {
+        // Calculate spawn position (same logic as Zombie constructor)
+        const side = Math.floor(Math.random() * 4);
+        let spawnX, spawnY;
+        switch(side) {
+            case 0: spawnX = Math.random() * canvas.width; spawnY = -20; break;
+            case 1: spawnX = canvas.width + 20; spawnY = Math.random() * canvas.height; break;
+            case 2: spawnX = Math.random() * canvas.width; spawnY = canvas.height + 20; break;
+            case 3: spawnX = -20; spawnY = Math.random() * canvas.height; break;
+        }
+
+        // Create spawn indicator 1 second before zombie spawns
+        const indicatorDelay = i * 500;
+        const spawnDelay = indicatorDelay + 1000; // 1 second after indicator
+        
+        // Create indicator with unique ID for removal
+        const indicatorId = `ind_${i}_${Date.now()}_${Math.random()}`;
+        setTimeout(() => {
+            gameState.spawnIndicators.push({
+                id: indicatorId,
+                x: spawnX,
+                y: spawnY,
+                startTime: Date.now(),
+                duration: 1000 // 1 second
+            });
+        }, indicatorDelay);
+
+        // Spawn zombie after delay
         const timeout = setTimeout(() => {
             let ZombieClass = NormalZombie; // Default
             const rand = Math.random();
@@ -152,13 +179,25 @@ function spawnZombies(count) {
                 }
             }
 
-            gameState.zombies.push(new ZombieClass(canvas.width, canvas.height));
+            // Create zombie at the pre-determined spawn location
+            // Note: Zombie constructor sets random position, so we override it
+            const zombie = new ZombieClass(canvas.width, canvas.height);
+            // Override with our predetermined spawn position
+            zombie.x = spawnX;
+            zombie.y = spawnY;
+            gameState.zombies.push(zombie);
+
+            // Remove the corresponding indicator by ID
+            const indicatorIndex = gameState.spawnIndicators.findIndex(ind => ind.id === indicatorId);
+            if (indicatorIndex !== -1) {
+                gameState.spawnIndicators.splice(indicatorIndex, 1);
+            }
 
             // After the last zombie spawns, clear the flag
             if (i === count - 1) {
                 gameState.isSpawningWave = false;
             }
-        }, i * 500);
+        }, spawnDelay);
         gameState.zombieSpawnTimeouts.push(timeout);
     }
 }
@@ -781,6 +820,25 @@ function drawCrosshair() {
     ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
     ctx.fill();
 
+    // Draw hit marker (X) when hit occurs
+    if (gameState.hitMarker.active) {
+        const alpha = gameState.hitMarker.life / gameState.hitMarker.maxLife;
+        const markerSize = 8;
+        const markerColor = `rgba(255, 255, 0, ${alpha})`;
+        
+        ctx.strokeStyle = markerColor;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        // Draw X
+        ctx.beginPath();
+        ctx.moveTo(mouse.x - markerSize, mouse.y - markerSize);
+        ctx.lineTo(mouse.x + markerSize, mouse.y + markerSize);
+        ctx.moveTo(mouse.x + markerSize, mouse.y - markerSize);
+        ctx.lineTo(mouse.x - markerSize, mouse.y + markerSize);
+        ctx.stroke();
+    }
+
     ctx.restore();
 }
 
@@ -995,11 +1053,25 @@ function updateGame() {
         return num.life > 0;
     });
 
+    // Update spawn indicators
+    gameState.spawnIndicators = gameState.spawnIndicators.filter(indicator => {
+        const elapsed = Date.now() - indicator.startTime;
+        return elapsed < indicator.duration;
+    });
+
     // Update damage indicator (Visual only, global logic is fine but intensity depends on triggers)
     if (gameState.damageIndicator.active) {
         gameState.damageIndicator.intensity *= gameState.damageIndicator.decay;
         if (gameState.damageIndicator.intensity < 0.1) {
             gameState.damageIndicator.active = false;
+        }
+    }
+
+    // Update hit marker
+    if (gameState.hitMarker.active) {
+        gameState.hitMarker.life--;
+        if (gameState.hitMarker.life <= 0) {
+            gameState.hitMarker.active = false;
         }
     }
 
@@ -1182,6 +1254,36 @@ function drawGame() {
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+    });
+
+    // Draw spawn indicators
+    gameState.spawnIndicators.forEach(indicator => {
+        const elapsed = Date.now() - indicator.startTime;
+        const progress = elapsed / indicator.duration;
+        const pulse = Math.sin(progress * Math.PI * 4) * 0.5 + 0.5; // Pulsing effect
+        const alpha = 0.3 + pulse * 0.4; // 0.3 to 0.7 alpha
+        const radius = 15 + pulse * 10; // 15 to 25 radius
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        
+        // Outer glow
+        const gradient = ctx.createRadialGradient(indicator.x, indicator.y, 0, indicator.x, indicator.y, radius);
+        gradient.addColorStop(0, 'rgba(255, 23, 68, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(255, 23, 68, 0.4)');
+        gradient.addColorStop(1, 'rgba(255, 23, 68, 0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(indicator.x, indicator.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner circle
+        ctx.fillStyle = `rgba(255, 23, 68, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(indicator.x, indicator.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     });
 
     gameState.shells.forEach(shell => shell.draw(ctx));
