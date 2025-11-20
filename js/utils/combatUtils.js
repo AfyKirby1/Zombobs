@@ -4,9 +4,10 @@ import { Quadtree } from './Quadtree.js';
 import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
-    AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES
+    AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
+    ZOMBIE_BASE_SCORES
 } from '../core/constants.js';
-import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playHitSound } from '../systems/AudioSystem.js';
+import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket } from '../entities/Bullet.js';
@@ -14,6 +15,7 @@ import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { skillSystem } from '../systems/SkillSystem.js';
 
 export function shootBullet(target, canvas, player) {
     // Fallback to p1 for backward compat if player not provided
@@ -63,6 +65,7 @@ export function shootBullet(target, canvas, player) {
             const spreadAngle = angle + (Math.random() - 0.5) * 0.5; // Add spread
             const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
             bullet.damage *= damageMult;
+            bullet.player = player; // Track which player fired this bullet
             gameState.bullets.push(bullet);
         }
     } else if (player.currentWeapon === WEAPONS.flamethrower) {
@@ -72,6 +75,7 @@ export function shootBullet(target, canvas, player) {
             const spreadAngle = angle + (Math.random() - 0.5) * 0.4; // Wider spread
             const flame = new FlameBullet(gunX, gunY, spreadAngle, player.currentWeapon);
             flame.damage *= damageMult;
+            flame.player = player; // Track which player fired this bullet
             gameState.bullets.push(flame);
         }
     } else if (player.currentWeapon === WEAPONS.smg) {
@@ -79,21 +83,25 @@ export function shootBullet(target, canvas, player) {
         const spreadAngle = angle + (Math.random() - 0.5) * 0.1;
         const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.sniper) {
         // Sniper fires piercing bullet
         const bullet = new PiercingBullet(gunX, gunY, angle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
         // Rocket Launcher fires rocket
         const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
         rocket.damage *= damageMult; // Direct hit damage (if any)
+        rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     }
 
@@ -205,7 +213,7 @@ export function throwGrenade(target, canvas, player) {
     const targetX = Math.max(20, Math.min(canvas.width - 20, target.x));
     const targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
 
-    gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY));
+    gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
     player.grenadeCount--;
     player.lastGrenadeThrowTime = now;
 
@@ -213,9 +221,14 @@ export function throwGrenade(target, canvas, player) {
     gameState.shakeAmount = 2;
 }
 
-export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true) {
+export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null) {
     // Create explosion visual effect
     createExplosion(x, y);
+    
+    // Default to player 1 if no source player specified
+    if (!sourcePlayer) {
+        sourcePlayer = gameState.players[0];
+    }
 
     // Screen shake
     gameState.shakeAmount = 15;
@@ -240,8 +253,25 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true) {
                     gameState.boss = null;
                 }
 
-                gameState.score += 10;
+                // Award score with multiplier (only if explosion is from player)
+                if (sourceIsPlayer && sourcePlayer) {
+                    sourcePlayer.consecutiveKills++;
+                    
+                    // Add bonus for boss zombies
+                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                        sourcePlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
+                    }
+                    
+                    updateScoreMultiplier(sourcePlayer);
+                    const baseScore = getZombieBaseScore(zombie);
+                    awardScore(sourcePlayer, baseScore, zombie.type);
+                }
+                
                 gameState.zombiesKilled++;
+                // Award XP for kill
+                const zombieType1 = zombie.type || 'normal';
+                const xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
+                skillSystem.gainXP(xpAmount1);
                 // Play kill confirmed sound
                 playKillSound();
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), true);
@@ -263,8 +293,15 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true) {
             if (distance <= radius) {
                 const damageMultiplier = 1 - (distance / radius) * 0.5;
                 const playerDamage = Math.floor(damage * damageMultiplier * 0.5); // Player takes 50% of explosion damage
+                const previousHealth = player.health;
+                
                 player.health -= playerDamage;
                 createParticles(player.x, player.y, '#ff0000', 5);
+
+                // Reset multiplier if health was reduced
+                if (player.health < previousHealth) {
+                    resetMultiplier(player);
+                }
 
                 if (player === gameState.players[0]) { // Only trigger indicator for local player 1 primarily, or logic?
                     triggerDamageIndicator();
@@ -360,7 +397,44 @@ export function handleBulletZombieCollisions() {
                             gameState.boss = null;
                         }
 
-                        gameState.score += 10;
+                        // Get the player who fired the bullet
+                        const shootingPlayer = bullet.player || gameState.players[0];
+                        
+                        // Increment consecutive kills
+                        shootingPlayer.consecutiveKills++;
+                        
+                        // Add bonus for boss zombies
+                        if (zombie.type === 'boss' || zombie === gameState.boss) {
+                            shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
+                        }
+                        
+                        // Store old multiplier to detect tier changes
+                        const oldMultiplier = shootingPlayer.scoreMultiplier;
+                        updateScoreMultiplier(shootingPlayer);
+                        
+                        // Check for tier increase and trigger feedback
+                        if (shootingPlayer.scoreMultiplier > oldMultiplier) {
+                            // Tier increased - trigger audio and visual feedback
+                            if (shootingPlayer.scoreMultiplier >= 5.0) {
+                                playMultiplierMaxSound();
+                            } else {
+                                playMultiplierUpSound(shootingPlayer.scoreMultiplier);
+                            }
+                            
+                            // Show multiplier notification
+                            gameState.damageNumbers.push(new DamageNumber(
+                                shootingPlayer.x, 
+                                shootingPlayer.y - 40, 
+                                `${shootingPlayer.scoreMultiplier}x MULTIPLIER!`,
+                                false,
+                                '#ffd700'
+                            ));
+                        }
+                        
+                        // Award score with multiplier
+                        const baseScore = getZombieBaseScore(zombie);
+                        const finalScore = awardScore(shootingPlayer, baseScore, zombie.type);
+                        
                         gameState.zombiesKilled++;
 
                         const now = Date.now();
@@ -379,7 +453,14 @@ export function handleBulletZombieCollisions() {
                         }
 
                         playKillSound();
-                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(bullet.damage)));
+                        
+                        // Show score with multiplier if active
+                        if (shootingPlayer.scoreMultiplier > 1.0) {
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore} (${shootingPlayer.scoreMultiplier}x)`));
+                        } else {
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore}`));
+                        }
+                        
                         createBloodSplatter(zombieX, zombieY, impactAngle, true);
                     } else {
                         // Zombie survives but is burning
@@ -435,8 +516,50 @@ export function handleBulletZombieCollisions() {
                         triggerExplosion(zombieX, zombieY, 60, 30, false);
                     }
 
-                    gameState.score += 10;
+                    // Get the player who fired the bullet
+                    const shootingPlayer = bullet.player || gameState.players[0];
+                    
+                    // Increment consecutive kills
+                    shootingPlayer.consecutiveKills++;
+                    
+                    // Add bonus for boss zombies
+                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                        shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
+                    }
+                    
+                    // Store old multiplier to detect tier changes
+                    const oldMultiplier = shootingPlayer.scoreMultiplier;
+                    updateScoreMultiplier(shootingPlayer);
+                    
+                    // Check for tier increase and trigger feedback
+                    if (shootingPlayer.scoreMultiplier > oldMultiplier) {
+                        // Tier increased - trigger audio and visual feedback
+                        if (shootingPlayer.scoreMultiplier >= 5.0) {
+                            playMultiplierMaxSound();
+                        } else {
+                            playMultiplierUpSound(shootingPlayer.scoreMultiplier);
+                        }
+                        
+                        // Show multiplier notification
+                        gameState.damageNumbers.push(new DamageNumber(
+                            shootingPlayer.x, 
+                            shootingPlayer.y - 40, 
+                            `${shootingPlayer.scoreMultiplier}x MULTIPLIER!`,
+                            false,
+                            '#ffd700'
+                        ));
+                    }
+                    
+                    // Award score with multiplier
+                    const baseScore = getZombieBaseScore(zombie);
+                    const finalScore = awardScore(shootingPlayer, baseScore, zombie.type);
+                    
                     gameState.zombiesKilled++;
+
+                    // Award XP for kill
+                    const zombieType = zombie.type || 'normal';
+                    const xpAmount = skillSystem.getXPForZombieType(zombieType);
+                    skillSystem.gainXP(xpAmount);
 
                     // Kill Streak Logic
                     const now = Date.now();
@@ -466,10 +589,14 @@ export function handleBulletZombieCollisions() {
                     const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                     if (damageNumberStyle !== 'off') {
                         if (isCrit) {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage), true));
                             gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 25, "CRIT!", true));
+                        }
+                        
+                        // Show score with multiplier if active
+                        if (shootingPlayer.scoreMultiplier > 1.0) {
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore} (${shootingPlayer.scoreMultiplier}x)`, isCrit));
                         } else {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage)));
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore}`, isCrit));
                         }
                     }
                     // Create blood splatter on kill
@@ -523,6 +650,7 @@ export function handlePlayerZombieCollisions() {
         gameState.zombies.forEach(zombie => {
             if (checkCollision(player, zombie)) {
                 const damage = 0.5;
+                const previousHealth = player.health;
 
                 // Apply damage to shield first, then health
                 if (player.shield > 0) {
@@ -535,6 +663,11 @@ export function handlePlayerZombieCollisions() {
                 } else {
                     player.health -= damage;
                     createParticles(player.x, player.y, '#ff0000', 3); // Red for health hit
+                }
+
+                // Reset multiplier if health was reduced (shield didn't fully absorb)
+                if (player.health < previousHealth && player.shield === 0) {
+                    resetMultiplier(player);
                 }
 
                 if (player === gameState.players[0]) {
@@ -726,8 +859,19 @@ function triggerNuke(x, y) {
         // Visuals
         createExplosion(zombie.x, zombie.y);
 
-        // Score
-        gameState.score += 10;
+        // Award score with multiplier (to player 1 for nuke pickups)
+        const player = gameState.players[0];
+        player.consecutiveKills++;
+        
+        // Add bonus for boss zombies
+        if (zombie.type === 'boss' || zombie === gameState.boss) {
+            player.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
+        }
+        
+        updateScoreMultiplier(player);
+        const baseScore = getZombieBaseScore(zombie);
+        awardScore(player, baseScore, zombie.type);
+        
         gameState.zombiesKilled++;
 
         // Remove
@@ -735,4 +879,106 @@ function triggerNuke(x, y) {
     }
 
     playExplosionSound();
+}
+
+// Score Multiplier System
+
+/**
+ * Updates the player's score multiplier based on consecutive kills
+ * @param {Object} player - The player object
+ */
+export function updateScoreMultiplier(player) {
+    const kills = player.consecutiveKills;
+    const thresholds = player.multiplierTierThresholds;
+    
+    // Determine multiplier tier based on kills
+    if (kills >= thresholds[4]) {
+        player.scoreMultiplier = 5.0;
+    } else if (kills >= thresholds[3]) {
+        player.scoreMultiplier = 4.0;
+    } else if (kills >= thresholds[2]) {
+        player.scoreMultiplier = 3.0;
+    } else if (kills >= thresholds[1]) {
+        player.scoreMultiplier = 2.0;
+    } else {
+        player.scoreMultiplier = 1.0;
+    }
+    
+    // Track max multiplier this session
+    if (player.scoreMultiplier > player.maxMultiplierThisSession) {
+        player.maxMultiplierThisSession = player.scoreMultiplier;
+    }
+}
+
+/**
+ * Awards score with multiplier bonus
+ * @param {Object} player - The player object
+ * @param {number} baseScore - Base score for the kill
+ * @param {string} zombieType - Type of zombie killed
+ * @returns {number} Final score awarded
+ */
+export function awardScore(player, baseScore, zombieType) {
+    const multipliedScore = Math.floor(baseScore * player.scoreMultiplier);
+    gameState.score += multipliedScore;
+    
+    // Track bonus
+    const bonus = multipliedScore - baseScore;
+    player.totalMultiplierBonus += bonus;
+    
+    return multipliedScore;
+}
+
+/**
+ * Resets the player's score multiplier to 1.0
+ * @param {Object} player - The player object
+ */
+export function resetMultiplier(player) {
+    // Only trigger feedback if multiplier was actually active
+    const hadMultiplier = player.scoreMultiplier > 1.0;
+    
+    player.scoreMultiplier = 1.0;
+    player.consecutiveKills = 0;
+    
+    // Trigger notification and audio if multiplier was lost
+    if (hadMultiplier) {
+        playMultiplierLostSound();
+        
+        // Show multiplier lost notification
+        gameState.damageNumbers.push(new DamageNumber(
+            player.x, 
+            player.y - 40, 
+            'MULTIPLIER LOST',
+            false,
+            '#ff1744'
+        ));
+    }
+}
+
+/**
+ * Gets the base score for a zombie type
+ * @param {Object} zombie - The zombie object
+ * @returns {number} Base score value
+ */
+export function getZombieBaseScore(zombie) {
+    // Determine zombie type
+    if (zombie.isBoss) {
+        return ZOMBIE_BASE_SCORES.boss;
+    }
+    
+    // Check zombie class name or type property
+    const zombieType = zombie.type || zombie.constructor.name.toLowerCase();
+    
+    if (zombieType.includes('fast')) {
+        return ZOMBIE_BASE_SCORES.fast;
+    } else if (zombieType.includes('armored')) {
+        return ZOMBIE_BASE_SCORES.armored;
+    } else if (zombieType.includes('exploding')) {
+        return ZOMBIE_BASE_SCORES.exploding;
+    } else if (zombieType.includes('ghost')) {
+        return ZOMBIE_BASE_SCORES.ghost;
+    } else if (zombieType.includes('spitter')) {
+        return ZOMBIE_BASE_SCORES.spitter;
+    } else {
+        return ZOMBIE_BASE_SCORES.normal;
+    }
 }

@@ -203,6 +203,14 @@ export class SettingsManager {
         }
         this.settings.video.qualityPreset = preset;
         this.saveSettings();
+
+        this.callbacks.forEach(cb => {
+            cb('video', 'qualityPreset', preset);
+            cb('video', 'bloomIntensity', this.settings.video.bloomIntensity);
+            cb('video', 'distortionEffects', this.settings.video.distortionEffects);
+            cb('video', 'lightingQuality', this.settings.video.lightingQuality);
+            cb('video', 'particleCount', this.settings.video.particleCount);
+        });
     }
 }
 

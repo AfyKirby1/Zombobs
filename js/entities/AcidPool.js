@@ -28,6 +28,7 @@ export class AcidPool {
                 if (dist < this.radius) {
                     // Player is in acid pool - take damage
                     const damage = this.damagePerTick;
+                    const previousHealth = player.health;
                     
                     // Apply to shield first, then health
                     if (player.shield > 0) {
@@ -38,6 +39,14 @@ export class AcidPool {
                         }
                     } else {
                         player.health -= damage;
+                    }
+                    
+                    // Reset multiplier if health was reduced (shield didn't fully absorb)
+                    if (player.health < previousHealth && player.shield === 0) {
+                        // Import resetMultiplier dynamically
+                        import('../utils/combatUtils.js').then(module => {
+                            module.resetMultiplier(player);
+                        });
                     }
                     
                     // Trigger damage indicator (imported in main.js)

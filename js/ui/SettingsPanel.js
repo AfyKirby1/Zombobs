@@ -921,7 +921,7 @@ export class SettingsPanel {
         let value = ctrl.min + percent * (ctrl.max - ctrl.min);
         
         // Special cases handling
-        if (ctrl.category === 'video' && ctrl.key === 'screenShakeIntensity') {
+        if (ctrl.category === 'video' && ctrl.key === 'screenShakeMultiplier') {
             // Keep as float 0-1
         } else if (ctrl.category === 'video' && (ctrl.key === 'particleCount' || ctrl.key === 'fpsLimit')) {
              value = Math.round(value);

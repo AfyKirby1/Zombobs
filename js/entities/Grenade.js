@@ -5,7 +5,7 @@ import { GRENADE_FUSE_TIME, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE } from '../
 
 // Grenade class
 export class Grenade {
-    constructor(x, y, targetX, targetY) {
+    constructor(x, y, targetX, targetY, player = null) {
         this.x = x;
         this.y = y;
         this.radius = 6;
@@ -17,6 +17,7 @@ export class Grenade {
         this.fuseTime = GRENADE_FUSE_TIME; // Time until explosion
         this.createdAt = Date.now();
         this.exploded = false;
+        this.player = player; // Track which player threw this grenade
         
         // Calculate trajectory to reach target
         const dx = targetX - x;
@@ -134,7 +135,7 @@ export class Grenade {
         this.exploded = true;
         
         // Use reusable explosion function (player source = true)
-        triggerExplosion(this.x, this.y, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE, true);
+        triggerExplosion(this.x, this.y, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE, true, this.player);
     }
 
     draw() {

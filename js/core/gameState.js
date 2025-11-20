@@ -63,6 +63,13 @@ export function createPlayer(x, y, colorIndex = 0) {
         shield: 0,
         maxShield: 50,
 
+        // Score Multiplier
+        scoreMultiplier: 1.0,
+        consecutiveKills: 0,
+        maxMultiplierThisSession: 1.0,
+        totalMultiplierBonus: 0,
+        multiplierTierThresholds: [0, 3, 6, 10, 15],
+
         // Visual
         color: color,
         muzzleFlash: {
@@ -92,9 +99,12 @@ export const gameState = {
     multiplayer: {
         active: false,
         connected: false,
+        status: 'disconnected', // 'connecting' | 'connected' | 'error' | 'disconnected'
+        serverStatus: 'checking', // 'checking' | 'online' | 'offline' | 'error'
         socket: null,
         playerId: null,
-        players: []
+        players: [],
+        latency: 0
     },
     username: 'Survivor',
     menuMusicMuted: false,
@@ -104,6 +114,17 @@ export const gameState = {
     zombiesKilled: 0,
     zombiesPerWave: 5,
     highScore: 0,
+    
+    // Score Multiplier Statistics
+    allTimeMaxMultiplier: 1.0,
+
+    // XP & Skills System
+    xp: 0,
+    level: 1,
+    nextLevelXP: 100,
+    activeSkills: [],
+    showLevelUp: false,
+    levelUpChoices: [],
 
     isSpawningWave: false,
     waveBreakActive: false,
@@ -212,6 +233,14 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesPerWave = 5;
     gameState.isSpawningWave = false;
 
+    // Reset XP & Skills
+    gameState.xp = 0;
+    gameState.level = 1;
+    gameState.nextLevelXP = 100;
+    gameState.activeSkills = [];
+    gameState.showLevelUp = false;
+    gameState.levelUpChoices = [];
+
     gameState.bossActive = false;
     gameState.boss = null;
 
@@ -229,6 +258,19 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.maxAmmo = WEAPONS.pistol.maxAmmo;
             player.isReloading = false;
             player.grenadeCount = MAX_GRENADES;
+            
+            // Reset score multiplier
+            player.scoreMultiplier = 1.0;
+            player.consecutiveKills = 0;
+            player.maxMultiplierThisSession = 1.0;
+            player.totalMultiplierBonus = 0;
+            
+            // Reset skill multipliers
+            player.speedMultiplier = 1.0;
+            player.reloadSpeedMultiplier = 1.0;
+            player.ammoMultiplier = 1.0;
+            player.critChance = 0;
+            player.hasRegeneration = false;
             
             // Reset weapon states
             player.weaponStates = {

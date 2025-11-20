@@ -466,5 +466,13 @@ localStorage.setItem('zombobs_settings', JSON.stringify({
 
 ---
 
+### WebGPU Controls Tooltips
+
+- WebGPU Enabled: Turns GPU renderer on/off. Disabled uses Canvas 2D fallback.
+- Bloom Intensity: Controls glow strength. Set to 0 to disable bloom.
+- Particle Count: Low (off/CPU), High (~10k GPU points), Ultra (~50k GPU points).
+- Lighting Quality: Off disables, Simple adds subtle rim lighting, Advanced increases intensity/effects.
+- Distortion Effects: Enables background shockwave swirl; mildly increases GPU work.
+
 *Last Updated: 2025-01-XX - Phase 1 Complete, Phase 2 In Progress*
 

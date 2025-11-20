@@ -64,3 +64,35 @@ export function loadMenuMusicMuted() {
 export function saveMenuMusicMuted() {
     localStorage.setItem('zombobs_menuMusicMuted', gameState.menuMusicMuted.toString());
 }
+
+// Score Multiplier Statistics
+
+/**
+ * Save multiplier statistics to localStorage
+ */
+export function saveMultiplierStats() {
+    try {
+        const stats = {
+            allTimeMaxMultiplier: gameState.allTimeMaxMultiplier
+        };
+        localStorage.setItem('zombobs_multiplier_stats', JSON.stringify(stats));
+    } catch (error) {
+        console.log('Failed to save multiplier stats:', error);
+    }
+}
+
+/**
+ * Load multiplier statistics from localStorage
+ */
+export function loadMultiplierStats() {
+    try {
+        const saved = localStorage.getItem('zombobs_multiplier_stats');
+        if (saved) {
+            const stats = JSON.parse(saved);
+            gameState.allTimeMaxMultiplier = stats.allTimeMaxMultiplier || 1.0;
+        }
+    } catch (error) {
+        console.log('Failed to load multiplier stats:', error);
+    }
+}
+

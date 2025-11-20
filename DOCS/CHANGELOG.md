@@ -2,6 +2,89 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.4.0] - 2025-11-20
+
+### 🎉 THE MULTIPLAYER UPDATE
+
+> **The horde is connected. Are you ready?**
+
+This major update brings robust multiplayer infrastructure with Hugging Face Spaces deployment, improved connection handling, and automatic server health checking.
+
+### Added
+- **🌐 Hugging Face Spaces Deployment** - Full server deployment on Hugging Face Spaces
+  - Production-ready server configuration for cloud hosting
+  - Direct `.hf.space` domain support for Socket.io connections
+  - Automatic server wake-up via health check system
+  - Server status indicator on main menu
+
+- **🔌 Enhanced Multiplayer Connection System**
+  - **Server Health Check**: Automatic background health checks on game load
+  - **Smart Status Indicator**: Shows server readiness even when not in lobby
+  - **Connection States**: 
+    - "Waking Server..." - Checking/waking up sleeping server
+    - "Server Ready" - Server is online and ready
+    - "Connected" - Successfully connected to multiplayer lobby
+  - **Auto-Wake System**: Health checks automatically wake sleeping Hugging Face Spaces servers
+
+- **🔧 Improved Socket.io Configuration**
+  - Explicit path configuration for Hugging Face Spaces routing
+  - Polling-first transport strategy for reverse proxy compatibility
+  - Enhanced CORS middleware with Express backup
+  - Better error handling and connection retry logic
+  - Reconnection attempts with exponential backoff
+
+- **🛡️ WebGPU Renderer Fixes**
+  - Fixed "Read-write storage buffer" errors in vertex shaders
+  - Separate bind group layouts for compute (read-write) and render (read-only)
+  - Proper storage buffer visibility configuration
+  - Stable particle system with GPU compute shaders
+
+### Changed
+- **🌍 Server URL Configuration**
+  - Updated to use direct `.hf.space` domain (`https://ottertondays-zombs.hf.space`)
+  - Fixed 302 redirect issues with Hugging Face Spaces wrapper
+  - Improved connection reliability
+
+- **📊 Main Menu Server Status**
+  - Status indicator now shows server health, not just lobby connection
+  - Displays "Server Ready" when server is online but not connected
+  - Better visual feedback for server availability
+
+- **📝 Documentation Updates**
+  - Updated `SERVER_SETUP.md` with Hugging Face Spaces deployment guide
+  - Added server URL format documentation
+  - Updated launch scripts to use correct server URLs
+
+### Fixed
+- **🚨 Critical CORS Issues**: Fixed Socket.io connection failures due to missing CORS headers
+- **🔄 WebSocket Redirects**: Resolved 302 redirect errors when connecting to Hugging Face Spaces
+- **⚡ WebGPU Errors**: Fixed invalid storage buffer bindings causing render pipeline errors
+- **🌐 Connection Path Issues**: Corrected Socket.io path routing for reverse proxy setups
+
+### Technical
+- **Server Configuration (`huggingface-space/server.js`)**:
+  - Added Express CORS middleware for HTTP polling requests
+  - Explicit `/socket.io/` path configuration
+  - Enhanced timeout and ping interval settings
+  - Improved error handling and logging
+
+- **Client Configuration (`js/main.js`)**:
+  - New `checkServerHealth()` function for automatic server monitoring
+  - Enhanced Socket.io client options (path, transports, withCredentials)
+  - Improved error logging with connection details
+
+- **Game State (`js/core/gameState.js`)**:
+  - Added `serverStatus` property to track server health independently from lobby connection
+
+- **HUD Updates (`js/ui/GameHUD.js`)**:
+  - Smart server status display showing server health or lobby connection
+  - New status states: "Server Ready", "Waking Server...", "Offline"
+
+### Migration Notes
+- **Server URL Changed**: If you have a local server, update `SERVER_URL` in `js/core/constants.js` to your server address
+- **New Dependency**: None - all changes are backward compatible
+- **Settings**: No user action required - automatic health checks run on game load
+
 ## [0.3.1] - 2025-11-20
 
 ### Fixed
@@ -10,6 +93,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Bullet Cleanup Crash**: Fixed a runtime error (`TypeError: bullet.isOffScreen is not a function`) in the main game loop.
   - Updated `main.js` to properly check `bullet.markedForRemoval` instead of calling the non-existent `isOffScreen` method on bullet entities.
   - Ensures stable gameplay when bullets go off-screen or exceed their range.
+- **Screen Shake Setting**: Standardized to `screenShakeMultiplier` across UI and render logic.
 
 ### Added
 - **4-Player Local Co-op** - Expanded from 2-player to 4-player support
@@ -24,6 +108,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - **Procedural "Void" Background**: GPU-accelerated animated noise, fog, and vignette shader
   - **Bloom Post-Processing**: Physically based bloom effect for glowing elements
   - **Live Settings Integration**: WebGPU features controllable via new settings menu
+  - **GPU Particle Compute**: Compute shader updates up to 50k particles, rendered as points over the background
+  - **Lighting & Distortion Controls**: Lighting quality tiers and distortion toggle wired to uniforms
 
 - **Settings Overhaul** - Complete redesign of the settings interface
   - **Tabbed Layout**: Video, Audio, Gameplay, Controls tabs for better organization
@@ -43,6 +129,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **GameHUD**: Updated WebGPU status icon to reflect both availability AND user setting
 - **Main Loop**: Integrated WebGPU render pass with delta-time updates
 - **SettingsManager**: Added callback system for real-time setting updates
+- **Presets Broadcasting**: Applying a video preset now triggers callbacks for `bloomIntensity`, `distortionEffects`, `lightingQuality`, and `particleCount` so GPU settings update immediately
 
 ## [0.3.0] - 2025-01-XX
 

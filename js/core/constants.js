@@ -48,8 +48,20 @@ export const CROSSHAIR_LINE_WIDTH = 2;
 export const CROSSHAIR_COLOR = '#ffffff';
 export const CROSSHAIR_OUTLINE_COLOR = '#000000';
 
+// Zombie base scores (for score multiplier system)
+export const ZOMBIE_BASE_SCORES = {
+    normal: 10,
+    fast: 15,
+    armored: 25,
+    exploding: 20,
+    ghost: 18,
+    spitter: 22,
+    boss: 100
+};
+
 // Multiplayer settings
 export const MAX_LOCAL_PLAYERS = 4;
+export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // Weapon definitions
 export const WEAPONS = {

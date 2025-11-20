@@ -3,6 +3,8 @@ import { gameState } from '../core/gameState.js';
 import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { SKILLS_POOL } from '../systems/SkillSystem.js';
+import { saveMultiplierStats } from '../utils/gameUtils.js';
 
 export class GameHUD {
     constructor(canvas) {
@@ -18,6 +20,7 @@ export class GameHUD {
         this.finalScore = '';
         this.mainMenu = false;
         this.hoveredButton = null;
+        this.hoveredSkillIndex = null;
     }
 
     drawStat(label, value, icon, color, x, y, width) {
@@ -145,7 +148,7 @@ export class GameHUD {
         } else if (this.mainMenu) {
             this.drawMainMenu();
         } else {
-            if (!this.gameOver && !this.paused) {
+            if (!this.gameOver && !this.paused && !gameState.showLevelUp) {
                 if (gameState.isCoop) {
                     this.drawCoopHUD();
                 } else {
@@ -160,6 +163,10 @@ export class GameHUD {
 
             if (this.paused) {
                 this.drawPauseMenu();
+            }
+
+            if (gameState.showLevelUp) {
+                this.drawLevelUpScreen();
             }
         }
 
@@ -290,6 +297,12 @@ export class GameHUD {
         currentY += height + this.itemSpacing;
         const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
         this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
+        
+        // Multiplier indicator (if active)
+        if (player.scoreMultiplier > 1.0) {
+            currentY += height + this.itemSpacing;
+            this.drawMultiplierIndicator(player, x, currentY);
+        }
     }
 
     drawSharedStats(x, y) {
@@ -320,6 +333,14 @@ export class GameHUD {
         if (!gameState.isCoop) {
             currentY += height + this.itemSpacing;
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', x, currentY, width);
+            
+            // Draw multiplier indicator for player 1 (single player)
+            const player = gameState.players[0];
+            if (player.scoreMultiplier > 1.0) {
+                currentY += height + this.itemSpacing;
+                this.drawMultiplierIndicator(player, x, currentY);
+                currentY += 50; // Add space for multiplier indicator
+            }
         }
 
         // Buffs
@@ -589,6 +610,19 @@ export class GameHUD {
 
         this.ctx.fillText(this.finalScore, this.canvas.width / 2, this.canvas.height / 2 - 30);
 
+        // Display multiplier stats
+        const player = gameState.players[0];
+        if (player.maxMultiplierThisSession > 1.0) {
+            this.ctx.font = '18px "Roboto Mono", monospace';
+            this.ctx.fillStyle = '#ffd700';
+            this.ctx.fillText(`Max Multiplier: ${player.maxMultiplierThisSession}x`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+            
+            if (player.totalMultiplierBonus > 0) {
+                this.ctx.fillStyle = '#4caf50';
+                this.ctx.fillText(`Bonus Score: +${Math.floor(player.totalMultiplierBonus)}`, this.canvas.width / 2, this.canvas.height / 2 + 35);
+            }
+        }
+
         this.ctx.fillStyle = '#ff0000';
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 100);
@@ -620,6 +654,16 @@ export class GameHUD {
     showGameOver(scoreText) {
         this.gameOver = true;
         this.finalScore = scoreText;
+        
+        // Update all-time max multiplier if any player exceeded it
+        gameState.players.forEach(player => {
+            if (player.maxMultiplierThisSession > gameState.allTimeMaxMultiplier) {
+                gameState.allTimeMaxMultiplier = player.maxMultiplierThisSession;
+            }
+        });
+        
+        // Save multiplier stats
+        saveMultiplierStats();
     }
 
     showPauseMenu() { this.paused = true; }
@@ -842,6 +886,15 @@ export class GameHUD {
         this.ctx.font = '12px "Roboto Mono", monospace';
         this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
         this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 40);
+        
+        // Display all-time best multiplier
+        if (gameState.allTimeMaxMultiplier > 1.0) {
+            this.ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
+            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 20);
+        }
+
+        // Draw server status indicator
+        this.drawServerStatus();
 
         // Draw mute button in bottom right
         const muteButtonSize = 40;
@@ -912,7 +965,7 @@ export class GameHUD {
         this.ctx.fillText('Version: V0.3.1', centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.3.0 ALPHA', centerX, y);
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.4.0', centerX, y);
         y += 50;
         
         this.ctx.font = '14px "Roboto Mono", monospace';
@@ -1605,5 +1658,310 @@ export class GameHUD {
         this.ctx.shadowBlur = 0;
 
         this.ctx.restore();
+    }
+
+    drawLevelUpScreen() {
+        const canvas = this.canvas;
+        const ctx = this.ctx;
+
+        // Darken background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Title
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ffc107';
+        ctx.fillStyle = '#ffc107';
+        ctx.font = 'bold 48px "Roboto Mono", monospace';
+        ctx.fillText('LEVEL UP!', canvas.width / 2, 80);
+        ctx.shadowBlur = 0;
+
+        // Level display
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '24px "Roboto Mono", monospace';
+        ctx.fillText(`Level ${gameState.level}`, canvas.width / 2, 130);
+        ctx.restore();
+
+        // Draw skill cards
+        const cardWidth = 300;
+        const cardHeight = 400;
+        const cardSpacing = 40;
+        const totalWidth = (cardWidth * 2) + cardSpacing;
+        const startX = (canvas.width - totalWidth) / 2;
+        const cardY = canvas.height / 2 - cardHeight / 2 + 40;
+
+        gameState.levelUpChoices.forEach((skill, index) => {
+            const cardX = startX + (index * (cardWidth + cardSpacing));
+            const isHovered = this.hoveredSkillIndex === index;
+
+            // Card background
+            const bgGradient = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardHeight);
+            if (isHovered) {
+                bgGradient.addColorStop(0, 'rgba(255, 193, 7, 0.3)');
+                bgGradient.addColorStop(1, 'rgba(255, 152, 0, 0.3)');
+            } else {
+                bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.95)');
+                bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.95)');
+            }
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+
+            // Card border
+            ctx.strokeStyle = isHovered ? '#ffc107' : '#666666';
+            ctx.lineWidth = isHovered ? 4 : 2;
+            ctx.shadowBlur = isHovered ? 15 : 0;
+            ctx.shadowColor = '#ffc107';
+            ctx.strokeRect(cardX, cardY, cardWidth, cardHeight);
+            ctx.shadowBlur = 0;
+
+            // Icon
+            ctx.font = '64px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(skill.icon, cardX + cardWidth / 2, cardY + 80);
+
+            // Skill name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px "Roboto Mono", monospace';
+            ctx.fillText(skill.name, cardX + cardWidth / 2, cardY + 160);
+
+            // Description
+            ctx.fillStyle = '#cccccc';
+            ctx.font = '16px "Roboto Mono", monospace';
+            const descriptionLines = this.wrapText(ctx, skill.description, cardWidth - 40);
+            let lineY = cardY + 200;
+            descriptionLines.forEach(line => {
+                ctx.fillText(line, cardX + cardWidth / 2, lineY);
+                lineY += 24;
+            });
+
+            // Check if already owned
+            const existingSkill = gameState.activeSkills.find(s => s.id === skill.id);
+            if (existingSkill) {
+                ctx.fillStyle = '#ffc107';
+                ctx.font = 'bold 18px "Roboto Mono", monospace';
+                ctx.fillText(`UPGRADE (Level ${existingSkill.level + 1})`, cardX + cardWidth / 2, cardY + cardHeight - 40);
+            }
+        });
+
+        // Instruction text
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '18px "Roboto Mono", monospace';
+        ctx.fillText('Click a skill to select it', canvas.width / 2, canvas.height - 60);
+    }
+
+    wrapText(ctx, text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + ' ' + word).width;
+            if (width < maxWidth) {
+                currentLine += ' ' + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+        return lines;
+    }
+
+    checkLevelUpClick(x, y) {
+        if (!gameState.showLevelUp || !gameState.levelUpChoices || gameState.levelUpChoices.length === 0) {
+            return null;
+        }
+
+        const canvas = this.canvas;
+        const cardWidth = 300;
+        const cardHeight = 400;
+        const cardSpacing = 40;
+        const totalWidth = (cardWidth * 2) + cardSpacing;
+        const startX = (canvas.width - totalWidth) / 2;
+        const cardY = canvas.height / 2 - cardHeight / 2 + 40;
+
+        for (let i = 0; i < gameState.levelUpChoices.length; i++) {
+            const cardX = startX + (i * (cardWidth + cardSpacing));
+            if (x >= cardX && x <= cardX + cardWidth && y >= cardY && y <= cardY + cardHeight) {
+                return i;
+            }
+        }
+
+        return null;
+    }
+
+    updateLevelUpHover(x, y) {
+        this.hoveredSkillIndex = this.checkLevelUpClick(x, y);
+    }
+
+    drawServerStatus() {
+        let status = gameState.multiplayer.status || 'disconnected';
+        
+        // If not actively connected to multiplayer lobby, show general server health
+        if (status === 'disconnected' || status === 'error') {
+            const serverHealth = gameState.multiplayer.serverStatus;
+            if (serverHealth === 'online') {
+                status = 'server_online';
+            } else if (serverHealth === 'checking') {
+                status = 'checking_health';
+            }
+        }
+
+        const x = this.canvas.width - 150;
+        const y = 20;
+        const dotRadius = 6;
+        const dotX = x + 10;
+        const dotY = y + 10;
+
+        // Determine color based on status
+        let dotColor;
+        let statusText;
+        switch (status) {
+            case 'connected':
+                dotColor = '#10b981'; // Green
+                statusText = 'Connected';
+                break;
+            case 'connecting':
+                dotColor = '#f59e0b'; // Yellow/Amber
+                statusText = 'Connecting...';
+                break;
+            case 'server_online':
+                dotColor = '#10b981'; // Green
+                statusText = 'Server Ready';
+                break;
+            case 'checking_health':
+                dotColor = '#f59e0b'; // Yellow/Amber
+                statusText = 'Waking Server...';
+                break;
+            case 'error':
+                dotColor = '#ef4444'; // Red
+                statusText = 'Error';
+                break;
+            default:
+                dotColor = '#6b7280'; // Gray
+                statusText = 'Offline';
+        }
+
+        // Background panel
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(x, y, 140, 30);
+
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x, y, 140, 30);
+
+        // Status dot with glow
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = dotColor;
+        this.ctx.fillStyle = dotColor;
+        this.ctx.beginPath();
+        this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+
+        // Status text
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(statusText, dotX + 20, dotY);
+    }
+
+    drawMultiplierIndicator(player, x, y) {
+        if (player.scoreMultiplier <= 1.0) {
+            return; // Don't show at 1x
+        }
+
+        const width = 120;
+        const height = 40;
+
+        // Pulsing glow effect
+        const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+
+        // Color based on tier
+        let color;
+        if (player.scoreMultiplier >= 5.0) {
+            color = '#ffd700'; // Gold for max
+        } else if (player.scoreMultiplier >= 4.0) {
+            color = '#ff9800'; // Orange
+        } else if (player.scoreMultiplier >= 3.0) {
+            color = '#ffeb3b'; // Yellow
+        } else {
+            color = '#4caf50'; // Green
+        }
+
+        // Render multiplier text
+        this.ctx.save();
+        this.ctx.font = 'bold 24px "Roboto Mono"';
+        this.ctx.fillStyle = color;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.shadowBlur = 15 * pulse;
+        this.ctx.shadowColor = color;
+        this.ctx.fillText(`${player.scoreMultiplier}x`, x + width / 2, y);
+        this.ctx.shadowBlur = 0;
+
+        // Progress bar to next tier
+        this.drawMultiplierProgress(player, x, y + 25, width);
+
+        this.ctx.restore();
+    }
+
+    drawMultiplierProgress(player, x, y, width) {
+        const kills = player.consecutiveKills;
+        const thresholds = player.multiplierTierThresholds;
+
+        // Find current and next threshold
+        let currentThreshold = 0;
+        let nextThreshold = thresholds[1];
+
+        for (let i = 0; i < thresholds.length - 1; i++) {
+            if (kills >= thresholds[i] && kills < thresholds[i + 1]) {
+                currentThreshold = thresholds[i];
+                nextThreshold = thresholds[i + 1];
+                break;
+            }
+        }
+
+        // At max tier
+        if (kills >= thresholds[thresholds.length - 1]) {
+            this.ctx.font = '12px "Roboto Mono"';
+            this.ctx.fillStyle = '#ffd700';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('MAX', x + width / 2, y);
+            return;
+        }
+
+        // Calculate progress
+        const progress = (kills - currentThreshold) / (nextThreshold - currentThreshold);
+
+        // Render progress bar background
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        this.ctx.fillRect(x, y, width, 6);
+
+        // Render progress bar fill
+        const fillWidth = width * progress;
+        const gradient = this.ctx.createLinearGradient(x, y, x + fillWidth, y);
+        gradient.addColorStop(0, '#ff5252');
+        gradient.addColorStop(1, '#ff1744');
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+        this.ctx.fillRect(x, y, fillWidth, 6);
+        this.ctx.shadowBlur = 0;
+
+        // Show kills remaining
+        const killsRemaining = nextThreshold - kills;
+        this.ctx.font = '10px "Roboto Mono"';
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`${killsRemaining} kills to ${player.scoreMultiplier + 1.0}x`, x + width / 2, y + 16);
     }
 }

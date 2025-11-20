@@ -615,9 +615,9 @@
                 <div class="title-row">
                     <h1 class="title">ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</h1>
                     <div class="badge-row">
-                        <span class="tagline">V0.3.0 ALPHA</span>
+                        <span class="tagline">V0.4.0 - MULTIPLAYER UPDATE</span>
                         <div class="engine-info">
-                            <span class="engine-name">ZOMBS-XFX-NGIN V0.3.0 ALPHA</span>
+                            <span class="engine-name">ZOMBS-XFX-NGIN V0.4.0</span>
                         </div>
                     </div>
                 </div>
@@ -632,10 +632,11 @@
                 <p class="hero-text">
                     Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 4 unique weapons including 
                     the devastating Flamethrower, throw grenades, collect health and ammo pickups, and face off against 6 zombie variants 
-                    including Ghost, Exploding, Armored, and Spitter types. Features local co-op mode, AI squad mode, kill streak combos, 
+                    including Ghost, Exploding, Armored, and Spitter types. **NEW in V0.4.0**: Cloud-hosted multiplayer on Hugging Face Spaces 
+                    with automatic server health checks and smart connection handling. Features local co-op mode, AI squad mode, kill streak combos, 
                     comprehensive power-up system (damage buff, speed boost, rapid fire, shield & nuke) with real-time HUD timers showing 
                     remaining duration, controller support, boss waves, day/night cycle with dynamic difficulty, sprint system with stamina 
-                    management, and a multiplayer lobby system. Enhanced with critical hits, hit markers, spawn indicators, off-screen threat 
+                    management, and a fully functional multiplayer lobby system. Enhanced with critical hits, hit markers, spawn indicators, off-screen threat 
                     warnings, reload progress bars, floating damage numbers, bullet trails, shell casings, screen shake, directional blood 
                     splatter, menu music, and horror atmosphere effects. Built with pure HTML5 Canvas and JavaScript — no engines, no frameworks, 
                     just you and the horde.
@@ -708,8 +709,8 @@
                     <div class="feature">
                         <div class="feature-icon">🌐</div>
                         <div>
-                            <div class="feature-label">Multiplayer Lobby</div>
-                            <div>Socket.io powered lobby system with live player list, ready states, and connection tracking.</div>
+                            <div class="feature-label">Multiplayer Lobby (V0.4.0)</div>
+                            <div>Cloud-hosted on Hugging Face Spaces with automatic server health checks, smart connection handling, and live player roster.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -717,6 +718,13 @@
                         <div>
                             <div class="feature-label">Audio System</div>
                             <div>Web Audio API generated sounds plus menu music. Master volume control with persistent settings.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🧮</div>
+                        <div>
+                            <div class="feature-label">WebGPU Acceleration</div>
+                            <div>GPU background shaders, bloom, and compute-driven particles. Automatic Canvas fallback when unavailable.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -893,7 +901,7 @@
                 </div>
                 <div class="stat">
                     <span>Engine</span>
-                    <strong>ZOMBS-XFX-NGIN V0.3.0</strong>
+                    <strong>ZOMBS-XFX-NGIN V0.4.0</strong>
                 </div>
                 <div class="stat">
                     <span>Architecture</span>
@@ -960,13 +968,24 @@
             </div>
 
             <div>
-                <div class="side-heading">V0.3.0 ALPHA Features</div>
+                <div class="side-heading">V0.4.0 - MULTIPLAYER UPDATE</div>
+                <ul class="mini-list">
+                    <li><span>🌐</span> <strong>Cloud Server</strong>: Hugging Face Spaces deployment</li>
+                    <li><span>🔌</span> <strong>Smart Connection</strong>: Auto server health checks &amp; wake-up</li>
+                    <li><span>📊</span> <strong>Server Status</strong>: Main menu shows server readiness</li>
+                    <li><span>⚡</span> <strong>Improved Stability</strong>: Fixed WebGPU &amp; connection issues</li>
+                    <li><span>🔄</span> <strong>Better Reliability</strong>: Enhanced Socket.io configuration</li>
+                </ul>
+            </div>
+            <div>
+                <div class="side-heading">V0.3.0 Features</div>
                 <ul class="mini-list">
                     <li><span>✔</span> <strong>Day/Night Cycle</strong>: Dynamic time transitions with night difficulty scaling</li>
                     <li><span>✔</span> <strong>Flamethrower</strong>: Short-range DoT weapon with burning mechanics</li>
                     <li><span>✔</span> <strong>Spitter Zombie</strong>: Ranged enemy with acid projectiles &amp; pools</li>
                     <li><span>✔</span> <strong>Sprint System</strong>: Stamina-based movement with tactical management</li>
-                    <li><span>✔</span> <strong>Local Co-op</strong>: 2-player shared screen with split HUD</li>
+                    <li><span>✔</span> <strong>Local Co-op</strong>: 4-player shared screen with grid HUD</li>
+                    <li><span>✔</span> <strong>WebGPU Engine</strong>: GPU-accelerated shaders &amp; bloom post-processing</li>
                     <li><span>✔</span> <strong>Menu Music</strong>: Background music with volume control</li>
                     <li><span>✔</span> <strong>Horror UI</strong>: Animated menu with blood splatters &amp; effects</li>
                     <li><span>✔</span> <strong>Kill Streaks</strong>: Combo system with visual notifications</li>

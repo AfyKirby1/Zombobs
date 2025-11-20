@@ -48,9 +48,30 @@ This modular structure improves maintainability, testability, and scalability.
 **Exports**:
 - `canvas` - Canvas DOM element
 - `ctx` - Canvas 2D rendering context
+- `gpuCanvas` - WebGPU canvas element used by the GPU renderer
 - `resizeCanvas(player)` - Resize canvas to fit window
 
 **Dependencies**: `constants.js`
+
+#### WebGPURenderer.js
+**Purpose**: GPU-accelerated background rendering and compute-driven particles
+
+**Responsibilities**:
+- Initialize WebGPU device/context and configure preferred canvas format
+- Maintain a uniform buffer for time, resolution, bloom intensity, distortion toggle, and lighting quality level
+- Render a full-screen procedural background with noise/fog/vignette and optional distortion and rim lighting
+- Update particles via a compute shader and render them with a point-list pipeline
+- Gracefully fall back to Canvas 2D if WebGPU is unavailable
+
+**Runtime Controls**:
+- `setBloomIntensity(value)` — 0.0–1.0
+- `setDistortionEffects(enabled)` — boolean
+- `setLightingQuality(level)` — `off` | `simple` | `advanced`
+- `setParticleCount(level)` — `low` (CPU/off) | `high` (10k) | `ultra` (50k)
+
+**Integration**:
+- Reads settings from `SettingsManager` via `js/main.js` and applies changes live
+- Respects `video.webgpuEnabled` and only renders when enabled and available
 
 #### gameState.js
 **Purpose**: Centralized game state management

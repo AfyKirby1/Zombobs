@@ -31,7 +31,8 @@ import {
 } from './utils/combatUtils.js';
 import {
     checkCollision, triggerDamageIndicator, triggerWaveNotification,
-    loadHighScore, saveHighScore,     loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted
+    loadHighScore, saveHighScore, loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted,
+    loadMultiplierStats
 } from './utils/gameUtils.js';
 
 // Make triggerDamageIndicator available globally for AcidPool
@@ -41,6 +42,8 @@ import { inputSystem } from './systems/InputSystem.js';
 import { GameEngine } from './core/GameEngine.js';
 import { CompanionSystem } from './companions/CompanionSystem.js';
 import { WebGPURenderer } from './core/WebGPURenderer.js';
+import { skillSystem } from './systems/SkillSystem.js';
+import { SERVER_URL } from './core/constants.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -90,6 +93,12 @@ function applyWebGPUSettings() {
 
     const bloomIntensity = settingsManager.getSetting('video', 'bloomIntensity') ?? 0.5;
     webgpuRenderer.setBloomIntensity(bloomIntensity);
+    const distortion = settingsManager.getSetting('video', 'distortionEffects') ?? true;
+    webgpuRenderer.setDistortionEffects(distortion);
+    const lighting = settingsManager.getSetting('video', 'lightingQuality') ?? 'simple';
+    webgpuRenderer.setLightingQuality(lighting);
+    const particles = settingsManager.getSetting('video', 'particleCount') ?? 'high';
+    webgpuRenderer.setParticleCount(particles);
 }
 
 // Listen for settings changes and update WebGPU renderer
@@ -100,23 +109,87 @@ settingsManager.addChangeListener((category, key, value) => {
                 webgpuRenderer.setBloomIntensity(value);
             }
         }
-        // Add more WebGPU setting handlers here as needed
+        if (key === 'distortionEffects') {
+            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
+                webgpuRenderer.setDistortionEffects(value);
+            }
+        }
+        if (key === 'lightingQuality') {
+            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
+                webgpuRenderer.setLightingQuality(value);
+            }
+        }
+        if (key === 'particleCount') {
+            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
+                webgpuRenderer.setParticleCount(value);
+            }
+        }
     }
 });
 
-function connectToMultiplayer() {
-    if (gameState.multiplayer.socket) return; // Already connected
+// Server health check function
+function checkServerHealth() {
+    if (gameState.multiplayer.status === 'connected') return;
 
-    gameState.multiplayer.active = true;
+    gameState.multiplayer.serverStatus = 'checking';
+    console.log('Checking server health at:', SERVER_URL);
 
-    // Initialize socket.io
+    fetch(`${SERVER_URL}/health`)
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Network response was not ok');
+        })
+        .then(data => {
+            console.log('Server is online:', data);
+            gameState.multiplayer.serverStatus = 'online';
+        })
+        .catch(error => {
+            console.log('Server appears offline or waking up:', error);
+            gameState.multiplayer.serverStatus = 'offline';
+            
+            // Retry check after 5 seconds if offline (to handle wake-up)
+            setTimeout(checkServerHealth, 5000);
+        });
+}
+
+function initializeNetwork() {
+    if (gameState.multiplayer.socket) return; // Already initialized
+
+    // Initialize socket.io connection to Hugging Face Space
     if (typeof io !== 'undefined') {
-        const socket = io();
+        gameState.multiplayer.status = 'connecting';
+        
+        // Configure Socket.io for Hugging Face Spaces
+        // Hugging Face Spaces uses a reverse proxy, so we need to:
+        // 1. Use both polling and websocket transports (polling first for compatibility)
+        // 2. Set path explicitly for Spaces routing - Socket.io appends /socket.io/ automatically
+        // 3. Allow reconnection attempts
+        const socket = io(SERVER_URL, {
+            path: '/socket.io/', // Explicit path for Socket.io (will be appended to SERVER_URL)
+            transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
+            upgrade: true, // Allow transport upgrade from polling to websocket
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            forceNew: false,
+            withCredentials: false // Important for CORS
+        });
+        
         gameState.multiplayer.socket = socket;
 
         socket.on('connect', () => {
-            console.log('Connected to multiplayer server');
+            console.log('✅ Successfully connected to multiplayer server');
+            console.log('Connection details:', {
+                id: socket.id,
+                transport: socket.io.engine?.transport?.name || 'unknown',
+                url: SERVER_URL
+            });
             gameState.multiplayer.connected = true;
+            gameState.multiplayer.status = 'connected';
             gameState.multiplayer.playerId = socket.id;
             socket.emit('player:register', {
                 name: gameState.username || `Survivor-${socket.id.slice(-4)}`
@@ -126,6 +199,7 @@ function connectToMultiplayer() {
         socket.on('disconnect', () => {
             console.log('Disconnected from multiplayer server');
             gameState.multiplayer.connected = false;
+            gameState.multiplayer.status = 'disconnected';
             gameState.multiplayer.playerId = null;
             gameState.multiplayer.players = [];
         });
@@ -136,12 +210,37 @@ function connectToMultiplayer() {
 
         socket.on('connect_error', (err) => {
             console.error('Multiplayer connection error:', err.message);
+            console.error('Connection details:', {
+                url: SERVER_URL,
+                transport: socket.io.engine?.transport?.name || 'unknown'
+            });
             gameState.multiplayer.connected = false;
+            gameState.multiplayer.status = 'error';
+        });
+
+        socket.on('reconnect_attempt', (attemptNumber) => {
+            console.log(`Reconnection attempt ${attemptNumber}...`);
+            gameState.multiplayer.status = 'connecting';
+        });
+
+        socket.on('reconnect_failed', () => {
+            console.error('Failed to reconnect to server after all attempts');
+            gameState.multiplayer.status = 'error';
         });
     } else {
-        console.error('Socket.io not found. Make sure to run the server with launch.bat');
+        console.error('Socket.io not found. Make sure the CDN script is loaded.');
+        gameState.multiplayer.status = 'error';
         gameState.multiplayer.connected = false;
     }
+}
+
+function connectToMultiplayer() {
+    // This function is called when entering the multiplayer lobby
+    // The network should already be initialized, but ensure it's active
+    if (!gameState.multiplayer.socket) {
+        initializeNetwork();
+    }
+    gameState.multiplayer.active = true;
 }
 
 function spawnBoss() {
@@ -331,6 +430,10 @@ function performMeleeAttack(player) {
 
                 gameState.score += 10;
                 gameState.zombiesKilled++;
+                // Award XP for kill
+                const zombieType4 = zombie.type || 'normal';
+                const xpAmount4 = skillSystem.getXPForZombieType(zombieType4);
+                skillSystem.gainXP(xpAmount4);
                 // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
                 if (!isExploding) {
                     playKillSound();
@@ -470,8 +573,10 @@ function updatePlayers() {
             moveY /= len;
         }
 
-        // Sprint Logic (with speed boost buff)
+        // Sprint Logic (with speed boost buff and skill multiplier)
         const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
+        const skillSpeedMultiplier = player.speedMultiplier || 1.0;
+        const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier;
         // autoSprint moved to gameplay, check both for migration safety or just gameplay
         const autoSprint = settingsManager.getSetting('gameplay', 'autoSprint') || false;
 
@@ -487,12 +592,12 @@ function updatePlayers() {
 
         if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
             player.isSprinting = true;
-            player.speed = PLAYER_SPRINT_SPEED * speedBoostMultiplier;
+            player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
             player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
             player.lastSprintTime = Date.now();
         } else {
             player.isSprinting = false;
-            player.speed = PLAYER_BASE_SPEED * speedBoostMultiplier;
+            player.speed = PLAYER_BASE_SPEED * totalSpeedMultiplier;
             if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
                 player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
             }
@@ -1112,6 +1217,7 @@ function drawFpsCounter() {
 
 function updateGame() {
     if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) return;
+    if (gameState.showLevelUp) return; // Pause game during level up selection
 
     const now = Date.now();
     const activePlayers = gameState.players.filter(p => p.health > 0);
@@ -1181,6 +1287,13 @@ function updateGame() {
         }
         gameState.lastPowerupSpawnTime = now;
     }
+
+    // Apply regeneration skill
+    gameState.players.forEach(player => {
+        if (player.health > 0 && player.hasRegeneration) {
+            player.health = Math.min(player.maxHealth, player.health + (1 / 60)); // 1 HP per second at 60fps
+        }
+    });
 
     // Update players
     updatePlayers();
@@ -1292,11 +1405,15 @@ function updateGame() {
                 p.activeMeleeSwipe = null;
             }
         }
-        // Update reload
+        // Update reload (with skill multiplier)
         if (p.isReloading) {
-            if (now - p.reloadStartTime >= p.currentWeapon.reloadTime) {
+            const reloadMultiplier = p.reloadSpeedMultiplier || 1.0;
+            const adjustedReloadTime = p.currentWeapon.reloadTime * reloadMultiplier;
+            if (now - p.reloadStartTime >= adjustedReloadTime) {
                 p.isReloading = false;
-                p.currentAmmo = p.currentWeapon.maxAmmo;
+                const ammoMultiplier = p.ammoMultiplier || 1.0;
+                p.currentAmmo = Math.floor(p.currentWeapon.maxAmmo * ammoMultiplier);
+                p.maxAmmo = Math.floor(p.currentWeapon.maxAmmo * ammoMultiplier);
                 // Update weapon state with reloaded ammo
                 const weaponKeys = Object.keys(WEAPONS);
                 const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === p.currentWeapon);
@@ -1390,7 +1507,7 @@ function drawGame() {
     ctx.save();
     // Apply screen shake
     if (gameState.shakeAmount > 0.1) {
-        const shakeIntensity = settingsManager.getSetting('video', 'screenShakeIntensity') ?? 1.0;
+        const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
         const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         ctx.translate(shakeX, shakeY);
@@ -1590,6 +1707,14 @@ function drawGame() {
 function gameOver() {
     gameState.gameRunning = false;
     saveHighScore();
+
+    // Update and save multiplier stats
+    gameState.players.forEach(player => {
+        if (player.maxMultiplierThisSession > gameState.allTimeMaxMultiplier) {
+            gameState.allTimeMaxMultiplier = player.maxMultiplierThisSession;
+        }
+    });
+    saveMultiplierStats();
 
     const p1 = gameState.players[0];
     const p2 = gameState.players[1];
@@ -1872,6 +1997,8 @@ canvas.addEventListener('mousemove', (e) => {
 
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
+    } else if (gameState.showLevelUp) {
+        gameHUD.updateLevelUpHover(mouse.x, mouse.y);
     } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
@@ -1886,6 +2013,18 @@ canvas.addEventListener('mousedown', (e) => {
 
     if (gameState.showSettingsPanel) {
         settingsPanel.handleClick(clickX, clickY);
+        return;
+    }
+
+    // Level Up Screen
+    if (gameState.showLevelUp) {
+        const selectedIndex = gameHUD.checkLevelUpClick(clickX, clickY);
+        if (selectedIndex !== null && gameState.levelUpChoices[selectedIndex]) {
+            const selectedSkill = gameState.levelUpChoices[selectedIndex];
+            skillSystem.activateSkill(selectedSkill.id);
+            gameState.showLevelUp = false;
+            gameState.levelUpChoices = [];
+        }
         return;
     }
 
@@ -2073,4 +2212,6 @@ window.addEventListener('blur', () => {
 loadHighScore();
 loadUsername();
 loadMenuMusicMuted();
+loadMultiplierStats();
+checkServerHealth(); // Start checking server status
 gameEngine.start();

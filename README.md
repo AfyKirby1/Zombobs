@@ -53,14 +53,26 @@
 
 ---
 
-## 🔥 What's New in V0.3.0 ALPHA
+## 🔥 What's New in V0.4.0 - THE MULTIPLAYER UPDATE
+
+> **The horde is connected. Are you ready?**
+
+- **🌐 Hugging Face Spaces Deployment** - Production-ready multiplayer server on Hugging Face Spaces cloud hosting
+- **🔌 Enhanced Connection System** - Automatic server health checks, smart status indicators, and auto-wake for sleeping servers
+- **🛡️ Improved Stability** - Fixed WebGPU renderer errors and Socket.io connection issues
+- **📊 Smart Server Status** - Main menu now shows server readiness even when not in multiplayer lobby
+- **🔄 Better Connection Handling** - Polling-first transport, explicit path configuration, and enhanced CORS support
+- **⚡ WebGPU Fixes** - Resolved storage buffer binding errors for stable GPU rendering
+
+## 🔥 Previously in V0.3.0 ALPHA
 
 > **The horde is evolving. Are you?**
 
 - **⚡ WebGPU Rendering Engine** - Next-generation graphics with GPU-accelerated background shaders, bloom post-processing, and procedural "Void" effects. Automatic Canvas 2D fallback for compatibility.
+- **🧮 GPU Particle Compute** - Simple compute shader updates thousands of particles per frame; point-list rendering layered over the background.
 - **🎨 Settings Overhaul** - Complete redesign with compact tabbed interface (Video, Audio, Gameplay, Controls) and 10+ new customization options.
 - **💫 Bloom & Post-Processing** - Physically based bloom effects for glowing elements and cinematic visuals.
-- **🎛️ Advanced Settings** - New options including WebGPU toggle, bloom intensity, particle count modes, lighting quality, distortion effects, damage number scale, screen shake multiplier, crosshair color, auto-reload toggle, and spatial audio.
+- **🎛️ Advanced Settings** - New options including WebGPU toggle, bloom intensity, particle count modes, lighting quality tiers, distortion effects, damage number scale, screen shake multiplier, crosshair color, auto-reload toggle, and spatial audio. All apply live.
 - **📊 WebGPU Status Indicator** - Real-time status icon showing WebGPU availability and current state.
 
 ## 🔥 Previously in V0.3.0 ALPHA
@@ -204,12 +216,15 @@ Classic survival mode. Just you against the horde. How long can you last?
 - Zombies target the closest living player
 - All players must die for Game Over
 
-### Multiplayer Lobby 🔄 **LOBBY ONLY** (Full gameplay coming soon)
-- Live player list with auto-generated names (or custom handles)
-- Status pulses (`Connecting…`, `Connected!`) with minimalist spinner
+### Multiplayer Lobby ✅ **FULLY FUNCTIONAL**
+- **🌐 Cloud Server**: Deployed on Hugging Face Spaces for reliable hosting
+- **🔌 Smart Connection**: Automatic server health checks and wake-up system
+- **📊 Status Indicator**: Shows "Server Ready" on main menu when server is online
+- **👥 Live Player List**: Real-time player roster with custom usernames
+- **⚡ Enhanced Reliability**: Polling-first transport with automatic WebSocket upgrade
+- **🔄 Auto-Reconnect**: Automatic reconnection with exponential backoff
+- **🌍 Direct Domain**: Uses `.hf.space` domain for stable connections
 - Ready/Back controls drawn directly on the canvas UI
-- PowerShell logs mirror every join/leave with IDs for LAN parties
-- Future-proof: lobby broadcasts `lobby:update` events for upcoming networked gameplay
 
 ---
 

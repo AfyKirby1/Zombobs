@@ -541,3 +541,92 @@ export function playHitSound() {
         // Silently fail if audio can't play
     }
 }
+
+
+// Score Multiplier Audio Feedback
+
+/**
+ * Play multiplier tier-up sound
+ * @param {number} tier - The new multiplier tier (2.0, 3.0, 4.0, 5.0)
+ */
+export function playMultiplierUpSound(tier) {
+    if (!audioContext) {
+        initAudio();
+    }
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    // Higher pitch for higher tiers
+    const baseFreq = 400;
+    oscillator.frequency.value = baseFreq + (tier * 100);
+    oscillator.type = 'sine';
+
+    oscillator.connect(gainNode);
+    gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+/**
+ * Play special max multiplier sound (5x)
+ */
+export function playMultiplierMaxSound() {
+    if (!audioContext) {
+        initAudio();
+    }
+    if (!audioContext) return;
+
+    // Create a fanfare with multiple tones
+    const frequencies = [523, 659, 784, 1047]; // C, E, G, C (major chord)
+    
+    frequencies.forEach((freq, index) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
+
+        oscillator.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+        const startTime = audioContext.currentTime + (index * 0.05);
+        gainNode.gain.setValueAtTime(0.2, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.4);
+    });
+}
+
+/**
+ * Play multiplier lost sound (negative feedback)
+ */
+export function playMultiplierLostSound() {
+    if (!audioContext) {
+        initAudio();
+    }
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    // Descending tone for negative feedback
+    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+    oscillator.type = 'sawtooth';
+
+    oscillator.connect(gainNode);
+    gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.3);
+}
