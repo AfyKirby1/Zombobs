@@ -1,5 +1,6 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
+import { MAX_PARTICLES } from '../core/constants.js';
 import { playDamageSound, playKillSound, playExplosionSound } from '../systems/AudioSystem.js';
 import { triggerDamageIndicator } from '../utils/gameUtils.js';
 import { createExplosion, createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
@@ -18,14 +19,47 @@ export class Zombie {
         this.speed = 1 + (gameState.wave * 0.1);
         this.health = 2 + Math.floor(gameState.wave / 3);
         this.type = 'base';
+        
+        // Burning state
+        this.burnTimer = 0; // ms remaining
+        this.burnDamage = 0; // damage per tick
+        this.baseSpeed = null; // Will be set on first update for night cycle
     }
 
     update(player) {
+        // Store base speed for night cycle (if not already set)
+        if (!this.baseSpeed) {
+            this.baseSpeed = this.speed;
+        }
+
         // Check if the slow effect has expired
         if (this.slowedUntil && Date.now() > this.slowedUntil) {
             this.speed = this.originalSpeed;
             this.slowedUntil = undefined;
             this.originalSpeed = undefined;
+        }
+
+        // Handle burning damage
+        if (this.burnTimer > 0) {
+            const now = Date.now();
+            // Apply burn damage every 200ms
+            if (!this.lastBurnTick || now - this.lastBurnTick >= 200) {
+                this.health -= this.burnDamage;
+                this.lastBurnTick = now;
+                
+                // Spawn fire/smoke particles
+                if (gameState.particles.length < MAX_PARTICLES - 10) {
+                    const fireColor = `rgba(255, ${Math.floor(Math.random() * 100 + 100)}, 0, 0.8)`;
+                    createParticles(this.x, this.y, fireColor, 2);
+                }
+            }
+            // Decrement timer
+            this.burnTimer -= 16; // Approximate frame time
+            if (this.burnTimer <= 0) {
+                this.burnTimer = 0;
+                this.burnDamage = 0;
+                this.lastBurnTick = undefined;
+            }
         }
 
         const dx = player.x - this.x;
@@ -500,5 +534,147 @@ export class GhostZombie extends Zombie {
         ctx.fill();
         
         ctx.restore();
+    }
+}
+
+// Spitter Zombie - Ranged enemy that kites and creates acid pools
+export class SpitterZombie extends Zombie {
+    constructor(canvasWidth, canvasHeight) {
+        super(canvasWidth, canvasHeight);
+        this.type = 'spitter';
+        this.speed *= 1.2; // Fast to maintain distance
+        this.health = Math.floor(this.health * 0.8); // Lower health
+        this.lastSpitTime = 0;
+        this.spitCooldown = 2500; // 2.5 seconds between spits
+        this.optimalRange = 400; // Sweet spot distance (300-500px)
+    }
+
+    update(player) {
+        // Store base speed for night cycle
+        if (!this.baseSpeed) {
+            this.baseSpeed = this.speed;
+        }
+
+        // Check if the slow effect has expired
+        if (this.slowedUntil && Date.now() > this.slowedUntil) {
+            this.speed = this.originalSpeed;
+            this.slowedUntil = undefined;
+            this.originalSpeed = undefined;
+        }
+
+        // Handle burning damage (inherited from base class)
+        if (this.burnTimer > 0) {
+            const now = Date.now();
+            if (!this.lastBurnTick || now - this.lastBurnTick >= 200) {
+                this.health -= this.burnDamage;
+                this.lastBurnTick = now;
+                
+                if (gameState.particles.length < MAX_PARTICLES - 10) {
+                    const fireColor = `rgba(255, ${Math.floor(Math.random() * 100 + 100)}, 0, 0.8)`;
+                    createParticles(this.x, this.y, fireColor, 2);
+                }
+            }
+            this.burnTimer -= 16;
+            if (this.burnTimer <= 0) {
+                this.burnTimer = 0;
+                this.burnDamage = 0;
+                this.lastBurnTick = undefined;
+            }
+        }
+
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        
+        // Kiting AI: Maintain optimal range
+        if (dist < 300) {
+            // Too close - move away
+            this.x -= (dx / dist) * this.speed;
+            this.y -= (dy / dist) * this.speed;
+        } else if (dist > 500) {
+            // Too far - move closer
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+        } else {
+            // In sweet spot - strafe sideways
+            const perpAngle = Math.atan2(dy, dx) + Math.PI / 2;
+            this.x += Math.cos(perpAngle) * this.speed * 0.5;
+            this.y += Math.sin(perpAngle) * this.speed * 0.5;
+        }
+
+        // Spit acid projectile
+        const now = Date.now();
+        if (now - this.lastSpitTime >= this.spitCooldown && dist <= 600) {
+            // Use global reference set by main.js
+            if (typeof window !== 'undefined' && window.AcidProjectile) {
+                const targetX = player.x;
+                const targetY = player.y;
+                gameState.acidProjectiles = gameState.acidProjectiles || [];
+                gameState.acidProjectiles.push(new window.AcidProjectile(this.x, this.y, targetX, targetY));
+            }
+            this.lastSpitTime = now;
+        }
+    }
+
+    draw() {
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Toxic green aura
+        const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
+        const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
+        auraGradient.addColorStop(0, `rgba(0, 255, 0, ${0.5 * pulse})`);
+        auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${0.3 * pulse})`);
+        auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+        ctx.fillStyle = auraGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Body (Toxic green)
+        const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);
+        bodyGradient.addColorStop(0, '#66ff66');
+        bodyGradient.addColorStop(0.4, '#4caf50');
+        bodyGradient.addColorStop(0.7, '#388e3c');
+        bodyGradient.addColorStop(1, '#1b5e20');
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y + 15, this.radius * 1.2, this.radius * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Swollen/bloated appearance (spitter characteristic)
+        ctx.fillStyle = 'rgba(100, 255, 100, 0.3)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y + 8, this.radius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Eyes (Bright green)
+        const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(0, 255, 0, ${eyePulse})`;
+        ctx.beginPath();
+        ctx.arc(this.x - this.radius * 0.4, this.y - this.radius * 0.25, this.radius * 0.25, 0, Math.PI * 2);
+        ctx.arc(this.x + this.radius * 0.4, this.y - this.radius * 0.25, this.radius * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Body outline
+        ctx.strokeStyle = '#1b5e20';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([2, 1]);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    takeDamage(bulletDamage) {
+        this.health -= bulletDamage;
+        return this.health <= 0;
     }
 }

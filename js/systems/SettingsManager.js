@@ -23,7 +23,8 @@ export class SettingsManager {
                 melee: 'v',
                 weapon1: '1',
                 weapon2: '2',
-                weapon3: '3'
+                weapon3: '3',
+                weapon4: '4'
             },
             gamepad: {
                 fire: 7, // RT

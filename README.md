@@ -33,12 +33,15 @@
 *   **Pistol**: Reliable, accurate, infinite potential.
 *   **Shotgun**: Crowd control at its finest. Spread the love (and the lead).
 *   **Rifle**: High rate of fire for when precision isn't enough.
+*   **Flamethrower**: Short-range inferno that sets zombies ablaze with damage over time.
 *   **Grenades**: Clear the screen with satisfying AOE explosions.
 
 ### 🧠 Intelligent Enemies
-*   **5 Zombie Variants**: Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), and Ghost (Spectral)
+*   **6 Zombie Variants**: Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), Ghost (Spectral), and Spitter (Ranged)
 *   **Boss Waves**: Epic boss zombies spawn periodically with massive health and devastating attacks
 *   **Progressive Difficulty**: Waves get harder, faster, and more chaotic
+*   **Day/Night Cycle**: Dynamic atmosphere with increased difficulty at night (zombies move 20% faster)
+*   **Environmental Hazards**: Acid pools from Spitter Zombie attacks create dangerous zones
 *   **Crowd Control**: Bullets slow zombies on hit, allowing strategic kiting
 
 ### 🎨 Visual & Audio Feast

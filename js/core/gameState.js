@@ -70,6 +70,7 @@ export const gameState = {
     showLobby: false,
     isCoop: false,
     showCoopLobby: false,
+    showAILobby: false,
 
     multiplayer: {
         active: false,
@@ -147,6 +148,14 @@ export const gameState = {
     lastHealthPickupSpawnTime: 0,
     lastAmmoPickupSpawnTime: 0,
     lastPowerupSpawnTime: 0,
+
+    // Day/Night Cycle
+    gameTime: 0, // 0 to 1, represents position in cycle
+    dayNightCycle: {
+        cycleDuration: 120000, // 2 minutes in milliseconds
+        startTime: 0 // When the cycle started
+    },
+    isNight: false,
 };
 
 // Compatibility getters/setters for single-player code
@@ -203,6 +212,10 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.rapidFirePickups = [];
     gameState.shieldPickups = [];
     gameState.grenades = [];
+    gameState.acidProjectiles = [];
+    gameState.acidPools = [];
+    gameState.acidProjectiles = [];
+    gameState.acidPools = [];
 
     // Clear timeouts
     gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
@@ -219,4 +232,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.lastKillTime = 0;
 
     gameState.waveNotification.active = false;
+
+    // Reset day/night cycle
+    gameState.gameTime = 0;
+    gameState.dayNightCycle.startTime = Date.now();
+    gameState.isNight = false;
 }

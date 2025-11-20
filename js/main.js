@@ -13,7 +13,13 @@ import { initAudio, playFootstepSound, playDamageSound, playKillSound, playResta
 import { initGroundPattern } from './systems/GraphicsSystem.js';
 import { GameHUD } from './ui/GameHUD.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
-import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie } from './entities/Zombie.js';
+import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie } from './entities/Zombie.js';
+import { AcidProjectile } from './entities/AcidProjectile.js';
+import { AcidPool } from './entities/AcidPool.js';
+
+// Make AcidProjectile and AcidPool available globally for SpitterZombie
+window.AcidProjectile = AcidProjectile;
+window.AcidPool = AcidPool;
 import { BossZombie } from './entities/BossZombie.js';
 import { HealthPickup, AmmoPickup, DamagePickup, NukePickup, SpeedPickup, RapidFirePickup, ShieldPickup } from './entities/Pickup.js';
 import { DamageNumber } from './entities/Particle.js';
@@ -25,6 +31,9 @@ import {
     checkCollision, triggerDamageIndicator, triggerWaveNotification,
     loadHighScore, saveHighScore, loadUsername, saveUsername
 } from './utils/gameUtils.js';
+
+// Make triggerDamageIndicator available globally for AcidPool
+window.triggerDamageIndicator = triggerDamageIndicator;
 import { createParticles, createBloodSplatter, addParticle } from './systems/ParticleSystem.js';
 import { inputSystem } from './systems/InputSystem.js';
 
@@ -131,6 +140,10 @@ function spawnZombies(count) {
             else if (gameState.wave >= 4 && rand >= 0.25 && rand < 0.35) {
                 ZombieClass = GhostZombie;
             }
+            // Wave 6+: Introduce Spitter zombies (~8% chance)
+            else if (gameState.wave >= 6 && rand >= 0.35 && rand < 0.43) {
+                ZombieClass = SpitterZombie;
+            }
             // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost)
             else if (gameState.wave >= 3 && rand >= 0.35) {
                 const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
@@ -200,7 +213,7 @@ function performMeleeAttack(player) {
     // Check for zombies in melee range
     let hitCount = 0;
     gameState.zombies.forEach((zombie, zombieIndex) => {
-        if (isInMeleeRange(zombie.x, zombie.y, player.x, player.y, player.angle)) {
+        if (isInMeleeRange(zombie.x, zombie.y, zombie.radius, player.x, player.y, player.angle)) {
             const impactAngle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
 
             // Store zombie position and type before damage (for exploding zombies)
@@ -249,24 +262,44 @@ function performMeleeAttack(player) {
     }
 }
 
-function isInMeleeRange(zombieX, zombieY, playerX, playerY, playerAngle) {
+function isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle) {
     const dx = zombieX - playerX;
     const dy = zombieY - playerY;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance > MELEE_RANGE) return false;
+    // Generous close-range check (inside the "swing" arc origin or very close)
+    // If zombie is practically touching the player, they get hit regardless of angle
+    const closeRangeThreshold = 30 + (zombieRadius || 12);
+    if (distance < closeRangeThreshold) {
+        // Check if they are somewhat in front (180 degree arc instead of 120)
+        // or just hit them if they are really close
+        if (distance < 25) return true; // Overlap check
+    }
 
-    // Check if zombie is in front arc (120 degree arc)
+    if (distance > MELEE_RANGE + (zombieRadius || 0)) return false;
+
+    // Check if zombie is in front arc (140 degree arc for wider coverage)
     const angleToZombie = Math.atan2(dy, dx);
     const angleDiff = Math.abs(angleToZombie - playerAngle);
     const normalizedAngleDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
 
-    return normalizedAngleDiff < Math.PI / 3; // 60 degrees on each side = 120 degree arc
+    return normalizedAngleDiff < Math.PI * 0.4; // ~72 degrees on each side = 144 degree arc
+}
+
+function addAIPlayer() {
+    if (gameState.players.length >= 4) return; // Max 4 players
+    
+    const colorIndex = gameState.players.length; // Use next available color
+    const spawnOffset = gameState.players.length * 50; // Offset spawn position
+    const aiPlayer = createPlayer(canvas.width / 2 + spawnOffset, canvas.height / 2, colorIndex);
+    aiPlayer.inputSource = 'ai';
+    aiPlayer.gamepadIndex = null;
+    gameState.players.push(aiPlayer);
 }
 
 function updatePlayers() {
     // Don't update player if main menu is showing
-    if (gameState.showMainMenu || gameState.showCoopLobby || gameState.showLobby) return;
+    if (gameState.showMainMenu || gameState.showCoopLobby || gameState.showLobby || gameState.showAILobby) return;
 
     // Get shared controls settings
     const controls = settingsManager.settings.controls;
@@ -313,6 +346,45 @@ function updatePlayers() {
                 target = mouse;
                 player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
             }
+        }
+        // AI Player Controls
+        if (player.inputSource === 'ai') {
+            // Find nearest zombie
+            let nearestZombie = null;
+            let minDist = Infinity;
+            
+            gameState.zombies.forEach(zombie => {
+                const dx = zombie.x - player.x;
+                const dy = zombie.y - player.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestZombie = zombie;
+                }
+            });
+            
+            // Move away from nearest zombie
+            if (nearestZombie) {
+                const dx = player.x - nearestZombie.x;
+                const dy = player.y - nearestZombie.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                
+                // Normalize and move away
+                moveX = (dx / dist);
+                moveY = (dy / dist);
+                
+                // Face away from zombie
+                player.angle = Math.atan2(dy, dx);
+            } else {
+                // No zombies nearby, move randomly or stay still
+                moveX = 0;
+                moveY = 0;
+            }
+            
+            // AI doesn't sprint (moves at base speed)
+            player.isSprinting = false;
+            player.speed = PLAYER_BASE_SPEED;
         }
         // Player 2 Controls
         else if (index === 1) {
@@ -409,8 +481,8 @@ function updatePlayers() {
             }
         }
 
-        // Keyboard Actions P2
-        if (index === 1 && player.inputSource !== 'gamepad') {
+        // Keyboard Actions P2 (only if not AI)
+        if (index === 1 && player.inputSource !== 'gamepad' && player.inputSource !== 'ai') {
             if (keys['enter']) shootBullet(target, canvas, player);
             if (keys['shift']) performMeleeAttack(player);
             if (keys[']']) reloadWeapon(player);
@@ -618,35 +690,43 @@ function drawMeleeSwipe(player) {
     const elapsed = now - player.activeMeleeSwipe.startTime;
     const progress = Math.min(elapsed / player.activeMeleeSwipe.duration, 1);
 
-    const startAngle = player.activeMeleeSwipe.angle - Math.PI / 2;
-    const endAngle = player.activeMeleeSwipe.angle + Math.PI / 2;
+    const startAngle = player.activeMeleeSwipe.angle - Math.PI * 0.4; // Match wider arc
+    const endAngle = player.activeMeleeSwipe.angle + Math.PI * 0.4;
     const currentAngle = startAngle + (endAngle - startAngle) * progress;
 
     const swipeRadius = MELEE_RANGE;
-    const swipeStartX = player.x + Math.cos(startAngle) * (player.radius + 5);
-    const swipeStartY = player.y + Math.sin(startAngle) * (player.radius + 5);
-    const swipeEndX = player.x + Math.cos(currentAngle) * swipeRadius;
-    const swipeEndY = player.y + Math.sin(currentAngle) * swipeRadius;
 
     ctx.save();
-    ctx.strokeStyle = '#ffaa00';
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 1 - progress * 0.5;
+    
+    // Create gradient for the swipe
+    const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, swipeRadius);
+    gradient.addColorStop(0, 'rgba(255, 170, 0, 0)');
+    gradient.addColorStop(0.5, 'rgba(255, 170, 0, 0.2)');
+    gradient.addColorStop(1, 'rgba(255, 170, 0, 0.6)');
+
+    // Draw filled sector
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.arc(player.x, player.y, swipeRadius, startAngle, currentAngle);
+    ctx.lineTo(player.x, player.y);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw outer edge glow
     ctx.shadowBlur = 15;
     ctx.shadowColor = '#ffaa00';
-
+    ctx.strokeStyle = '#ffaa00';
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(player.x, player.y, swipeRadius, startAngle, currentAngle);
     ctx.stroke();
 
+    // Draw tip spark
+    const tipX = player.x + Math.cos(currentAngle) * swipeRadius;
+    const tipY = player.y + Math.sin(currentAngle) * swipeRadius;
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(swipeStartX, swipeStartY);
-    ctx.lineTo(swipeEndX, swipeEndY);
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffaa00';
-    ctx.beginPath();
-    ctx.arc(swipeEndX, swipeEndY, 6, 0, Math.PI * 2);
+    ctx.arc(tipX, tipY, 4, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -767,7 +847,7 @@ function drawFpsCounter() {
 }
 
 function updateGame() {
-    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) return;
+    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) return;
 
     const now = Date.now();
     const activePlayers = gameState.players.filter(p => p.health > 0);
@@ -777,6 +857,12 @@ function updateGame() {
         gameOver();
         return;
     }
+
+    // Update Day/Night Cycle
+    const cycleElapsed = now - gameState.dayNightCycle.startTime;
+    gameState.gameTime = (cycleElapsed % gameState.dayNightCycle.cycleDuration) / gameState.dayNightCycle.cycleDuration;
+    // Night is from 0.5 to 1.0 (second half of cycle)
+    gameState.isNight = gameState.gameTime >= 0.5;
 
     // Spawn health pickups
     if (now - gameState.lastHealthPickupSpawnTime >= HEALTH_PICKUP_SPAWN_INTERVAL &&
@@ -843,7 +929,22 @@ function updateGame() {
         return !grenade.exploded;
     });
 
+    // Update acid projectiles
+    gameState.acidProjectiles = gameState.acidProjectiles.filter(projectile => {
+        projectile.update();
+        return !projectile.isOffScreen(canvas.width, canvas.height);
+    });
+
+    // Update acid pools
+    gameState.acidPools = gameState.acidPools.filter(pool => {
+        pool.update();
+        return !pool.isExpired();
+    });
+
     // Update zombies (Find target for each)
+    // Apply night difficulty modifier (20% speed increase)
+    const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
+    
     gameState.zombies.forEach(zombie => {
         // Find closest living player
         let closestPlayer = null;
@@ -860,6 +961,12 @@ function updateGame() {
         });
 
         if (closestPlayer) {
+            // Store original speed if not already stored
+            if (!zombie.baseSpeed) {
+                zombie.baseSpeed = zombie.speed;
+            }
+            // Apply night speed boost
+            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier;
             zombie.update(closestPlayer);
         }
     });
@@ -985,6 +1092,13 @@ function drawGame() {
         return;
     }
 
+    if (gameState.showAILobby) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        gameHUD.draw();
+        return;
+    }
+
     gameHUD.mainMenu = false;
 
     // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
@@ -1027,6 +1141,30 @@ function drawGame() {
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Day/Night Cycle Overlay
+    // Calculate ambient light level based on gameTime
+    // Day (0.0-0.5): Transparent to slightly dark
+    // Night (0.5-1.0): Dark blue/black overlay
+    let nightAlpha = 0;
+    if (gameState.isNight) {
+        // Smooth transition: 0.5 -> 0.0 alpha, 0.75 -> 0.6 alpha, 1.0 -> 0.7 alpha
+        const nightProgress = (gameState.gameTime - 0.5) * 2; // 0 to 1 during night
+        nightAlpha = 0.5 + (nightProgress * 0.2); // 0.5 to 0.7
+    } else {
+        // Dawn transition: 0.0 -> 0.0 alpha, 0.25 -> 0.3 alpha, 0.5 -> 0.0 alpha
+        const dawnProgress = gameState.gameTime * 2; // 0 to 1 during day
+        if (dawnProgress < 0.5) {
+            nightAlpha = dawnProgress * 0.6; // 0 to 0.3
+        } else {
+            nightAlpha = (1 - dawnProgress) * 0.6; // 0.3 to 0
+        }
+    }
+    
+    if (nightAlpha > 0) {
+        ctx.fillStyle = `rgba(10, 10, 30, ${nightAlpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
     if (gameState.damageIndicator.active) {
         ctx.fillStyle = `rgba(255, 0, 0, ${gameState.damageIndicator.intensity * 0.3})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1049,6 +1187,8 @@ function drawGame() {
     gameState.shells.forEach(shell => shell.draw(ctx));
     gameState.bullets.forEach(bullet => bullet.draw());
     gameState.grenades.forEach(grenade => grenade.draw());
+    gameState.acidProjectiles.forEach(projectile => projectile.draw());
+    gameState.acidPools.forEach(pool => pool.draw());
     gameState.healthPickups.forEach(pickup => pickup.draw());
     gameState.ammoPickups.forEach(pickup => pickup.draw());
     gameState.damagePickups.forEach(pickup => pickup.draw());
@@ -1094,6 +1234,7 @@ function restartGame() {
     gameState.gamePaused = false;
     gameState.showCoopLobby = false;
     gameState.showLobby = false;
+    gameState.showAILobby = false;
     gameHUD.hidePauseMenu();
     gameHUD.hideGameOver();
     resetGameState(canvas.width, canvas.height);
@@ -1123,15 +1264,14 @@ function startGame() {
         gameState.nukePickups = [];
         gameState.grenades = [];
 
-        gameState.players.forEach(p => {
+        // Reset all players (including AI)
+        gameState.players.forEach((p, index) => {
             p.health = PLAYER_MAX_HEALTH;
             p.stamina = PLAYER_STAMINA_MAX;
-            p.x = canvas.width / 2;
+            // Spawn players with slight offset to avoid overlap
+            p.x = canvas.width / 2 + (index * 50);
             p.y = canvas.height / 2;
         });
-
-        // Offset P2 slightly
-        if (gameState.players[1]) gameState.players[1].x += 50;
     }
 
     gameState.showMainMenu = false;
@@ -1169,13 +1309,13 @@ function gameLoop() {
         updateCoopLobby();
         gameHUD.draw(); // Draw lobby
     }
-    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby) {
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
         updateGame();
         drawGame(); // Only draw game if not in lobby
     }
     // Only draw game if not in lobbies/main menu (drawGame handles mainmenu/lobby drawing internally too but structured oddly)
     // Let's rely on drawGame() for everything except pure lobby updates
-    else if (gameState.showMainMenu || gameState.showLobby) {
+    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby) {
         drawGame();
     }
     // If paused
@@ -1187,7 +1327,7 @@ function gameLoop() {
     inputSystem.update(settingsManager.settings.gamepad);
 
     // Check for Gamepad Actions (Mostly P1 if we allow it, or Global Menus)
-    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && gameState.gameRunning) {
+    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && gameState.gameRunning) {
 
         const p1 = gameState.players[0];
 
@@ -1284,6 +1424,7 @@ document.addEventListener('keydown', (e) => {
     if (key === controls.weapon1 && p1) switchWeapon(WEAPONS.pistol, p1);
     if (key === controls.weapon2 && p1) switchWeapon(WEAPONS.shotgun, p1);
     if (key === controls.weapon3 && p1) switchWeapon(WEAPONS.rifle, p1);
+    if (key === controls.weapon4 && p1) switchWeapon(WEAPONS.flamethrower, p1);
 
     // Actions
     if (key === controls.grenade && p1) throwGrenade(mouse, canvas, p1);
@@ -1357,6 +1498,12 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showCoopLobby = true;
             // Reset to P1
             gameState.players = [gameState.players[0]];
+        } else if (clickedButton === 'play_ai') {
+            gameState.showMainMenu = false;
+            gameState.showAILobby = true;
+            gameState.isCoop = false;
+            // Reset to P1 only
+            gameState.players = [gameState.players[0]];
         } else if (clickedButton === 'settings') {
             gameState.showSettingsPanel = true;
             settingsPanel.open();
@@ -1383,6 +1530,27 @@ canvas.addEventListener('mousedown', (e) => {
             playMenuMusic();
         } else if (clickedButton === 'lobby_start') {
             gameState.isCoop = false;
+            initAudio();
+            startGame();
+        }
+        return;
+    }
+
+    // AI Lobby
+    if (gameState.showAILobby) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'ai_back') {
+            gameState.showAILobby = false;
+            gameState.showMainMenu = true;
+            // Remove all AI players when leaving lobby
+            gameState.players = [gameState.players[0]];
+            playMenuMusic();
+        } else if (clickedButton === 'ai_add') {
+            addAIPlayer();
+        } else if (clickedButton === 'ai_start') {
+            // Start game with AI
+            gameState.showAILobby = false;
+            gameState.isCoop = true; // Enable multi-player logic
             initAudio();
             startGame();
         }

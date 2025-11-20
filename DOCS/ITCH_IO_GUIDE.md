@@ -7,8 +7,7 @@ Since Itch.io hosts static files, we need to zip only the files the browser need
 2.  **Copy** these items from your project folder into it:
     *   `index.html`
     *   `zombie-game.html`
-    *   `favicon.ico`
-    *   `assets/` (folder)
+    *   `assets/` (folder - includes icons subfolder with favicon files)
     *   `css/` (folder)
     *   `js/` (folder)
     *   `sample_assets/` (folder)
@@ -30,6 +29,8 @@ Since Itch.io hosts static files, we need to zip only the files the browser need
     *   **Viewport Dimensions:** `1280` x `720` (or leave default/auto).
     *   Check **"Mobile Friendly"** (optional, but good practice).
 6.  **Details:** Fill in description, genre (Shooter/Survival), and tags.
+    *   **Recommended Description:** Include this disclaimer at the top:
+        > ⚠️ **Early Production**: This game is currently in active development (v0.2.2). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 7.  **Visibility:** Set to **Draft** (to test) or **Public** (to release).
 8.  Click **Save & View Page**.
 

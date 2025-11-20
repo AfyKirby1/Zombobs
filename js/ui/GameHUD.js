@@ -20,21 +20,22 @@ export class GameHUD {
     }
 
     drawStat(label, value, icon, color, x, y, width) {
+        const height = 50;
         // Background with glow
-        const bgGradient = this.ctx.createLinearGradient(x, y, x, y + 40);
+        const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
         bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.85)');
         bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.85)');
 
         this.ctx.fillStyle = bgGradient;
-        this.ctx.fillRect(x, y, width, 40);
+        this.ctx.fillRect(x, y, width, height);
 
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(x, y, width, 40);
+        this.ctx.strokeRect(x, y, width, height);
 
         this.ctx.shadowBlur = 10;
         this.ctx.shadowColor = color;
-        this.ctx.strokeRect(x, y, width, 40);
+        this.ctx.strokeRect(x, y, width, height);
         this.ctx.shadowBlur = 0;
 
         this.ctx.fillStyle = '#ffffff';
@@ -43,11 +44,11 @@ export class GameHUD {
         this.ctx.textBaseline = 'middle';
 
         const text = `${icon} ${label}:`;
-        this.ctx.fillText(text, x + 10, y + 13);
+        this.ctx.fillText(text, x + 10, y + 15);
 
         this.ctx.fillStyle = color;
         this.ctx.font = `700 ${this.fontSize + 2}px 'Roboto Mono', monospace`;
-        this.ctx.fillText(value, x + 10, y + 27);
+        this.ctx.fillText(value, x + 10, y + 35);
     }
 
     draw() {
@@ -58,6 +59,11 @@ export class GameHUD {
 
         if (gameState.showCoopLobby) {
             this.drawCoopLobby();
+            return;
+        }
+
+        if (gameState.showAILobby) {
+            this.drawAILobby();
             return;
         }
 
@@ -91,7 +97,8 @@ export class GameHUD {
         this.drawPlayerStats(player, startX, startY);
 
         // Draw shared stats below player stats for single player
-        startY += (40 + this.itemSpacing) * 2 + this.itemSpacing;
+        // 3 stats (Health, Ammo, Grenades) * (50 height + 12 spacing) + spacing
+        startY += (50 + this.itemSpacing) * 3 + this.itemSpacing;
         this.drawSharedStats(startX, startY);
 
         this.drawInstructions();
@@ -101,21 +108,25 @@ export class GameHUD {
         // P1 Left
         this.drawPlayerStats(gameState.players[0], this.padding, this.padding, "P1");
 
-        // P2 Right
-        if (gameState.players[1]) {
-            // Align to right side
-            const width = 140;
+        // Additional players (P2+) stacked on the right side
+        const width = 160;
             const rightX = this.canvas.width - width - this.padding;
-            this.drawPlayerStats(gameState.players[1], rightX, this.padding, "P2");
+        let rightY = this.padding;
+        
+        for (let i = 1; i < gameState.players.length; i++) {
+            const playerLabel = i === 1 ? "P2" : `Bot${i}`;
+            this.drawPlayerStats(gameState.players[i], rightX, rightY, playerLabel);
+            rightY += (50 + this.itemSpacing) * 3 + this.itemSpacing; // 3 stats per player
         }
 
         // Shared stats in Top Center
-        const centerX = this.canvas.width / 2 - 70;
+        const centerX = this.canvas.width / 2 - 80;
         this.drawSharedStats(centerX, this.padding);
     }
 
     drawPlayerStats(player, x, y, labelPrefix = "") {
-        const width = 140;
+        const width = 160;
+        const height = 50;
         let currentY = y;
 
         // Health
@@ -123,7 +134,7 @@ export class GameHUD {
         const healthColor = player.health < 30 ? '#ff0000' : '#ff1744';
         const healthLabel = labelPrefix ? `${labelPrefix} HP` : 'Health';
         this.drawStat(healthLabel, healthValue, '❤️', healthColor, x, currentY, width);
-        currentY += 40 + this.itemSpacing;
+        currentY += height + this.itemSpacing;
 
         // Ammo
         let ammoColor;
@@ -143,13 +154,14 @@ export class GameHUD {
         this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
 
         // Grenades (Optional to show per player, maybe skip to save space in coop or show small)
-        currentY += 40 + this.itemSpacing;
+        currentY += height + this.itemSpacing;
         const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
         this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
     }
 
     drawSharedStats(x, y) {
-        const width = 140;
+        const width = 160;
+        const height = 50;
         let currentY = y;
 
         // Wave
@@ -159,11 +171,11 @@ export class GameHUD {
         }
 
         this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', x, currentY, width);
-        currentY += 40 + this.itemSpacing;
+        currentY += height + this.itemSpacing;
 
         // Kills
         this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', x, currentY, width);
-        currentY += 40 + this.itemSpacing;
+        currentY += height + this.itemSpacing;
 
         // Remaining
         const remainingZombies = gameState.zombies.length;
@@ -173,36 +185,115 @@ export class GameHUD {
         this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, x, currentY, width);
 
         if (!gameState.isCoop) {
-            currentY += 40 + this.itemSpacing;
+            currentY += height + this.itemSpacing;
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', x, currentY, width);
         }
 
         // Buffs
         if (gameState.damageBuffEndTime > Date.now()) {
-            currentY += 40 + this.itemSpacing;
+            currentY += height + this.itemSpacing;
             const timeLeft = Math.ceil((gameState.damageBuffEndTime - Date.now()) / 1000);
             this.drawStat('Damage', 'x2 ' + timeLeft + 's', '⚡', '#e040fb', x, currentY, width);
         }
     }
 
     drawInstructions() {
-        this.ctx.fillStyle = 'rgba(153, 153, 153, 0.7)';
+        const line1 = 'WASD to move • Mouse to aim • Click to shoot • 1/2/3/4 to switch weapons';
+        const line2 = 'G for grenade • V or Right-Click for melee';
+
+        this.ctx.save();
         this.ctx.font = '14px "Roboto Mono", monospace';
         this.ctx.textAlign = 'center';
 
-        const line1 = 'WASD to move • Mouse to aim • Click to shoot • 1/2/3 to switch weapons';
-        const line2 = 'G for grenade • V or Right-Click for melee';
-
-        this.ctx.strokeStyle = 'rgba(153, 153, 153, 0.3)';
-        this.ctx.lineWidth = 1;
+        const textWidth = Math.max(this.ctx.measureText(line1).width, this.ctx.measureText(line2).width);
         const lineY = this.canvas.height - 45;
+        
+        // Semi-transparent background for readability
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(this.canvas.width / 2 - textWidth / 2 - 20, lineY - 25, textWidth + 40, 60);
+        
+        // Divider line
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.lineWidth = 1;
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width / 2 - 200, lineY);
-        this.ctx.lineTo(this.canvas.width / 2 + 200, lineY);
+        this.ctx.moveTo(this.canvas.width / 2 - textWidth / 2, lineY);
+        this.ctx.lineTo(this.canvas.width / 2 + textWidth / 2, lineY);
         this.ctx.stroke();
 
+        this.ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
         this.ctx.fillText(line1, this.canvas.width / 2, lineY - 8);
         this.ctx.fillText(line2, this.canvas.width / 2, lineY + 20);
+        this.ctx.restore();
+    }
+
+    drawAILobby() {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.font = 'bold 48px "Creepster", cursive';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
+        this.ctx.fillText('AI SQUAD', this.canvas.width / 2, 100);
+        this.ctx.shadowBlur = 0;
+
+        const centerX = this.canvas.width / 2;
+        const panelWidth = 400;
+        const panelHeight = 300;
+        const panelX = centerX - panelWidth / 2;
+        const panelY = 180;
+
+        // Player list panel
+        this.ctx.fillStyle = 'rgba(15, 15, 20, 0.9)';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.lineWidth = 2;
+        this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+
+        this.ctx.font = '20px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText('Squad Members', panelX + 20, panelY + 35);
+
+        // List players
+        this.ctx.font = '16px "Roboto Mono", monospace';
+        gameState.players.forEach((player, index) => {
+            const y = panelY + 70 + index * 35;
+            const isPlayer = index === 0;
+            const isAI = player.inputSource === 'ai';
+            
+            if (isPlayer) {
+                this.ctx.fillStyle = '#66b3ff';
+                this.ctx.fillText(`1. ${gameState.username || 'Player'} (You)`, panelX + 20, y);
+            } else if (isAI) {
+                this.ctx.fillStyle = '#76ff03';
+                const botName = `Bot ${index}`;
+                this.ctx.fillText(`${index + 1}. ${botName} [AI]`, panelX + 20, y);
+            } else {
+                this.ctx.fillStyle = '#cccccc';
+                this.ctx.fillText(`${index + 1}. Player ${index + 1}`, panelX + 20, y);
+            }
+        });
+
+        // Buttons
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        const buttonY = this.canvas.height - 150;
+        const addBotY = buttonY - 70;
+        const startY = buttonY;
+
+        const addBotHovered = this.hoveredButton === 'ai_add';
+        const startHovered = this.hoveredButton === 'ai_start';
+        const backHovered = this.hoveredButton === 'ai_back';
+
+        // Max 4 players total (P1 + 3 bots)
+        const canAddBot = gameState.players.length < 4;
+        this.drawMenuButton('Add Bot', centerX - buttonWidth / 2, addBotY, buttonWidth, buttonHeight, addBotHovered, !canAddBot);
+        
+        const canStart = gameState.players.length > 1;
+        this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, startHovered, !canStart);
+        this.drawMenuButton('Back', centerX - buttonWidth / 2, buttonY + 70, buttonWidth, buttonHeight, backHovered, false);
     }
 
     drawCoopLobby() {
@@ -333,6 +424,8 @@ export class GameHUD {
 
     drawCreepyBackground() {
         const time = Date.now();
+        const mouseX = this.mouseX || this.canvas.width / 2;
+        const mouseY = this.mouseY || this.canvas.height / 2;
 
         // Base black
         this.ctx.fillStyle = '#000000';
@@ -345,12 +438,27 @@ export class GameHUD {
         const centerY = this.canvas.height / 2;
 
         const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, this.canvas.height * pulseSize);
-        gradient.addColorStop(0, 'rgba(40, 0, 0, 0.8)');
-        gradient.addColorStop(0.5, 'rgba(20, 0, 0, 0.5)');
+        gradient.addColorStop(0, 'rgba(180, 0, 0, 0.7)');
+        gradient.addColorStop(0.4, 'rgba(120, 0, 0, 0.5)');
         gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Hidden Scratches (only visible near mouse)
+        // We draw these BEFORE the heavy vignette so they feel "deep"
+        if (Math.random() < 0.1) {
+             // Use a fixed seed or just consistent noise for scratches?
+             // Actually, let's just draw random faint lines near the cursor
+             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+             this.ctx.lineWidth = 1;
+             this.ctx.beginPath();
+             const scratchX = mouseX + (Math.random() - 0.5) * 200;
+             const scratchY = mouseY + (Math.random() - 0.5) * 200;
+             this.ctx.moveTo(scratchX, scratchY);
+             this.ctx.lineTo(scratchX + (Math.random() - 0.5) * 40, scratchY + (Math.random() - 0.5) * 40);
+             this.ctx.stroke();
+        }
 
         // Random Blood Splatters
         if (!this.splatters) this.splatters = [];
@@ -398,6 +506,27 @@ export class GameHUD {
             this.ctx.fillRect(0, i, this.canvas.width, 2);
         }
 
+        // Glitch Effect (Random horizontal slice displacement)
+        if (Math.random() < 0.05) {
+            const glitchHeight = Math.random() * 50 + 10;
+            const glitchY = Math.random() * (this.canvas.height - glitchHeight);
+            const offset = (Math.random() - 0.5) * 20;
+            
+            // Capture the slice
+            const slice = this.ctx.getImageData(0, glitchY, this.canvas.width, glitchHeight);
+            
+            // Clear the area slightly to add artifacting feel
+            this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            this.ctx.fillRect(0, glitchY, this.canvas.width, glitchHeight);
+            
+            // Put it back offset
+            this.ctx.putImageData(slice, offset, glitchY);
+            
+            // Add chromatic aberration line
+            this.ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 255, 0.3)';
+            this.ctx.fillRect(0, glitchY + Math.random() * glitchHeight, this.canvas.width, 2);
+        }
+
         // Moving static noise (lighter to not be too distracting)
         const noiseAmount = 1000;
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
@@ -415,6 +544,25 @@ export class GameHUD {
 
         this.ctx.fillStyle = vignette;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Flashlight / "Something Watching" Effect (drawn after vignette for uniform brightness)
+        // Creates a subtle, unsettling spotlight that follows the mouse
+        // revealing hidden scratches/texture
+        const flashlightRadius = 150 + Math.sin(time * 0.005) * 20;
+        const flashlight = this.ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, flashlightRadius);
+        // Realistic flashlight: bright center, gradual fade to edges
+        flashlight.addColorStop(0, 'rgba(255, 255, 255, 0.3)'); // Bright center
+        flashlight.addColorStop(0.2, 'rgba(255, 220, 220, 0.25)'); // Slight fade
+        flashlight.addColorStop(0.5, 'rgba(255, 180, 180, 0.18)'); // More fade
+        flashlight.addColorStop(0.75, 'rgba(200, 120, 120, 0.1)'); // Dimmer
+        flashlight.addColorStop(0.9, 'rgba(150, 80, 80, 0.05)'); // Much dimmer
+        flashlight.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparent edge
+
+        // Use screen blend mode to ensure uniform brightness regardless of underlying darkness
+        this.ctx.globalCompositeOperation = 'screen';
+        this.ctx.fillStyle = flashlight;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.globalCompositeOperation = 'source-over'; // Reset blend mode
     }
 
     drawMainMenu() {
@@ -462,13 +610,15 @@ export class GameHUD {
 
         // Move buttons down to avoid overlap with username hover text
         const buttonStartY = centerY + 90;
-        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 1.5;
-        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 0.5;
-        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 0.5;
-        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 1.5;
+        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 2;
+        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 1;
+        const aiY = buttonStartY;
+        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 1;
+        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 2;
 
         this.drawMenuButton('Single Player', centerX - buttonWidth / 2, singlePlayerY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
         this.drawMenuButton('Local Co-op', centerX - buttonWidth / 2, coopY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
+        this.drawMenuButton('Play with AI', centerX - buttonWidth / 2, aiY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
         this.drawMenuButton('Settings', centerX - buttonWidth / 2, settingsY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
         this.drawMenuButton('Multiplayer', centerX - buttonWidth / 2, multiplayerY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
 
@@ -591,6 +741,30 @@ export class GameHUD {
         const buttonWidth = 200;
         const buttonHeight = 50;
 
+        // Check AI Lobby
+        if (gameState.showAILobby) {
+            const addBotY = this.canvas.height - 220;
+            const startY = this.canvas.height - 150;
+            const backY = this.canvas.height - 80;
+
+            // Add Bot
+            if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                mouseY >= addBotY && mouseY <= addBotY + buttonHeight) {
+                return 'ai_add';
+            }
+            // Start Game
+            if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                mouseY >= startY && mouseY <= startY + buttonHeight) {
+                return 'ai_start';
+            }
+            // Back
+            if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                mouseY >= backY && mouseY <= backY + buttonHeight) {
+                return 'ai_back';
+            }
+            return null;
+        }
+
         // Check Coop Lobby
         if (gameState.showCoopLobby) {
             const startY = this.canvas.height - 150;
@@ -640,14 +814,16 @@ export class GameHUD {
         }
 
         const buttonStartY = centerY + 90;
-        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 1.5;
-        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 0.5;
-        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 0.5;
-        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 1.5;
+        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 2;
+        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 1;
+        const aiY = buttonStartY;
+        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 1;
+        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 2;
 
         if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
             if (mouseY >= singlePlayerY - buttonHeight / 2 && mouseY <= singlePlayerY + buttonHeight / 2) return 'single';
             if (mouseY >= coopY - buttonHeight / 2 && mouseY <= coopY + buttonHeight / 2) return 'local_coop';
+            if (mouseY >= aiY - buttonHeight / 2 && mouseY <= aiY + buttonHeight / 2) return 'play_ai';
             if (mouseY >= settingsY - buttonHeight / 2 && mouseY <= settingsY + buttonHeight / 2) return 'settings';
             if (mouseY >= multiplayerY - buttonHeight / 2 && mouseY <= multiplayerY + buttonHeight / 2) return 'multiplayer';
         }
@@ -656,7 +832,9 @@ export class GameHUD {
     }
 
     updateMenuHover(mouseX, mouseY) {
-        if (!this.mainMenu && !gameState.showLobby && !gameState.showCoopLobby) {
+        this.mouseX = mouseX;
+        this.mouseY = mouseY;
+        if (!this.mainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby) {
             this.hoveredButton = null;
             return;
         }

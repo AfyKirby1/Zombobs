@@ -25,7 +25,7 @@ export const LOW_AMMO_FRACTION = 0.25;
 
 // Melee attack constants
 export const MELEE_COOLDOWN = 500; // ms between melee attacks
-export const MELEE_RANGE = 40; // pixels
+export const MELEE_RANGE = 70; // pixels
 export const MELEE_DAMAGE = 3; // damage per hit
 export const MELEE_SWIPE_DURATION = 200; // ms for swipe animation
 
@@ -73,5 +73,15 @@ export const WEAPONS = {
         ammo: 30,
         maxAmmo: 30,
         reloadTime: 1000 // ms (1 second)
+    },
+    flamethrower: {
+        name: "Flamethrower",
+        damage: 0.5, // Low per-tick damage
+        fireRate: 50, // Very fast (ms between shots)
+        ammo: 100,
+        maxAmmo: 100,
+        reloadTime: 2000, // 2 seconds (slower reload)
+        range: 200, // Short range
+        type: 'flame'
     }
 };

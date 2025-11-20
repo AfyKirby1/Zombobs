@@ -33,12 +33,13 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Exports**:
 - `RENDER_SCALE` - Canvas render scale
-- `WEAPONS` - Weapon definitions (pistol, shotgun, rifle)
+- `WEAPONS` - Weapon definitions (pistol, shotgun, rifle, flamethrower)
 - `PLAYER_MAX_HEALTH`, `PLAYER_BASE_SPEED`, `PLAYER_SPRINT_SPEED` - Player stats
 - `MELEE_RANGE`, `MELEE_DAMAGE`, `MELEE_COOLDOWN` - Melee settings
 - `GRENADE_...` - Grenade settings
 - `..._PICKUP_...` - Pickup settings
 - `WAVE_BREAK_DURATION` - Wave timing
+- `MAX_PARTICLES` - Particle system limit
 
 #### canvas.js
 **Purpose**: Canvas initialization and management
@@ -57,30 +58,38 @@ This modular structure improves maintainability, testability, and scalability.
 - `gameState` - Main state object containing all game variables
 - `resetGameState(canvasWidth, canvasHeight)` - Reset game to initial state
 
+**Game State Properties**:
+- `gameTime` - Day/night cycle position (0 to 1)
+- `dayNightCycle` - Cycle configuration (duration, startTime)
+- `isNight` - Boolean flag for night time
+- `acidProjectiles[]` - Active acid projectiles
+- `acidPools[]` - Active acid pool hazards
+
 **Dependencies**: `constants.js`
 
 ### Entity Modules (`js/entities/`)
 
 #### Bullet.js
-**Purpose**: Bullet projectile class
+**Purpose**: Bullet projectile classes
 
-**Exports**: `Bullet` class
+**Exports**: `Bullet` class, `FlameBullet` class
 
 **Methods**:
-- `update()` - Move bullet
-- `draw()` - Render bullet with visual trail
+- `update()` - Move bullet (flame bullets slow down over time)
+- `draw()` - Render bullet with visual trail (flame bullets have orange/red gradient)
 - `isOffScreen(canvasWidth, canvasHeight)` - Boundary check
 
 **Features**:
 - Visual trail rendering based on velocity
 - Weapon-specific damage (can be modified by damage multiplier)
+- **FlameBullet**: Short-lived flame particles with dissipating velocity, applies burn effect on hit
 
 **Dependencies**: `core/canvas.js`
 
 #### Zombie.js
 **Purpose**: Zombie enemy classes
 
-**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`
+**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`
 
 **Zombie Variants**:
 - **NormalZombie**: Default enemy type
@@ -88,11 +97,17 @@ This modular structure improves maintainability, testability, and scalability.
 - **ExplodingZombie**: Explodes on death, AOE damage, orange/yellow pulsing glow
 - **ArmoredZombie**: Slower, heavily armored, absorbs damage before health
 - **GhostZombie**: Semi-transparent (50% opacity), 1.3x speed, spectral blue/white, wobble animation
+- **SpitterZombie**: Ranged enemy with kiting AI, fires acid projectiles, toxic green appearance, Wave 6+
 
 **Methods**:
-- `update(player)` - AI pathfinding
+- `update(player)` - AI pathfinding (kiting for SpitterZombie)
 - `draw()` - Complex rendering (variant-specific visuals)
 - `takeDamage(bulletDamage)` - Damage handling
+
+**Burning State** (Base Zombie):
+- `burnTimer` - Milliseconds remaining for burn effect
+- `burnDamage` - Damage per tick (200ms intervals)
+- Fire particles spawn while burning
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `systems/*`
 
@@ -129,6 +144,42 @@ This modular structure improves maintainability, testability, and scalability.
 **Exports**: `Shell` class
 
 **Dependencies**: `core/canvas.js`
+
+#### AcidProjectile.js
+**Purpose**: Acid projectile from Spitter Zombie
+
+**Exports**: `AcidProjectile` class
+
+**Methods**:
+- `update()` - Move toward target position
+- `draw()` - Render toxic green projectile with trail
+- `land()` - Create acid pool at impact location
+- `isOffScreen(canvasWidth, canvasHeight)` - Boundary check
+
+**Features**:
+- Targets player position at time of firing
+- Creates `AcidPool` on impact (within 20px tolerance)
+- Toxic green visual with glow effect
+
+**Dependencies**: `core/canvas.js`, `core/gameState.js`, `entities/AcidPool.js` (via global reference)
+
+#### AcidPool.js
+**Purpose**: Ground hazard that damages players
+
+**Exports**: `AcidPool` class
+
+**Methods**:
+- `update()` - Damage players standing in pool, decrement lifetime
+- `draw()` - Render bubbling acid pool with fade-out
+- `isExpired()` - Check if pool has expired (5 second duration)
+
+**Features**:
+- Damages players every 200ms while standing in pool (0.3 damage per tick)
+- Respects shield before health
+- Animated bubbling effect
+- Fades out over 5 second lifetime
+
+**Dependencies**: `core/canvas.js`, `core/gameState.js`, `utils/gameUtils.js` (via global reference)
 
 ### System Modules (`js/systems/`)
 
@@ -332,22 +383,37 @@ This modular structure improves maintainability, testability, and scalability.
   - Wave 5+: Exploding zombies (~10% chance)
   - Wave 4+: Ghost zombies (~10% chance)
   - Wave 3+: Armored zombies (scaling chance, 10%+ up to 50%)
+  - Wave 6+: Spitter zombies (~8% chance)
 - Auto-spawns next wave when all zombies killed
+
+### Day/Night Cycle System
+**Location**: `js/core/gameState.js`, `js/main.js`
+- 2-minute cycle (120 seconds) transitioning between day and night
+- `gameTime` tracks cycle position (0.0 to 1.0)
+- `isNight` boolean flag (true when `gameTime >= 0.5`)
+- Visual overlay: Dark blue/black rectangle with alpha based on time
+  - Day (0.0-0.5): Transparent to slightly dark
+  - Night (0.5-1.0): Dark overlay (0.5 to 0.7 alpha)
+- Difficulty scaling: Zombies move 20% faster during night (`nightSpeedMultiplier = 1.2`)
+- Rendered after vignette but before UI elements
 
 ### Weapon System
 **Location**: `js/core/constants.js`, `js/utils/combatUtils.js`
-- Three weapon types: Pistol, Shotgun, Rifle
-- Each weapon has unique: damage, fire rate, ammo capacity, reload time
-- Weapon switching with 1/2/3 keys (customizable)
+- Four weapon types: Pistol, Shotgun, Rifle, Flamethrower
+- Each weapon has unique: damage, fire rate, ammo capacity, reload time, range
+- Weapon switching with 1/2/3/4 keys (customizable)
 - `currentWeapon` tracks active weapon
 - `lastShotTime` enforces fire rate cooldowns
 - Shotgun fires 5 spread bullets per shot
+- Flamethrower fires 3 flame particles with spread pattern
 - Damage multiplier system: Bullet damage multiplied by `gameState.damageMultiplier` (applies double damage buff)
+- Burning mechanic: Flame bullets apply damage over time (burn timer) instead of instant damage
 
 **Weapon Properties:**
 - **Pistol**: 1 damage, 400ms fire rate, 10 ammo, 1000ms reload
 - **Shotgun**: 3 damage per pellet (5 pellets), 800ms fire rate, 5 ammo, 1000ms reload
 - **Rifle**: 2 damage, 200ms fire rate, 30 ammo, 1000ms reload
+- **Flamethrower**: 0.5 damage per tick, 50ms fire rate, 100 ammo, 2000ms reload, 200px range, applies burn effect
 
 ### Ammo System
 **Location**: `js/core/gameState.js`, `js/utils/combatUtils.js`
@@ -427,40 +493,45 @@ This modular structure improves maintainability, testability, and scalability.
 6. Draw damage indicator overlay (if active)
 7. Draw particles
 8. Draw shells (bullet casings)
-9. Draw bullets
+9. Draw bullets (including flame bullets)
 10. Draw grenades
-11. Draw pickups (health, ammo, damage, nuke)
-12. Draw zombies
-13. Draw melee swipe (if active)
-14. Draw player
-15. Restore transform (undo shake)
-16. Draw UI elements (damage numbers, crosshair, HUD, notifications, FPS)
+11. Draw acid projectiles
+12. Draw acid pools (ground hazards)
+13. Draw pickups (health, ammo, damage, nuke)
+14. Draw zombies
+15. Draw melee swipe (if active)
+16. Draw player
+17. Restore transform (undo shake)
+18. Draw UI elements (damage numbers, crosshair, HUD, notifications, FPS)
 
 ### Update Loop (main.js)
 **updateGame() Function**:
 1. Check pause state (skip if paused)
 2. Spawn health/ammo pickups periodically
 3. Spawn powerups (damage/nuke) periodically
-4. Update player movement
-4. Handle continuous mouse firing (if mouse.isDown)
-5. Update bullets (filter off-screen)
-6. Update grenades (filter exploded)
-7. Update zombies (all types)
-8. Update particles (filter by lifetime)
-9. Update shells (bullet casings)
-10. Update damage numbers (floating text)
-11. Update damage indicator decay
-12. Update muzzle flash decay
-13. Update screen shake decay
-14. Update wave notification
-15. Update melee swipe animation
-16. Check reload timer completion
-17. Update damage buff timer (expire if time elapsed)
-18. Handle bullet-zombie collisions (includes kill streak tracking)
-19. Handle player-zombie collisions
-20. Handle player-pickup collisions (health, ammo, damage, nuke)
-21. Check for game over condition
-22. Check wave completion
+4. Update day/night cycle (calculate gameTime, isNight, apply night speed multiplier)
+5. Update player movement
+6. Handle continuous mouse firing (if mouse.isDown)
+7. Update bullets (filter off-screen, including flame bullets)
+8. Update grenades (filter exploded)
+9. Update acid projectiles (filter off-screen or landed)
+10. Update acid pools (filter expired, damage players)
+11. Update zombies (all types, including burning state)
+12. Update particles (filter by lifetime)
+13. Update shells (bullet casings)
+14. Update damage numbers (floating text)
+15. Update damage indicator decay
+16. Update muzzle flash decay
+17. Update screen shake decay
+18. Update wave notification
+19. Update melee swipe animation
+20. Check reload timer completion
+21. Update damage buff timer (expire if time elapsed)
+22. Handle bullet-zombie collisions (includes kill streak tracking, burn effects)
+23. Handle player-zombie collisions
+24. Handle player-pickup collisions (health, ammo, damage, nuke)
+25. Check for game over condition
+26. Check wave completion
 
 ## State Management
 
@@ -482,14 +553,19 @@ All game state is managed through the `gameState` object:
 - `currentWeapon` - Active weapon reference
 - `currentAmmo` / `maxAmmo` - Ammo state
 - `isReloading` - Reload state flag
-- `bullets[]` - Active bullets array
+- `bullets[]` - Active bullets array (including flame bullets)
 - `zombies[]` - Active zombies array
 - `particles[]` - Active particles array
 - `grenades[]` - Active grenades array
+- `acidProjectiles[]` - Active acid projectiles from spitter zombies
+- `acidPools[]` - Active acid pool hazards
 - `healthPickups[]` - Active health pickups
 - `ammoPickups[]` - Active ammo pickups
 - `damagePickups[]` - Active damage buff pickups
 - `nukePickups[]` - Active nuke pickups
+- `gameTime` - Day/night cycle position (0 to 1)
+- `dayNightCycle` - Cycle configuration object
+- `isNight` - Boolean flag for night time
 - `shakeAmount` - Screen shake intensity
 - `damageIndicator` - Damage flash state
 - `muzzleFlash` - Muzzle flash effect state

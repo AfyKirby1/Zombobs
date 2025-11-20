@@ -14,7 +14,10 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
-✅ **Enemy Variety** - 5 zombie types including new Ghost variant
+✅ **Enemy Variety** - 6 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter)
+✅ **Day/Night Cycle** - Dynamic time-based atmosphere with difficulty scaling
+✅ **Flamethrower Weapon** - Short-range weapon with burning damage over time
+✅ **Environmental Hazards** - Acid pools from Spitter Zombie attacks
 
 ## Technology Stack
 - **Frontend**: HTML5 Canvas, Vanilla JavaScript (ES6 Modules)
@@ -40,12 +43,14 @@ Zombobs/
 │   │   ├── canvas.js             # Canvas initialization and management
 │   │   └── gameState.js          # Centralized game state management
 │   ├── entities/
-│   │   ├── Bullet.js             # Bullet projectile class
-│   │   ├── Zombie.js             # Zombie classes (Normal, Fast, Exploding, Armored, Ghost)
+│   │   ├── Bullet.js             # Bullet and FlameBullet projectile classes
+│   │   ├── Zombie.js             # Zombie classes (Normal, Fast, Exploding, Armored, Ghost, Spitter)
 │   │   ├── Particle.js           # Particle and damage number classes
 │   │   ├── Pickup.js             # Health, ammo, damage, and nuke pickup classes
 │   │   ├── Grenade.js            # Grenade class
-│   │   └── Shell.js              # Shell casing class
+│   │   ├── Shell.js              # Shell casing class
+│   │   ├── AcidProjectile.js    # Acid projectile from Spitter Zombie
+│   │   └── AcidPool.js          # Acid pool ground hazard
 │   ├── systems/
 │   │   ├── AudioSystem.js        # Web Audio API sound generation
 │   │   ├── GraphicsSystem.js     # Graphics utilities (ground texture loading)
@@ -82,10 +87,13 @@ Zombobs/
 
 ### Game Classes
 - **Bullet** - Projectile physics and rendering (weapon-specific damage, visual trails)
-- **Zombie** - Enemy AI, pathfinding, visual design (5 variants: Normal, Fast, Exploding, Armored, Ghost)
+- **FlameBullet** - Short-range flame projectile with burn effect
+- **Zombie** - Enemy AI, pathfinding, visual design (6 variants: Normal, Fast, Exploding, Armored, Ghost, Spitter)
 - **Player** - Supports multiple player instances (P1/P2) with independent input and state
 - **Particle** - Visual effects system (supports custom blood particles)
 - **Pickup** - Power-up system (Health, Ammo, Damage Buff, Nuke)
+- **AcidProjectile** - Acid glob projectile from Spitter Zombie
+- **AcidPool** - Ground hazard that damages players over time
 - **GameHUD** - In-game overlay for stats, pause menu, game over screen, buff indicators, co-op split layout
 
 ### Systems
@@ -94,8 +102,9 @@ Zombobs/
   - Multi-gamepad support for local co-op
   - Controller support with analog sticks for movement and aiming
   - Virtual crosshair for controller aiming
-- **Weapon System** - 3 weapons with unique stats, switching, reloading
+- **Weapon System** - 4 weapons with unique stats (Pistol, Shotgun, Rifle, Flamethrower), switching, reloading
 - **Ammo System** - Limited bullets, manual/auto reload, weapon-specific ammo
+- **Day/Night Cycle** - Dynamic time-based atmosphere with visual overlay and difficulty scaling
 - **Audio System** - Web Audio API sound generation
 - **Collision Detection** - Circle-based collision
 - **Wave Manager** - Spawning and progression
@@ -109,16 +118,36 @@ Zombobs/
 ### Game State
 - Player position, health, angle
 - Current weapon, ammo count, reload status
-- Bullets array
-- Zombies array
+- Bullets array (including flame bullets)
+- Zombies array (with burning state)
 - Particles array (supports custom blood objects)
+- Acid projectiles and acid pools arrays
 - Pickups arrays (health, ammo, damage, nuke)
 - Wave counter, score, high score (localStorage)
+- Day/night cycle state (gameTime, isNight)
 - Damage multiplier and buff timers
 - Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (v0.2.2)
+## Recent Updates (v0.2.3)
+- **Day/Night Cycle**: 
+  - 2-minute cycle transitioning between day and night
+  - Visual dark overlay during night (0.5-0.7 alpha)
+  - Zombies move 20% faster during night for increased difficulty
+  - Smooth transitions at dawn and dusk
+- **Flamethrower Weapon**:
+  - Short-range weapon (200px) with high fire rate (50ms)
+  - Applies burning damage over time (3 seconds) instead of instant damage
+  - Visual flame particles with spread pattern
+  - Weapon 4 key binding
+- **Spitter Zombie**:
+  - Ranged enemy with kiting AI (maintains 300-500px range)
+  - Fires acid projectiles that create hazardous pools on impact
+  - Acid pools damage players standing in them (5 second duration)
+  - Spawns from Wave 6+ with ~8% chance
+  - Toxic green visual design
+
+## Previous Updates (v0.2.2)
 - **Local Co-op**: 
   - 2-player shared screen gameplay
   - Dynamic split-screen HUD

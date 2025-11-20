@@ -7,7 +7,7 @@ import {
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
-import { Bullet } from '../entities/Bullet.js';
+import { Bullet, FlameBullet } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
@@ -55,6 +55,15 @@ export function shootBullet(target, canvas, player) {
             const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
             bullet.damage *= damageMult;
             gameState.bullets.push(bullet);
+        }
+    } else if (player.currentWeapon === WEAPONS.flamethrower) {
+        // Flamethrower fires multiple flame particles with spread
+        const flameCount = 3; // Fire 3 flame particles per shot
+        for (let i = 0; i < flameCount; i++) {
+            const spreadAngle = angle + (Math.random() - 0.5) * 0.4; // Wider spread
+            const flame = new FlameBullet(gunX, gunY, spreadAngle, player.currentWeapon);
+            flame.damage *= damageMult;
+            gameState.bullets.push(flame);
         }
     } else {
         // Pistol and rifle fire single bullet
@@ -220,6 +229,53 @@ export function handleBulletZombieCollisions() {
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
+
+                // Handle flame bullets (apply burn effect)
+                if (bullet.type === 'flame') {
+                    // Apply burn timer (3 seconds) and burn damage
+                    zombie.burnTimer = 3000; // 3 seconds
+                    zombie.burnDamage = bullet.damage * 2; // Double damage over time
+                    // Also apply instant damage
+                    if (zombie.takeDamage(bullet.damage)) {
+                        // Zombie dies from flame hit
+                        const zombieX = zombie.x;
+                        const zombieY = zombie.y;
+                        gameState.zombies.splice(zombieIndex, 1);
+                        
+                        if (zombie.type === 'boss' || zombie === gameState.boss) {
+                            gameState.bossActive = false;
+                            gameState.boss = null;
+                        }
+                        
+                        gameState.score += 10;
+                        gameState.zombiesKilled++;
+                        
+                        const now = Date.now();
+                        if (now - gameState.lastKillTime < 1500) {
+                            gameState.killStreak++;
+                        } else {
+                            gameState.killStreak = 1;
+                        }
+                        gameState.lastKillTime = now;
+                        
+                        if (gameState.killStreak > 2) {
+                            let comboText = `${gameState.killStreak} HIT COMBO!`;
+                            if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
+                            if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                        }
+                        
+                        playKillSound();
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(bullet.damage)));
+                        createBloodSplatter(zombieX, zombieY, impactAngle, true);
+                    } else {
+                        // Zombie survives but is burning
+                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                        createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                    }
+                    gameState.bullets.splice(bulletIndex, 1);
+                    return; // Skip normal bullet handling
+                }
 
                 // Check if zombie dies from this hit
                 if (zombie.takeDamage(bullet.damage)) {

@@ -2,6 +2,61 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.2.3] - 2025-01-XX
+
+### Added
+- **Day/Night Cycle System** - Dynamic time-based atmosphere
+  - 2-minute cycle (120 seconds) transitioning between day and night
+  - Visual overlay: Dark blue/black overlay during night (0.5-0.7 alpha)
+  - Smooth transitions at dawn and dusk
+  - Night difficulty scaling: Zombies move 20% faster during night
+  - Game state tracking: `gameTime` (0-1), `isNight` flag, cycle duration config
+
+- **Flamethrower Weapon** - Short-range, high-fire-rate weapon
+  - New weapon type: 0.5 damage per tick, 50ms fire rate, 100 ammo capacity, 200px range
+  - Burning mechanic: Zombies take damage over time (3 seconds) when hit by flames
+  - Visual effects: Orange/red flame particles with spread pattern
+  - Weapon switching: Key '4' to equip flamethrower
+  - Flame bullets: Short-lived projectiles with dissipating velocity
+  - Fire particles spawn on burning zombies
+
+- **Spitter Zombie** - Ranged enemy with kiting AI
+  - New zombie variant: Toxic green appearance, fast speed, lower health
+  - Kiting behavior: Maintains optimal range (300-500px) from player
+  - Acid projectiles: Fires acid globs that create hazardous pools on impact
+  - Acid pools: Ground hazards that damage players standing in them (5 second duration)
+  - Spawns from Wave 6+ with ~8% chance
+  - Visual design: Swollen/bloated appearance with bright green glowing eyes
+
+### Changed
+- **Zombie System** - Enhanced with burning state
+  - Base `Zombie` class now includes `burnTimer` and `burnDamage` properties
+  - Burning zombies spawn fire/smoke particles every 200ms
+  - Burn damage applied over time instead of instant damage
+
+- **Combat System** - Expanded weapon handling
+  - `shootBullet()` now handles flamethrower with spread pattern (3 flame particles)
+  - `handleBulletZombieCollisions()` applies burn effects for flame bullets
+  - New `FlameBullet` class extends projectile system
+
+- **Game State** - Added new entity arrays
+  - `acidProjectiles[]` - Active acid projectiles from spitter zombies
+  - `acidPools[]` - Active acid pool hazards on the ground
+  - `dayNightCycle` - Cycle configuration and timing state
+
+- **Weapon System** - Expanded arsenal
+  - Added `flamethrower` to `WEAPONS` constant
+  - Weapon 4 key binding added to settings and controls
+
+### Technical
+- **New Entity Classes**:
+  - `FlameBullet` (in `Bullet.js`) - Flame projectile with dissipating velocity
+  - `AcidProjectile` (new file) - Acid glob projectile that creates pools on impact
+  - `AcidPool` (new file) - Ground hazard that damages players over time
+  - `SpitterZombie` (in `Zombie.js`) - Ranged zombie with kiting AI
+
+- **Global References**: AcidProjectile and AcidPool exposed via `window` for cross-module access
+
 ## [0.2.2] - 2025-11-19
 
 ### Added
