@@ -87,6 +87,7 @@ export const gameState = {
     isCoop: false,
     showCoopLobby: false,
     showAILobby: false,
+    showAbout: false,
 
     multiplayer: {
         active: false,
@@ -96,6 +97,7 @@ export const gameState = {
         players: []
     },
     username: 'Survivor',
+    menuMusicMuted: false,
 
     score: 0,
     wave: 1,

@@ -53,3 +53,14 @@ export function saveUsername() {
         localStorage.setItem('zombobs_username', gameState.username.trim());
     }
 }
+
+export function loadMenuMusicMuted() {
+    const savedMuted = localStorage.getItem('zombobs_menuMusicMuted');
+    if (savedMuted !== null) {
+        gameState.menuMusicMuted = savedMuted === 'true';
+    }
+}
+
+export function saveMenuMusicMuted() {
+    localStorage.setItem('zombobs_menuMusicMuted', gameState.menuMusicMuted.toString());
+}

@@ -9,7 +9,7 @@ import {
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playHitSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
-import { Bullet, FlameBullet } from '../entities/Bullet.js';
+import { Bullet, FlameBullet, PiercingBullet, Rocket } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
@@ -74,6 +74,22 @@ export function shootBullet(target, canvas, player) {
             flame.damage *= damageMult;
             gameState.bullets.push(flame);
         }
+    } else if (player.currentWeapon === WEAPONS.smg) {
+        // SMG fires single bullet with slight spread
+        const spreadAngle = angle + (Math.random() - 0.5) * 0.1;
+        const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
+        bullet.damage *= damageMult;
+        gameState.bullets.push(bullet);
+    } else if (player.currentWeapon === WEAPONS.sniper) {
+        // Sniper fires piercing bullet
+        const bullet = new PiercingBullet(gunX, gunY, angle, player.currentWeapon);
+        bullet.damage *= damageMult;
+        gameState.bullets.push(bullet);
+    } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
+        // Rocket Launcher fires rocket
+        const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
+        rocket.damage *= damageMult; // Direct hit damage (if any)
+        gameState.bullets.push(rocket);
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
@@ -127,31 +143,31 @@ export function switchWeapon(weapon, player) {
     player = player || gameState.players[0];
     if (weapon !== player.currentWeapon) {
         const now = Date.now();
-        
+
         // Find the current weapon key to save its state
         const weaponKeys = Object.keys(WEAPONS);
         const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === player.currentWeapon);
-        
+
         // Save current weapon's ammo state before switching
         if (currentWeaponKey && player.weaponStates[currentWeaponKey]) {
             player.weaponStates[currentWeaponKey].ammo = player.currentAmmo;
             player.weaponStates[currentWeaponKey].lastHolsteredTime = now;
         }
-        
+
         // Find the new weapon key
         const newWeaponKey = weaponKeys.find(key => WEAPONS[key] === weapon);
-        
+
         // Switch to new weapon
         player.currentWeapon = weapon;
         player.maxAmmo = player.currentWeapon.maxAmmo;
         player.lastShotTime = 0; // Reset fire rate cooldown
         player.isReloading = false; // Cancel any ongoing reload
-        
+
         // Check if the new weapon was holstered long enough for background reload
         if (newWeaponKey && player.weaponStates[newWeaponKey]) {
             const weaponState = player.weaponStates[newWeaponKey];
             const timeHolstered = now - weaponState.lastHolsteredTime;
-            
+
             // If weapon was holstered for longer than reload time, it auto-reloaded
             if (timeHolstered >= weapon.reloadTime && weaponState.lastHolsteredTime > 0) {
                 player.currentAmmo = weapon.maxAmmo;
@@ -268,7 +284,7 @@ export function handleBulletZombieCollisions() {
     // Initialize Quadtree for spatial partitioning
     // Capacity 4 per node seems reasonable for zombies
     const qt = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
-    
+
     // Insert all zombies into Quadtree
     gameState.zombies.forEach(zombie => qt.insert(zombie));
 
@@ -295,7 +311,7 @@ export function handleBulletZombieCollisions() {
             // No, we are inside the bullet loop. 
             // If bullet A kills zombie Z, zombie Z is removed from gameState.zombies.
             // But logic uses references. 
-            
+
             // We need to check if zombie is still in gameState.zombies to be safe, 
             // or just check health > 0.
             if (zombie.health <= 0) return;
@@ -310,7 +326,7 @@ export function handleBulletZombieCollisions() {
             if (checkCollision(bullet, zombie)) {
                 // Mark bullet as hit to prevent multiple collisions if it's not piercing
                 // (Flamethrower is piercing-ish, handled separately)
-                if (bullet.type !== 'flame') bullet.hit = true;
+                if (bullet.type !== 'flame' && bullet.type !== 'piercing') bullet.hit = true;
 
                 // Get bullet angle for directional blood splatter
                 const impactAngle = Math.atan2(bullet.vy, bullet.vx);
@@ -319,6 +335,13 @@ export function handleBulletZombieCollisions() {
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
+
+                // Handle Rocket collisions
+                if (bullet.type === 'rocket') {
+                    triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage);
+                    bullet.markedForRemoval = true;
+                    return; // Stop processing this bullet
+                }
 
                 // Handle flame bullets (apply burn effect)
                 if (bullet.type === 'flame') {
@@ -331,15 +354,15 @@ export function handleBulletZombieCollisions() {
                         // const zombieX = zombie.x; // Already stored
                         // const zombieY = zombie.y;
                         gameState.zombies.splice(zombieIndex, 1);
-                        
+
                         if (zombie.type === 'boss' || zombie === gameState.boss) {
                             gameState.bossActive = false;
                             gameState.boss = null;
                         }
-                        
+
                         gameState.score += 10;
                         gameState.zombiesKilled++;
-                        
+
                         const now = Date.now();
                         if (now - gameState.lastKillTime < 1500) {
                             gameState.killStreak++;
@@ -347,14 +370,14 @@ export function handleBulletZombieCollisions() {
                             gameState.killStreak = 1;
                         }
                         gameState.lastKillTime = now;
-                        
+
                         if (gameState.killStreak > 2) {
                             let comboText = `${gameState.killStreak} HIT COMBO!`;
                             if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
                             if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
                             gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
                         }
-                        
+
                         playKillSound();
                         gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(bullet.damage)));
                         createBloodSplatter(zombieX, zombieY, impactAngle, true);
@@ -365,30 +388,28 @@ export function handleBulletZombieCollisions() {
                             gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
                         }
                         createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
-                        
+
                         // Trigger hit marker
                         gameState.hitMarker.active = true;
                         gameState.hitMarker.life = gameState.hitMarker.maxLife;
                         playHitSound();
                     }
-                    // Don't destroy flame bullets immediately? 
-                    // Original code: gameState.bullets.splice(bulletIndex, 1);
-                    // But wait, flame passes through?
-                    // The original code spliced it. So it's not piercing multiple enemies in one frame easily 
-                    // unless we structured it differently.
-                    // Let's keep original behavior: remove bullet.
-                    // But we are in a forEach loop for bullets. Splicing inside forEach is dangerous in JS 
-                    // if we don't handle index shifts.
-                    // The outer loop is `gameState.bullets.forEach`. 
-                    // If we splice `bulletIndex`, the next element is skipped.
-                    // The original code had this bug!
-                    // "gameState.bullets.splice(bulletIndex, 1);" inside forEach.
-                    
-                    // Better approach: mark for removal and filter later, or loop backwards.
-                    // For now, I'll stick to the original logic but acknowledge the flaw, 
-                    // or fix it by marking `bullet.markedForRemoval = true` and filtering after.
+
                     bullet.markedForRemoval = true;
-                    return; 
+                    return;
+                }
+
+                // Handle Piercing Bullets
+                if (bullet.type === 'piercing') {
+                    // Check if this zombie has already been hit by this bullet (to prevent multi-hit per frame)
+                    if (!bullet.hitZombies) bullet.hitZombies = [];
+                    if (bullet.hitZombies.includes(zombie)) return;
+
+                    bullet.hitZombies.push(zombie);
+                    bullet.pierceCount--;
+                    if (bullet.pierceCount <= 0) {
+                        bullet.markedForRemoval = true;
+                    }
                 }
 
                 // Critical hit chance (10%)
@@ -475,13 +496,15 @@ export function handleBulletZombieCollisions() {
                     zombie.slowedUntil = Date.now() + 500; // for 0.5 seconds
                     // --- END: Apply Slow-on-Hit ---
                 }
-                
+
                 // Trigger hit marker
                 gameState.hitMarker.active = true;
                 gameState.hitMarker.life = gameState.hitMarker.maxLife;
                 playHitSound();
-                
-                bullet.markedForRemoval = true;
+
+                if (bullet.type !== 'piercing') {
+                    bullet.markedForRemoval = true;
+                }
             }
         });
     });

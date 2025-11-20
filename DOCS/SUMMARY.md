@@ -44,7 +44,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   ├── core/
 │   │   ├── constants.js          # Game constants and configuration
 │   │   ├── canvas.js             # Canvas initialization and management
-│   │   └── gameState.js          # Centralized game state management
+│   │   ├── gameState.js          # Centralized game state management
 │   ├── companions/
 │   │   └── CompanionSystem.js   # AI NPC companion behavior and lifecycle
 │   ├── entities/
@@ -135,6 +135,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Game running/paused states
 
 ## Recent Updates (V0.3.1)
+- **Bug Fixes**: Fixed critical bullet update crash by ensuring correct removal check. Fixed grenade limit constant bug.
 - **WebGPU Rendering Foundation**:
   - Dedicated WebGPURenderer with Canvas 2D fallback
   - Procedural "Void" background with GPU shaders

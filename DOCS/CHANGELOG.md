@@ -4,6 +4,13 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [0.3.1] - 2025-11-20
 
+### Fixed
+- **Grenade Limit Bug**: Fixed `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.
+  - Imported `MAX_GRENADES` from `constants.js` to ensure ammo pickup tooltips can correctly check grenade limits.
+- **Bullet Cleanup Crash**: Fixed a runtime error (`TypeError: bullet.isOffScreen is not a function`) in the main game loop.
+  - Updated `main.js` to properly check `bullet.markedForRemoval` instead of calling the non-existent `isOffScreen` method on bullet entities.
+  - Ensures stable gameplay when bullets go off-screen or exceed their range.
+
 ### Added
 - **4-Player Local Co-op** - Expanded from 2-player to 4-player support
   - **Grid HUD**: Dynamic 2x2 grid layout for player stats
@@ -526,7 +533,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 - **Kill Streak System** - Combo tracking and feedback
   - Tracks consecutive kills within 1.5 second window
-  - Displays floating combo text for streaks of 3+
+  - Displays floating combo text for streaks 3+
   - Combo messages: "3 HIT COMBO!", "5 KILL RAMPAGE!", "UNSTOPPABLE!" (10+)
   - Resets streak if more than 1.5 seconds pass between kills
   - Visual feedback encourages aggressive playstyle

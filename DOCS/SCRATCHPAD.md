@@ -4,6 +4,14 @@
 
 ## 2025 - Active Development Notes
 
+### Critical Bug Fixes [2025-11-20]
+- ✅ **Grenade Limit Bug**: Fixed `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.
+  - Added missing import from `constants.js`.
+- ✅ **Bullet Update Crash**: Fixed `TypeError: bullet.isOffScreen is not a function` in `main.js`
+  - Cause: `main.js` was calling `bullet.isOffScreen()` which doesn't exist on the `Bullet` class
+  - Fix: Updated loop to check `!bullet.markedForRemoval` instead, matching `Bullet` class implementation
+  - Impact: Prevents game crash when bullets leave the screen
+
 ### AI Companion System Refactoring [2025-01-XX]
 - ✅ **CompanionSystem Module**: Extracted AI companion logic into dedicated module
   - Created `js/companions/CompanionSystem.js` to manage AI NPC companions

@@ -15,7 +15,7 @@ export class SettingsManager {
                 particleCount: 'high', // 'low' (CPU), 'high' (GPU 10k), 'ultra' (GPU 50k)
                 lightingQuality: 'simple', // 'off', 'simple', 'advanced'
                 distortionEffects: true,
-                
+
                 // General Video Settings
                 qualityPreset: 'high', // low, medium, high, custom
                 resolutionScale: 1.0,
@@ -54,6 +54,9 @@ export class SettingsManager {
                 weapon2: '2',
                 weapon3: '3',
                 weapon4: '4',
+                weapon5: '5',
+                weapon6: '6',
+                weapon7: '7',
                 scrollWheelSwitch: true
             },
             gamepad: {
@@ -88,7 +91,7 @@ export class SettingsManager {
 
     mergeSettings(defaults, saved) {
         const merged = JSON.parse(JSON.stringify(defaults));
-        
+
         // Merge saved values
         for (const category in saved) {
             if (merged[category]) {
@@ -109,7 +112,7 @@ export class SettingsManager {
             // We should clean it up from merged.video if it shouldn't be there.
             delete merged.video.autoSprint;
         }
-        
+
         // Ensure all default categories and keys exist (handles new updates)
         for (const category in defaults) {
             if (!merged[category]) {
@@ -122,7 +125,7 @@ export class SettingsManager {
                 }
             }
         }
-        
+
         return merged;
     }
 
@@ -143,29 +146,29 @@ export class SettingsManager {
             this.settings[category] = {};
         }
         this.settings[category][key] = value;
-        
+
         // If a video setting changes that isn't the preset itself, switch preset to 'custom'
         if (category === 'video' && key !== 'qualityPreset') {
             this.settings.video.qualityPreset = 'custom';
         }
-        
+
         this.saveSettings();
-        
+
         // Notify callbacks
         this.callbacks.forEach(callback => callback(category, key, value));
     }
-    
+
     addChangeListener(callback) {
         this.callbacks.push(callback);
     }
-    
+
     removeChangeListener(callback) {
         const index = this.callbacks.indexOf(callback);
         if (index > -1) {
             this.callbacks.splice(index, 1);
         }
     }
-    
+
     applyVideoPreset(preset) {
         if (preset === 'low') {
             this.settings.video.particleCount = 'low';

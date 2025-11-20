@@ -1,3 +1,5 @@
+import { gameState } from '../core/gameState.js';
+import { WEAPONS } from '../core/constants.js';
 import { settingsManager } from './SettingsManager.js';
 
 // Audio Context for sound effects
@@ -14,7 +16,7 @@ export function initAudio() {
     if (!audioContext) {
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
+
             // Create master gain node for global volume control
             masterGainNode = audioContext.createGain();
             const masterVol = settingsManager.getSetting('audio', 'masterVolume');
@@ -29,7 +31,7 @@ export function initAudio() {
 
             // Pre-create the gunshot buffer once for performance
             createGunshotBuffer();
-            
+
             // Update music volume if it exists
             if (menuMusicGain) {
                 const musicVol = settingsManager.getSetting('audio', 'musicVolume');
@@ -49,7 +51,7 @@ export function getMasterGainNode() {
 
 export function updateAudioSettings() {
     if (!audioContext) return;
-    
+
     const masterVol = settingsManager.getSetting('audio', 'masterVolume');
     if (masterGainNode) {
         masterGainNode.gain.value = masterVol !== undefined ? masterVol : 1.0;
@@ -85,7 +87,7 @@ export function playMenuMusic() {
             menuMusicSource = audioContext.createMediaElementSource(menuMusic);
             menuMusicGain = audioContext.createGain();
             const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5; 
+            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
             menuMusicSource.connect(menuMusicGain);
             menuMusicGain.connect(masterGainNode || audioContext.destination);
         } catch (e) {
@@ -114,12 +116,12 @@ export function stopMenuMusic() {
 // Create and cache the gunshot sound buffer (called once)
 function createGunshotBuffer() {
     if (!audioContext || gunshotBuffer) return;
-    
+
     const duration = 0.1; // 100ms
     const sampleRate = audioContext.sampleRate;
     const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
     const data = buffer.getChannelData(0);
-    
+
     // Generate gunshot waveform (sharp attack + decay)
     for (let i = 0; i < buffer.length; i++) {
         const t = i / sampleRate;
@@ -131,7 +133,7 @@ function createGunshotBuffer() {
         const envelope = Math.max(0, 1 - (t / duration) * 3);
         data[i] = sample * envelope * 0.3; // Volume
     }
-    
+
     gunshotBuffer = buffer;
 }
 
@@ -141,24 +143,129 @@ export function playGunshotSound() {
         initAudio();
         if (!audioContext) return; // Still can't create, skip sound
     }
-    
+
     // Ensure buffer exists (in case audioContext was created elsewhere)
     if (!gunshotBuffer) {
         createGunshotBuffer();
         if (!gunshotBuffer) return;
     }
-    
+
+    // Determine weapon type from player
+    const player = gameState.players[0]; // Local player
+    if (!player) return;
+
+    if (player.currentWeapon === WEAPONS.shotgun) {
+        playShotgunSound();
+    } else if (player.currentWeapon === WEAPONS.rifle) {
+        playRifleSound();
+    } else if (player.currentWeapon === WEAPONS.flamethrower) {
+        playFlamethrowerSound();
+    } else if (player.currentWeapon === WEAPONS.smg) {
+        playSMGSound();
+    } else if (player.currentWeapon === WEAPONS.sniper) {
+        playSniperSound();
+    } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
+        playRocketLaunchSound();
+    } else {
+        playPistolSound();
+    }
+}
+
+function playPistolSound() {
     try {
         const source = audioContext.createBufferSource();
         source.buffer = gunshotBuffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.4; // Volume level relative to SFX
+        gainNode.gain.value = 0.4;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
-    } catch (error) {
-        // Silently fail if audio can't play (e.g., browser restrictions)
-    }
+    } catch (error) { }
+}
+
+function playShotgunSound() {
+    try {
+        const source = audioContext.createBufferSource();
+        source.buffer = gunshotBuffer;
+        source.playbackRate.value = 0.8;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.5;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) { }
+}
+
+function playRifleSound() {
+    try {
+        const source = audioContext.createBufferSource();
+        source.buffer = gunshotBuffer;
+        source.playbackRate.value = 1.2;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.35;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) { }
+}
+
+function playFlamethrowerSound() {
+    try {
+        const source = audioContext.createBufferSource();
+        source.buffer = gunshotBuffer;
+        source.playbackRate.value = 0.2;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.1;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) { }
+}
+
+function playSMGSound() {
+    try {
+        const source = audioContext.createBufferSource();
+        source.buffer = gunshotBuffer;
+        source.playbackRate.value = 1.4;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.25;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) { }
+}
+
+function playSniperSound() {
+    try {
+        const source = audioContext.createBufferSource();
+        source.buffer = gunshotBuffer;
+        source.playbackRate.value = 0.6;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.6;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) { }
+}
+
+function playRocketLaunchSound() {
+    if (!audioContext) return;
+    const t = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(50, t + 0.5);
+
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+    osc.connect(gain);
+    gain.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.5);
 }
 
 // Generate damage/hurt sound using Web Audio API
@@ -167,14 +274,14 @@ export function playDamageSound() {
         initAudio();
         if (!audioContext) return; // Still can't create, skip sound
     }
-    
+
     try {
         // Create a damage sound (grunt/impact like)
         const duration = 0.2; // 200ms
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
-        
+
         // Generate damage waveform (grunt-like with impact)
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
@@ -193,7 +300,7 @@ export function playDamageSound() {
             const envelope = attack * decay;
             data[i] = sample * envelope * 0.25; // Volume
         }
-        
+
         // Play the sound
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
@@ -213,14 +320,14 @@ export function playKillSound() {
         initAudio();
         if (!audioContext) return; // Still can't create, skip sound
     }
-    
+
     try {
         // Create a satisfying kill confirmation sound (pop/thud)
         const duration = 0.15; // 150ms - shorter and punchier than damage sound
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
-        
+
         // Generate kill sound waveform (satisfying pop/thud)
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
@@ -239,7 +346,7 @@ export function playKillSound() {
             const envelope = attack * decay;
             data[i] = sample * envelope * 0.3; // Slightly louder than damage sound
         }
-        
+
         // Play the sound
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
@@ -259,42 +366,42 @@ export function playFootstepSound(isSprinting = false) {
         initAudio();
         if (!audioContext) return; // Still can't create, skip sound
     }
-    
+
     try {
         // Create a footstep sound (thud/tap like)
         const duration = 0.15; // 150ms
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
-        
+
         // Generate footstep waveform (impact + low thud)
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
             let sample = 0;
-            
+
             // Initial impact (high frequency tap)
             // Sprinting footsteps have slightly higher frequency for more impact
             const impactFreq = isSprinting ? (900 + Math.random() * 200) : (800 + Math.random() * 200);
             sample += Math.sin(t * impactFreq * 2 * Math.PI) * 0.3 * Math.exp(-t * 30);
-            
+
             // Low frequency thud (bass) - louder when sprinting
             const bassVolume = isSprinting ? 0.5 : 0.4;
             sample += Math.sin(t * 80 * 2 * Math.PI) * bassVolume;
             sample += Math.sin(t * 120 * 2 * Math.PI) * (bassVolume * 0.5);
-            
+
             // Add texture with filtered noise (like ground contact) - more noise when sprinting
             const noiseAmount = isSprinting ? 0.2 : 0.15;
             const noise = (Math.random() * 2 - 1) * noiseAmount;
             const noiseFilter = Math.exp(-t * 15); // High frequency decays quickly
             sample += noise * noiseFilter;
-            
+
             // Envelope: very quick attack, medium decay
             const attack = Math.min(1, t / 0.01); // 10ms attack
             const decay = Math.max(0, 1 - (t - 0.01) / (duration - 0.01));
             const envelope = attack * decay;
             data[i] = sample * envelope * 0.2; // Volume
         }
-        
+
         // Play the sound
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
@@ -315,13 +422,13 @@ export function playExplosionSound() {
         initAudio();
         if (!audioContext) return;
     }
-    
+
     try {
         const duration = 0.4; // 400ms
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
-        
+
         // Generate explosion waveform (low rumble with high crack)
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
@@ -335,7 +442,7 @@ export function playExplosionSound() {
             const envelope = Math.exp(-t * 2);
             data[i] = sample * envelope * 0.3;
         }
-        
+
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
@@ -354,14 +461,14 @@ export function playRestartSound() {
         initAudio();
         if (!audioContext) return;
     }
-    
+
     try {
         // Create a rising tone for restart confirmation
         const duration = 0.3; // 300ms
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
-        
+
         // Generate rising tone waveform
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
@@ -377,7 +484,7 @@ export function playRestartSound() {
             const envelope = attack * decay;
             data[i] = sample * envelope * 0.2; // Volume
         }
-        
+
         // Play the sound
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
@@ -397,14 +504,14 @@ export function playHitSound() {
         initAudio();
         if (!audioContext) return;
     }
-    
+
     try {
         // Create a quick, sharp hit marker sound (like a "tick" or "click")
         const duration = 0.08; // 80ms - very short and sharp
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
-        
+
         // Generate hit sound waveform (sharp tick)
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
@@ -421,7 +528,7 @@ export function playHitSound() {
             const envelope = attack * decay;
             data[i] = sample * envelope * 0.25; // Volume
         }
-        
+
         // Play the sound
         const source = audioContext.createBufferSource();
         source.buffer = buffer;

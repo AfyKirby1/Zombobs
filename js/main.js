@@ -5,7 +5,8 @@ import {
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS,
     PLAYER_BASE_SPEED, PLAYER_SPRINT_SPEED,
     PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY,
-    MAX_LOCAL_PLAYERS
+    MAX_LOCAL_PLAYERS,
+    MAX_GRENADES
 } from './core/constants.js';
 import { canvas, ctx, resizeCanvas } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
@@ -30,7 +31,7 @@ import {
 } from './utils/combatUtils.js';
 import {
     checkCollision, triggerDamageIndicator, triggerWaveNotification,
-    loadHighScore, saveHighScore, loadUsername, saveUsername
+    loadHighScore, saveHighScore,     loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted
 } from './utils/gameUtils.js';
 
 // Make triggerDamageIndicator available globally for AcidPool
@@ -86,7 +87,7 @@ webgpuRenderer.init().then(initialized => {
 // Function to apply WebGPU settings from SettingsManager
 function applyWebGPUSettings() {
     if (!webgpuRenderer || !webgpuRenderer.isAvailable()) return;
-    
+
     const bloomIntensity = settingsManager.getSetting('video', 'bloomIntensity') ?? 0.5;
     webgpuRenderer.setBloomIntensity(bloomIntensity);
 }
@@ -179,7 +180,7 @@ function spawnZombies(count) {
         // Calculate spawn position (same logic as Zombie constructor)
         const side = Math.floor(Math.random() * 4);
         let spawnX, spawnY;
-        switch(side) {
+        switch (side) {
             case 0: spawnX = Math.random() * canvas.width; spawnY = -20; break;
             case 1: spawnX = canvas.width + 20; spawnY = Math.random() * canvas.height; break;
             case 2: spawnX = Math.random() * canvas.width; spawnY = canvas.height + 20; break;
@@ -189,7 +190,7 @@ function spawnZombies(count) {
         // Create spawn indicator 1 second before zombie spawns
         const indicatorDelay = i * 500;
         const spawnDelay = indicatorDelay + 1000; // 1 second after indicator
-        
+
         // Create indicator with unique ID for removal
         const indicatorId = `ind_${i}_${Date.now()}_${Math.random()}`;
         setTimeout(() => {
@@ -473,7 +474,7 @@ function updatePlayers() {
         const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
         // autoSprint moved to gameplay, check both for migration safety or just gameplay
         const autoSprint = settingsManager.getSetting('gameplay', 'autoSprint') || false;
-        
+
         // Auto-sprint: invert logic - sprint by default, hold shift to walk
         let shouldSprint = false;
         if (autoSprint) {
@@ -630,16 +631,16 @@ function updateCoopLobby() {
         // If P1 is gamepad, P2 can be keyboard arrows.
         const keyboardPlayerExists = gameState.players.some((p, i) => i > 0 && p.inputSource === 'keyboard_arrow');
         if (!keyboardPlayerExists && keys['enter']) {
-             // Check if P1 is already using keyboard (WASD) - P2 can still use Arrows
-             // Actually P1 uses 'mouse' source which implies keyboard WASD.
-             // So P2 can safely use 'keyboard_arrow' source.
-             
-             const playerIndex = gameState.players.length;
-             const spawnX = canvas.width / 2 + (playerIndex * 50);
-             const newPlayer = createPlayer(spawnX, canvas.height / 2, playerIndex);
-             newPlayer.inputSource = 'keyboard_arrow';
-             newPlayer.gamepadIndex = null;
-             gameState.players.push(newPlayer);
+            // Check if P1 is already using keyboard (WASD) - P2 can still use Arrows
+            // Actually P1 uses 'mouse' source which implies keyboard WASD.
+            // So P2 can safely use 'keyboard_arrow' source.
+
+            const playerIndex = gameState.players.length;
+            const spawnX = canvas.width / 2 + (playerIndex * 50);
+            const newPlayer = createPlayer(spawnX, canvas.height / 2, playerIndex);
+            newPlayer.inputSource = 'keyboard_arrow';
+            newPlayer.gamepadIndex = null;
+            gameState.players.push(newPlayer);
         }
     }
 
@@ -647,7 +648,7 @@ function updateCoopLobby() {
     // Iterate backwards to safely remove
     for (let i = gameState.players.length - 1; i > 0; i--) {
         const player = gameState.players[i];
-        
+
         if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
             const gp = inputSystem.getGamepad(player.gamepadIndex);
             if (gp && gp.buttons.back.justPressed) {
@@ -657,7 +658,7 @@ function updateCoopLobby() {
                 // Array splice handles index shift.
             }
         }
-        
+
         // Keyboard drop out
         if (player.inputSource === 'keyboard_arrow' && keys['backspace']) {
             gameState.players.splice(i, 1);
@@ -736,7 +737,7 @@ function drawPlayers() {
         if (settingsManager.getSetting('video', 'reloadBar') !== false && player.isReloading) {
             const now = Date.now();
             const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
-            
+
             const barWidth = 40;
             const barHeight = 4;
             const barX = player.x - barWidth / 2;
@@ -750,7 +751,7 @@ function drawPlayers() {
             const fillWidth = barWidth * reloadProgress;
             ctx.fillStyle = '#ff9800'; // Orange color for reload
             ctx.fillRect(barX, barY, fillWidth, barHeight);
-            
+
             // Border
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 1;
@@ -807,7 +808,7 @@ function drawMeleeSwipe(player) {
     const swipeRadius = MELEE_RANGE;
 
     ctx.save();
-    
+
     // Create gradient for the swipe
     const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, swipeRadius);
     gradient.addColorStop(0, 'rgba(255, 170, 0, 0)');
@@ -858,23 +859,23 @@ function drawCrosshair() {
     const crosshairOutlineColor = '#000000';
 
     const crosshairColorCurrent = gameState.players[0]?.isReloading ? '#888888' : crosshairColor;
-    
+
     // Dynamic crosshair: expand when moving or shooting
     let crosshairSize = baseCrosshairSize;
     const dynamicCrosshair = settingsManager.getSetting('video', 'dynamicCrosshair') !== false;
-    
+
     if (dynamicCrosshair && gameState.players[0]) {
         const player = gameState.players[0];
         // Check if player is moving (approximate by checking if they moved recently)
-        const isMoving = Math.abs(player.x - (player.lastX || player.x)) > 0.1 || 
-                        Math.abs(player.y - (player.lastY || player.y)) > 0.1;
+        const isMoving = Math.abs(player.x - (player.lastX || player.x)) > 0.1 ||
+            Math.abs(player.y - (player.lastY || player.y)) > 0.1;
         player.lastX = player.x;
         player.lastY = player.y;
-        
+
         // Expand crosshair when moving or recently shot
         const timeSinceLastShot = Date.now() - (player.lastShotTime || 0);
         const recentlyShot = timeSinceLastShot < 200; // 200ms after shooting
-        
+
         if (isMoving || recentlyShot) {
             const expansion = isMoving ? 4 : (recentlyShot ? 6 : 0);
             crosshairSize = baseCrosshairSize + expansion;
@@ -891,7 +892,7 @@ function drawCrosshair() {
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Outline
         ctx.strokeStyle = crosshairOutlineColor;
         ctx.lineWidth = 2;
@@ -903,13 +904,13 @@ function drawCrosshair() {
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
-        
+
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
-        
+
         // Center dot
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
@@ -983,11 +984,11 @@ function drawCrosshair() {
         const alpha = gameState.hitMarker.life / gameState.hitMarker.maxLife;
         const markerSize = 8;
         const markerColor = `rgba(255, 255, 0, ${alpha})`;
-        
+
         ctx.strokeStyle = markerColor;
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
-        
+
         // Draw X
         ctx.beginPath();
         ctx.moveTo(mouse.x - markerSize, mouse.y - markerSize);
@@ -1059,7 +1060,7 @@ function drawFpsCounter() {
     if (!showFps && !showDebugStats) return;
 
     ctx.save();
-    
+
     if (showFps) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.font = '14px "Roboto Mono", monospace';
@@ -1067,20 +1068,20 @@ function drawFpsCounter() {
         ctx.textBaseline = 'top';
         ctx.fillText(`${gameState.fps} FPS`, canvas.width - 20, 20);
     }
-    
+
     // Detailed stats overlay
     if (showDebugStats && gameState.gameRunning && !gameState.gamePaused) {
         const statsY = 45;
         const lineHeight = 18;
         let currentY = statsY;
-        
+
         // Background panel
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(canvas.width - 200, statsY - 5, 195, 120);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.lineWidth = 1;
         ctx.strokeRect(canvas.width - 200, statsY - 5, 195, 120);
-        
+
         // Stats
         ctx.textAlign = 'left';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
@@ -1090,7 +1091,7 @@ function drawFpsCounter() {
         currentY += lineHeight;
         ctx.fillText(`Particles: ${gameState.particles.length}`, canvas.width - 195, currentY);
         currentY += lineHeight;
-        
+
         if (gameState.players.length > 0 && gameState.players[0]) {
             const p1 = gameState.players[0];
             ctx.fillText(`Player X: ${Math.floor(p1.x)}`, canvas.width - 195, currentY);
@@ -1098,14 +1099,14 @@ function drawFpsCounter() {
             ctx.fillText(`Player Y: ${Math.floor(p1.y)}`, canvas.width - 195, currentY);
             currentY += lineHeight;
         }
-        
+
         // Memory usage (approximate)
         if (performance.memory) {
             const memMB = Math.round(performance.memory.usedJSHeapSize / 1048576);
             ctx.fillText(`Memory: ${memMB} MB`, canvas.width - 195, currentY);
         }
     }
-    
+
     ctx.restore();
 }
 
@@ -1187,7 +1188,7 @@ function updateGame() {
     // Update bullets
     gameState.bullets = gameState.bullets.filter(bullet => {
         bullet.update();
-        return !bullet.isOffScreen(canvas.width, canvas.height);
+        return !bullet.markedForRemoval;
     });
 
     // Update grenades
@@ -1211,7 +1212,7 @@ function updateGame() {
     // Update zombies (Find target for each)
     // Apply night difficulty modifier (20% speed increase)
     const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
-    
+
     gameState.zombies.forEach(zombie => {
         // Find closest living player
         let closestPlayer = null;
@@ -1402,7 +1403,7 @@ function drawGame() {
     const maxDimension = Math.max(canvas.width, canvas.height);
     const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
     const webgpuActive = webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable();
-    
+
     if (!webgpuActive) {
         const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, maxDimension / 1.5);
         bgGradient.addColorStop(0, '#1a1a1a');
@@ -1463,7 +1464,7 @@ function drawGame() {
             nightAlpha = (1 - dawnProgress) * 0.6; // 0.3 to 0
         }
     }
-    
+
     if (nightAlpha > 0) {
         ctx.fillStyle = `rgba(10, 10, 30, ${nightAlpha})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1486,7 +1487,7 @@ function drawGame() {
 
         ctx.save();
         ctx.globalAlpha = alpha;
-        
+
         // Outer glow
         const gradient = ctx.createRadialGradient(indicator.x, indicator.y, 0, indicator.x, indicator.y, radius);
         gradient.addColorStop(0, 'rgba(255, 23, 68, 0.8)');
@@ -1527,17 +1528,17 @@ function drawGame() {
 
     gameState.damageNumbers.forEach(num => num.draw(ctx));
     drawCrosshair();
-    
+
     // Draw low health vignette before HUD
     if (gameState.players.length > 0 && gameState.players[0].health > 0) {
         gameHUD.drawLowHealthVignette(gameState.players[0]);
     }
-    
+
     // Draw contextual tooltips for pickups
     if (gameState.gameRunning && !gameState.gamePaused && gameState.players.length > 0) {
         const p1 = gameState.players[0];
         const tooltipDistance = 60;
-        
+
         // Check health pickups
         gameState.healthPickups.forEach(pickup => {
             const dx = pickup.x - p1.x;
@@ -1547,7 +1548,7 @@ function drawGame() {
                 gameHUD.drawTooltip('Walk over to pickup health', pickup.x, pickup.y - pickup.radius - 5);
             }
         });
-        
+
         // Check ammo pickups
         gameState.ammoPickups.forEach(pickup => {
             const dx = pickup.x - p1.x;
@@ -1557,10 +1558,10 @@ function drawGame() {
                 gameHUD.drawTooltip('Walk over to pickup ammo', pickup.x, pickup.y - pickup.radius - 5);
             }
         });
-        
+
         // Check power-up pickups
-        [...gameState.damagePickups, ...gameState.nukePickups, ...gameState.speedPickups, 
-         ...gameState.rapidFirePickups, ...gameState.shieldPickups].forEach(pickup => {
+        [...gameState.damagePickups, ...gameState.nukePickups, ...gameState.speedPickups,
+        ...gameState.rapidFirePickups, ...gameState.shieldPickups].forEach(pickup => {
             const dx = pickup.x - p1.x;
             const dy = pickup.y - p1.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1576,7 +1577,7 @@ function drawGame() {
             }
         });
     }
-    
+
     gameHUD.draw();
     if (gameState.gameRunning && !gameState.gamePaused) {
         gameHUD.drawCompass();
@@ -1604,8 +1605,11 @@ function gameOver() {
 
 function restartGame() {
     playRestartSound();
-    playMenuMusic();
+    if (!gameState.menuMusicMuted) {
+        playMenuMusic();
+    }
     gameState.showMainMenu = true;
+    gameState.showAbout = false;
     gameState.gameRunning = false;
     gameState.gamePaused = false;
     gameState.showCoopLobby = false;
@@ -1821,10 +1825,13 @@ document.addEventListener('keydown', (e) => {
     const p1 = gameState.players[0]; // P1 uses Keyboard
 
     // Weapon switching
-    if (key === controls.weapon1 && p1) switchWeapon(WEAPONS.pistol, p1);
-    if (key === controls.weapon2 && p1) switchWeapon(WEAPONS.shotgun, p1);
-    if (key === controls.weapon3 && p1) switchWeapon(WEAPONS.rifle, p1);
-    if (key === controls.weapon4 && p1) switchWeapon(WEAPONS.flamethrower, p1);
+    if (keys[controls.weapon1] && p1) switchWeapon(WEAPONS.pistol, p1);
+    if (keys[controls.weapon2] && p1) switchWeapon(WEAPONS.shotgun, p1);
+    if (keys[controls.weapon3] && p1) switchWeapon(WEAPONS.rifle, p1);
+    if (keys[controls.weapon4] && p1) switchWeapon(WEAPONS.flamethrower, p1);
+    if (keys[controls.weapon5] && p1) switchWeapon(WEAPONS.smg, p1);
+    if (keys[controls.weapon6] && p1) switchWeapon(WEAPONS.sniper, p1);
+    if (keys[controls.weapon7] && p1) switchWeapon(WEAPONS.rocketLauncher, p1);
 
     // Actions
     if (key === controls.grenade && p1) throwGrenade(mouse, canvas, p1);
@@ -1865,7 +1872,7 @@ canvas.addEventListener('mousemove', (e) => {
 
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
-    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) {
+    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
 });
@@ -1888,11 +1895,18 @@ canvas.addEventListener('mousedown', (e) => {
 
         // Try to start menu music on first interaction if it's not playing
         initAudio();
+        if (!gameState.menuMusicMuted) {
+            if (!gameState.menuMusicMuted) {
         playMenuMusic();
+    }
+        }
 
         if (clickedButton === 'single') {
             gameState.isCoop = false;
             startGame();
+        } else if (clickedButton === 'campaign') {
+            gameState.isCoop = false;
+            startGame(); // TODO: Implement campaign mode
         } else if (clickedButton === 'local_coop') {
             gameState.showMainMenu = false;
             gameState.showCoopLobby = true;
@@ -1917,6 +1931,27 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showMainMenu = false;
             gameState.showLobby = true;
             connectToMultiplayer();
+        } else if (clickedButton === 'about') {
+            gameState.showAbout = true;
+            gameState.showMainMenu = false;
+        } else if (clickedButton === 'mute_music') {
+            gameState.menuMusicMuted = !gameState.menuMusicMuted;
+            saveMenuMusicMuted();
+            if (gameState.menuMusicMuted) {
+                stopMenuMusic();
+            } else {
+                playMenuMusic();
+            }
+        }
+        return;
+    }
+
+    // About Screen
+    if (gameState.showAbout) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'about_back') {
+            gameState.showAbout = false;
+            gameState.showMainMenu = true;
         }
         return;
     }
@@ -1927,7 +1962,9 @@ canvas.addEventListener('mousedown', (e) => {
         if (clickedButton === 'lobby_back') {
             gameState.showLobby = false;
             gameState.showMainMenu = true;
-            playMenuMusic();
+            if (!gameState.menuMusicMuted) {
+        playMenuMusic();
+    }
         } else if (clickedButton === 'lobby_start') {
             gameState.isCoop = false;
             initAudio();
@@ -1944,7 +1981,9 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showMainMenu = true;
             // Remove all AI players when leaving lobby
             gameState.players = [gameState.players[0]];
-            playMenuMusic();
+            if (!gameState.menuMusicMuted) {
+        playMenuMusic();
+    }
         } else if (clickedButton === 'ai_add') {
             addAIPlayer();
         } else if (clickedButton === 'ai_start') {
@@ -1963,7 +2002,9 @@ canvas.addEventListener('mousedown', (e) => {
         if (clickedButton === 'coop_back') {
             gameState.showCoopLobby = false;
             gameState.showMainMenu = true;
-            playMenuMusic();
+            if (!gameState.menuMusicMuted) {
+        playMenuMusic();
+    }
         } else if (clickedButton === 'coop_start') {
             // Start coop game
             gameState.showCoopLobby = false;
@@ -2003,15 +2044,15 @@ canvas.addEventListener('wheel', (e) => {
     // Only handle scroll wheel weapon switching if enabled and game is running
     if (!settingsManager.getSetting('controls', 'scrollWheelSwitch')) return;
     if (!gameState.gameRunning || gameState.gamePaused) return;
-    if (gameState.showMainMenu || gameState.showLobby || 
+    if (gameState.showMainMenu || gameState.showLobby ||
         gameState.showCoopLobby || gameState.showAILobby) return;
-    
+
     const p1 = gameState.players[0];
     if (!p1 || p1.health <= 0) return;
-    
+
     // Prevent default scrolling
     e.preventDefault();
-    
+
     // Cycle weapon based on scroll direction
     // deltaY > 0 means scrolling down (next weapon), < 0 means scrolling up (previous weapon)
     const direction = Math.sign(e.deltaY);
@@ -2031,4 +2072,5 @@ window.addEventListener('blur', () => {
 // Initialization
 loadHighScore();
 loadUsername();
+loadMenuMusicMuted();
 gameEngine.start();

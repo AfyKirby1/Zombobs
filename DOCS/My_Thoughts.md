@@ -1,10 +1,19 @@
 # My Thoughts
 
-## Current State [2025-01-XX]
+## Current State [2025-11-20]
 
-The project has reached **V0.3.0 ALPHA** with a solid foundation. The modular ES6 architecture is working well, and we've added visual polish, controller support, and comprehensive documentation. The game engine has been officially named "ZOMBS-XFX-NGIN V0.3.0 ALPHA".
+The project is currently at **V0.3.1**. We've addressed two critical runtime errors recently: one involving `bullet.isOffScreen` and another regarding `MAX_GRENADES` not being defined.
 
-### Recent Achievements (V0.3.0 ALPHA)
+### Recent Fixes
+- **Critical Bug Fix**: Resolved `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.
+  - `MAX_GRENADES` was used in the ammo pickup tooltip logic but was not imported from `constants.js`.
+  - Added `MAX_GRENADES` to the named imports in `main.js`.
+- **Critical Bug Fix**: Resolved `TypeError: bullet.isOffScreen is not a function` in `main.js`.
+  - The `Bullet` class uses `markedForRemoval` flag instead of an `isOffScreen` method.
+  - Updated `main.js` to check `!bullet.markedForRemoval` consistent with the `Bullet` class implementation.
+  - This ensures bullets are correctly cleaned up without crashing the game.
+
+### Recent Achievements (V0.3.0 ALPHA & V0.3.1)
 1.  **Local Co-op Implementation**: Successfully added 2-player local co-op mode
     - Solved input handling complexity by allowing flexible assignment (P1 Mouse + P2 Gamepad, or P1 Gamepad + P2 Gamepad)
     - Refactored core `gameState` to support N players without breaking single-player logic
@@ -30,13 +39,14 @@ The project has reached **V0.3.0 ALPHA** with a solid foundation. The modular ES
 8.  **Documentation Sync**: All major docs (CHANGELOG, SUMMARY, ARCHITECTURE, SCRATCHPAD, SBOM) updated and aligned
 9.  **Version Management**: Properly versioned to V0.3.0 ALPHA across package.json, launch.ps1, and landing page
 10. **Engine Naming**: Officially named the game engine "ZOMBS-XFX-NGIN V0.3.0 ALPHA" with dedicated info box on landing page
-10. **HUD Polish**: Added UI indicators for all power-ups (Speed, Rapid Fire, Shield), ensuring players know exactly how long buffs last.
+11. **HUD Polish**: Added UI indicators for all power-ups (Speed, Rapid Fire, Shield), ensuring players know exactly how long buffs last.
 
 ### Immediate Focus
 - **Local Co-op Polish**: Ensure controller assignment remains robust in edge cases (disconnects)
 - **Asset Integration**: Successfully integrated texture-based ground rendering
 - **Design System**: Established clear design guidelines for future UI work
 - **Documentation Quality**: Maintained comprehensive documentation as project grows
+- **Bug Hunting**: Keep an eye out for other potential interface mismatches between entities (like `isOffScreen` vs `markedForRemoval`).
 
 ### Thoughts on Architecture
 The transition to a multi-player `gameState` was smoother than expected thanks to the modular design. By keeping `gameState.player` as a compatibility getter for `gameState.players[0]`, we avoided rewriting hundreds of lines of single-player logic. The input system's ability to "lock" gamepads to specific players works well for preventing input conflicts.

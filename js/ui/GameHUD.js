@@ -52,8 +52,91 @@ export class GameHUD {
         this.ctx.fillText(value, x + 10, y + 35);
     }
 
+    drawHealthDisplay(player, x, y, width) {
+        const height = 50;
+        const health = Math.max(0, Math.floor(player.health));
+        const maxHealth = player.maxHealth || 100;
+        const healthPercent = Math.min(1, health / maxHealth);
+
+        // Pulse effect for low health
+        let pulse = 0;
+        if (health < 30) {
+            pulse = Math.sin(Date.now() / 100) * 0.2; // Fast pulse
+        } else {
+            pulse = Math.sin(Date.now() / 1000) * 0.05; // Slow breathing
+        }
+
+        // Colors
+        const baseColor = '#ff1744';
+
+        // 1. Glass Background
+        this.ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+        this.ctx.fillRect(x, y, width, height);
+
+        // 2. Health Bar Background (Empty)
+        const barPadding = 4;
+        const barWidth = width - (barPadding * 2);
+        const barHeight = 8;
+        const barX = x + barPadding;
+        const barY = y + height - barHeight - 8; // Bottom aligned
+
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // 3. Health Bar Fill
+        const fillWidth = Math.max(0, barWidth * healthPercent);
+        const gradient = this.ctx.createLinearGradient(barX, barY, barX + fillWidth, barY);
+        gradient.addColorStop(0, '#ff5252');
+        gradient.addColorStop(1, '#ff1744');
+
+        this.ctx.fillStyle = gradient;
+        // Add glow
+        this.ctx.shadowBlur = 10 + (pulse * 20);
+        this.ctx.shadowColor = baseColor;
+        this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+        this.ctx.shadowBlur = 0;
+
+        // 4. Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x, y, width, height);
+
+        // 5. Heart Icon & Pulse
+        const iconSize = 24 + (pulse * 5);
+        const iconX = x + 25;
+        const iconY = y + 20;
+
+        this.ctx.font = `${iconSize}px serif`; // Emoji font
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('❤️', iconX, iconY);
+
+        // 6. Text Label "HP"
+        this.ctx.font = 'bold 12px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('HP', x + 50, y + 15);
+
+        // 7. Health Value (Big Number)
+        this.ctx.textAlign = 'right';
+        this.ctx.font = 'bold 24px "Roboto Mono", monospace';
+        this.ctx.fillStyle = health < 30 ? '#ff5252' : '#ffffff';
+        this.ctx.shadowBlur = health < 30 ? 10 : 0;
+        this.ctx.shadowColor = '#ff0000';
+        this.ctx.fillText(health, x + width - 10, y + 20);
+        this.ctx.shadowBlur = 0;
+        this.ctx.textAlign = 'left'; // Reset alignment
+
+        // 8. Preview Label
+        this.ctx.font = 'italic 8px "Roboto Mono", monospace';
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.fillText('PREVIEW', x + 3, y + 8);
+    }
+
     draw() {
-        if (gameState.showLobby) {
+        if (gameState.showAbout) {
+            this.drawAboutScreen();
+        } else if (gameState.showLobby) {
             this.drawLobby();
         } else if (gameState.showCoopLobby) {
             this.drawCoopLobby();
@@ -104,13 +187,13 @@ export class GameHUD {
         // Top-left: P1, Top-right: P2, Bottom-left: P3, Bottom-right: P4
         const width = 160;
         const statsHeight = (50 + this.itemSpacing) * 3; // 3 stats per player (health, ammo, grenades)
-        
+
         // Calculate positions for 2x2 grid
         const leftX = this.padding;
         const rightX = this.canvas.width - width - this.padding;
         const topY = this.padding;
         const bottomY = this.canvas.height - statsHeight - this.padding;
-        
+
         // Draw players in grid positions
         if (gameState.players.length >= 1) {
             this.drawPlayerStats(gameState.players[0], leftX, topY, "P1");
@@ -135,11 +218,8 @@ export class GameHUD {
         const height = 50;
         let currentY = y;
 
-        // Health
-        const healthValue = Math.max(0, Math.floor(player.health));
-        const healthColor = player.health < 30 ? '#ff0000' : '#ff1744';
-        const healthLabel = labelPrefix ? `${labelPrefix} HP` : 'Health';
-        this.drawStat(healthLabel, healthValue, '❤️', healthColor, x, currentY, width);
+        // Health - NEW DESIGN
+        this.drawHealthDisplay(player, x, currentY, width);
         currentY += height + this.itemSpacing;
 
         // Shield
@@ -162,9 +242,9 @@ export class GameHUD {
         } else {
             ammoColor = '#ff9800';
         }
-        
+
         const weaponLabel = labelPrefix ? `${labelPrefix} ${player.currentWeapon.name}` : player.currentWeapon.name;
-        
+
         if (player.isReloading) {
             // Draw reload progress bar
             const now = Date.now();
@@ -173,11 +253,11 @@ export class GameHUD {
             const progressBarHeight = 6;
             const progressBarX = x + 10;
             const progressBarY = currentY + 35;
-            
+
             // Background
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             this.ctx.fillRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
-            
+
             // Progress fill
             const fillWidth = progressBarWidth * reloadProgress;
             const progressGradient = this.ctx.createLinearGradient(progressBarX, progressBarY, progressBarX + fillWidth, progressBarY);
@@ -185,12 +265,12 @@ export class GameHUD {
             progressGradient.addColorStop(1, '#ffc107');
             this.ctx.fillStyle = progressGradient;
             this.ctx.fillRect(progressBarX, progressBarY, fillWidth, progressBarHeight);
-            
+
             // Border
             this.ctx.strokeStyle = ammoColor;
             this.ctx.lineWidth = 1;
             this.ctx.strokeRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
-            
+
             // Text
             const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
             this.ctx.fillStyle = '#ffffff';
@@ -278,11 +358,11 @@ export class GameHUD {
 
         const textWidth = Math.max(this.ctx.measureText(line1).width, this.ctx.measureText(line2).width);
         const lineY = this.canvas.height - 45;
-        
+
         // Semi-transparent background for readability
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         this.ctx.fillRect(this.canvas.width / 2 - textWidth / 2 - 20, lineY - 25, textWidth + 40, 60);
-        
+
         // Divider line
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.lineWidth = 1;
@@ -299,36 +379,36 @@ export class GameHUD {
 
     drawTooltip(text, x, y) {
         if (!text) return;
-        
+
         this.ctx.save();
         this.ctx.font = '14px "Roboto Mono", monospace';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'bottom';
-        
+
         const padding = 10;
         const textMetrics = this.ctx.measureText(text);
         const textWidth = textMetrics.width;
         const textHeight = 20;
         const tooltipWidth = textWidth + padding * 2;
         const tooltipHeight = textHeight + padding * 2;
-        
+
         // Position tooltip above the point
         const tooltipX = x;
         const tooltipY = y - 10;
-        
+
         // Background
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         this.ctx.fillRect(tooltipX - tooltipWidth / 2, tooltipY - tooltipHeight, tooltipWidth, tooltipHeight);
-        
+
         // Border
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(tooltipX - tooltipWidth / 2, tooltipY - tooltipHeight, tooltipWidth, tooltipHeight);
-        
+
         // Text
         this.ctx.fillStyle = '#ffffff';
         this.ctx.fillText(text, tooltipX, tooltipY - padding);
-        
+
         this.ctx.restore();
     }
 
@@ -368,7 +448,7 @@ export class GameHUD {
             const y = panelY + 70 + index * 35;
             const isPlayer = index === 0;
             const isAI = player.inputSource === 'ai';
-            
+
             if (isPlayer) {
                 this.ctx.fillStyle = '#66b3ff';
                 this.ctx.fillText(`1. ${gameState.username || 'Player'} (You)`, panelX + 20, y);
@@ -397,7 +477,7 @@ export class GameHUD {
         const canAddBot = gameState.players.length < 4;
         const addBotText = canAddBot ? 'Add Bot' : 'Max Players (4)';
         this.drawMenuButton(addBotText, centerX - buttonWidth / 2, addBotY, buttonWidth, buttonHeight, addBotHovered, !canAddBot);
-        
+
         const canStart = gameState.players.length > 1;
         this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, startHovered, !canStart);
         this.drawMenuButton('Back', centerX - buttonWidth / 2, buttonY + 70, buttonWidth, buttonHeight, backHovered, false);
@@ -433,25 +513,25 @@ export class GameHUD {
             const row = Math.floor(i / 2);
             const x = startX + col * (slotWidth + spacing);
             const y = startY + row * (slotHeight + spacing);
-            
+
             const player = gameState.players[i];
-            
+
             // Slot background
             this.ctx.fillStyle = 'rgba(15, 15, 20, 0.8)';
             this.ctx.fillRect(x, y, slotWidth, slotHeight);
             this.ctx.strokeStyle = player ? playerColors[i] : 'rgba(255, 255, 255, 0.2)';
             this.ctx.lineWidth = 2;
             this.ctx.strokeRect(x, y, slotWidth, slotHeight);
-            
+
             // Player label
             this.ctx.font = '24px "Roboto Mono", monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillStyle = playerColors[i];
             this.ctx.fillText(playerLabels[i], x + slotWidth / 2, y + 30);
-            
+
             // Player status
             this.ctx.font = '16px "Roboto Mono", monospace';
-            
+
             if (player) {
                 // Player joined
                 const controls = player.inputSource === 'mouse' ? 'WASD + Mouse' :
@@ -460,7 +540,7 @@ export class GameHUD {
                 this.ctx.fillText(`Controls: ${controls}`, x + slotWidth / 2, y + 70);
                 this.ctx.fillStyle = '#76ff03';
                 this.ctx.fillText('✓ Ready', x + slotWidth / 2, y + 100);
-                
+
                 if (i > 0) {
                     this.ctx.fillStyle = '#888888';
                     this.ctx.font = '12px "Roboto Mono", monospace';
@@ -572,16 +652,16 @@ export class GameHUD {
         // Hidden Scratches (only visible near mouse)
         // We draw these BEFORE the heavy vignette so they feel "deep"
         if (Math.random() < 0.1) {
-             // Use a fixed seed or just consistent noise for scratches?
-             // Actually, let's just draw random faint lines near the cursor
-             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-             this.ctx.lineWidth = 1;
-             this.ctx.beginPath();
-             const scratchX = mouseX + (Math.random() - 0.5) * 200;
-             const scratchY = mouseY + (Math.random() - 0.5) * 200;
-             this.ctx.moveTo(scratchX, scratchY);
-             this.ctx.lineTo(scratchX + (Math.random() - 0.5) * 40, scratchY + (Math.random() - 0.5) * 40);
-             this.ctx.stroke();
+            // Use a fixed seed or just consistent noise for scratches?
+            // Actually, let's just draw random faint lines near the cursor
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            const scratchX = mouseX + (Math.random() - 0.5) * 200;
+            const scratchY = mouseY + (Math.random() - 0.5) * 200;
+            this.ctx.moveTo(scratchX, scratchY);
+            this.ctx.lineTo(scratchX + (Math.random() - 0.5) * 40, scratchY + (Math.random() - 0.5) * 40);
+            this.ctx.stroke();
         }
 
         // Random Blood Splatters
@@ -635,17 +715,17 @@ export class GameHUD {
             const glitchHeight = Math.random() * 50 + 10;
             const glitchY = Math.random() * (this.canvas.height - glitchHeight);
             const offset = (Math.random() - 0.5) * 20;
-            
+
             // Capture the slice
             const slice = this.ctx.getImageData(0, glitchY, this.canvas.width, glitchHeight);
-            
+
             // Clear the area slightly to add artifacting feel
             this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
             this.ctx.fillRect(0, glitchY, this.canvas.width, glitchHeight);
-            
+
             // Put it back offset
             this.ctx.putImageData(slice, offset, glitchY);
-            
+
             // Add chromatic aberration line
             this.ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 255, 0.3)';
             this.ctx.fillRect(0, glitchY + Math.random() * glitchHeight, this.canvas.width, 2);
@@ -732,26 +812,141 @@ export class GameHUD {
             this.ctx.fillText('Click to change name', centerX, usernameY + 20);
         }
 
-        // Move buttons down to avoid overlap with username hover text
-        const buttonStartY = centerY + 90;
-        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 2;
-        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 1;
-        const aiY = buttonStartY;
-        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 1;
-        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 2;
+        // 2x4 Grid Layout: 2 columns, 4 rows
+        const columnSpacing = 30;
+        const buttonStartY = centerY + 40;
+        const leftColumnX = centerX - buttonWidth - columnSpacing / 2;
+        const rightColumnX = centerX + columnSpacing / 2;
+        
+        // Row positions
+        const row1Y = buttonStartY;
+        const row2Y = buttonStartY + (buttonHeight + buttonSpacing);
+        const row3Y = buttonStartY + (buttonHeight + buttonSpacing) * 2;
+        const row4Y = buttonStartY + (buttonHeight + buttonSpacing) * 3;
 
-        this.drawMenuButton('Single Player', centerX - buttonWidth / 2, singlePlayerY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
-        this.drawMenuButton('Local Co-op', centerX - buttonWidth / 2, coopY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
-        this.drawMenuButton('Play with AI', centerX - buttonWidth / 2, aiY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
-        this.drawMenuButton('Settings', centerX - buttonWidth / 2, settingsY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
-        this.drawMenuButton('Multiplayer', centerX - buttonWidth / 2, multiplayerY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
+        // Row 1: Arcade (left), Campaign (right)
+        this.drawMenuButton('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
+        this.drawMenuButton('Campaign', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'campaign', false);
+        
+        // Row 2: Local Co-op (left), Play with AI (right)
+        this.drawMenuButton('Local Co-op', leftColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
+        this.drawMenuButton('Play with AI', rightColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
+        
+        // Row 3: Settings (left), Multiplayer (right)
+        this.drawMenuButton('Settings', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
+        this.drawMenuButton('Multiplayer', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
+        
+        // Row 4: About (centered)
+        this.drawMenuButton('About', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
         this.ctx.font = '12px "Roboto Mono", monospace';
         this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
         this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 40);
 
+        // Draw mute button in bottom right
+        const muteButtonSize = 40;
+        const muteButtonX = this.canvas.width - 60;
+        const muteButtonY = this.canvas.height - 60;
+        const muteButtonHovered = this.hoveredButton === 'mute_music';
+        
+        // Draw button background
+        const bgColor = muteButtonHovered ? '#ff1744' : '#1a1a1a';
+        const borderColor = muteButtonHovered ? '#ff5252' : '#ff1744';
+        
+        const bgGradient = this.ctx.createLinearGradient(muteButtonX, muteButtonY, muteButtonX, muteButtonY + muteButtonSize);
+        bgGradient.addColorStop(0, muteButtonHovered ? 'rgba(255, 23, 68, 0.3)' : 'rgba(26, 26, 26, 0.9)');
+        bgGradient.addColorStop(1, muteButtonHovered ? 'rgba(255, 23, 68, 0.2)' : 'rgba(10, 10, 10, 0.9)');
+        
+        this.ctx.fillStyle = bgGradient;
+        this.ctx.fillRect(muteButtonX, muteButtonY, muteButtonSize, muteButtonSize);
+        
+        this.ctx.strokeStyle = borderColor;
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(muteButtonX, muteButtonY, muteButtonSize, muteButtonSize);
+        
+        if (muteButtonHovered) {
+            this.ctx.shadowBlur = 20;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+            this.ctx.strokeRect(muteButtonX, muteButtonY, muteButtonSize, muteButtonSize);
+            this.ctx.shadowBlur = 0;
+        }
+        
+        // Draw speaker icon
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '24px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        const icon = gameState.menuMusicMuted ? '🔇' : '🔊';
+        this.ctx.fillText(icon, muteButtonX + muteButtonSize / 2, muteButtonY + muteButtonSize / 2);
+
         // Draw technology branding in bottom-left
         this.drawTechnologyBranding();
+    }
+
+    drawAboutScreen() {
+        this.drawCreepyBackground();
+
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        // Title
+        this.ctx.font = 'bold 48px "Creepster", cursive';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.shadowBlur = 30;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
+        this.ctx.fillText('ABOUT', centerX, centerY - 250);
+        this.ctx.shadowBlur = 0;
+
+        // Game Info
+        this.ctx.font = '20px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.textAlign = 'center';
+        
+        let y = centerY - 150;
+        this.ctx.fillText('ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS', centerX, y);
+        y += 40;
+        
+        this.ctx.font = '16px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.fillText('Version: V0.3.1', centerX, y);
+        y += 30;
+        
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.3.0 ALPHA', centerX, y);
+        y += 50;
+        
+        this.ctx.font = '14px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#cccccc';
+        this.ctx.fillText('A fast-paced, top-down zombie survival game', centerX, y);
+        y += 25;
+        this.ctx.fillText('built with vanilla HTML5 Canvas and JavaScript.', centerX, y);
+        y += 50;
+        
+        this.ctx.font = '16px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#ff9800';
+        this.ctx.fillText('Features:', centerX, y);
+        y += 30;
+        
+        this.ctx.font = '14px "Roboto Mono", monospace';
+        this.ctx.fillStyle = '#aaaaaa';
+        const features = [
+            '• Wave-based survival gameplay',
+            '• Multiple zombie types and weapons',
+            '• Local co-op support (up to 4 players)',
+            '• WebGPU rendering with Canvas 2D fallback',
+            '• Controller support',
+            '• Day/Night cycle system'
+        ];
+        features.forEach(feature => {
+            this.ctx.fillText(feature, centerX, y);
+            y += 25;
+        });
+
+        // Back button
+        const buttonWidth = 240;
+        const buttonHeight = 50;
+        const backY = this.canvas.height - 100;
+        this.drawMenuButton('Back', centerX - buttonWidth / 2, backY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about_back', false);
     }
 
     drawLobby() {
@@ -927,7 +1122,7 @@ export class GameHUD {
             return null;
         }
 
-        if (!this.mainMenu) return null;
+        if (!this.mainMenu && !gameState.showAbout) return null;
 
         const mainMenuButtonWidth = 240;
         const centerY = this.canvas.height / 2;
@@ -940,19 +1135,53 @@ export class GameHUD {
             return 'username';
         }
 
-        const buttonStartY = centerY + 90;
-        const singlePlayerY = buttonStartY - (buttonHeight + buttonSpacing) * 2;
-        const coopY = buttonStartY - (buttonHeight + buttonSpacing) * 1;
-        const aiY = buttonStartY;
-        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 1;
-        const multiplayerY = buttonStartY + (buttonHeight + buttonSpacing) * 2;
+        // 2x4 Grid Layout: 2 columns, 4 rows
+        const columnSpacing = 30;
+        const buttonStartY = centerY + 40;
+        const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
+        const rightColumnX = centerX + columnSpacing / 2;
+        
+        // Row positions
+        const row1Y = buttonStartY;
+        const row2Y = buttonStartY + (buttonHeight + buttonSpacing);
+        const row3Y = buttonStartY + (buttonHeight + buttonSpacing) * 2;
+        const row4Y = buttonStartY + (buttonHeight + buttonSpacing) * 3;
 
+        // Check left column
+        if (mouseX >= leftColumnX && mouseX <= leftColumnX + mainMenuButtonWidth) {
+            if (mouseY >= row1Y - buttonHeight / 2 && mouseY <= row1Y + buttonHeight / 2) return 'single';
+            if (mouseY >= row2Y - buttonHeight / 2 && mouseY <= row2Y + buttonHeight / 2) return 'local_coop';
+            if (mouseY >= row3Y - buttonHeight / 2 && mouseY <= row3Y + buttonHeight / 2) return 'settings';
+        }
+        
+        // Check right column
+        if (mouseX >= rightColumnX && mouseX <= rightColumnX + mainMenuButtonWidth) {
+            if (mouseY >= row1Y - buttonHeight / 2 && mouseY <= row1Y + buttonHeight / 2) return 'campaign';
+            if (mouseY >= row2Y - buttonHeight / 2 && mouseY <= row2Y + buttonHeight / 2) return 'play_ai';
+            if (mouseY >= row3Y - buttonHeight / 2 && mouseY <= row3Y + buttonHeight / 2) return 'multiplayer';
+        }
+        
+        // Check About button (centered in row 4)
         if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
-            if (mouseY >= singlePlayerY - buttonHeight / 2 && mouseY <= singlePlayerY + buttonHeight / 2) return 'single';
-            if (mouseY >= coopY - buttonHeight / 2 && mouseY <= coopY + buttonHeight / 2) return 'local_coop';
-            if (mouseY >= aiY - buttonHeight / 2 && mouseY <= aiY + buttonHeight / 2) return 'play_ai';
-            if (mouseY >= settingsY - buttonHeight / 2 && mouseY <= settingsY + buttonHeight / 2) return 'settings';
-            if (mouseY >= multiplayerY - buttonHeight / 2 && mouseY <= multiplayerY + buttonHeight / 2) return 'multiplayer';
+            if (mouseY >= row4Y - buttonHeight / 2 && mouseY <= row4Y + buttonHeight / 2) return 'about';
+        }
+
+        // Check About screen back button
+        if (gameState.showAbout) {
+            const backY = this.canvas.height - 100;
+            if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2 &&
+                mouseY >= backY - buttonHeight / 2 && mouseY <= backY + buttonHeight / 2) {
+                return 'about_back';
+            }
+        }
+
+        // Check mute button (bottom right)
+        const muteButtonSize = 40;
+        const muteButtonX = this.canvas.width - 60;
+        const muteButtonY = this.canvas.height - 60;
+        if (mouseX >= muteButtonX && mouseX <= muteButtonX + muteButtonSize &&
+            mouseY >= muteButtonY && mouseY <= muteButtonY + muteButtonSize) {
+            return 'mute_music';
         }
 
         return null;
@@ -1003,7 +1232,7 @@ export class GameHUD {
             if (distance > indicatorDistance) return;
 
             const isOnScreen = zombie.x >= 0 && zombie.x <= this.canvas.width &&
-                               zombie.y >= 0 && zombie.y <= this.canvas.height;
+                zombie.y >= 0 && zombie.y <= this.canvas.height;
 
             if (isOnScreen) return; // Don't show indicator if zombie is on screen
 
@@ -1114,7 +1343,7 @@ export class GameHUD {
 
     drawLowHealthVignette(player) {
         if (!settingsManager.getSetting('video', 'lowHealthWarning')) return;
-        
+
         const healthPercent = player.health / player.maxHealth;
         if (healthPercent >= 0.3) return; // Only show when health < 30%
 
@@ -1141,42 +1370,42 @@ export class GameHUD {
     drawCompass() {
         if (!gameState.gameRunning || gameState.gamePaused) return;
         if (gameState.players.length === 0) return;
-        
+
         const player = gameState.players[0];
         const compassHeight = 30;
         const compassY = 10;
         const compassWidth = this.canvas.width * 0.4;
         const compassX = (this.canvas.width - compassWidth) / 2;
-        
+
         this.ctx.save();
-        
+
         // Background
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         this.ctx.fillRect(compassX, compassY, compassWidth, compassHeight);
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(compassX, compassY, compassWidth, compassHeight);
-        
+
         // Get player angle and convert to compass direction
         // Player angle: 0 = right (East), PI/2 = down (South), PI = left (West), -PI/2 = up (North)
         const playerAngle = player.angle;
         // Convert to compass angle (0 = North, clockwise)
         const compassAngle = -playerAngle + Math.PI / 2;
-        
+
         // Draw compass marks
         const directions = ['N', 'E', 'S', 'W'];
         const directionAngles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
-        
+
         this.ctx.font = 'bold 14px "Roboto Mono", monospace';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        
+
         // Draw center indicator
         const centerX = compassX + compassWidth / 2;
         const centerY = compassY + compassHeight / 2;
         this.ctx.fillStyle = '#ff1744';
         this.ctx.fillRect(centerX - 2, centerY - 8, 4, 16);
-        
+
         // Draw direction markers
         directionAngles.forEach((angle, index) => {
             const relativeAngle = angle - compassAngle;
@@ -1184,12 +1413,12 @@ export class GameHUD {
             let normalizedAngle = relativeAngle;
             while (normalizedAngle > Math.PI) normalizedAngle -= Math.PI * 2;
             while (normalizedAngle < -Math.PI) normalizedAngle += Math.PI * 2;
-            
+
             // Only show if within visible range (about 90 degrees each side)
             if (Math.abs(normalizedAngle) < Math.PI / 2) {
                 const offset = normalizedAngle / (Math.PI / 2) * (compassWidth / 2 - 20);
                 const markerX = centerX + offset;
-                
+
                 // Draw tick mark
                 this.ctx.strokeStyle = '#ffffff';
                 this.ctx.lineWidth = 2;
@@ -1197,89 +1426,89 @@ export class GameHUD {
                 this.ctx.moveTo(markerX, compassY + 5);
                 this.ctx.lineTo(markerX, compassY + 15);
                 this.ctx.stroke();
-                
+
                 // Draw direction label
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.fillText(directions[index], markerX, compassY + 25);
             }
         });
-        
+
         this.ctx.restore();
     }
 
     drawTechnologyBranding() {
         this.ctx.save();
-        
+
         const padding = 15;
         const fontSize = 10;
         const lineHeight = 14;
         const textPadding = 8;
-        
+
         // Calculate text dimensions
         this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
-        
+
         const lines = [
             'Not sponsored',
             'Powered by Intel® / AMD',
             'WebGPU Technologies'
         ];
-        
+
         // Measure text to determine panel size
         let maxWidth = 0;
         lines.forEach(line => {
             const width = this.ctx.measureText(line).width;
             if (width > maxWidth) maxWidth = width;
         });
-        
+
         const panelWidth = maxWidth + textPadding * 2;
         const panelHeight = lines.length * lineHeight + textPadding * 2;
         const panelX = padding;
         const panelY = this.canvas.height - panelHeight - padding;
-        
+
         // Draw background panel
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-        
+
         // Draw subtle border
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
-        
+
         // Draw text lines
         this.ctx.fillStyle = 'rgba(158, 158, 158, 0.7)';
         lines.forEach((line, index) => {
             const y = panelY + textPadding + index * lineHeight;
-            
+
             // Special styling for technology names
             if (line.includes('Intel') || line.includes('AMD') || line.includes('WebGPU')) {
                 this.ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
             } else {
                 this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
             }
-            
+
             this.ctx.fillText(line, panelX + textPadding, y);
         });
-        
+
         this.ctx.restore();
     }
 
     drawWebGPUStatusIcon() {
         this.ctx.save();
-        
+
         // Check if WebGPU renderer is available AND enabled
         const webgpuRenderer = window.webgpuRenderer;
         const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
         const isWebGPUActive = webgpuRenderer && webgpuRenderer.isAvailable() && webgpuEnabled;
-        
+
         const padding = 15;
         const iconWidth = 75;
         const iconHeight = 32;
-        
+
         let iconX = padding;
         let iconY = this.canvas.height - iconHeight - padding;
-        
+
         // If on Main Menu, stack above technology branding
         if (this.mainMenu) {
             // Branding height calculation from drawTechnologyBranding:
@@ -1288,12 +1517,12 @@ export class GameHUD {
             const brandingHeight = 58 + 15;
             iconY = this.canvas.height - brandingHeight - iconHeight - 10; // 10px gap
         }
-        
+
         // Draw hexagon badge shape
         const hexRadius = iconHeight / 2;
         const centerX = iconX + hexRadius;
         const centerY = iconY + hexRadius;
-        
+
         // Create hexagon path
         this.ctx.beginPath();
         for (let i = 0; i < 6; i++) {
@@ -1307,7 +1536,7 @@ export class GameHUD {
             }
         }
         this.ctx.closePath();
-        
+
         // Fill with gradient or solid color based on state
         if (isWebGPUActive) {
             // Active: Blue/purple gradient with glow
@@ -1315,7 +1544,7 @@ export class GameHUD {
             gradient.addColorStop(0, '#6366f1'); // Indigo
             gradient.addColorStop(1, '#8b5cf6'); // Purple
             this.ctx.fillStyle = gradient;
-            
+
             // Add glow effect
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = 'rgba(99, 102, 241, 0.6)';
@@ -1324,10 +1553,10 @@ export class GameHUD {
             this.ctx.fillStyle = 'rgba(102, 102, 102, 0.5)';
             this.ctx.shadowBlur = 0;
         }
-        
+
         this.ctx.fill();
         this.ctx.shadowBlur = 0;
-        
+
         // Draw border
         if (isWebGPUActive) {
             this.ctx.strokeStyle = 'rgba(139, 92, 246, 0.8)';
@@ -1337,12 +1566,12 @@ export class GameHUD {
             this.ctx.lineWidth = 1;
         }
         this.ctx.stroke();
-        
+
         // Draw "WebGPU" text
         this.ctx.font = 'bold 10px "Roboto Mono", monospace';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        
+
         if (isWebGPUActive) {
             this.ctx.fillStyle = '#ffffff';
             // Subtle pulse effect
@@ -1352,15 +1581,15 @@ export class GameHUD {
             this.ctx.fillStyle = 'rgba(200, 200, 200, 0.6)';
             this.ctx.globalAlpha = 0.6;
         }
-        
+
         this.ctx.fillText('WebGPU', centerX, centerY);
         this.ctx.globalAlpha = 1.0;
-        
+
         // Draw status indicator dot
         const dotRadius = 3;
         const dotX = iconX + iconWidth - dotRadius - 4;
         const dotY = iconY + dotRadius + 4;
-        
+
         if (isWebGPUActive) {
             this.ctx.fillStyle = '#10b981'; // Green
             this.ctx.shadowBlur = 4;
@@ -1369,12 +1598,12 @@ export class GameHUD {
             this.ctx.fillStyle = 'rgba(156, 163, 175, 0.6)'; // Gray
             this.ctx.shadowBlur = 0;
         }
-        
+
         this.ctx.beginPath();
         this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.shadowBlur = 0;
-        
+
         this.ctx.restore();
     }
 }

@@ -86,5 +86,33 @@ export const WEAPONS = {
         reloadTime: 2000, // 2 seconds (slower reload)
         range: 200, // Short range
         type: 'flame'
+    },
+    smg: {
+        name: "SMG",
+        damage: 0.8,
+        fireRate: 80, // Fast fire rate
+        ammo: 40,
+        maxAmmo: 40,
+        reloadTime: 1200 // Slightly slower than pistol
+    },
+    sniper: {
+        name: "Sniper",
+        damage: 15, // High damage
+        fireRate: 1500, // Slow fire rate
+        ammo: 5,
+        maxAmmo: 5,
+        reloadTime: 2500, // Slow reload
+        type: 'piercing'
+    },
+    rocketLauncher: {
+        name: "RPG",
+        damage: 0, // Impact damage handled by explosion
+        fireRate: 2000, // Very slow
+        ammo: 3,
+        maxAmmo: 3,
+        reloadTime: 3000,
+        type: 'rocket',
+        explosionRadius: 150,
+        explosionDamage: 60
     }
 };
