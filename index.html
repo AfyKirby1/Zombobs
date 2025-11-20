@@ -196,12 +196,44 @@
             filter: drop-shadow(0 2px 8px rgba(139, 0, 0, 0.6)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
         }
 
+        .badge-row {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
         .tagline {
-            font-size: 13px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: var(--text-muted);
-            opacity: 0.8;
+            letter-spacing: 0.15em;
+            color: #ffcdd2;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(255, 23, 68, 0.4);
+            padding: 8px 14px;
+            background: var(--pill-bg);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .engine-info {
+            padding: 8px 14px;
+            background: var(--pill-bg);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .engine-name {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #ffcdd2;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(255, 23, 68, 0.4);
         }
 
         .pill-row {
@@ -582,7 +614,12 @@
             <div class="hero-card-inner">
                 <div class="title-row">
                     <h1 class="title">ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</h1>
-                    <span class="tagline">v0.2.6 · Canvas prototype</span>
+                    <div class="badge-row">
+                        <span class="tagline">V0.3.0 ALPHA</span>
+                        <div class="engine-info">
+                            <span class="engine-name">ZOMBS-XFX-NGIN V0.3.0 ALPHA</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="pill-row">
@@ -849,59 +886,59 @@
 
         <aside class="side-card">
             <div>
-                <div class="side-heading">Run details</div>
+                <div class="side-heading">Technical Specs</div>
+                <div class="stat">
+                    <span>Rendering</span>
+                    <strong>WebGPU + Canvas 2D</strong>
+                </div>
                 <div class="stat">
                     <span>Engine</span>
-                    <strong>HTML5 Canvas</strong>
+                    <strong>ZOMBS-XFX-NGIN V0.3.0</strong>
                 </div>
                 <div class="stat">
-                    <span>Tech</span>
-                    <strong>Vanilla JS / No Frameworks</strong>
+                    <span>Architecture</span>
+                    <strong>ES6 Modules / Zero Deps</strong>
                 </div>
                 <div class="stat">
-                    <span>Perspective</span>
-                    <strong>Top-down Shooter</strong>
+                    <span>Performance</span>
+                    <strong>Quadtree + Object Pooling</strong>
                 </div>
                 <div class="stat">
-                    <span>Input</span>
-                    <strong>Mouse, Keyboard &amp; Gamepad</strong>
-                </div>
-                <div class="stat">
-                    <span>Multiplayer</span>
-                    <strong>Socket.io + Express</strong>
-                </div>
-                <div class="stat">
-                    <span>Players</span>
-                    <strong>1-2 (Local Co-op)</strong>
+                    <span>Game Loop</span>
+                    <strong>Fixed Timestep (60Hz)</strong>
                 </div>
                 <div class="stat">
                     <span>Audio</span>
-                    <strong>Web Audio API</strong>
+                    <strong>Web Audio API (Procedural)</strong>
                 </div>
                 <div class="stat">
-                    <span>Mode</span>
-                    <strong>Endless Survival</strong>
+                    <span>Input</span>
+                    <strong>Mouse / KB / Gamepad API</strong>
                 </div>
                 <div class="stat">
-                    <span>Frame Rate</span>
-                    <strong>60 FPS Target</strong>
+                    <span>Networking</span>
+                    <strong>Socket.io (WebSocket)</strong>
                 </div>
                 <div class="stat">
-                    <span>Physics</span>
-                    <strong>Custom 2D Engine</strong>
+                    <span>Persistence</span>
+                    <strong>LocalStorage API</strong>
                 </div>
                 <div class="stat">
-                    <span>AI</span>
-                    <strong>State Machine</strong>
+                    <span>Multiplayer</span>
+                    <strong>Local Co-op + Online Lobby</strong>
                 </div>
                 <div class="stat">
-                    <span>Storage</span>
-                    <strong>LocalStorage</strong>
+                    <span>AI Systems</span>
+                    <strong>Companions + State Machines</strong>
+                </div>
+                <div class="stat">
+                    <span>Platform</span>
+                    <strong>Browser Native (No Build)</strong>
                 </div>
             </div>
 
             <div>
-                <div class="side-heading">v0.2.6 Features</div>
+                <div class="side-heading">V0.3.0 ALPHA Features</div>
                 <ul class="mini-list">
                     <li><span>✔</span> <strong>Day/Night Cycle</strong>: Dynamic time transitions with night difficulty scaling</li>
                     <li><span>✔</span> <strong>Flamethrower</strong>: Short-range DoT weapon with burning mechanics</li>

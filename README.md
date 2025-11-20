@@ -1,7 +1,9 @@
 <div align="center">
 
 # 🧟 ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS
-### The Ultimate Vanilla JS Zombie Survival Experience
+### 💀 The Ultimate Vanilla JS Survival Experience 💀
+
+> **"Left 4 Dead meets Geometry Wars in a browser window."**
 
 <p align="center">
   <a href="https://developer.mozilla.org/en-US/docs/Web/HTML">
@@ -35,8 +37,12 @@
     <img src="https://img.shields.io/badge/DOWNLOAD_SOURCE-FF0000?style=for-the-badge&logo=github&logoColor=white&labelColor=101010" height="50" alt="Download Source" />
   </a>
   &nbsp;&nbsp;&nbsp;
-  <a href="#-quick-start">
+  <a href="https://afykirby1.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://otterdays.itch.io/zombobs">
+    <img src="https://img.shields.io/badge/PLAY_ON_ITCH.IO-FA5C5C?style=for-the-badge&logo=itch.io&logoColor=white&labelColor=101010" height="50" alt="Play on Itch.io" />
   </a>
   <br>
 </p>
@@ -47,7 +53,7 @@
 
 ---
 
-## 🔥 What's New in v0.2.6
+## 🔥 What's New in V0.3.0 ALPHA
 
 > **The horde is evolving. Are you?**
 
@@ -320,9 +326,25 @@ We welcome contributions! Check out the [roadmap](DOCS/roadmap.md) for ideas, or
 
 ---
 
-## 📄 License
+## 🔒 Proprietary License & Agreement
 
-MIT License. Do whatever you want with it. Just don't get bitten.
+**Copyright © 2025 AfyKirby1 (OtterDays). All Rights Reserved.**
+
+This project (ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS) and all associated source code, assets, design, and documentation are the sole intellectual property of **AfyKirby1**.
+
+**⚠️ ACCESS AGREEMENT:**
+
+By downloading, cloning, forking, or viewing this repository, you explicitly agree to the following terms:
+
+1.  **🚫 CLOSED SOURCE:** This is **NOT** open-source software. The code is visible for portfolio/showcase purposes only.
+2.  **🚫 NO REDISTRIBUTION:** You may NOT re-upload, host, mirror, or distribute this code or the game executable on any platform (itch.io, Steam, GitHub, etc.) without signed written consent.
+3.  **🚫 NO DERIVATIVE WORKS:** You may NOT use this codebase to build your own game. "Reskinning" or "forking" for release is strictly prohibited.
+4.  **🚫 NO COMMERCIAL USE:** You may NOT use any part of this project for commercial gain, including but not limited to ads, donations, or sales.
+5.  **👁️ REFERENCE ONLY:** You may read the code for educational inspiration, but you may not copy-paste logic into your own commercial projects.
+
+**Any violation of these terms will result in immediate takedown notices and potential legal action.**
+
+*Play fair. Create your own apocalypse.*
 
 ---
 
