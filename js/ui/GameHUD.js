@@ -55,40 +55,33 @@ export class GameHUD {
     draw() {
         if (gameState.showLobby) {
             this.drawLobby();
-            return;
-        }
-
-        if (gameState.showCoopLobby) {
+        } else if (gameState.showCoopLobby) {
             this.drawCoopLobby();
-            return;
-        }
-
-        if (gameState.showAILobby) {
+        } else if (gameState.showAILobby) {
             this.drawAILobby();
-            return;
-        }
-
-        if (this.mainMenu) {
+        } else if (this.mainMenu) {
             this.drawMainMenu();
-            return;
-        }
-
-        if (!this.gameOver && !this.paused) {
-            if (gameState.isCoop) {
-                this.drawCoopHUD();
-            } else {
-                this.drawSinglePlayerHUD();
+        } else {
+            if (!this.gameOver && !this.paused) {
+                if (gameState.isCoop) {
+                    this.drawCoopHUD();
+                } else {
+                    this.drawSinglePlayerHUD();
+                }
+                this.drawOffScreenIndicators();
             }
-            this.drawOffScreenIndicators();
+
+            if (this.gameOver) {
+                this.drawGameOver();
+            }
+
+            if (this.paused) {
+                this.drawPauseMenu();
+            }
         }
 
-        if (this.gameOver) {
-            this.drawGameOver();
-        }
-
-        if (this.paused) {
-            this.drawPauseMenu();
-        }
+        // Always draw WebGPU status icon on top of everything
+        this.drawWebGPUStatusIcon();
     }
 
     drawSinglePlayerHUD() {
@@ -727,6 +720,9 @@ export class GameHUD {
         this.ctx.font = '12px "Roboto Mono", monospace';
         this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
         this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 40);
+
+        // Draw technology branding in bottom-left
+        this.drawTechnologyBranding();
     }
 
     drawLobby() {
@@ -1178,6 +1174,176 @@ export class GameHUD {
                 this.ctx.fillText(directions[index], markerX, compassY + 25);
             }
         });
+        
+        this.ctx.restore();
+    }
+
+    drawTechnologyBranding() {
+        this.ctx.save();
+        
+        const padding = 15;
+        const fontSize = 10;
+        const lineHeight = 14;
+        const textPadding = 8;
+        
+        // Calculate text dimensions
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        
+        const lines = [
+            'Not sponsored',
+            'Powered by Intel® / AMD',
+            'WebGPU Technologies'
+        ];
+        
+        // Measure text to determine panel size
+        let maxWidth = 0;
+        lines.forEach(line => {
+            const width = this.ctx.measureText(line).width;
+            if (width > maxWidth) maxWidth = width;
+        });
+        
+        const panelWidth = maxWidth + textPadding * 2;
+        const panelHeight = lines.length * lineHeight + textPadding * 2;
+        const panelX = padding;
+        const panelY = this.canvas.height - panelHeight - padding;
+        
+        // Draw background panel
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // Draw subtle border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // Draw text lines
+        this.ctx.fillStyle = 'rgba(158, 158, 158, 0.7)';
+        lines.forEach((line, index) => {
+            const y = panelY + textPadding + index * lineHeight;
+            
+            // Special styling for technology names
+            if (line.includes('Intel') || line.includes('AMD') || line.includes('WebGPU')) {
+                this.ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
+            } else {
+                this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
+            }
+            
+            this.ctx.fillText(line, panelX + textPadding, y);
+        });
+        
+        this.ctx.restore();
+    }
+
+    drawWebGPUStatusIcon() {
+        this.ctx.save();
+        
+        // Check if WebGPU renderer is available
+        const webgpuRenderer = window.webgpuRenderer;
+        const isWebGPUActive = webgpuRenderer && webgpuRenderer.isAvailable();
+        
+        const padding = 15;
+        const iconWidth = 75;
+        const iconHeight = 32;
+        
+        let iconX = padding;
+        let iconY = this.canvas.height - iconHeight - padding;
+        
+        // If on Main Menu, stack above technology branding
+        if (this.mainMenu) {
+            // Branding height calculation from drawTechnologyBranding:
+            // 3 lines * 14 lineHeight + 8 padding * 2 = 42 + 16 = 58px
+            // plus 15px padding from bottom = 73px
+            const brandingHeight = 58 + 15;
+            iconY = this.canvas.height - brandingHeight - iconHeight - 10; // 10px gap
+        }
+        
+        // Draw hexagon badge shape
+        const hexRadius = iconHeight / 2;
+        const centerX = iconX + hexRadius;
+        const centerY = iconY + hexRadius;
+        
+        // Create hexagon path
+        this.ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 6; // Rotate to point up
+            const x = centerX + hexRadius * Math.cos(angle);
+            const y = centerY + hexRadius * Math.sin(angle);
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+        }
+        this.ctx.closePath();
+        
+        // Fill with gradient or solid color based on state
+        if (isWebGPUActive) {
+            // Active: Blue/purple gradient with glow
+            const gradient = this.ctx.createLinearGradient(iconX, iconY, iconX + iconWidth, iconY + iconHeight);
+            gradient.addColorStop(0, '#6366f1'); // Indigo
+            gradient.addColorStop(1, '#8b5cf6'); // Purple
+            this.ctx.fillStyle = gradient;
+            
+            // Add glow effect
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(99, 102, 241, 0.6)';
+        } else {
+            // Inactive: Gray with reduced opacity
+            this.ctx.fillStyle = 'rgba(102, 102, 102, 0.5)';
+            this.ctx.shadowBlur = 0;
+        }
+        
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+        
+        // Draw border
+        if (isWebGPUActive) {
+            this.ctx.strokeStyle = 'rgba(139, 92, 246, 0.8)';
+            this.ctx.lineWidth = 1.5;
+        } else {
+            this.ctx.strokeStyle = 'rgba(102, 102, 102, 0.4)';
+            this.ctx.lineWidth = 1;
+        }
+        this.ctx.stroke();
+        
+        // Draw "WebGPU" text
+        this.ctx.font = 'bold 10px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        if (isWebGPUActive) {
+            this.ctx.fillStyle = '#ffffff';
+            // Subtle pulse effect
+            const pulse = Math.sin(Date.now() / 1000) * 0.1 + 0.9;
+            this.ctx.globalAlpha = pulse;
+        } else {
+            this.ctx.fillStyle = 'rgba(200, 200, 200, 0.6)';
+            this.ctx.globalAlpha = 0.6;
+        }
+        
+        this.ctx.fillText('WebGPU', centerX, centerY);
+        this.ctx.globalAlpha = 1.0;
+        
+        // Draw status indicator dot
+        const dotRadius = 3;
+        const dotX = iconX + iconWidth - dotRadius - 4;
+        const dotY = iconY + dotRadius + 4;
+        
+        if (isWebGPUActive) {
+            this.ctx.fillStyle = '#10b981'; // Green
+            this.ctx.shadowBlur = 4;
+            this.ctx.shadowColor = 'rgba(16, 185, 129, 0.8)';
+        } else {
+            this.ctx.fillStyle = 'rgba(156, 163, 175, 0.6)'; // Gray
+            this.ctx.shadowBlur = 0;
+        }
+        
+        this.ctx.beginPath();
+        this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
         
         this.ctx.restore();
     }

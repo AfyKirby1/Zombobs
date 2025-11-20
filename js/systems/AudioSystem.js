@@ -95,7 +95,12 @@ export function playMenuMusic() {
 
     // Play if not already playing
     if (menuMusic.paused) {
-        menuMusic.play().catch(e => console.log("Menu music play failed (likely autoplay block):", e));
+        menuMusic.play().catch(e => {
+            // Ignore AbortError (happens when restarting quickly)
+            if (e.name !== 'AbortError') {
+                console.log("Menu music play failed (likely autoplay block):", e);
+            }
+        });
     }
 }
 

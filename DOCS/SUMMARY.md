@@ -134,7 +134,15 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (v0.2.9)
+## Recent Updates (V0.3.0 ALPHA)
+
+- **Engine Naming & Version Update**: 
+  - Officially named the game engine "ZOMBS-XFX-NGIN V0.3.0 ALPHA"
+  - Updated all version references across the project to V0.3.0 ALPHA
+  - Added engine info box to landing page displaying engine name and version
+  - Standardized version format across UI and documentation
+
+## Previous Updates (v0.2.9)
 
 - **AI Companion System Refactoring**:
   - Extracted AI companion logic into dedicated `js/companions/CompanionSystem.js` module

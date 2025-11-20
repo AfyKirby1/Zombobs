@@ -38,6 +38,7 @@ import { createParticles, createBloodSplatter, spawnParticle, updateParticles, d
 import { inputSystem } from './systems/InputSystem.js';
 import { GameEngine } from './core/GameEngine.js';
 import { CompanionSystem } from './companions/CompanionSystem.js';
+import { WebGPURenderer } from './core/WebGPURenderer.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -66,6 +67,18 @@ const mouse = { x: 0, y: 0, isDown: false };
 // Initial resize
 resizeCanvas(gameState.player);
 window.addEventListener('resize', () => resizeCanvas(gameState.player));
+
+// Initialize WebGPU Renderer
+const webgpuRenderer = new WebGPURenderer();
+// Make renderer globally accessible for GameHUD
+window.webgpuRenderer = webgpuRenderer;
+webgpuRenderer.init().then(initialized => {
+    if (initialized) {
+        console.log('WebGPU renderer ready');
+    } else {
+        console.log('WebGPU renderer unavailable, using Canvas 2D fallback');
+    }
+});
 
 function connectToMultiplayer() {
     if (gameState.multiplayer.socket) return; // Already connected
@@ -1362,13 +1375,16 @@ function drawGame() {
         gameState.shakeAmount = 0;
     }
 
-    // Background
+    // Background - transparent if WebGPU is handling it, otherwise use Canvas 2D fallback
     const maxDimension = Math.max(canvas.width, canvas.height);
-    const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, maxDimension / 1.5);
-    bgGradient.addColorStop(0, '#1a1a1a');
-    bgGradient.addColorStop(1, '#0d0d0d');
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!webgpuRenderer || !webgpuRenderer.isAvailable()) {
+        const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, maxDimension / 1.5);
+        bgGradient.addColorStop(0, '#1a1a1a');
+        bgGradient.addColorStop(1, '#0d0d0d');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
 
     const groundPattern = initGroundPattern();
     if (groundPattern) {
@@ -1709,6 +1725,11 @@ gameEngine.draw = () => {
         gameState.fps = Math.round((gameState.framesSinceFpsUpdate * 1000) / (now - gameState.lastFpsUpdateTime));
         gameState.framesSinceFpsUpdate = 0;
         gameState.lastFpsUpdateTime = now;
+    }
+
+    // Render WebGPU layer (background/compute)
+    if (webgpuRenderer && webgpuRenderer.isAvailable()) {
+        webgpuRenderer.render(0); // dt not needed for basic clear
     }
 
     if (gameState.showCoopLobby) {

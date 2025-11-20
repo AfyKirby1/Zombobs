@@ -1,10 +1,10 @@
 # My Thoughts
 
-## Current State [2025-11-19]
+## Current State [2025-01-XX]
 
-The project has reached **v0.2.5** with a solid foundation. The modular ES6 architecture is working well, and we've added visual polish, controller support, and comprehensive documentation.
+The project has reached **V0.3.0 ALPHA** with a solid foundation. The modular ES6 architecture is working well, and we've added visual polish, controller support, and comprehensive documentation. The game engine has been officially named "ZOMBS-XFX-NGIN V0.3.0 ALPHA".
 
-### Recent Achievements (v0.2.5)
+### Recent Achievements (V0.3.0 ALPHA)
 1.  **Local Co-op Implementation**: Successfully added 2-player local co-op mode
     - Solved input handling complexity by allowing flexible assignment (P1 Mouse + P2 Gamepad, or P1 Gamepad + P2 Gamepad)
     - Refactored core `gameState` to support N players without breaking single-player logic
@@ -28,7 +28,8 @@ The project has reached **v0.2.5** with a solid foundation. The modular ES6 arch
     - Improved technical details display
 7.  **Style Guide**: Created comprehensive design system documentation (`STYLE_GUIDE.md`) to maintain visual consistency
 8.  **Documentation Sync**: All major docs (CHANGELOG, SUMMARY, ARCHITECTURE, SCRATCHPAD, SBOM) updated and aligned
-9.  **Version Management**: Properly versioned to 0.2.5 across package.json, launch.ps1, and landing page
+9.  **Version Management**: Properly versioned to V0.3.0 ALPHA across package.json, launch.ps1, and landing page
+10. **Engine Naming**: Officially named the game engine "ZOMBS-XFX-NGIN V0.3.0 ALPHA" with dedicated info box on landing page
 10. **HUD Polish**: Added UI indicators for all power-ups (Speed, Rapid Fire, Shield), ensuring players know exactly how long buffs last.
 
 ### Immediate Focus

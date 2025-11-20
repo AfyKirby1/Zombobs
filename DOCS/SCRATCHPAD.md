@@ -87,6 +87,11 @@
   - Renamed `initGrassPattern()` to `initGroundPattern()` for clarity
   - Increased ground pattern opacity from 0.4 to 0.6 for better visibility
 
+### Version V0.3.0 ALPHA Release [2025-01-XX]
+- ✅ **Version Bump**: Updated to V0.3.0 ALPHA across all relevant files
+- ✅ **Engine Naming**: Officially named the game engine "ZOMBS-XFX-NGIN V0.3.0 ALPHA"
+- ✅ **Engine Info Box**: Added engine name and version display to landing page
+
 ### Version 0.2.5 Release [2025-01-XX]
 - ✅ **Version Bump**: Updated to v0.2.5 across all relevant files
 - ✅ **Visual Upgrade**: Replaced procedural grass pattern with textured bloody dark floor tile

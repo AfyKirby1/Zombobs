@@ -2,6 +2,17 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.3.0] - 2025-01-XX
+
+### Changed
+- **Version Bump**: Updated all version references across the project to V0.3.0 ALPHA
+  - Updated `index.html` landing page version display and added engine info box
+  - Updated `server/package.json` version to 0.3.0
+  - Updated `launch.ps1` server banner version
+  - Updated documentation files (SUMMARY.md, My_Thoughts.md, SCRATCHPAD.md, ITCH_IO_GUIDE.md)
+- **Engine Naming**: Officially named the game engine "ZOMBS-XFX-NGIN V0.3.0 ALPHA"
+  - Engine info box added to landing page displaying engine name and version
+
 ## [0.2.10] - 2025-01-XX
 
 ### Added
