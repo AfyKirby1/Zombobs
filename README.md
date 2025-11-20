@@ -230,6 +230,18 @@ Classic survival mode. Just you against the horde. How long can you last?
 
 *All controls are fully customizable in the Settings menu*
 
+### ⚙️ Settings & Customization
+
+The game features a comprehensive settings panel with vertical scrolling and organized sections:
+
+- **Audio Settings**: Master, Music, and SFX volume controls with independent sliders
+- **Video Settings**: Quality presets, screen shake intensity, crosshair styles, damage number display, FPS limits, and visual toggles
+- **Gameplay Settings**: Auto-sprint, FPS counter, pause on focus loss
+- **Controls**: Keyboard/Controller toggle with separate keybind configuration for each input method
+  - Switch between keyboard and gamepad modes with a single click
+  - Rebind any key or button to your preference
+  - Settings persist across sessions via localStorage
+
 ---
 
 ## 🛠️ Technology Stack

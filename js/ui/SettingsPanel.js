@@ -498,30 +498,100 @@ export class SettingsPanel {
     }
 
     drawKeybinds(y, mouse) {
-        const controls = this.settingsManager.settings.controls;
-        const labels = {
-            moveUp: 'Move Up',
-            moveDown: 'Move Down',
-            moveLeft: 'Move Left',
-            moveRight: 'Move Right',
-            sprint: 'Sprint',
-            reload: 'Reload',
-            grenade: 'Grenade',
-            melee: 'Melee',
-            weapon1: 'Pistol',
-            weapon2: 'Shotgun',
-            weapon3: 'Rifle',
-            weapon4: 'Flamethrower'
-        };
+        const controls = this.controlMode === 'keyboard' ? 
+            this.settingsManager.settings.controls : 
+            (this.settingsManager.settings.gamepad || {});
 
-        // Toggle Switch for Scroll Wheel
-        y = this.drawToggle("Scroll Switch", "controls", "scrollWheelSwitch", y, mouse);
+        // Toggle Button (Keyboard / Controller)
+        const toggleWidth = 300;
+        const toggleHeight = 36;
+        const toggleX = this.panelX + (this.panelWidth - toggleWidth) / 2;
+        const toggleY = y + 10;
+        
+        // Background
+        this.ctx.fillStyle = COLORS.glassBg;
+        this.ctx.fillRect(toggleX, toggleY, toggleWidth, toggleHeight);
+        this.ctx.strokeStyle = COLORS.glassBorder;
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(toggleX, toggleY, toggleWidth, toggleHeight);
+        
+        // Active Selection
+        const activeX = this.controlMode === 'keyboard' ? toggleX : toggleX + toggleWidth / 2;
+        const activeGradient = this.ctx.createLinearGradient(activeX, toggleY, activeX, toggleY + toggleHeight);
+        activeGradient.addColorStop(0, COLORS.accentSoft);
+        activeGradient.addColorStop(1, COLORS.accent);
+        this.ctx.fillStyle = activeGradient;
+        this.ctx.fillRect(activeX, toggleY, toggleWidth / 2, toggleHeight);
+        
+        // Glow on active
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
+        this.ctx.strokeStyle = COLORS.accent;
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(activeX, toggleY, toggleWidth / 2, toggleHeight);
+        this.ctx.shadowBlur = 0;
+        
+        // Text
+        this.ctx.font = 'bold 14px "Roboto Mono", monospace';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.textAlign = 'center';
+        
+        this.ctx.fillStyle = this.controlMode === 'keyboard' ? COLORS.textMain : COLORS.textMuted;
+        this.ctx.fillText('KEYBOARD', toggleX + toggleWidth / 4, toggleY + toggleHeight / 2);
+        
+        this.ctx.fillStyle = this.controlMode === 'gamepad' ? COLORS.textMain : COLORS.textMuted;
+        this.ctx.fillText('CONTROLLER', toggleX + 3 * toggleWidth / 4, toggleY + toggleHeight / 2);
+
+        this.controls.push({
+            type: 'controlModeToggle',
+            x: toggleX, y: toggleY, width: toggleWidth, height: toggleHeight
+        });
+
+        y += 60;
+
+        let labels;
+        if (this.controlMode === 'keyboard') {
+            labels = {
+                moveUp: 'Move Up',
+                moveDown: 'Move Down',
+                moveLeft: 'Move Left',
+                moveRight: 'Move Right',
+                sprint: 'Sprint',
+                reload: 'Reload',
+                grenade: 'Grenade',
+                melee: 'Melee',
+                weapon1: 'Pistol',
+                weapon2: 'Shotgun',
+                weapon3: 'Rifle',
+                weapon4: 'Flamethrower'
+            };
+            // Toggle Switch for Scroll Wheel (only show for keyboard mode)
+            y = this.drawToggle("Scroll Switch", "controls", "scrollWheelSwitch", y, mouse);
+        } else {
+            labels = {
+                fire: 'Fire',
+                reload: 'Reload',
+                grenade: 'Grenade',
+                sprint: 'Sprint',
+                melee: 'Melee',
+                prevWeapon: 'Prev Weapon',
+                nextWeapon: 'Next Weapon',
+                pause: 'Pause'
+            };
+        }
 
         // Keybind List
         const keys = Object.keys(labels);
         keys.forEach(key => {
             const label = labels[key];
-            const boundKey = controls[key] || '---';
+            let boundKey = '---';
+            
+            if (this.controlMode === 'keyboard') {
+                boundKey = (controls[key] || '').toUpperCase();
+            } else {
+                boundKey = this.getGamepadButtonName(controls[key]);
+            }
+
             const rowHeight = 40;
             
             const labelX = this.panelX + this.padding + 20;
@@ -628,8 +698,8 @@ export class SettingsPanel {
         // Check controls
         for (const ctrl of this.controls) {
             // Skip controls if they are clipped (not visible in viewport)
-            // Exception: Scrollbar and Footer are static
-            if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar') {
+            // Exception: Scrollbar, Footer, and ControlModeToggle are always clickable
+            if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar' && ctrl.type !== 'controlModeToggle') {
                 if (ctrl.y < this.panelY + 80 || ctrl.y + ctrl.height > this.panelY + 80 + this.viewportHeight) {
                     continue;
                 }
@@ -653,6 +723,15 @@ export class SettingsPanel {
                 }
                 else if (ctrl.type === 'dropdown') {
                     this.activeDropdown = ctrl;
+                    return true;
+                }
+                else if (ctrl.type === 'controlModeToggle') {
+                    const relativeX = x - ctrl.x;
+                    if (relativeX < ctrl.width / 2) {
+                        this.controlMode = 'keyboard';
+                    } else {
+                        this.controlMode = 'gamepad';
+                    }
                     return true;
                 }
                 else if (ctrl.type === 'keybind') {
@@ -733,14 +812,23 @@ export class SettingsPanel {
 
     startRebind(action) {
         this.rebindingAction = action;
+        
+        if (this.controlMode === 'gamepad') {
+             inputSystem.startRebind((buttonIndex) => {
+                 this.handleGamepadRebind(buttonIndex);
+             });
+        }
     }
 
     cancelRebind() {
         this.rebindingAction = null;
+        if (this.controlMode === 'gamepad') {
+            inputSystem.cancelRebind();
+        }
     }
 
     handleRebind(key) {
-        if (!this.rebindingAction) return;
+        if (!this.rebindingAction || this.controlMode !== 'keyboard') return;
         
         // Prevent binding Escape
         if (key === 'Escape') {
@@ -751,6 +839,23 @@ export class SettingsPanel {
         const lowerKey = key.toLowerCase();
         this.settingsManager.setSetting('controls', this.rebindingAction, lowerKey);
         this.rebindingAction = null;
+    }
+    
+    handleGamepadRebind(buttonIndex) {
+        if (!this.rebindingAction || this.controlMode !== 'gamepad') return;
+        
+        this.settingsManager.setSetting('gamepad', this.rebindingAction, buttonIndex);
+        this.rebindingAction = null;
+    }
+    
+    getGamepadButtonName(index) {
+        const names = [
+            'A', 'B', 'X', 'Y', 
+            'LB', 'RB', 'LT', 'RT', 
+            'View', 'Menu', 'L3', 'R3', 
+            'D-Up', 'D-Down', 'D-Left', 'D-Right'
+        ];
+        return names[index] !== undefined ? names[index] : `Btn ${index}`;
     }
 }
 

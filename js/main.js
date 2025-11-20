@@ -37,11 +37,17 @@ window.triggerDamageIndicator = triggerDamageIndicator;
 import { createParticles, createBloodSplatter, spawnParticle, updateParticles, drawParticles } from './systems/ParticleSystem.js';
 import { inputSystem } from './systems/InputSystem.js';
 import { GameEngine } from './core/GameEngine.js';
+import { CompanionSystem } from './companions/CompanionSystem.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
 // Make gameEngine globally accessible for settings panel
 window.gameEngine = gameEngine;
+
+// Initialize Companion System
+const companionSystem = new CompanionSystem();
+// Make companionSystem globally accessible
+window.companionSystem = companionSystem;
 
 // Apply FPS limit from settings
 const initialFpsLimit = settingsManager.getSetting('video', 'fpsLimit') ?? 0;
@@ -342,14 +348,7 @@ function isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, player
 }
 
 function addAIPlayer() {
-    if (gameState.players.length >= 4) return; // Max 4 players
-    
-    const colorIndex = gameState.players.length; // Use next available color
-    const spawnOffset = gameState.players.length * 50; // Offset spawn position
-    const aiPlayer = createPlayer(canvas.width / 2 + spawnOffset, canvas.height / 2, colorIndex);
-    aiPlayer.inputSource = 'ai';
-    aiPlayer.gamepadIndex = null;
-    gameState.players.push(aiPlayer);
+    companionSystem.addCompanion();
 }
 
 function updatePlayers() {
@@ -404,94 +403,9 @@ function updatePlayers() {
         }
         // AI Player Controls
         if (player.inputSource === 'ai') {
-            const p1 = gameState.players[0];
-            const distToP1 = Math.sqrt((player.x - p1.x) ** 2 + (player.y - p1.y) ** 2);
-            const leashDistance = 500; // Max distance from P1 before forcing return
-
-            // Find nearest zombie
-            let nearestZombie = null;
-            let minDist = Infinity;
-            
-            gameState.zombies.forEach(zombie => {
-                const dx = zombie.x - player.x;
-                const dy = zombie.y - player.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearestZombie = zombie;
-                }
-            });
-
-            // Default: Follow P1 if too far
-            let wantsToMove = false;
-            
-            if (nearestZombie) {
-                const dx = nearestZombie.x - player.x;
-                const dy = nearestZombie.y - player.y;
-                const dist = minDist;
-                
-                // Face the zombie
-                player.angle = Math.atan2(dy, dx);
-
-                // Combat movement logic
-                if (dist < 200) {
-                    // Too close! Back away (Kite)
-                    moveX = -(dx / dist);
-                    moveY = -(dy / dist);
-                    wantsToMove = true;
-                } else if (distToP1 > leashDistance) {
-                    // Too far from squad, regroup towards P1 (ignoring zombie positioning slightly)
-                    const dxP1 = p1.x - player.x;
-                    const dyP1 = p1.y - player.y;
-                    const distP1 = Math.sqrt(dxP1 * dxP1 + dyP1 * dyP1);
-                    moveX = dxP1 / distP1;
-                    moveY = dyP1 / distP1;
-                    wantsToMove = true;
-                } else if (dist > 350) {
-                    // Close the gap slightly if safe
-                    moveX = (dx / dist) * 0.5; // Move slower when approaching
-                    moveY = (dy / dist) * 0.5;
-                    wantsToMove = true;
-                }
-
-                // Shooting Logic
-                // Check if we have ammo and are not reloading
-                if (!player.isReloading && player.currentAmmo > 0 && dist < 500) {
-                     // Add a small random delay or check to prevent perfect laser aim fire rate
-                     // For now, just fire if cooldown allows (shootBullet handles fire rate)
-                     const targetPos = { x: nearestZombie.x, y: nearestZombie.y };
-                     // Random inaccuracy
-                     targetPos.x += (Math.random() - 0.5) * 20;
-                     targetPos.y += (Math.random() - 0.5) * 20;
-                     
-                     shootBullet(targetPos, canvas, player);
-                } else if (player.currentAmmo <= 0 && !player.isReloading) {
-                    reloadWeapon(player);
-                }
-
-            } else {
-                // No enemies, stick close to P1
-                if (distToP1 > 150) {
-                    const dx = p1.x - player.x;
-                    const dy = p1.y - player.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    moveX = dx / dist;
-                    moveY = dy / dist;
-                    wantsToMove = true;
-                    // Face movement direction when just walking
-                    player.angle = Math.atan2(moveY, moveX);
-                }
-            }
-            
-            if (!wantsToMove) {
-                moveX = 0;
-                moveY = 0;
-            }
-            
-            // AI doesn't sprint (moves at base speed)
-            player.isSprinting = false;
-            player.speed = PLAYER_BASE_SPEED;
+            const aiMovement = companionSystem.update(player);
+            moveX = aiMovement.moveX;
+            moveY = aiMovement.moveY;
         }
         // Player 2 Controls
         else if (index === 1) {

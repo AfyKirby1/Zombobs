@@ -45,6 +45,8 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── constants.js          # Game constants and configuration
 │   │   ├── canvas.js             # Canvas initialization and management
 │   │   └── gameState.js          # Centralized game state management
+│   ├── companions/
+│   │   └── CompanionSystem.js   # AI NPC companion behavior and lifecycle
 │   ├── entities/
 │   │   ├── Bullet.js             # Bullet and FlameBullet projectile classes
 │   │   ├── Zombie.js             # Zombie classes (Normal, Fast, Exploding, Armored, Ghost, Spitter)
@@ -131,6 +133,14 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Damage multiplier and buff timers
 - Kill streak counter and timing
 - Game running/paused states
+
+## Recent Updates (v0.2.9)
+
+- **AI Companion System Refactoring**:
+  - Extracted AI companion logic into dedicated `js/companions/CompanionSystem.js` module
+  - Separated AI behavior from main game loop for better maintainability
+  - Modular structure prepares for future enhancements (roles, commands, state machines)
+  - AI behavior unchanged: still follows player, engages zombies, maintains leash distance
 
 ## Recent Updates (v0.2.6)
 

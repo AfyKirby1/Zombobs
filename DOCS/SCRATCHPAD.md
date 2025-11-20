@@ -4,6 +4,17 @@
 
 ## 2025 - Active Development Notes
 
+### AI Companion System Refactoring [2025-01-XX]
+- ✅ **CompanionSystem Module**: Extracted AI companion logic into dedicated module
+  - Created `js/companions/CompanionSystem.js` to manage AI NPC companions
+  - Separated AI behavior from main game loop (`js/main.js`)
+  - Modular structure prepares for future enhancements (roles, commands, state machines)
+  - `addCompanion()` method handles adding new AI companions
+  - `update(player)` method handles AI decision-making per frame
+  - Configurable parameters: leash distance, follow distance, combat range, kite distance
+  - Behavior unchanged: AI still follows player, engages zombies, maintains leash distance
+  - Cleaner code organization and separation of concerns
+
 ### Landing Page Visual Updates [2025-01-XX]
 - ✅ **UI Transparency**: Increased panel transparency for better visual depth
   - Dark mode card background opacity reduced from 0.65 to 0.45

@@ -2,6 +2,111 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.2.9] - 2025-01-XX
+
+### Refactoring
+- **AI Companion System** - Extracted AI companion logic into dedicated module
+  - Created `js/companions/CompanionSystem.js` to manage AI NPC companions
+  - Separated AI behavior logic from main game loop for better maintainability
+  - Modular structure prepares for future enhancements (roles, commands, state machines)
+  - AI companions now managed through `CompanionSystem` class with configurable parameters
+  - Behavior unchanged: AI still follows player, engages zombies, maintains leash distance
+
+### Technical
+- **New Module**: `js/companions/CompanionSystem.js`
+  - `addCompanion()` - Manages adding new AI companions to the game
+  - `update(player)` - Handles AI decision-making (movement, aiming, shooting) per frame
+  - Configurable parameters: leash distance, follow distance, combat range, kite distance
+  - Returns movement vectors for integration with existing physics system
+- **Main Game Loop**: Simplified AI handling in `updatePlayers()` function
+  - Replaced inline AI logic with `companionSystem.update(player)` call
+  - Cleaner separation of concerns between player input and AI behavior
+
+## [0.2.8] - 2025-01-XX
+
+### Added
+- **Vertical Scrolling Settings Panel** - Complete UI overhaul
+  - Single unified vertical list layout replacing separate views
+  - Custom scrollbar with drag support for smooth navigation
+  - All settings organized in clear sections: Audio, Video, Gameplay, Controls
+  - Scroll wheel support for easy navigation through settings
+  - Viewport clipping ensures clean rendering within panel bounds
+
+- **Keyboard/Controller Toggle** - Input mode switching
+  - Prominent toggle button at top of Controls section
+  - Switch between KEYBOARD and CONTROLLER input modes
+  - Dynamic keybind display based on selected mode
+  - Keyboard mode shows: Movement, Sprint, Reload, Grenade, Melee, Weapon hotkeys (1-4)
+  - Controller mode shows: Fire, Reload, Grenade, Sprint, Melee, Prev/Next Weapon, Pause
+  - Visual highlighting with red accent glow on active mode
+  - Separate rebinding support for keyboard and gamepad inputs
+
+- **Enhanced Audio Settings** - Granular volume control
+  - **Master Volume**: Overall game audio control
+  - **Music Volume**: Separate control for background music (default 50%)
+  - **SFX Volume**: Independent control for sound effects (default 100%)
+  - All volumes work independently with master volume as final multiplier
+  - Real-time audio updates when sliders are adjusted
+
+- **Gameplay Settings Section** - New category for gameplay preferences
+  - **Auto Sprint**: Toggle sprint-by-default behavior (migrated from video settings)
+  - **Show FPS**: Toggle FPS counter visibility in top-right corner
+  - **Pause on Focus Loss**: Automatically pause game when window loses focus (enabled by default)
+
+### Changed
+- **Settings Panel Layout** - Complete refactoring
+  - Removed separate "Main", "Controls", and "Video" views
+  - Consolidated into single scrollable vertical list
+  - Improved visual hierarchy with section headers
+  - Better spacing and organization of settings
+  - All settings accessible without switching views
+
+- **Settings Organization** - Improved categorization
+  - Audio settings grouped together (Master, Music, SFX volumes)
+  - Video settings expanded with quality presets and custom options
+  - Gameplay settings separated into dedicated section
+  - Controls section now includes input mode toggle and keybinds
+
+- **Control Mode Display** - Context-aware keybind rendering
+  - Keyboard mode shows keyboard-specific bindings only
+  - Controller mode shows XInput/gamepad button mappings
+  - "Scroll Switch" toggle only appears in keyboard mode
+  - Button names displayed with proper formatting (A, B, X, Y, LB, RB, etc.)
+
+- **Settings Persistence** - Enhanced migration support
+  - Auto-sprint setting automatically migrated from video to gameplay category
+  - Backward compatibility maintained for existing saved settings
+  - New settings merge seamlessly with existing preferences
+
+### Technical
+- **SettingsPanel Class** - Major refactoring
+  - New scrolling system with `scrollY`, `targetScrollY`, `contentHeight`, `viewportHeight`
+  - Custom scrollbar rendering with hover and drag states
+  - Viewport clipping using `ctx.clip()` for clean rendering
+  - Helper methods: `drawSectionHeader()`, `drawSlider()`, `drawToggle()`, `drawDropdown()`, `drawKeybinds()`
+  - `handleWheel()` method for scroll wheel support
+  - `controlMode` property to track keyboard vs gamepad mode
+  - `getGamepadButtonName()` helper for displaying button names
+
+- **Audio System Updates**:
+  - `sfxGainNode` added for separate SFX volume control
+  - `menuMusicGain` connected to master gain node
+  - All SFX routed through `sfxGainNode` instead of directly to master
+  - `setMusicVolume()` and `setSfxVolume()` functions for real-time updates
+  - `updateAudioSettings()` function to sync all volume settings
+
+- **Input System Integration**:
+  - `startRebind()` now handles both keyboard and gamepad rebinding
+  - Gamepad rebinding uses `inputSystem.startRebind()` callback pattern
+  - `handleGamepadRebind()` method for processing gamepad button assignments
+  - Proper cleanup in `cancelRebind()` for both input types
+
+- **Main Game Logic**:
+  - Wheel event listener updated to pass events to settings panel
+  - Window blur/focus listeners for `pauseOnFocusLoss` setting
+  - FPS counter rendering respects `gameplay.showFps` setting
+  - Auto-sprint checks updated to use `gameplay` category instead of `video`
+
 ## [0.2.7] - 2025-01-XX
 
 ### Added

@@ -8,8 +8,9 @@ The game has been refactored into a modular ES6 architecture:
 - `css/style.css`: Visual styling
 - `js/main.js`: Main game loop and initialization (entry point)
 - `js/core/`: Core game systems (constants, canvas, game state)
+- `js/companions/`: AI NPC companion system (CompanionSystem)
 - `js/entities/`: Game entity classes (Bullet, Zombie, Particle, etc.)
-- `js/systems/`: Game systems (Audio, Graphics, Particle, Settings)
+- `js/systems/`: Game systems (Audio, Graphics, Particle, Settings, Input)
 - `js/ui/`: User interface components (HUD, Settings Panel)
 - `js/utils/`: Utility functions (combat, game utilities)
 
@@ -293,6 +294,41 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `systems/SettingsManager.js`, `systems/AudioSystem.js`
 
+### Companion Modules (`js/companions/`)
+
+#### CompanionSystem.js
+**Purpose**: AI NPC companion behavior and lifecycle management
+
+**Exports**: `CompanionSystem` class
+
+**Methods**:
+- `addCompanion()` - Creates and adds a new AI companion to the game
+  - Returns the created companion player object, or null if max reached
+  - Automatically assigns color and spawn position
+  - Sets `inputSource` to 'ai' for identification
+- `update(player)` - Updates AI companion behavior for a single frame
+  - Determines movement, aiming, and shooting decisions
+  - Modifies player object directly (angle, isSprinting, speed)
+  - Returns movement vector {moveX, moveY} for physics integration
+
+**Features**:
+- **Following Behavior**: Maintains preferred distance from player 1 (150px when idle)
+- **Leash System**: Forces return to player 1 if too far (500px max distance)
+- **Combat AI**: Engages nearest zombie within range (500px)
+  - Kites away if too close (200px)
+  - Approaches if safe distance (350px+)
+  - Faces and shoots at nearest zombie
+- **Ammo Management**: Automatically reloads when empty
+- **Shooting**: Fires at zombies with slight random inaccuracy for realism
+- **Configurable Parameters**: All distances and ranges are configurable class properties
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `utils/combatUtils.js`
+
+**Future Enhancements** (Prepared Structure):
+- Support for different companion roles (Medic, Sniper, etc.)
+- Command system (HOLD, ATTACK, FOLLOW)
+- State machine for complex behaviors (Idle, Combat, Revive)
+
 ### Utility Modules (`js/utils/`)
 
 #### combatUtils.js
@@ -328,7 +364,7 @@ This modular structure improves maintainability, testability, and scalability.
 **Purpose**: Game loop, initialization, and event handlers
 
 **Responsibilities**:
-- Initialize game systems
+- Initialize game systems (including `CompanionSystem`)
 - Set up event listeners
 - Run game loop (`gameLoop()`)
 - Coordinate all modules
@@ -336,8 +372,14 @@ This modular structure improves maintainability, testability, and scalability.
 - Handle melee attacks (`performMeleeAttack`)
 - Update game state (`updateGame()`)
 - Render game (`drawGame()`)
+- Delegate AI companion updates to `CompanionSystem`
 
 **Dependencies**: All other modules
+
+**AI Companion Integration**:
+- `addAIPlayer()` function delegates to `companionSystem.addCompanion()`
+- `updatePlayers()` calls `companionSystem.update(player)` for AI-controlled players
+- Movement vectors returned from `CompanionSystem` integrated with existing physics
 
 ## Game Systems
 

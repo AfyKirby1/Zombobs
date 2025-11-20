@@ -12,99 +12,122 @@ A beginner-friendly settings panel that allows players to customize their gaming
 
 ---
 
-## Phase 1: Core Settings Panel (MVP)
+## Phase 1: Core Settings Panel (MVP) ✅ **COMPLETED**
 
-### 1.1 Panel Structure
+### 1.1 Panel Structure ✅
 - **Access Points**:
-  - Main menu "Settings" button (currently disabled)
-  - Pause menu "Settings" option
-  - ESC key to close settings and return to previous screen
+  - Main menu "Settings" button ✅
+  - Pause menu "Settings" option ✅
+  - ESC key to close settings and return to previous screen ✅
 - **Layout**: 
-  - Centered modal overlay with dark semi-transparent background
-  - Scrollable list of setting categories (if needed)
-  - "Back" button to return to previous screen
-  - "Reset to Defaults" button (optional for MVP)
+  - Centered modal overlay with dark semi-transparent background ✅
+  - **Vertical scrolling list** with custom scrollbar ✅
+  - Scroll wheel support for navigation ✅
+  - "Back" button to return to previous screen ✅
+  - All settings in single unified view (no separate tabs) ✅
 
-### 1.2 Audio Settings
+### 1.2 Audio Settings ✅ **IMPLEMENTED**
 **Priority: HIGH** - Essential for user experience
 
-| Setting | Type | Range/Options | Default | Description |
-|---------|------|---------------|---------|-------------|
-| **Master Volume** | Slider | 0-100% | 100% | Controls overall game audio volume |
-| **SFX Volume** | Slider | 0-100% | 100% | Controls sound effects (gunshots, explosions, kills, damage) |
-| **Music Volume** | Slider | 0-100% | 100% | Controls background music (if added later) |
-| **Mute All** | Toggle | On/Off | Off | Quick mute/unmute for all audio |
+| Setting | Type | Range/Options | Default | Status |
+|---------|------|---------------|---------|--------|
+| **Master Volume** | Slider | 0-100% | 100% | ✅ Implemented |
+| **SFX Volume** | Slider | 0-100% | 100% | ✅ Implemented |
+| **Music Volume** | Slider | 0-100% | 50% | ✅ Implemented |
+| **Mute All** | Toggle | On/Off | Off | ⏳ Future Enhancement |
 
 **Implementation Notes**:
-- Sliders use HTML5 range inputs or custom canvas sliders
-- Real-time preview: play a test sound when slider is adjusted
-- Visual indicator shows current volume level
-- SFX and Music volumes are relative to Master Volume (Master × SFX = final SFX volume)
+- ✅ Custom canvas sliders with visual feedback
+- ✅ Real-time audio updates when sliders adjusted
+- ✅ Visual indicator shows current volume level (percentage)
+- ✅ SFX and Music volumes are relative to Master Volume (Master × SFX = final SFX volume)
+- ✅ Separate gain nodes for music and SFX in audio system
+- ✅ Settings persist to localStorage automatically
 
-**Storage Key**: `zombobs_settings_audio`
+**Storage Key**: `zombobs_settings` (unified storage)
 
 ---
 
-### 1.3 Graphics Settings
+### 1.3 Video Settings ✅ **IMPLEMENTED** (Expanded)
 **Priority: MEDIUM** - Performance and visual customization
 
-| Setting | Type | Range/Options | Default | Description |
-|---------|------|---------------|---------|-------------|
-| **Screen Shake Intensity** | Slider | 0-200% | 100% | Controls camera shake intensity (0% = disabled) |
-| **Particle Effects** | Toggle | On/Off | On | Enable/disable particle effects (blood, sparks, muzzle flash) |
-| **Show FPS Counter** | Toggle | On/Off | On | Display FPS counter in top-right corner |
-| **Render Quality** | Dropdown | Low/Medium/High | High | Adjusts particle count and visual effects (performance vs quality) |
+| Setting | Type | Range/Options | Default | Status |
+|---------|------|---------------|---------|--------|
+| **Quality Preset** | Dropdown | Low/Medium/High/Custom | High | ✅ Implemented |
+| **Particle Count** | Slider | 50-500 | 200 | ✅ Implemented (Custom preset only) |
+| **Screen Shake Intensity** | Slider | 0-100% | 100% | ✅ Implemented |
+| **Crosshair Style** | Dropdown | Default/Dot/Cross/Circle | Default | ✅ Implemented |
+| **Dynamic Crosshair** | Toggle | On/Off | On | ✅ Implemented |
+| **Damage Numbers** | Dropdown | Floating/Stacking/Off | Floating | ✅ Implemented |
+| **Vignette** | Toggle | On/Off | On | ✅ Implemented (Custom preset only) |
+| **Shadows** | Toggle | On/Off | On | ✅ Implemented (Custom preset only) |
+| **Lighting** | Toggle | On/Off | On | ✅ Implemented (Custom preset only) |
+| **Low Health Warning** | Toggle | On/Off | On | ✅ Implemented |
+| **Enemy Health Bars** | Toggle | On/Off | On | ✅ Implemented |
+| **Reload Bar** | Toggle | On/Off | On | ✅ Implemented |
+| **Show Debug Stats** | Toggle | On/Off | Off | ✅ Implemented |
+| **FPS Limit** | Dropdown | OFF/30/60/120 | OFF | ✅ Implemented |
 
 **Implementation Notes**:
-- Screen shake slider: 0% = no shake, 100% = default, 200% = double intensity
-- Particle toggle: When off, disable all particle creation (performance boost)
-- Render Quality affects:
-  - Max particles on screen (Low: 50, Medium: 100, High: 200)
-  - Blood splatter particle count
-  - Muzzle flash complexity
+- ✅ Quality presets automatically configure particle count and visual effects
+- ✅ Custom preset allows granular control over individual settings
+- ✅ Screen shake slider: 0% = no shake, 100% = default intensity
+- ✅ FPS limit applies immediately when changed
+- ✅ All settings persist to localStorage
 
-**Storage Key**: `zombobs_settings_graphics`
+**Storage Key**: `zombobs_settings` (unified storage)
 
 ---
 
-### 1.4 Gameplay Settings
-**Priority: LOW** - Nice-to-have customization
+### 1.4 Gameplay Settings ✅ **IMPLEMENTED**
+**Priority: MEDIUM** - Gameplay customization
 
-| Setting | Type | Range/Options | Default | Description |
-|---------|------|---------------|---------|-------------|
-| **Auto-Reload** | Toggle | On/Off | On | Automatically reload when ammo reaches 0 |
-| **Show Damage Numbers** | Toggle | On/Off | On | Display floating damage numbers on hits |
-| **Show Crosshair** | Toggle | On/Off | On | Display aiming crosshair at mouse cursor |
-| **Difficulty Preset** | Dropdown | Easy/Normal/Hard | Normal | Adjusts starting zombie stats (future feature) |
+| Setting | Type | Range/Options | Default | Status |
+|---------|------|---------------|---------|--------|
+| **Auto Sprint** | Toggle | On/Off | Off | ✅ Implemented |
+| **Show FPS** | Toggle | On/Off | Off | ✅ Implemented |
+| **Pause on Focus Loss** | Toggle | On/Off | On | ✅ Implemented |
+| **Auto-Reload** | Toggle | On/Off | On | ⏳ Future Enhancement |
+| **Difficulty Preset** | Dropdown | Easy/Normal/Hard | Normal | ⏳ Future Enhancement |
 
 **Implementation Notes**:
-- Auto-reload toggle: When off, player must manually press R to reload
-- Damage numbers toggle: Controls visibility of floating damage text
-- Crosshair toggle: Shows/hides the custom crosshair reticle
-- Difficulty preset: Placeholder for future difficulty system
+- ✅ Auto Sprint: Toggles sprint-by-default behavior (migrated from video settings)
+- ✅ Show FPS: Controls FPS counter visibility in top-right corner
+- ✅ Pause on Focus Loss: Automatically pauses game when browser window loses focus
+- ✅ All settings persist to localStorage
+- ⏳ Auto-reload toggle: Future enhancement for manual reload requirement
+- ⏳ Difficulty preset: Placeholder for future difficulty system
 
-**Storage Key**: `zombobs_settings_gameplay`
+**Storage Key**: `zombobs_settings` (unified storage)
 
 ---
 
-## Phase 2: Advanced Settings (Future)
+## Phase 2: Advanced Settings
 
-### 2.1 Control Settings
-**Priority: LOW** - Advanced customization
+### 2.1 Control Settings ✅ **PARTIALLY IMPLEMENTED**
+**Priority: HIGH** - Essential customization
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| **Key Bindings** | Key Remap | Allow players to rebind movement, shooting, weapon switching, reload, grenade keys |
-| **Mouse Sensitivity** | Slider | Adjust mouse aiming sensitivity (if needed) |
-| **Invert Y-Axis** | Toggle | Invert vertical mouse movement (for aiming) |
+| Setting | Type | Status | Description |
+|---------|------|--------|-------------|
+| **Input Mode Toggle** | Toggle | ✅ Implemented | Switch between KEYBOARD and CONTROLLER modes |
+| **Keyboard Key Bindings** | Key Remap | ✅ Implemented | Rebind movement, shooting, weapon switching, reload, grenade keys |
+| **Controller Button Bindings** | Button Remap | ✅ Implemented | Rebind gamepad buttons for all actions |
+| **Scroll Wheel Switch** | Toggle | ✅ Implemented | Enable/disable scroll wheel weapon switching (keyboard only) |
+| **Mouse Sensitivity** | Slider | ⏳ Future | Adjust mouse aiming sensitivity |
+| **Invert Y-Axis** | Toggle | ⏳ Future | Invert vertical mouse movement (for aiming) |
 
 **Implementation Notes**:
-- Key binding UI: Click setting → Press new key → Save
-- Prevent duplicate key bindings
-- Show current key bindings in settings
-- Reset to defaults option
+- ✅ Keyboard/Controller toggle button at top of Controls section
+- ✅ Key binding UI: Click setting → Press new key → Save
+- ✅ Gamepad binding UI: Click setting → Press controller button → Save
+- ✅ Shows current key/button bindings in settings
+- ✅ Separate bindings for keyboard and gamepad modes
+- ✅ Button names displayed properly (A, B, X, Y, LB, RB, RT, LT, etc.)
+- ✅ Settings persist to localStorage
+- ⏳ Duplicate key binding prevention: Future enhancement
+- ⏳ Reset to defaults option: Future enhancement
 
-**Storage Key**: `zombobs_settings_controls`
+**Storage Key**: `zombobs_settings` (unified storage)
 
 ---
 
@@ -153,55 +176,90 @@ A beginner-friendly settings panel that allows players to customize their gaming
   - Text: #ffffff (white)
   - Disabled: #666666 (gray)
 
-### Layout Structure
+### Layout Structure ✅ **IMPLEMENTED**
 ```
 ┌─────────────────────────────────────┐
 │         SETTINGS                     │
+│  ─────────────────────────────────   │
 │                                     │
-│  ┌───────────────────────────────┐ │
-│  │  🔊 Audio                      │ │
-│  │  Master Volume:  [━━━━━━━━━]  │ │
-│  │  SFX Volume:     [━━━━━━━━━]  │ │
-│  │  Music Volume:   [━━━━━━━━━]  │ │
-│  │  Mute All:       [●] On       │ │
-│  └───────────────────────────────┘ │
+│  🔊 AUDIO                            │
+│  ─────────────────────────────────   │
+│  Master Volume:  [━━━━━━━━━] 100%  │
+│  Music Volume:    [━━━━━━━━━]  50%  │
+│  SFX Volume:      [━━━━━━━━━] 100%  │
 │                                     │
-│  ┌───────────────────────────────┐ │
-│  │  🎨 Graphics                   │ │
-│  │  Screen Shake:   [━━━━━━━━━]  │ │
-│  │  Particles:      [●] On       │ │
-│  │  FPS Counter:    [●] On       │ │
-│  │  Render Quality: [▼] High     │ │
-│  └───────────────────────────────┘ │
+│  🎨 VIDEO                            │
+│  ─────────────────────────────────   │
+│  Quality Preset:  [▼] High          │
+│  Screen Shake:    [━━━━━━━━━] 100%  │
+│  Crosshair Style: [▼] Default       │
+│  Dynamic Crosshair: [●] On          │
+│  Damage Numbers:  [▼] Floating      │
+│  Low Health Warning: [●] On          │
+│  Enemy Health Bars: [●] On          │
+│  Reload Bar:       [●] On          │
+│  Show Debug Stats: [○] Off         │
+│  FPS Limit:        [▼] OFF         │
 │                                     │
-│  ┌───────────────────────────────┐ │
-│  │  🎮 Gameplay                   │ │
-│  │  Auto-Reload:    [●] On       │ │
-│  │  Damage Numbers: [●] On       │ │
-│  │  Crosshair:      [●] On       │ │
-│  └───────────────────────────────┘ │
+│  🎮 GAMEPLAY                         │
+│  ─────────────────────────────────   │
+│  Auto Sprint:        [○] Off       │
+│  Show FPS:           [○] Off       │
+│  Pause on Focus Loss: [●] On       │
 │                                     │
-│  [Reset to Defaults]  [Back]        │
+│  🎮 CONTROLS                         │
+│  ─────────────────────────────────   │
+│  [ KEYBOARD ] [ CONTROLLER ]        │
+│                                     │
+│  Move Up:      [ W ]                │
+│  Move Down:    [ S ]                │
+│  Move Left:    [ A ]                │
+│  Move Right:   [ D ]                │
+│  Sprint:       [ SHIFT ]            │
+│  Reload:       [ R ]                │
+│  ... (scrollable)                   │
+│                                     │
+│              [ BACK ]               │
+│                                     │
+│  [Scrollbar]                        │
 └─────────────────────────────────────┘
 ```
 
-### Interaction Design
-- **Sliders**: 
-  - Click and drag to adjust
-  - Click on track to jump to position
-  - Show numeric value next to slider
-  - Real-time preview for audio sliders
-- **Toggles**: 
-  - Large clickable areas
-  - Visual on/off state (filled circle = on, empty = off)
-  - Smooth animation on toggle
-- **Dropdowns**: 
-  - Click to open, click option to select
-  - Highlight current selection
-- **Navigation**:
-  - Tab key to cycle through settings
-  - Enter/Space to toggle/activate
-  - ESC to close settings panel
+### Interaction Design ✅ **IMPLEMENTED**
+- **Sliders**: ✅
+  - Click and drag to adjust ✅
+  - Click on track to jump to position ✅
+  - Show numeric value next to slider (percentage or number) ✅
+  - Real-time preview for audio sliders ✅
+  - Visual handle with hover glow effect ✅
+- **Toggles**: ✅
+  - Large clickable areas ✅
+  - Visual on/off state (red filled = on, gray = off) ✅
+  - Smooth animation on toggle ✅
+  - White circular handle indicator ✅
+- **Dropdowns**: ✅
+  - Click to open, click option to select ✅
+  - Highlight current selection with red accent ✅
+  - Dropdown menu appears below control ✅
+- **Scrollbar**: ✅
+  - Custom scrollbar on right side of panel ✅
+  - Click and drag to scroll ✅
+  - Scroll wheel support ✅
+  - Visual thumb with hover effect ✅
+- **Keybind Rebinding**: ✅
+  - Click keybind button to enter rebind mode ✅
+  - Press new key/button to assign ✅
+  - Visual feedback during rebinding (red highlight) ✅
+  - Escape key cancels rebinding ✅
+- **Input Mode Toggle**: ✅
+  - Click left half for KEYBOARD mode ✅
+  - Click right half for CONTROLLER mode ✅
+  - Active mode highlighted with red gradient ✅
+- **Navigation**: ⏳
+  - ESC to close settings panel ✅
+  - Scroll wheel for navigation ✅
+  - ⏳ Tab key navigation: Future enhancement
+  - ⏳ Enter/Space activation: Future enhancement
 
 ---
 
@@ -369,24 +427,37 @@ localStorage.setItem('zombobs_settings', JSON.stringify({
 
 ---
 
-## Success Metrics
+## Success Metrics ✅ **ACHIEVED**
 - ✅ Settings panel accessible from main menu and pause menu
 - ✅ All Phase 1 settings functional and persistent
 - ✅ Zero performance impact when settings panel is closed
 - ✅ Settings apply immediately without requiring restart
-- ✅ User can reset to defaults easily
 - ✅ Settings survive page reload
+- ✅ Vertical scrolling works smoothly with scrollbar and wheel
+- ✅ Keyboard and Controller modes fully functional
+- ✅ All audio settings work independently
+- ✅ Video settings apply in real-time
+- ⏳ Reset to defaults: Future enhancement
 
 ---
 
 ## Next Steps
-1. **Implement SettingsManager class** - Core settings management
-2. **Create SettingsPanel UI component** - Visual settings interface
-3. **Integrate with existing systems** - Apply settings to audio, graphics, gameplay
-4. **Add localStorage persistence** - Save and load settings
-5. **Test and polish** - Ensure smooth UX and functionality
+1. ✅ **SettingsManager class** - Core settings management (COMPLETED)
+2. ✅ **SettingsPanel UI component** - Visual settings interface (COMPLETED)
+3. ✅ **Integration with existing systems** - Apply settings to audio, graphics, gameplay (COMPLETED)
+4. ✅ **localStorage persistence** - Save and load settings (COMPLETED)
+5. ✅ **Test and polish** - Smooth UX and functionality (COMPLETED)
+
+### Future Enhancements
+1. ⏳ **Reset to Defaults** button - Quick way to restore all settings
+2. ⏳ **Keyboard Navigation** - Tab key to cycle through settings
+3. ⏳ **Mouse Sensitivity** slider - Adjust aiming sensitivity
+4. ⏳ **Invert Y-Axis** toggle - For inverted mouse controls
+5. ⏳ **Duplicate Key Prevention** - Warn when binding same key twice
+6. ⏳ **Settings Profiles** - Multiple player profiles with different settings
+7. ⏳ **Import/Export Settings** - Share settings via JSON
 
 ---
 
-*Last Updated: Based on current game architecture and roadmap*
+*Last Updated: 2025-01-XX - Phase 1 Complete, Phase 2 In Progress*
 

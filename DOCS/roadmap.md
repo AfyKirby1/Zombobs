@@ -254,6 +254,91 @@
 - [ ] **Advanced Sound Design** - Add more detailed audio cues, like distinct footstep sounds and more varied zombie vocalizations 🟡
 - [ ] **Survivor Companion** - AI-controlled ally that assists in combat 🔴
 - [ ] **AI Companion Roles/Classes** - Different AI companion specializations: Medic (heals, revives faster), Heavy Gunner/Tank (tanky, high damage), Scout (fast, marks enemies), Engineer (repairs base, sets traps). Choose 1-3 companions before starting, each with unique abilities and visual distinction (colors/icons per class) 🔴
+
+---
+
+## Phase 9: Advanced Systems & Infrastructure 🚀
+
+### Gameplay Features
+
+- [ ] **Dynamic Weather System** - Real-time weather changes affecting visibility, movement speed, and zombie behavior (rain reduces accuracy, fog limits vision, wind affects projectile trajectories) 🔴
+- [ ] **Procedural Level Generation** - Algorithmic map creation with configurable parameters for size, difficulty zones, loot distribution, and environmental hazards 🔴
+- [ ] **Advanced Character Customization** - Deep skill trees with branching paths, visual appearance options, and personalized loadout configurations 🟡
+- [ ] **Multiplayer Cooperative Mode** - Full online co-op with shared objectives, synchronized wave progression, and team-based rewards 🔴
+- [ ] **Competitive PvP Arena** - Player vs player combat modes with ranking system, seasonal leaderboards, and skill-based matchmaking 🔴
+- [ ] **Crafting System** - Resource gathering from environment and enemies, combined with blueprints to create weapons, ammo, and utility items 🟡
+- [ ] **Day/Night Cycle** - Dynamic time progression affecting zombie aggression, spawn rates, and special nocturnal enemy types 🟡
+- [ ] **Interactive Environmental Objects** - Physics-enabled objects like explosive barrels, destructible walls, and movable barricades 🟡
+- [ ] **Mini-Games & Side Activities** - Skill-based challenges between waves offering unique rewards and temporary buffs 🟢
+- [ ] **Dynamic Difficulty Adjustment** - AI-driven system analyzing player performance to adjust spawn rates, enemy health, and loot frequency in real-time 🔴
+
+### Architectural Features
+
+- [ ] **Modular Plugin System** - Extensible architecture allowing third-party developers to add new weapons, enemies, and game modes without core code changes 🔴
+- [ ] **Data-Driven Design** - JSON configuration files controlling game balance, spawn tables, weapon stats, and upgrade costs for easy tuning 🟡
+- [ ] **Event Bus Architecture** - Decoupled communication system between game systems enabling modular feature integration 🔴
+- [ ] **Save Game Versioning** - Migration system handling save file compatibility across game updates with automatic conversion 🟡
+- [ ] **Network Synchronization Framework** - Robust state synchronization for multiplayer with lag compensation, prediction, and conflict resolution 🔴
+- [ ] **Automated Performance Profiling** - Built-in tools monitoring frame rates, memory usage, and network latency with detailed analytics 🟡
+- [ ] **Localization Support** - Infrastructure for multiple languages, regional settings, and culturally appropriate content adaptation 🟡
+- [ ] **Replay System Architecture** - Recording and playback functionality for gameplay analysis, bug reporting, and content creation 🔴
+- [ ] **AI Behavior Tree Implementation** - Hierarchical AI system enabling complex enemy behaviors, coordinated attacks, and adaptive strategies 🔴
+- [ ] **Cross-Platform Rendering** - Abstraction layer supporting multiple graphics APIs and hardware configurations for maximum compatibility 🔴
+
+### Implementation Standards
+
+- [ ] **Backward Compatibility** - All new systems maintain full compatibility with existing features and save data 🟡
+- [ ] **System Documentation** - Comprehensive architecture documentation and API references for all new subsystems 🟢
+- [ ] **Unit Test Coverage** - Automated testing framework with >80% coverage for critical game systems 🟡
+- [ ] **Gradual Multiplayer Rollout** - Phased deployment strategy for online features with fallback mechanisms 🔴
+- [ ] **Configuration Management** - Extensive options menu controlling all adjustable parameters with sensible defaults 🟢
+- [ ] **Developer Tools** - Debugging utilities, performance monitors, and testing frameworks for efficient development 🟡
+- [ ] **Analytics Integration** - Comprehensive telemetry tracking player behavior, system performance, and error reporting 🟡
+- [ ] **Performance Benchmarking** - Automated performance testing with baseline comparisons and regression detection 🔴
+- [ ] **Regression Testing** - Automated validation ensuring existing functionality remains intact after updates 🟡
+- [ ] **Update Documentation** - Detailed patch notes and player-facing change logs for all new features 🟢
+- [ ] **AI Companion Dialogue System** - Companions communicate through speech bubbles with context-aware dialogue. Personality-based responses (aggressive, calm, supportive) that react to game events like player health, enemy kills, wave completion, and boss spawns. Cross-companion conversations and warnings 🟡
+- [ ] **AI Companion Flocking Behavior** - Companions use Craig Reynolds' flocking algorithm to maintain natural group formations. Separation, alignment, and cohesion forces create organic movement patterns that prevent clustering while maintaining squad cohesion 🟡
+- [ ] **AI Companion Pathfinding & Obstacle Avoidance** - Advanced navigation system that steers companions around zombies, acid pools, and environmental obstacles. Dynamic obstacle detection with smooth avoidance vectors for realistic movement 🟡
+- [ ] **AI Companion Formation System** - Tactical formation management (wedge, line, circle, vanguard) that maintains relative positions to player. Formation switching based on combat situation. Visual formation indicators and smooth transitions between formations 🟡
+- [ ] **AI Companion Utility-Based Decision Making** - Replace hard-coded behavior with utility AI system. Actions evaluated by utility scores based on context (combat, reload, follow, pickup, cover). Highest utility action selected dynamically for more intelligent decision-making 🔴
+- [ ] **AI Companion Personality & Emotion System** - Distinct personality traits (aggressive, calm, supportive, cautious, reckless) that affect behavior, dialogue, and combat style. Dynamic emotions (happy, angry, scared, determined) that change based on game events and influence decision-making 🟡
+- [ ] **AI Companion Dynamic Reaction System** - Event-triggered reactions that temporarily modify behavior. Boss spawn increases aggression, player low health triggers protective behavior, companion downed causes emotional response. Contextual reactions with duration-based effects 🟡
+- [ ] **AI Companion Memory & Learning System** - Companions remember past events (player saved, companion died, boss defeated) and learn from experience. Bad experiences make companions more cautious, good experiences increase confidence. Memory influences future behavior decisions 🟡
+- [ ] **AI Companion Advanced Combat Tactics** - Sophisticated combat strategies including flanking, suppressing fire, focus fire coordination, and covering fire. Situation analysis selects optimal tactic. Companions coordinate with each other for tactical advantages 🔴
+- [ ] **AI Companion Cross-Companion Communication** - Companions communicate with each other through dialogue and behavior. Warnings broadcast to squad, tactical coordination messages, and emotional responses to each other's actions. Creates sense of team cohesion 🟡
+- [ ] **AI Companion Goal-Oriented Action Planning (GOAP)** - Companions plan sequences of actions to achieve goals (survive, protect player, eliminate threats, collect resources). A* search through action space considering preconditions and effects for intelligent multi-step planning 🔴
+- [ ] **AI Companion Predictive Aiming** - Companions predict zombie movement trajectories and lead targets for better accuracy. Accounts for zombie speed, direction changes, and projectile travel time. More realistic and effective combat behavior 🟡
+
+---
+
+## Phase 7: Co-op Play & Social Systems 🤝
+
+- [ ] **Matchmaking & Server Browser** - Online lobby with server browser, filters, regions, and private invite-only lobbies 🔴
+- [ ] **Drop-in/Drop-out Co-op** - Seamless join mid-run with auto-scaling difficulty and host migration on disconnect 🔴
+- [ ] **Map Voting & Rotation** - Vote for next map or modifier from a short list between runs 🟡
+- [ ] **Co-op Roles & Skill Trees** - Player-selectable roles (Medic/Engineer/Scout/Tank) with unique actives/passives and team synergy bonuses 🔴
+- [ ] **Team Perk Combos** - Perks that activate stronger effects when specific role combos are present (e.g., Engineer+Medic = fast healing station) 🟡
+- [ ] **Shared Objectives & Side Quests** - In-run tasks like repairing generators, escorting NPCs, or securing supply points for bonus scrap/XP 🟡
+- [ ] **Boss Rush Co-op Mode** - Chain of escalating boss fights with limited resources and team score tracking 🟡
+- [ ] **Generator Defense Mode** - Defend a power core with build/repair phases between waves 🟡
+- [ ] **Dynamic Map Events** - Blood Moon, blackout, fog banks, acid rain—each with unique enemy behaviors and team counterplay 🟡
+- [ ] **Supply Drop Call-In** - Spend scrap to call air-dropped crates; team votes on one of three upgrade choices 🟡
+- [ ] **Team Revive Beacon** - Deployable beacon that enables respawn after a defended channel; limited charges per run 🟡
+- [ ] **Portable Turret & Support Drone** - Team-deployable gadgets with shared ammo and cooldowns; synergize with Engineer role 🟡
+- [ ] **Tactical Field Upgrades** - Random upgrade stations offering time-limited buffs to damage, healing, or defense 🟡
+- [ ] **Shared Stash & Team Loadouts** - Pre-run shared stash and safehouse banks to coordinate complementary weapons/attachments 🟡
+- [ ] **Radial Ping Wheel & Context Actions** - Expanded ping menu for commands like “Need ammo”, “Defend here”, “Boss incoming” 🟢
+- [ ] **Emotes & Sprays** - Nonverbal comms and fun cosmetics usable in lobby and in-run 🟢
+- [ ] **Cross-Play Invites & Friends List** - Platform-agnostic friend system with party invites and presence 🔴
+- [ ] **Join-In-Progress Spectator → Player** - New players spectate until next wave, then choose a safehouse spawn 🟡
+- [ ] **Party Size Difficulty Scaling** - Auto-adjust enemy count/health/drops with clear UI indicator of scaling 🟡
+- [ ] **Team Challenges & Weekly Ops** - Rotating co-op objectives with unique rewards and score modifiers 🟡
+- [ ] **Post-Game Team Stats & Heatmaps** - Detailed summary: damage, revives, accuracy, role contributions, movement heatmaps 🟢
+- [ ] **Kill Feed & Combo Highlights** - On-screen feed for elite kills, clutch revives, and activated team combos 🟢
+- [ ] **Accessibility Suite** - Colorblind filters, text scaling, audio mix presets, aim assist options for inclusive co-op 🟢
+- [ ] **Netcode: Client Prediction & Lag Compensation** - Hit reconciliation and interpolation to improve online feel 🔴
+- [ ] **Anti-Grief Tools** - Vote kick/restart, friendly-fire toggle, idle detection, and item-sharing locks to prevent griefing 🟡
 - [ ] **AI Companion Command System** - Give tactical commands to AI companions via hotkeys or radial menu: "Follow", "Hold Position", "Cover Me", "Scavenge", "Defend Area", "Focus Fire". Visual indicators (command icons above companions) and brief audio confirmations for better control 🟡
 - [ ] **AI Companion Upgrade System** - Upgrade AI companions between waves with improved stats, abilities, or equipment. Progression system that enhances companion effectiveness over time 🟡
 - [ ] **AI Companion Trust/Loyalty System** - Trust meter increases when players revive companions, share resources, or complete objectives together. Higher trust = better accuracy, faster reactions, more aggressive support. Trust decreases if companions are left to die or ignored. Visual trust indicator in companion HUD 🟡
@@ -287,6 +372,11 @@
 - [ ] **Graffiti & Lore Decals** - Environmental storytelling through scrawled messages and warnings on walls 🟢
 - [ ] **Seasonal Themes** - Map visual changes based on real-world holidays (snow, pumpkins, confetti) 🟢
 - [ ] **Aurora Borealis** - Rare night sky event that lights up the darkness with colorful ribbons 🟢
+- [ ] **Dynamic Lighting System** - Real-time light sources with shadows and illumination. Muzzle flashes, explosions, and fire create dynamic lighting. Day/night cycle affects ambient lighting. Light occlusion and shadow casting for depth 🟡
+- [ ] **Particle System Overhaul** - Enhanced particle effects with physics-based movement, wind effects, and collision. Layered particle systems for complex effects (smoke, fire, blood). GPU-accelerated particle rendering for thousands of particles 🔴
+- [ ] **Screen Space Reflections** - Reflective surfaces using screen-space reflection techniques. Puddles, glass, and metal surfaces reflect environment. Adds visual depth and realism to the game world 🔴
+- [ ] **Motion Blur & Temporal Effects** - Motion blur for fast-moving entities and camera movement. Temporal anti-aliasing for smoother edges. Motion trails for bullets and projectiles. Cinematic visual polish 🟡
+- [ ] **Procedural Animation System** - Procedural animations for entities (walking, running, aiming). IK (Inverse Kinematics) for natural limb movement. Dynamic animation blending based on movement speed and direction 🟡
 
 ### Interactive World 🌍
 
@@ -354,6 +444,16 @@
 - [ ] **LOD (Level of Detail) System** - Automatically downgrade animation/model quality based on entity distance 🟡
 - [ ] **Asset Streaming System** - Load textures and audio on-demand based on proximity rather than upfront loading 🟡
 - [ ] **Input System Rewrite** - Abstracted input handling to support remappable keys, gamepads, and touch interchangeably 🟡
+- [ ] **Frame Rate Independent Physics** - Delta-time based physics calculations for consistent behavior across all frame rates. Fixed timestep physics loop separate from rendering. Prevents physics bugs at high/low FPS 🔴
+- [ ] **Multi-Threaded Game Loop** - Split update and render loops across Web Workers. Physics and AI calculations in worker thread, rendering on main thread. Prevents frame drops during heavy computation 🔴
+- [ ] **Deterministic Game State** - Seed-based random number generation for reproducible game state. Enables replay system, debugging, and network synchronization. Deterministic physics and AI for consistent behavior 🔴
+- [ ] **Memory Management System** - Automatic garbage collection optimization. Object lifecycle tracking and cleanup. Memory pool management for frequently allocated objects. Heap size monitoring and warnings 🟡
+- [ ] **Hot Module Replacement (HMR)** - Development tool for live code reloading without game restart. Preserve game state during code changes. Fast iteration during development. Production build excludes HMR code 🟡
+- [ ] **Save/Load System Enhancement** - Advanced checkpoint system with multiple save slots, auto-save on wave completion, and save state compression. Support for mid-run saves with full game state persistence including companion states and inventory 🟡
+- [ ] **Settings System Cloud Sync** - Synchronize settings and keybinds across devices via cloud storage. Profile-based settings with import/export functionality. Settings migration and versioning for backward compatibility 🟡
+- [ ] **Audio System Spatialization** - 3D positional audio using Web Audio API spatialization. Sound sources positioned in 3D space relative to player. Distance-based volume and doppler effects for moving entities. Enhanced immersion through directional audio cues 🟡
+- [ ] **State Management Event System** - Event-driven architecture for game state changes. Decouple systems through event bus. State change notifications for UI updates, achievements, and analytics. Reduces coupling and improves maintainability 🟡
+- [ ] **Modding System Framework** - Plugin architecture for custom content. Mod API for adding weapons, zombies, companions, and game modes. Mod loader and validation system. Steam Workshop-style integration for sharing mods 🔴
 
 ### Backend & Multiplayer Infrastructure 🖥️
 
