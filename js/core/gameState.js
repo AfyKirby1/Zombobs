@@ -124,6 +124,7 @@ export const gameState = {
     speedPickups: [],
     rapidFirePickups: [],
     shieldPickups: [],
+    adrenalinePickups: [],
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -153,6 +154,7 @@ export const gameState = {
     damageBuffEndTime: 0,
     speedBoostEndTime: 0,
     rapidFireEndTime: 0,
+    adrenalineEndTime: 0,
     killStreak: 0,
     lastKillTime: 0,
 
@@ -236,6 +238,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.speedPickups = [];
     gameState.rapidFirePickups = [];
     gameState.shieldPickups = [];
+    gameState.adrenalinePickups = [];
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
@@ -254,6 +257,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.damageBuffEndTime = 0;
     gameState.speedBoostEndTime = 0;
     gameState.rapidFireEndTime = 0;
+    gameState.adrenalineEndTime = 0;
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
 

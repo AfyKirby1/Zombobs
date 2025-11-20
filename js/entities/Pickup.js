@@ -394,3 +394,63 @@ export class ShieldPickup {
     }
 }
 
+// Adrenaline Shot Pickup (Green/Yellow - Speed + Reload + Fire Rate)
+export class AdrenalinePickup {
+    constructor(canvasWidth, canvasHeight) {
+        const margin = 40;
+        this.radius = 12;
+        this.x = margin + Math.random() * (canvasWidth - margin * 2);
+        this.y = margin + Math.random() * (canvasHeight - margin * 2);
+        this.pulseOffset = Math.random() * Math.PI * 2;
+        this.type = 'adrenaline';
+    }
+
+    draw() {
+        const t = Date.now() / 200 + this.pulseOffset; // Fast pulse
+        const pulse = 0.8 + Math.sin(t) * 0.2;
+
+        // Outer glow (Green/Yellow)
+        const glowRadius = this.radius * 2.5 * pulse;
+        const glowGradient = ctx.createRadialGradient(
+            this.x, this.y, 0,
+            this.x, this.y, glowRadius
+        );
+        glowGradient.addColorStop(0, 'rgba(255, 255, 0, 0.9)');
+        glowGradient.addColorStop(0.5, 'rgba(76, 175, 80, 0.6)');
+        glowGradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main disc (Green/Yellow gradient)
+        const coreGradient = ctx.createRadialGradient(
+            this.x - 3, this.y - 3, 0,
+            this.x, this.y, this.radius
+        );
+        coreGradient.addColorStop(0, '#c8e6c9');
+        coreGradient.addColorStop(1, '#4caf50');
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Icon (Syringe/Cross symbol)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Vertical line (syringe body)
+        ctx.moveTo(this.x, this.y - this.radius * 0.6);
+        ctx.lineTo(this.x, this.y + this.radius * 0.6);
+        // Horizontal cross
+        ctx.moveTo(this.x - this.radius * 0.4, this.y);
+        ctx.lineTo(this.x + this.radius * 0.4, this.y);
+        ctx.stroke();
+    }
+}
+

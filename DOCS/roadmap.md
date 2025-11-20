@@ -61,6 +61,7 @@
 - [ ] **Minigun** - Heavy weapon with massive fire rate but slows movement speed 🟡
 - [ ] **Orbital Strike** - Call down a devastating laser beam from space 🔴
 - [ ] **Smoke Grenade** - Creates a visual cover that confuses zombie pathfinding 🟢
+- [ ] **Weapon Crafting System** - Combine weapon parts to create custom guns with unique stats 🔴
 
 ---
 
@@ -87,6 +88,7 @@
 - [ ] **Adaptive AI Director** - Dynamic system that adjusts spawn rates and intensity based on player stress levels 🔴
 - [ ] **Parasitic Infestation** - Enemies that split into smaller creatures upon death 🔴
 - [ ] **Flying Gargoyles** - Aerial enemies that swoop down and pick up players 🔴
+- [ ] **Zombie Mutation System** - Zombies evolve new abilities mid-wave 🔴
 
 ---
 
@@ -116,6 +118,8 @@
 - [ ] **Hydroponics & Farming** - Grow food and medicinal herbs within the safety of the base 🟡
 - [ ] **Recycler Unit** - Breakdown useless loot into raw materials for crafting 🟡
 - [ ] **Teleporter Pads** - Build instant travel points between distant base sections 🔴
+- [ ] **Safe Zone Building** - Construct and upgrade a persistent home base 🔴
+- [ ] **Shield Generator** - Base structure providing temporary player overshield 🔴
 
 ---
 
@@ -135,6 +139,7 @@
 - [ ] **Revive/Rescue System** - Downed players/AI companions enter a "downed" state (30-45s bleed-out timer). Teammates can revive by holding interact near downed teammate (3-5s channel). Adds critical co-op teamwork mechanic with visual feedback (downed state indicator, revive progress bar) 🟡
 - [ ] **Shared Resource Pool & Item Sharing** - Players and AI companions draw from a shared ammo pool (configurable). Players can share ammo/health with teammates, drop items for others to pick up, and use medkits on teammates. UI shows shared resource bar with total ammo/medkits 🟡
 - [ ] **Tactical Ping/Marker System** - Players can mark zombies, locations, or resources with visual indicators and audio cues for better coordination in co-op. Contextual commands like "Revive [Player Name]" when teammate is down 🟢
+- [ ] **Character Customization** - Skins, outfits, and avatar personalization 🟡
 
 ---
 
@@ -209,10 +214,21 @@
 - [ ] **Stat Categories** - Organize stats into Combat, Survival, Exploration, and Special categories 🟢
 - [ ] **Leaderboard Integration** - Display player stats in context of global/local leaderboards 🟡
 
+### Game Modes & Economy
+
+- [ ] **Survival Mode** - Resource management with hunger/thirst/temperature mechanics 🔴
+- [ ] **Trading System** - NPC merchants, economy, rare item marketplace 🔴
+- [ ] **In-Game Economy/Shop** - Buy/sell/trade items with currency earned 🟡
+
 ---
 
 ## Phase 6: Progression & Polish 🎨
 
+- [ ] **Tutorial Level** - Guided intro for new players 🟢
+- [ ] **Save/Load Progress** - Checkpoint system for sessions 🟡
+- [ ] **Horde Rush Mode** - Endless waves with escalating intensity 🔴
+- [ ] **Dynamic Events** - Random encounters and emergencies 🟡
+- [ ] **Seasonal Events** - Limited-time themes, enemies, or rewards 🟡
 - [x] **Wave Break System** - Brief pause between waves to catch your breath and reload 🟢
 - [x] **Sound Effects** - Gunshots, damage sounds, and walking footsteps (Web Audio API generated) 🟡
 - [x] **Screen Shake** - Camera shake on shooting and taking damage for impact 🟢
@@ -227,8 +243,9 @@
 - [ ] **Kill Streak Counter** - Track consecutive kills and display streak count with bonus score multiplier 🟡
 - [ ] **Ammo Scarcity Scaling** - Gradually reduce ammo drop chance with higher waves for tension 🟡
 - [ ] **Bounty System** - A specific, marked "bounty" zombie appears each wave. Killing it grants a significant currency bonus 🟡
-- [ ] **Hit Markers & Impact SFX** - Quick visual marker and subtle sound on successful hits 🟢
+- [x] **Hit Markers & Impact SFX** - Quick visual marker and subtle sound on successful hits 🟢
 - [ ] **Resource Scavenging** - Collect supplies from defeated zombies for crafting/upgrades 🟡
+- [ ] **Inventory Management** - Limited carrying capacity, item weight system 🟡
 - [ ] **Crafting System** - Players can collect resources to craft ammo, health kits, or even basic weapons 🔴
 - [ ] **Selectable Difficulty Modes** - Introduce "Easy", "Normal", and "Hard" modes that adjust zombie stats and spawn rates 🟡
 - [ ] **Character Selection** - Choose from characters with unique starting weapons or passive abilities 🟡
@@ -247,7 +264,7 @@
 - [ ] **Mobile Support** - Touch controls for mobile devices 🔴
 - [ ] **Radioactive Storm** - Weather event that drains health slowly unless under cover 🔴
 - [ ] **Night Vision Goggles** - Toggleable item for better visibility during the night cycle 🟢
-- [ ] **Adrenaline Shot** - Consumable that gives a temporary speed and reload boost 🟢
+- [x] **Adrenaline Shot** - Consumable that gives a temporary speed and reload boost 🟢
 - [ ] **Acid Rain** - Weather hazard that damages entities outside of cover 🟡
 - [ ] **Drone Support** - Automated flying ally that shoots at nearby enemies 🔴
 - [ ] **Map Editor** - comprehensive tool for players to design and share their own survival arenas 🔴
@@ -260,6 +277,8 @@
 
 ### Visual & Audio Immersion 🎨
 
+- [ ] **Background Music** - Looping tracks for immersion 🟢
+- [ ] **Voice Acting or Enhanced Audio** - Better sound experience and immersion 🟡
 - [ ] **Dynamic Shadows** - Shadows that lengthen and move with the day/night cycle 🟡
 - [ ] **Interactive Vegetation** - Grass and bushes sway and flatten when entities move through them 🟡
 - [ ] **Footprint Tracking** - Bloody footprints left by players and zombies after walking through gore 🟢
@@ -283,9 +302,11 @@
 - [ ] **Flashlight Battery System** - Manage battery life for light sources, adding tension to night exploration 🟡
 - [ ] **Weapon Overheating** - Continuous fire heats up weapon barrels, visible glowing and smoke effects 🟡
 - [ ] **Radio Frequencies** - Tune into different channels for music, distress signals, or lore broadcasts 🟢
+- [ ] **Radio Communication** - Lore delivery and mission briefings 🟢
 - [ ] **Lockpicking Minigame** - Interactive system to open locked doors or crates for high-tier loot 🟡
 - [ ] **Binoculars / Scouting** - Tool to observe distant enemy types and numbers before engaging 🟢
 - [ ] **Photo Mode** - Pause the action to take cinematic screenshots with camera controls and filters 🟢
+- [ ] **Replay System** - Watch back and analyze previous play sessions 🔴
 
 ### Advanced Physics & Tech 🧪
 
@@ -314,6 +335,7 @@
 - [ ] **Fireflies & Night Insects** - Ambient bioluminescence near water and forests at night 🟢
 - [ ] **Thunderstorms & Lightning** - Dynamic storms with lightning strikes that can damage entities 🟡
 - [ ] **Lore Newspapers & Notes** - Readable items scattered in the world providing backstory on the outbreak 🟢
+- [ ] **Story or Lore Codex** - In-game encyclopedia of world info/history 🟢
 - [ ] **Destructible Electronics** - Shooting TVs/Computers causes sparks and small explosions 🟢
 
 ---
@@ -369,7 +391,7 @@
 - [ ] **Text-to-Speech (TTS)** - Option to read out chat messages and system notifications for visually impaired players 🟡
 - [ ] **Speech-to-Text (STT)** - Real-time transcription of voice chat into text messages 🔴
 - [ ] **Dyslexia-Friendly Font** - Toggle to switch all game text to a dyslexia-friendly typeface 🟢
-- [ ] **Screen Shake Intensity** - Slider to reduce or disable camera shake to prevent motion sickness 🟢
+- [x] **Screen Shake Intensity** - Slider to reduce or disable camera shake to prevent motion sickness 🟢
 - [ ] **Reduced Gore Mode** - Option to disable blood splatters and dismemberment effects 🟡
 - [ ] **UI Scaling** - Slider to scale the entire HUD interface (50% - 150%) for 4K or small screens 🟢
 - [ ] **Subtitles & Captions** - Closed captions for all dialogue and significant sound effects (e.g., [Zombie Growl]) 🟢
@@ -377,7 +399,7 @@
 ### Graphics & Audio Settings ⚙️
 
 - [ ] **Field of View (FOV) Slider** - Adjust horizontal FOV (60° to 120°) 🟡
-- [ ] **FPS Limit & V-Sync** - Options to cap frame rate and enable vertical sync to prevent tearing 🟢
+- [x] **FPS Limit & V-Sync** - Options to cap frame rate and enable vertical sync to prevent tearing 🟢
 - [ ] **Streamer Mode** - Privacy mode hiding server IPs, player names, and copyrighted music 🟡
 - [ ] **Audio Device Selection** - Select specific input/output devices for game audio and voice chat independent of OS defaults 🟡
 - [ ] **Advanced Audio Mixer** - Individual volume sliders for Master, SFX, Music, Voice, and UI sounds 🟢
@@ -389,21 +411,21 @@
 - [ ] **Input Remapping System** - Complete interface to rebind Keyboard, Mouse, and Gamepad inputs with conflict detection 🟡
 - [ ] **Toggle vs Hold Options** - Accessibility settings to switch Aiming, Crouching, and Sprinting between Hold and Toggle modes 🟢
 - [ ] **Gamepad Vibration** - Slider to adjust the intensity of controller rumble effects 🟢
-- [ ] **Cursor Customization** - Options to change the crosshair style, color, size, and opacity 🟢
-- [ ] **Auto-Sprint Toggle** - Option to invert default movement behavior (Sprint by default, Walk on hold) 🟢
-- [ ] **Contextual Tooltips** - "Press [Key] to Interact" prompts that dynamically update based on current keybindings 🟢
+- [x] **Cursor Customization** - Options to change the crosshair style, color, size, and opacity 🟢
+- [x] **Auto-Sprint Toggle** - Option to invert default movement behavior (Sprint by default, Walk on hold) 🟢
+- [x] **Contextual Tooltips** - "Press [Key] to Interact" prompts that dynamically update based on current keybindings 🟢
 - [ ] **Minimap Customization** - Options for Fixed North/Rotating, Zoom level, and Opacity 🟢
 
 ### Advanced HUD & Interface 📊
 
 - [ ] **Buff/Debuff Tray** - Visual icons with timers showing active status effects (Bleeding, Boosted, etc.) 🟢
-- [ ] **Detailed Stats Overlay** - Toggleable graph showing FPS, Ping, Packet Loss, and Memory Usage 🟢
+- [x] **Detailed Stats Overlay** - Toggleable graph showing FPS, Ping, Packet Loss, and Memory Usage 🟢
 - [ ] **Quick Chat Wheel** - Radial menu for fast tactical communication ("Ammo Here", "Group Up") 🟢
 - [ ] **Kill Feed** - Scrolling log of player kills, deaths, and disconnects in multiplayer matches 🟢
-- [ ] **Damage Number Customization** - Options for Floating, Stacking, or Disabling damage numbers 🟢
+- [x] **Damage Number Customization** - Options for Floating, Stacking, or Disabling damage numbers 🟢
 - [ ] **Dynamic HUD** - HUD elements fade out when out of combat or at full health for immersion 🟡
 - [ ] **3D Item Inspection** - View and rotate 3D models of weapons and items in the inventory/shop menu 🟡
-- [ ] **Compass Bar** - Top-of-screen compass ribbon showing cardinal directions and waypoints 🟢
+- [x] **Compass Bar** - Top-of-screen compass ribbon showing cardinal directions and waypoints 🟢
 
 ---
 

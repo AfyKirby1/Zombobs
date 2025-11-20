@@ -21,7 +21,7 @@ import { AcidPool } from './entities/AcidPool.js';
 window.AcidProjectile = AcidProjectile;
 window.AcidPool = AcidPool;
 import { BossZombie } from './entities/BossZombie.js';
-import { HealthPickup, AmmoPickup, DamagePickup, NukePickup, SpeedPickup, RapidFirePickup, ShieldPickup } from './entities/Pickup.js';
+import { HealthPickup, AmmoPickup, DamagePickup, NukePickup, SpeedPickup, RapidFirePickup, ShieldPickup, AdrenalinePickup } from './entities/Pickup.js';
 import { DamageNumber } from './entities/Particle.js';
 import {
     shootBullet, reloadWeapon, switchWeapon, throwGrenade, triggerExplosion,
@@ -40,6 +40,12 @@ import { GameEngine } from './core/GameEngine.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
+// Make gameEngine globally accessible for settings panel
+window.gameEngine = gameEngine;
+
+// Apply FPS limit from settings
+const initialFpsLimit = settingsManager.getSetting('video', 'fpsLimit') ?? 0;
+gameEngine.setFPSLimit(initialFpsLimit);
 
 // Initialize HUD
 const gameHUD = new GameHUD(canvas);
@@ -286,10 +292,16 @@ function performMeleeAttack(player) {
                 if (!isExploding) {
                     playKillSound();
                 }
-                gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, MELEE_DAMAGE));
+                const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                if (damageNumberStyle !== 'off') {
+                    gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, MELEE_DAMAGE));
+                }
                 createBloodSplatter(zombieX, zombieY, impactAngle, true);
             } else {
-                gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, MELEE_DAMAGE));
+                const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                if (damageNumberStyle !== 'off') {
+                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, MELEE_DAMAGE));
+                }
                 createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
             }
             hitCount++;
@@ -528,8 +540,20 @@ function updatePlayers() {
 
         // Sprint Logic (with speed boost buff)
         const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
+        // autoSprint moved to gameplay, check both for migration safety or just gameplay
+        const autoSprint = settingsManager.getSetting('gameplay', 'autoSprint') || false;
+        
+        // Auto-sprint: invert logic - sprint by default, hold shift to walk
+        let shouldSprint = false;
+        if (autoSprint) {
+            // Sprint by default unless shift is held
+            shouldSprint = !isSprintingInput && (Math.abs(moveX) > 0 || Math.abs(moveY) > 0);
+        } else {
+            // Normal: sprint only when shift is pressed
+            shouldSprint = isSprintingInput;
+        }
 
-        if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && isSprintingInput && player.stamina > 0) {
+        if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
             player.isSprinting = true;
             player.speed = PLAYER_SPRINT_SPEED * speedBoostMultiplier;
             player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
@@ -905,37 +929,102 @@ function drawCrosshair() {
         }
     }
 
-    ctx.strokeStyle = crosshairOutlineColor;
-    ctx.lineWidth = crosshairLineWidth + 2;
-    ctx.lineCap = 'round';
+    // Get crosshair style from settings
+    const crosshairStyle = settingsManager.getSetting('video', 'crosshairStyle') || 'default';
 
-    ctx.beginPath();
-    ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-    ctx.lineTo(mouse.x + crosshairSize, mouse.y);
-    ctx.stroke();
+    // Draw based on style
+    if (crosshairStyle === 'dot') {
+        // Simple dot crosshair
+        ctx.fillStyle = crosshairColorCurrent;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Outline
+        ctx.strokeStyle = crosshairOutlineColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } else if (crosshairStyle === 'circle') {
+        // Circle crosshair
+        ctx.strokeStyle = crosshairOutlineColor;
+        ctx.lineWidth = crosshairLineWidth + 2;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.strokeStyle = crosshairColorCurrent;
+        ctx.lineWidth = crosshairLineWidth;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Center dot
+        ctx.fillStyle = crosshairColorCurrent;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (crosshairStyle === 'cross') {
+        // Simple cross (no center dot)
+        ctx.strokeStyle = crosshairOutlineColor;
+        ctx.lineWidth = crosshairLineWidth + 2;
+        ctx.lineCap = 'round';
 
-    ctx.beginPath();
-    ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-    ctx.lineTo(mouse.x, mouse.y + crosshairSize);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
+        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.stroke();
 
-    ctx.strokeStyle = crosshairColorCurrent;
-    ctx.lineWidth = crosshairLineWidth;
+        ctx.beginPath();
+        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
+        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-    ctx.lineTo(mouse.x + crosshairSize, mouse.y);
-    ctx.stroke();
+        ctx.strokeStyle = crosshairColorCurrent;
+        ctx.lineWidth = crosshairLineWidth;
 
-    ctx.beginPath();
-    ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-    ctx.lineTo(mouse.x, mouse.y + crosshairSize);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
+        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.stroke();
 
-    ctx.fillStyle = crosshairColorCurrent;
-    ctx.beginPath();
-    ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
-    ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
+        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.stroke();
+    } else {
+        // Default: cross with center dot
+        ctx.strokeStyle = crosshairOutlineColor;
+        ctx.lineWidth = crosshairLineWidth + 2;
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
+        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
+        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.stroke();
+
+        ctx.strokeStyle = crosshairColorCurrent;
+        ctx.lineWidth = crosshairLineWidth;
+
+        ctx.beginPath();
+        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
+        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
+        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.stroke();
+
+        ctx.fillStyle = crosshairColorCurrent;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
     // Draw hit marker (X) when hit occurs
     if (gameState.hitMarker.active) {
@@ -1012,12 +1101,59 @@ function drawWaveNotification() {
 }
 
 function drawFpsCounter() {
+    const showFps = settingsManager.getSetting('gameplay', 'showFps') || false;
+    const showDebugStats = settingsManager.getSetting('video', 'showDebugStats') || false;
+
+    if (!showFps && !showDebugStats) return;
+
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = '14px \"Roboto Mono\", monospace';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${gameState.fps} FPS`, canvas.width - 20, 20);
+    
+    if (showFps) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = '14px "Roboto Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${gameState.fps} FPS`, canvas.width - 20, 20);
+    }
+    
+    // Detailed stats overlay
+    if (showDebugStats && gameState.gameRunning && !gameState.gamePaused) {
+        const statsY = 45;
+        const lineHeight = 18;
+        let currentY = statsY;
+        
+        // Background panel
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(canvas.width - 200, statsY - 5, 195, 120);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(canvas.width - 200, statsY - 5, 195, 120);
+        
+        // Stats
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillText(`Zombies: ${gameState.zombies.length}`, canvas.width - 195, currentY);
+        currentY += lineHeight;
+        ctx.fillText(`Bullets: ${gameState.bullets.length}`, canvas.width - 195, currentY);
+        currentY += lineHeight;
+        ctx.fillText(`Particles: ${gameState.particles.length}`, canvas.width - 195, currentY);
+        currentY += lineHeight;
+        
+        if (gameState.players.length > 0 && gameState.players[0]) {
+            const p1 = gameState.players[0];
+            ctx.fillText(`Player X: ${Math.floor(p1.x)}`, canvas.width - 195, currentY);
+            currentY += lineHeight;
+            ctx.fillText(`Player Y: ${Math.floor(p1.y)}`, canvas.width - 195, currentY);
+            currentY += lineHeight;
+        }
+        
+        // Memory usage (approximate)
+        if (performance.memory) {
+            const memMB = Math.round(performance.memory.usedJSHeapSize / 1048576);
+            ctx.fillText(`Memory: ${memMB} MB`, canvas.width - 195, currentY);
+        }
+    }
+    
     ctx.restore();
 }
 
@@ -1063,7 +1199,7 @@ function updateGame() {
         if (Math.random() < 0.6) { // 60% chance
             const rand = Math.random();
 
-            // Distribution: Damage (20%), Nuke (8%), Speed (24%), RapidFire (24%), Shield (24%)
+            // Distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
             if (rand < 0.20) { // Damage
                 if (gameState.damagePickups.length < 1) {
                     gameState.damagePickups.push(new DamagePickup(canvas.width, canvas.height));
@@ -1072,17 +1208,21 @@ function updateGame() {
                 if (gameState.nukePickups.length < 1) {
                     gameState.nukePickups.push(new NukePickup(canvas.width, canvas.height));
                 }
-            } else if (rand < 0.52) { // Speed
+            } else if (rand < 0.46) { // Speed
                 if (gameState.speedPickups.length < 1) {
                     gameState.speedPickups.push(new SpeedPickup(canvas.width, canvas.height));
                 }
-            } else if (rand < 0.76) { // RapidFire
+            } else if (rand < 0.64) { // RapidFire
                 if (gameState.rapidFirePickups.length < 1) {
                     gameState.rapidFirePickups.push(new RapidFirePickup(canvas.width, canvas.height));
                 }
-            } else { // Shield
+            } else if (rand < 0.88) { // Shield
                 if (gameState.shieldPickups.length < 1) {
                     gameState.shieldPickups.push(new ShieldPickup(canvas.width, canvas.height));
+                }
+            } else { // Adrenaline
+                if (gameState.adrenalinePickups.length < 1) {
+                    gameState.adrenalinePickups.push(new AdrenalinePickup(canvas.width, canvas.height));
                 }
             }
         }
@@ -1297,8 +1437,9 @@ function drawGame() {
     ctx.save();
     // Apply screen shake
     if (gameState.shakeAmount > 0.1) {
-        const shakeX = (Math.random() - 0.5) * gameState.shakeAmount;
-        const shakeY = (Math.random() - 0.5) * gameState.shakeAmount;
+        const shakeIntensity = settingsManager.getSetting('video', 'screenShakeIntensity') ?? 1.0;
+        const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
+        const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         ctx.translate(shakeX, shakeY);
         gameState.shakeAmount *= gameState.shakeDecay;
     } else {
@@ -1400,6 +1541,7 @@ function drawGame() {
     gameState.speedPickups.forEach(pickup => pickup.draw());
     gameState.rapidFirePickups.forEach(pickup => pickup.draw());
     gameState.shieldPickups.forEach(pickup => pickup.draw());
+    gameState.adrenalinePickups.forEach(pickup => pickup.draw());
     gameState.zombies.forEach(zombie => zombie.draw());
 
     drawPlayers();
@@ -1414,7 +1556,54 @@ function drawGame() {
         gameHUD.drawLowHealthVignette(gameState.players[0]);
     }
     
+    // Draw contextual tooltips for pickups
+    if (gameState.gameRunning && !gameState.gamePaused && gameState.players.length > 0) {
+        const p1 = gameState.players[0];
+        const tooltipDistance = 60;
+        
+        // Check health pickups
+        gameState.healthPickups.forEach(pickup => {
+            const dx = pickup.x - p1.x;
+            const dy = pickup.y - p1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < tooltipDistance && p1.health < PLAYER_MAX_HEALTH) {
+                gameHUD.drawTooltip('Walk over to pickup health', pickup.x, pickup.y - pickup.radius - 5);
+            }
+        });
+        
+        // Check ammo pickups
+        gameState.ammoPickups.forEach(pickup => {
+            const dx = pickup.x - p1.x;
+            const dy = pickup.y - p1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < tooltipDistance && (p1.currentAmmo < p1.maxAmmo || p1.grenadeCount < MAX_GRENADES)) {
+                gameHUD.drawTooltip('Walk over to pickup ammo', pickup.x, pickup.y - pickup.radius - 5);
+            }
+        });
+        
+        // Check power-up pickups
+        [...gameState.damagePickups, ...gameState.nukePickups, ...gameState.speedPickups, 
+         ...gameState.rapidFirePickups, ...gameState.shieldPickups].forEach(pickup => {
+            const dx = pickup.x - p1.x;
+            const dy = pickup.y - p1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < tooltipDistance) {
+                let tooltipText = 'Walk over to pickup power-up';
+                if (pickup.type === 'damage') tooltipText = 'Double Damage Power-Up';
+                else if (pickup.type === 'nuke') tooltipText = 'Tactical Nuke Power-Up';
+                else if (pickup.type === 'speed') tooltipText = 'Speed Boost Power-Up';
+                else if (pickup.type === 'rapidfire') tooltipText = 'Rapid Fire Power-Up';
+                else if (pickup.type === 'shield') tooltipText = 'Shield Power-Up';
+                else if (pickup.type === 'adrenaline') tooltipText = 'Adrenaline Shot Power-Up';
+                gameHUD.drawTooltip(tooltipText, pickup.x, pickup.y - pickup.radius - 5);
+            }
+        });
+    }
+    
     gameHUD.draw();
+    if (gameState.gameRunning && !gameState.gamePaused) {
+        gameHUD.drawCompass();
+    }
     drawWaveNotification();
     drawWaveBreak();
     drawFpsCounter();
@@ -1620,10 +1809,18 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
-    if (gameState.showSettingsPanel && settingsPanel.rebindingAction) {
-        e.preventDefault();
-        settingsPanel.handleRebind(e.key);
-        return;
+    if (gameState.showSettingsPanel) {
+        if (settingsPanel.rebindingAction) {
+            e.preventDefault();
+            settingsPanel.handleRebind(e.key);
+            return;
+        }
+        // Allow ESC to close settings
+        if (e.key === 'Escape') {
+            gameState.showSettingsPanel = false;
+            settingsPanel.close();
+            return;
+        }
     }
 
     if (gameState.showMainMenu) return;
@@ -1814,10 +2011,15 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('mouseleave', () => mouse.isDown = false);
 
 canvas.addEventListener('wheel', (e) => {
+    if (gameState.showSettingsPanel) {
+        settingsPanel.handleWheel(e);
+        return;
+    }
+
     // Only handle scroll wheel weapon switching if enabled and game is running
     if (!settingsManager.getSetting('controls', 'scrollWheelSwitch')) return;
     if (!gameState.gameRunning || gameState.gamePaused) return;
-    if (gameState.showMainMenu || gameState.showSettingsPanel || gameState.showLobby || 
+    if (gameState.showMainMenu || gameState.showLobby || 
         gameState.showCoopLobby || gameState.showAILobby) return;
     
     const p1 = gameState.players[0];
@@ -1830,6 +2032,16 @@ canvas.addEventListener('wheel', (e) => {
     // deltaY > 0 means scrolling down (next weapon), < 0 means scrolling up (previous weapon)
     const direction = Math.sign(e.deltaY);
     cycleWeapon(direction, p1);
+});
+
+// Focus/Blur handling for auto-pause
+window.addEventListener('blur', () => {
+    if (gameState.gameRunning && !gameState.gamePaused && !gameState.showMainMenu) {
+        const pauseOnFocusLoss = settingsManager.getSetting('gameplay', 'pauseOnFocusLoss') !== false;
+        if (pauseOnFocusLoss) {
+            pauseGame();
+        }
+    }
 });
 
 // Initialization

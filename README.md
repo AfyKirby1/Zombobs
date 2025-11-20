@@ -3,21 +3,45 @@
 # 🧟 ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS
 ### The Ultimate Vanilla JS Zombie Survival Experience
 
-[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
-[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Canvas](https://img.shields.io/badge/Canvas-2D-FF6B6B?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
-[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+<p align="center">
+  <a href="https://developer.mozilla.org/en-US/docs/Web/HTML">
+    <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" height="30" alt="HTML5" />
+  </a>
+  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">
+    <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" height="30" alt="JavaScript" />
+  </a>
+  <a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API">
+    <img src="https://img.shields.io/badge/Canvas-2D-FF6B6B?style=for-the-badge" height="30" alt="Canvas" />
+  </a>
+  <a href="https://nodejs.org/">
+    <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" height="30" alt="Node.js" />
+  </a>
+  <a href="https://socket.io/">
+    <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" height="30" alt="Socket.io" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" height="30" alt="License" />
+  </a>
+</p>
 
 ![Gameplay Banner](https://via.placeholder.com/800x400/0f0f0f/ff0000?text=SURVIVE+THE+HORDE)
 
 <p align="center">
+  <br>
   <b>No Engines. No Frameworks. Just Pure Adrenaline.</b><br>
   A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.
+  <br><br>
+  <a href="https://github.com/AfyKirby1/Zombobs/archive/refs/heads/main.zip">
+    <img src="https://img.shields.io/badge/DOWNLOAD_SOURCE-FF0000?style=for-the-badge&logo=github&logoColor=white&labelColor=101010" height="50" alt="Download Source" />
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="#-quick-start">
+    <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
+  </a>
+  <br>
 </p>
 
-[🎮 Play Now](#-play-now) • [✨ Features](#-features) • [🕹️ Controls](#-controls) • [🛠️ Tech](#-technology-stack) • [🗺️ Roadmap](#-roadmap)
+[🎮 Features](#-features) • [🕹️ Controls](#-controls) • [🛠️ Tech](#-technology-stack) • [🗺️ Roadmap](#-roadmap)
 
 </div>
 

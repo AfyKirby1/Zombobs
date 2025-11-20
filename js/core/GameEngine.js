@@ -4,6 +4,8 @@ export class GameEngine {
         this.lastTime = 0;
         this.accumulatedTime = 0;
         this.timeStep = 1000 / 60; // 60 FPS
+        this.targetFPS = 0; // 0 = unlimited
+        this.lastFrameTime = 0;
 
         this.update = () => {};
         this.draw = () => {};
@@ -25,6 +27,22 @@ export class GameEngine {
     _loop(timestamp) {
         if (!this.isRunning) return;
 
+        // FPS limiting
+        if (this.targetFPS > 0) {
+            const targetFrameTime = 1000 / this.targetFPS;
+            const elapsed = timestamp - this.lastFrameTime;
+            
+            if (elapsed < targetFrameTime) {
+                // Too early, schedule next frame
+                requestAnimationFrame(this._loop);
+                return;
+            }
+            
+            this.lastFrameTime = timestamp - (elapsed % targetFrameTime);
+        } else {
+            this.lastFrameTime = timestamp;
+        }
+
         const deltaTime = timestamp - this.lastTime;
         this.lastTime = timestamp;
         this.accumulatedTime += deltaTime;
@@ -43,6 +61,11 @@ export class GameEngine {
         this.draw();
 
         requestAnimationFrame(this._loop);
+    }
+    
+    setFPSLimit(fps) {
+        this.targetFPS = fps;
+        this.lastFrameTime = performance.now();
     }
 }
 

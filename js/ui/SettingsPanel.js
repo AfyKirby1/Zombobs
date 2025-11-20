@@ -1,7 +1,7 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
-import { getMasterGainNode } from '../systems/AudioSystem.js';
+import { updateAudioSettings } from '../systems/AudioSystem.js';
 import { inputSystem } from '../systems/InputSystem.js';
 
 // Style constants matching Style Guide
@@ -14,7 +14,7 @@ const COLORS = {
     cardBorder: 'rgba(255, 255, 255, 0.08)',
     textMain: '#f5f5f5',
     textMuted: '#9e9e9e',
-    glassBg: 'rgba(10, 12, 16, 0.9)',
+    glassBg: 'rgba(10, 12, 16, 0.95)',
     glassBorder: 'rgba(255, 255, 255, 0.12)'
 };
 
@@ -24,29 +24,133 @@ export class SettingsPanel {
         this.ctx = canvas.getContext('2d');
         this.settingsManager = settingsManager;
         this.visible = false;
-        this.currentView = 'main'; // main, controls, video
+        
+        // Scrolling
+        this.scrollY = 0;
+        this.targetScrollY = 0;
+        this.contentHeight = 0;
+        this.viewportHeight = 0;
+        this.scrollBarWidth = 6;
+        
+        // Interaction
+        this.draggingSlider = false;
+        this.draggingSliderId = null; // { category, key }
+        this.draggingScrollBar = false;
+        this.activeDropdown = null; // { category, key, options, x, y, width }
+        this.rebindingAction = null;
+        
+        // Layout
+        this.panelX = 0;
+        this.panelY = 0;
+        this.panelWidth = 700;
+        this.panelHeight = 600;
+        this.padding = 30;
+        
+        this.controls = []; // List of interactive elements for hit testing
+    }
+
+    open() {
+        this.visible = true;
+        this.scrollY = 0;
+        this.targetScrollY = 0;
+        this.activeDropdown = null;
+        this.rebindingAction = null;
+    }
+
+    close() {
+        this.visible = false;
         this.draggingSlider = false;
         this.draggingSliderId = null;
-        this.sliderX = 0;
-        this.sliderY = 0;
-        this.sliderWidth = 200;
-        this.sliderHeight = 8;
+        this.draggingScrollBar = false;
+        this.activeDropdown = null;
         this.rebindingAction = null;
-        this.sliderBounds = null;
-        this.backButtonBounds = null;
-        this.controlsButtonBounds = null;
-        this.videoButtonBounds = null;
-        this.videoControls = {};
-        this.keybindButtons = {};
-        
-        this.controlMode = 'keyboard'; // 'keyboard' or 'gamepad'
-        this.toggleButtonBounds = null;
+        inputSystem.cancelRebind();
+        gameState.showSettingsPanel = false;
     }
 
     draw(mouse) {
         if (!this.visible) return;
 
-        // Dark overlay with slight red tint
+        // Update dimensions
+        this.panelHeight = Math.min(700, this.canvas.height - 60);
+        this.panelX = (this.canvas.width - this.panelWidth) / 2;
+        this.panelY = (this.canvas.height - this.panelHeight) / 2;
+        this.viewportHeight = this.panelHeight - 100; // Header/Footer space
+
+        // Smooth Scroll
+        this.scrollY += (this.targetScrollY - this.scrollY) * 0.2;
+        // Clamp scroll
+        const maxScroll = Math.max(0, this.contentHeight - this.viewportHeight);
+        if (this.targetScrollY < 0) this.targetScrollY = 0;
+        if (this.targetScrollY > maxScroll) this.targetScrollY = maxScroll;
+        
+        // Clamp actual scroll for rendering (stops rubber banding visual)
+        let renderScrollY = this.scrollY;
+        if (renderScrollY < 0) renderScrollY = 0;
+        if (renderScrollY > maxScroll) renderScrollY = maxScroll;
+
+        this.controls = []; // Reset controls for this frame
+
+        this.drawOverlay();
+        this.drawPanelBackground();
+        this.drawHeader();
+        
+        // Content Area with Clipping
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(this.panelX, this.panelY + 80, this.panelWidth, this.viewportHeight);
+        this.ctx.clip();
+
+        let currentY = this.panelY + 80 - renderScrollY;
+
+        // Audio Settings
+        currentY = this.drawSectionHeader("AUDIO", currentY);
+        currentY = this.drawSlider("Master Volume", "audio", "masterVolume", 0, 1, currentY, mouse);
+        currentY = this.drawSlider("Music Volume", "audio", "musicVolume", 0, 1, currentY, mouse);
+        currentY = this.drawSlider("SFX Volume", "audio", "sfxVolume", 0, 1, currentY, mouse);
+
+        // Video Settings
+        currentY = this.drawSectionHeader("VIDEO", currentY);
+        currentY = this.drawDropdown("Quality Preset", "video", "qualityPreset", ['low', 'medium', 'high', 'custom'], currentY, mouse);
+        if (this.settingsManager.getSetting('video', 'qualityPreset') === 'custom') {
+            currentY = this.drawSlider("Particle Count", "video", "particleCount", 50, 500, currentY, mouse, 0);
+            currentY = this.drawToggle("Vignette", "video", "vignette", currentY, mouse);
+            currentY = this.drawToggle("Shadows", "video", "shadows", currentY, mouse);
+            currentY = this.drawToggle("Lighting", "video", "lighting", currentY, mouse);
+        }
+        currentY = this.drawSlider("Screen Shake", "video", "screenShakeIntensity", 0, 1, currentY, mouse);
+        currentY = this.drawDropdown("Crosshair Style", "video", "crosshairStyle", ['default', 'dot', 'cross', 'circle'], currentY, mouse);
+        currentY = this.drawToggle("Dynamic Crosshair", "video", "dynamicCrosshair", currentY, mouse);
+        currentY = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], currentY, mouse);
+        currentY = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", currentY, mouse);
+        currentY = this.drawToggle("Enemy Health Bars", "video", "enemyHealthBars", currentY, mouse);
+        currentY = this.drawToggle("Reload Bar", "video", "reloadBar", currentY, mouse);
+        currentY = this.drawToggle("Show Debug Stats", "video", "showDebugStats", currentY, mouse);
+        currentY = this.drawDropdown("FPS Limit", "video", "fpsLimit", [0, 30, 60, 120], currentY, mouse);
+        
+        // Gameplay Settings
+        currentY = this.drawSectionHeader("GAMEPLAY", currentY);
+        currentY = this.drawToggle("Auto Sprint", "gameplay", "autoSprint", currentY, mouse);
+        currentY = this.drawToggle("Show FPS", "gameplay", "showFps", currentY, mouse);
+        currentY = this.drawToggle("Pause on Focus Loss", "gameplay", "pauseOnFocusLoss", currentY, mouse);
+
+        // Controls
+        currentY = this.drawSectionHeader("CONTROLS", currentY);
+        currentY = this.drawKeybinds(currentY, mouse);
+
+        this.contentHeight = currentY + renderScrollY - (this.panelY + 80) + 50; // Total height + padding
+        this.ctx.restore();
+
+        this.drawScrollBar(renderScrollY, maxScroll, mouse);
+        this.drawFooter(mouse);
+
+        // Draw active dropdown on top if exists
+        if (this.activeDropdown) {
+            this.drawDropdownMenu(this.activeDropdown, mouse);
+        }
+    }
+
+    drawOverlay() {
         const overlayGradient = this.ctx.createRadialGradient(
             this.canvas.width / 2, this.canvas.height / 2, 0,
             this.canvas.width / 2, this.canvas.height / 2, Math.max(this.canvas.width, this.canvas.height)
@@ -55,41 +159,27 @@ export class SettingsPanel {
         overlayGradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
         this.ctx.fillStyle = overlayGradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
 
-        // Panel background
-        const panelWidth = 600; // Wider for controls
-        const panelHeight = 500; // Taller to fit controls
-        const panelX = (this.canvas.width - panelWidth) / 2;
-        const panelY = (this.canvas.height - panelHeight) / 2;
-
-        // Glass-morphism panel background
+    drawPanelBackground() {
+        // Glass-morphism panel
         this.ctx.fillStyle = COLORS.glassBg;
-        this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        this.ctx.fillRect(this.panelX, this.panelY, this.panelWidth, this.panelHeight);
 
-        // Panel border with subtle glow
         this.ctx.strokeStyle = COLORS.accent;
         this.ctx.lineWidth = 2;
         this.ctx.shadowBlur = 10;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
-        this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        this.ctx.strokeRect(this.panelX, this.panelY, this.panelWidth, this.panelHeight);
         this.ctx.shadowBlur = 0;
 
-        // Inner border for glass effect
+        // Inner border
         this.ctx.strokeStyle = COLORS.glassBorder;
         this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(panelX + 1, panelY + 1, panelWidth - 2, panelHeight - 2);
-
-        if (this.currentView === 'main') {
-            this.drawMainView(panelX, panelY, panelWidth, panelHeight, mouse);
-        } else if (this.currentView === 'controls') {
-            this.drawControlsView(panelX, panelY, panelWidth, panelHeight, mouse);
-        } else if (this.currentView === 'video') {
-            this.drawVideoView(panelX, panelY, panelWidth, panelHeight, mouse);
-        }
+        this.ctx.strokeRect(this.panelX + 1, this.panelY + 1, this.panelWidth - 2, this.panelHeight - 2);
     }
 
-    // Helper: Draw title with Creepster font and glow
-    drawTitle(text, x, y) {
+    drawHeader() {
         this.ctx.save();
         this.ctx.font = 'bold 36px "Creepster", cursive';
         this.ctx.textAlign = 'center';
@@ -99,654 +189,480 @@ export class SettingsPanel {
         this.ctx.shadowBlur = 20;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
         
-        // Gradient fill
-        const gradient = this.ctx.createLinearGradient(x - 100, y - 20, x + 100, y + 20);
+        const gradient = this.ctx.createLinearGradient(this.panelX, this.panelY + 40, this.panelX + this.panelWidth, this.panelY + 40);
         gradient.addColorStop(0, COLORS.accentSoft);
         gradient.addColorStop(1, COLORS.accent);
         this.ctx.fillStyle = gradient;
         
-        this.ctx.fillText(text, x, y);
+        this.ctx.fillText("SETTINGS", this.panelX + this.panelWidth / 2, this.panelY + 40);
         this.ctx.restore();
+
+        // Divider
+        this.ctx.fillStyle = COLORS.glassBorder;
+        this.ctx.fillRect(this.panelX + 20, this.panelY + 70, this.panelWidth - 40, 1);
     }
 
-    // Helper: Draw button with glass-morphism and hover effects
-    drawButton(x, y, width, height, text, isHovered, isActive = false) {
-        this.ctx.save();
+    drawFooter(mouse) {
+        const btnWidth = 120;
+        const btnHeight = 40;
+        const btnX = this.panelX + (this.panelWidth - btnWidth) / 2;
+        const btnY = this.panelY + this.panelHeight - 50;
         
-        // Button background
-        if (isActive) {
-            const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
-            bgGradient.addColorStop(0, COLORS.accentSoft);
-            bgGradient.addColorStop(1, COLORS.accent);
-            this.ctx.fillStyle = bgGradient;
-        } else if (isHovered) {
+        const isHovered = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
+                         mouse.y >= btnY && mouse.y <= btnY + btnHeight;
+        
+        // Back Button background
+        if (isHovered) {
             this.ctx.fillStyle = 'rgba(255, 23, 68, 0.4)';
-        } else {
-            this.ctx.fillStyle = 'rgba(255, 23, 68, 0.2)';
-        }
-        
-        // Rounded corners approximation
-        this.ctx.fillRect(x, y, width, height);
-        
-        // Border with glow on hover
-        if (isHovered || isActive) {
             this.ctx.strokeStyle = COLORS.accent;
-            this.ctx.lineWidth = 2;
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
         } else {
+            this.ctx.fillStyle = 'rgba(255, 23, 68, 0.2)';
             this.ctx.strokeStyle = COLORS.glassBorder;
-            this.ctx.lineWidth = 1;
+            this.ctx.shadowBlur = 0;
         }
-        this.ctx.strokeRect(x, y, width, height);
-        this.ctx.shadowBlur = 0;
+        
+        this.ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
+        this.ctx.lineWidth = isHovered ? 2 : 1;
+        this.ctx.strokeRect(btnX, btnY, btnWidth, btnHeight);
         
         // Text
+        this.ctx.shadowBlur = 0;
         this.ctx.fillStyle = COLORS.textMain;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.font = 'bold 16px "Roboto Mono", monospace';
-        this.ctx.fillText(text, x + width / 2, y + height / 2);
+        this.ctx.fillText("BACK", btnX + btnWidth / 2, btnY + btnHeight / 2);
         
-        this.ctx.restore();
+        this.controls.push({
+            type: 'button',
+            action: 'close',
+            x: btnX, y: btnY, width: btnWidth, height: btnHeight
+        });
     }
 
-    // Helper: Draw toggle switch
-    drawToggle(x, y, width, height, isOn, isHovered) {
-        this.ctx.save();
+    drawScrollBar(scrollY, maxScroll, mouse) {
+        if (maxScroll <= 0) return;
+
+        const trackX = this.panelX + this.panelWidth - 15;
+        const trackY = this.panelY + 80;
+        const trackHeight = this.viewportHeight;
         
-        // Toggle track
-        const trackColor = isOn ? COLORS.accent : 'rgba(40, 40, 40, 0.8)';
-        if (isHovered && !isOn) {
-            this.ctx.fillStyle = 'rgba(60, 60, 60, 0.9)';
-        } else {
-            this.ctx.fillStyle = trackColor;
-        }
-        this.ctx.fillRect(x, y, width, height);
+        // Scrollbar thumb
+        const thumbHeight = Math.max(30, (this.viewportHeight / this.contentHeight) * trackHeight);
+        const thumbY = trackY + (scrollY / maxScroll) * (trackHeight - thumbHeight);
         
-        // Border
-        this.ctx.strokeStyle = isOn ? COLORS.accentSoft : COLORS.glassBorder;
-        this.ctx.lineWidth = 1;
-        if (isOn) {
-            this.ctx.shadowBlur = 6;
-            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.4)';
-        }
-        this.ctx.strokeRect(x, y, width, height);
-        this.ctx.shadowBlur = 0;
+        const isHovered = mouse.x >= trackX - 5 && mouse.x <= trackX + this.scrollBarWidth + 5 &&
+                          mouse.y >= trackY && mouse.y <= trackY + trackHeight;
         
-        // Toggle handle
-        const handleSize = height - 6;
-        const handleX = isOn ? x + width - handleSize - 3 : x + 3;
-        const handleY = y + 3;
+        // Draw rounded rect manually (for compatibility)
+        const radius = 3;
+        this.ctx.fillStyle = (isHovered || this.draggingScrollBar) ? COLORS.accent : 'rgba(255, 255, 255, 0.2)';
+        this.ctx.beginPath();
+        this.ctx.moveTo(trackX + radius, thumbY);
+        this.ctx.lineTo(trackX + this.scrollBarWidth - radius, thumbY);
+        this.ctx.quadraticCurveTo(trackX + this.scrollBarWidth, thumbY, trackX + this.scrollBarWidth, thumbY + radius);
+        this.ctx.lineTo(trackX + this.scrollBarWidth, thumbY + thumbHeight - radius);
+        this.ctx.quadraticCurveTo(trackX + this.scrollBarWidth, thumbY + thumbHeight, trackX + this.scrollBarWidth - radius, thumbY + thumbHeight);
+        this.ctx.lineTo(trackX + radius, thumbY + thumbHeight);
+        this.ctx.quadraticCurveTo(trackX, thumbY + thumbHeight, trackX, thumbY + thumbHeight - radius);
+        this.ctx.lineTo(trackX, thumbY + radius);
+        this.ctx.quadraticCurveTo(trackX, thumbY, trackX + radius, thumbY);
+        this.ctx.closePath();
+        this.ctx.fill();
         
-        // Handle glow when on
-        if (isOn) {
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            this.ctx.beginPath();
-            this.ctx.arc(handleX + handleSize / 2, handleY + handleSize / 2, handleSize / 2 + 2, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-        
-        this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.fillRect(handleX, handleY, handleSize, handleSize);
-        
-        this.ctx.restore();
+        this.controls.push({
+            type: 'scrollbar',
+            x: trackX - 5, y: trackY, width: 20, height: trackHeight,
+            maxScroll: maxScroll, thumbHeight: thumbHeight
+        });
     }
 
-    // Helper: Draw slider with neon glow
-    drawSlider(x, width, y, label, value, min, max, settingKey) {
-        const settingX = x + 100;
-        const sliderWidth = width - 200;
+    drawSectionHeader(title, y) {
+        this.ctx.fillStyle = COLORS.textMuted;
+        this.ctx.font = 'bold 14px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(title, this.panelX + this.padding, y + 20);
         
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(this.panelX + this.padding, y + 30, this.panelWidth - this.padding * 2, 1);
+        
+        return y + 50;
+    }
+
+    drawSlider(label, category, key, min, max, y, mouse, decimalPlaces = 2) {
+        const rowHeight = 40;
+        const value = this.settingsManager.getSetting(category, key) ?? min;
+        const labelX = this.panelX + this.padding + 20;
+        const sliderWidth = 200;
+        const sliderX = this.panelX + this.panelWidth - this.padding - sliderWidth - 60; // Space for value text
+        const sliderY = y + 15; // Vertical center offset
+
         // Label
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = COLORS.textMain;
         this.ctx.font = '14px "Roboto Mono", monospace';
-        this.ctx.fillText(label, settingX, y);
-        
-        // Value
-        this.ctx.textAlign = 'right';
-        this.ctx.fillStyle = COLORS.textMuted;
-        this.ctx.fillText(value, x + width - 100, y);
+        this.ctx.fillText(label, labelX, y + 20);
 
-        const sliderY = y + 15;
-        const sliderX = settingX;
-        
-        // Slider track background
+        // Slider Track
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        this.ctx.fillRect(sliderX, sliderY - 2, sliderWidth, 6);
-        
-        // Slider fill with gradient
+        this.ctx.fillRect(sliderX, sliderY - 2, sliderWidth, 4);
+
+        // Slider Fill
         const normalized = (value - min) / (max - min);
         const fillWidth = sliderWidth * normalized;
         
-        if (fillWidth > 0) {
-            const fillGradient = this.ctx.createLinearGradient(sliderX, sliderY, sliderX + fillWidth, sliderY);
-            fillGradient.addColorStop(0, COLORS.accentSoft);
-            fillGradient.addColorStop(1, COLORS.accent);
-            this.ctx.fillStyle = fillGradient;
-            this.ctx.fillRect(sliderX, sliderY - 2, fillWidth, 6);
-            
-            // Glow effect on fill
+        const fillGradient = this.ctx.createLinearGradient(sliderX, sliderY, sliderX + fillWidth, sliderY);
+        fillGradient.addColorStop(0, COLORS.accentSoft);
+        fillGradient.addColorStop(1, COLORS.accent);
+        this.ctx.fillStyle = fillGradient;
+        this.ctx.fillRect(sliderX, sliderY - 2, fillWidth, 4);
+
+        // Handle
+        const handleX = sliderX + fillWidth;
+        const isHovered = mouse.x >= sliderX - 5 && mouse.x <= sliderX + sliderWidth + 5 &&
+                          mouse.y >= sliderY - 10 && mouse.y <= sliderY + 10 &&
+                          mouse.y >= this.panelY + 80 && mouse.y <= this.panelY + 80 + this.viewportHeight; // Clip check
+
+        this.ctx.beginPath();
+        this.ctx.arc(handleX, sliderY, isHovered ? 8 : 6, 0, Math.PI * 2);
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.fill();
+        if (isHovered || (this.draggingSliderId && this.draggingSliderId.key === key)) {
             this.ctx.shadowBlur = 8;
-            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
-            this.ctx.fillRect(sliderX, sliderY - 2, fillWidth, 6);
+            this.ctx.shadowColor = COLORS.accent;
+            this.ctx.strokeStyle = COLORS.accent;
+            this.ctx.stroke();
             this.ctx.shadowBlur = 0;
         }
-        
-        // Slider handle with glow
-        const handleX = sliderX + fillWidth;
-        this.ctx.save();
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.beginPath();
-        this.ctx.arc(handleX, sliderY + 1, 8, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.strokeStyle = COLORS.accent;
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-        this.ctx.restore();
-        
-        this.videoControls[`slider_${settingKey}`] = { 
-            x: sliderX, y: sliderY - 7, width: sliderWidth, height: 20, 
-            type: 'slider', min, max, value, setting: settingKey 
-        };
-    }
 
-    drawMainView(x, y, width, height, mouse) {
-        // Title with Creepster font
-        this.drawTitle('SETTINGS', x + width / 2, y + 50);
-
-        // Master Volume Setting
-        const settingY = y + 100;
-        const settingX = x + 130;
-        const sliderWidth = width - 260;
-        this.sliderWidth = sliderWidth;
-        
-        const volume = this.settingsManager.getSetting('audio', 'masterVolume');
-        const volumePercent = Math.round(volume * 100);
-        
-        // Use improved slider helper
-        const sliderY = settingY + 25;
-        const sliderX = settingX;
-        
-        // Draw slider track background
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        this.ctx.fillRect(sliderX, sliderY - 2, sliderWidth, 6);
-        
-        // Draw slider fill with gradient
-        const fillWidth = sliderWidth * volume;
-        if (fillWidth > 0) {
-            const fillGradient = this.ctx.createLinearGradient(sliderX, sliderY, sliderX + fillWidth, sliderY);
-            fillGradient.addColorStop(0, COLORS.accentSoft);
-            fillGradient.addColorStop(1, COLORS.accent);
-            this.ctx.fillStyle = fillGradient;
-            this.ctx.fillRect(sliderX, sliderY - 2, fillWidth, 6);
-            
-            // Glow effect
-            this.ctx.shadowBlur = 8;
-            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
-            this.ctx.fillRect(sliderX, sliderY - 2, fillWidth, 6);
-            this.ctx.shadowBlur = 0;
-        }
-        
-        // Slider handle with glow
-        const handleX = sliderX + fillWidth;
-        this.ctx.save();
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.beginPath();
-        this.ctx.arc(handleX, sliderY + 1, 8, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.strokeStyle = COLORS.accent;
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-        this.ctx.restore();
-        
-        // Label
-        this.ctx.font = '14px "Roboto Mono", monospace';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.fillText('Master Volume', settingX, settingY);
-        
-        // Value
+        // Value Text
         this.ctx.textAlign = 'right';
         this.ctx.fillStyle = COLORS.textMuted;
-        this.ctx.fillText(`${volumePercent}%`, x + width - 130, settingY);
-
-        this.sliderBounds = {
-            x: sliderX,
-            y: sliderY - 15,
-            width: sliderWidth,
-            height: 30
-        };
-
-        // Controls Button
-        const controlsY = y + 170;
-        const buttonWidth = 240;
-        const buttonHeight = 50;
-        const controlsX = x + (width - buttonWidth) / 2;
+        let displayValue = value;
+        if (max <= 1) displayValue = Math.round(value * 100) + '%';
+        else if (key === 'fpsLimit') displayValue = value === 0 ? 'OFF' : value.toString();
+        else displayValue = Math.round(value);
         
-        const controlsMouseOver = mouse.x >= controlsX && mouse.x <= controlsX + buttonWidth &&
-                                 mouse.y >= controlsY && mouse.y <= controlsY + buttonHeight;
-        
-        this.drawButton(controlsX, controlsY, buttonWidth, buttonHeight, 'Edit Controls', controlsMouseOver);
-        
-        this.controlsButtonBounds = {
-            x: controlsX,
-            y: controlsY,
-            width: buttonWidth,
-            height: buttonHeight
-        };
+        this.ctx.fillText(displayValue, this.panelX + this.panelWidth - this.padding, y + 20);
 
-        // Video Settings Button
-        const videoY = controlsY + 70;
-        const videoX = controlsX;
+        this.controls.push({
+            type: 'slider',
+            category, key, min, max,
+            x: sliderX, y: sliderY - 10, width: sliderWidth, height: 20
+        });
 
-        const videoMouseOver = mouse.x >= videoX && mouse.x <= videoX + buttonWidth &&
-                               mouse.y >= videoY && mouse.y <= videoY + buttonHeight;
-
-        this.drawButton(videoX, videoY, buttonWidth, buttonHeight, 'Video Settings', videoMouseOver);
-
-        this.videoButtonBounds = {
-            x: videoX,
-            y: videoY,
-            width: buttonWidth,
-            height: buttonHeight
-        };
-
-        this.drawBackButton(x, y, width, height, mouse);
+        return y + rowHeight;
     }
 
-    drawControlsView(x, y, width, height, mouse) {
-        // Title with Creepster font
-        this.drawTitle('CONTROLS', x + width / 2, y + 40);
+    drawToggle(label, category, key, y, mouse) {
+        const rowHeight = 40;
+        const isOn = this.settingsManager.getSetting(category, key) ?? false;
         
-        // Toggle Button (Keyboard / Controller)
-        const toggleWidth = 300;
-        const toggleHeight = 36;
-        const toggleX = x + (width - toggleWidth) / 2;
-        const toggleY = y + 70;
+        const labelX = this.panelX + this.padding + 20;
+        const toggleWidth = 44;
+        const toggleHeight = 24;
+        const toggleX = this.panelX + this.panelWidth - this.padding - toggleWidth;
+        const toggleY = y + 8;
+
+        // Label
+        this.ctx.textAlign = 'left';
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.font = '14px "Roboto Mono", monospace';
+        this.ctx.fillText(label, labelX, y + 25);
+
+        const isHovered = mouse.x >= toggleX && mouse.x <= toggleX + toggleWidth &&
+                          mouse.y >= toggleY && mouse.y <= toggleY + toggleHeight &&
+                          mouse.y >= this.panelY + 80 && mouse.y <= this.panelY + 80 + this.viewportHeight;
+
+        // Toggle Body
+        this.ctx.fillStyle = isOn ? COLORS.accent : 'rgba(255, 255, 255, 0.1)';
+        if (isHovered && !isOn) this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         
-        // Toggle Background with glass effect
-        this.ctx.fillStyle = COLORS.glassBg;
-        this.ctx.fillRect(toggleX, toggleY, toggleWidth, toggleHeight);
-        this.ctx.strokeStyle = COLORS.glassBorder;
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(toggleX, toggleY, toggleWidth, toggleHeight);
-        
-        // Active Selection with gradient
-        const activeX = this.controlMode === 'keyboard' ? toggleX : toggleX + toggleWidth / 2;
-        const activeGradient = this.ctx.createLinearGradient(activeX, toggleY, activeX, toggleY + toggleHeight);
-        activeGradient.addColorStop(0, COLORS.accentSoft);
-        activeGradient.addColorStop(1, COLORS.accent);
-        this.ctx.fillStyle = activeGradient;
-        this.ctx.fillRect(activeX, toggleY, toggleWidth / 2, toggleHeight);
-        
-        // Glow on active
-        this.ctx.shadowBlur = 8;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
-        this.ctx.strokeStyle = COLORS.accent;
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(activeX, toggleY, toggleWidth / 2, toggleHeight);
-        this.ctx.shadowBlur = 0;
-        
-        // Text
-        this.ctx.font = 'bold 14px "Roboto Mono", monospace';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.textAlign = 'center';
-        
-        this.ctx.fillStyle = this.controlMode === 'keyboard' ? COLORS.textMain : COLORS.textMuted;
-        this.ctx.fillText('KEYBOARD', toggleX + toggleWidth / 4, toggleY + toggleHeight / 2);
-        
-        this.ctx.fillStyle = this.controlMode === 'gamepad' ? COLORS.textMain : COLORS.textMuted;
-        this.ctx.fillText('CONTROLLER', toggleX + 3 * toggleWidth / 4, toggleY + toggleHeight / 2);
-        
-        this.toggleButtonBounds = {
-            x: toggleX,
-            y: toggleY,
-            width: toggleWidth,
-            height: toggleHeight
-        };
-        
-        const startY = y + 130;
-        
-        let controls;
-        let labels;
-        
-        if (this.controlMode === 'keyboard') {
-             controls = this.settingsManager.settings.controls;
-             labels = {
-                moveUp: 'Move Up',
-                moveDown: 'Move Down',
-                moveLeft: 'Move Left',
-                moveRight: 'Move Right',
-                sprint: 'Sprint',
-                reload: 'Reload',
-                grenade: 'Grenade',
-                melee: 'Melee',
-                weapon1: 'Pistol',
-                weapon2: 'Shotgun',
-                weapon3: 'Rifle'
-            };
-        } else {
-            controls = this.settingsManager.settings.gamepad || {};
-            labels = {
-                fire: 'Fire',
-                reload: 'Reload',
-                grenade: 'Grenade',
-                sprint: 'Sprint',
-                melee: 'Melee',
-                prevWeapon: 'Prev Weapon',
-                nextWeapon: 'Next Weapon',
-                pause: 'Pause',
-                // interact: 'Interact'
-            };
+        const radius = 12;
+        this.ctx.beginPath();
+        this.ctx.moveTo(toggleX + radius, toggleY);
+        this.ctx.lineTo(toggleX + toggleWidth - radius, toggleY);
+        this.ctx.quadraticCurveTo(toggleX + toggleWidth, toggleY, toggleX + toggleWidth, toggleY + radius);
+        this.ctx.lineTo(toggleX + toggleWidth, toggleY + toggleHeight - radius);
+        this.ctx.quadraticCurveTo(toggleX + toggleWidth, toggleY + toggleHeight, toggleX + toggleWidth - radius, toggleY + toggleHeight);
+        this.ctx.lineTo(toggleX + radius, toggleY + toggleHeight);
+        this.ctx.quadraticCurveTo(toggleX, toggleY + toggleHeight, toggleX, toggleY + toggleHeight - radius);
+        this.ctx.lineTo(toggleX, toggleY + radius);
+        this.ctx.quadraticCurveTo(toggleX, toggleY, toggleX + radius, toggleY);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        if (isOn) {
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
         }
+
+        // Toggle Handle
+        const handleX = isOn ? toggleX + toggleWidth - 20 : toggleX + 4;
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(handleX + 8, toggleY + 12, 8, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.controls.push({
+            type: 'toggle',
+            category, key,
+            x: toggleX, y: toggleY, width: toggleWidth, height: toggleHeight
+        });
+
+        return y + rowHeight;
+    }
+
+    drawDropdown(label, category, key, options, y, mouse) {
+        const rowHeight = 40;
+        const currentValue = this.settingsManager.getSetting(category, key);
         
-        const col1X = x + 50;
-        const col2X = x + width / 2 + 30;
+        const labelX = this.panelX + this.padding + 20;
+        const dropdownWidth = 150;
+        const dropdownHeight = 30;
+        const dropdownX = this.panelX + this.panelWidth - this.padding - dropdownWidth;
+        const dropdownY = y + 5;
+
+        // Label
+        this.ctx.textAlign = 'left';
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.font = '14px "Roboto Mono", monospace';
+        this.ctx.fillText(label, labelX, y + 25);
+
+        const isHovered = mouse.x >= dropdownX && mouse.x <= dropdownX + dropdownWidth &&
+                          mouse.y >= dropdownY && mouse.y <= dropdownY + dropdownHeight &&
+                          mouse.y >= this.panelY + 80 && mouse.y <= this.panelY + 80 + this.viewportHeight;
+
+        // Dropdown Box
+        this.ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(dropdownX, dropdownY, dropdownWidth, dropdownHeight);
+        this.ctx.strokeStyle = COLORS.glassBorder;
+        this.ctx.strokeRect(dropdownX, dropdownY, dropdownWidth, dropdownHeight);
+
+        // Text
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.textAlign = 'left';
+        let displayValue = currentValue;
+        if (key === 'fpsLimit') displayValue = currentValue === 0 ? 'OFF' : currentValue.toString();
+        else displayValue = currentValue;
+        this.ctx.fillText(String(displayValue).toUpperCase(), dropdownX + 10, dropdownY + 20);
+
+        // Arrow
+        this.ctx.beginPath();
+        this.ctx.moveTo(dropdownX + dropdownWidth - 20, dropdownY + 12);
+        this.ctx.lineTo(dropdownX + dropdownWidth - 15, dropdownY + 12);
+        this.ctx.lineTo(dropdownX + dropdownWidth - 17.5, dropdownY + 18);
+        this.ctx.fill();
+
+        this.controls.push({
+            type: 'dropdown',
+            category, key, options,
+            x: dropdownX, y: dropdownY, width: dropdownWidth, height: dropdownHeight
+        });
+
+        return y + rowHeight;
+    }
+
+    drawDropdownMenu(dropdown, mouse) {
+        const { x, y, width, options } = dropdown;
+        const itemHeight = 30;
+        const menuHeight = options.length * itemHeight;
         
-        this.keybindButtons = {};
-        const keys = Object.keys(labels);
-        
-        // Split into two columns
-        const midPoint = Math.ceil(keys.length / 2);
-        
-        keys.forEach((key, index) => {
-            const isSecondCol = index >= midPoint;
-            const rowIndex = isSecondCol ? index - midPoint : index;
-            const itemX = isSecondCol ? col2X : col1X;
-            const itemY = startY + rowIndex * 45;
-            
-            // Label
+        // Background
+        this.ctx.fillStyle = '#1a1a1a';
+        this.ctx.fillRect(x, y + 30, width, menuHeight);
+        this.ctx.strokeStyle = COLORS.accent;
+        this.ctx.strokeRect(x, y + 30, width, menuHeight);
+
+        options.forEach((opt, index) => {
+            const itemY = y + 30 + index * itemHeight;
+            const isItemHovered = mouse.x >= x && mouse.x <= x + width &&
+                                  mouse.y >= itemY && mouse.y <= itemY + itemHeight;
+
+            if (isItemHovered) {
+                this.ctx.fillStyle = COLORS.accent;
+                this.ctx.fillRect(x, itemY, width, itemHeight);
+            }
+
+            this.ctx.fillStyle = isItemHovered ? '#fff' : COLORS.textMuted;
             this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillStyle = COLORS.textMuted;
-            this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillText(labels[key], itemX, itemY + 15);
+            let displayOpt = opt;
+            if (typeof opt === 'number' && opt === 0) displayOpt = 'OFF';
+            else if (typeof opt === 'number') displayOpt = opt.toString();
+            this.ctx.fillText(String(displayOpt).toUpperCase(), x + 10, itemY + 20);
+        });
+    }
+
+    drawKeybinds(y, mouse) {
+        const controls = this.settingsManager.settings.controls;
+        const labels = {
+            moveUp: 'Move Up',
+            moveDown: 'Move Down',
+            moveLeft: 'Move Left',
+            moveRight: 'Move Right',
+            sprint: 'Sprint',
+            reload: 'Reload',
+            grenade: 'Grenade',
+            melee: 'Melee',
+            weapon1: 'Pistol',
+            weapon2: 'Shotgun',
+            weapon3: 'Rifle',
+            weapon4: 'Flamethrower'
+        };
+
+        // Toggle Switch for Scroll Wheel
+        y = this.drawToggle("Scroll Switch", "controls", "scrollWheelSwitch", y, mouse);
+
+        // Keybind List
+        const keys = Object.keys(labels);
+        keys.forEach(key => {
+            const label = labels[key];
+            const boundKey = controls[key] || '---';
+            const rowHeight = 40;
             
-            // Button
+            const labelX = this.panelX + this.padding + 20;
             const btnWidth = 100;
             const btnHeight = 30;
-            const btnX = itemX + 120; // fixed offset from label
-            const btnY = itemY;
-            
-            let keyName = '';
-            if (this.controlMode === 'keyboard') {
-                keyName = (controls[key] || '').toUpperCase();
-            } else {
-                keyName = this.getGamepadButtonName(controls[key]);
-            }
-            
-            const isRebinding = this.rebindingAction === key;
-            const mouseOver = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
-                             mouse.y >= btnY && mouse.y <= btnY + btnHeight;
-            
-            // Use drawButton helper for consistency
-            if (isRebinding) {
-                // Special styling for rebinding state
-                const rebindGradient = this.ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnHeight);
-                rebindGradient.addColorStop(0, COLORS.accentSoft);
-                rebindGradient.addColorStop(1, COLORS.accent);
-                this.ctx.fillStyle = rebindGradient;
-                this.ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
-                this.ctx.strokeStyle = COLORS.textMain;
-                this.ctx.lineWidth = 2;
-                this.ctx.shadowBlur = 12;
-                this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-                this.ctx.strokeRect(btnX, btnY, btnWidth, btnHeight);
-                this.ctx.shadowBlur = 0;
-            } else {
-                this.drawButton(btnX, btnY, btnWidth, btnHeight, keyName, mouseOver);
-            }
-            
-            // Button Text
-            this.ctx.textAlign = 'center';
-            this.ctx.fillStyle = COLORS.textMain;
-            this.ctx.font = 'bold 13px "Roboto Mono", monospace';
-            this.ctx.fillText(isRebinding ? 'Press...' : keyName, btnX + btnWidth / 2, btnY + btnHeight / 2);
-            
-            this.keybindButtons[key] = {
-                x: btnX,
-                y: btnY,
-                width: btnWidth,
-                height: btnHeight
-            };
-        });
-        
-        // Scroll Wheel Toggle (only show for keyboard mode)
-        if (this.controlMode === 'keyboard') {
-            const toggleY = startY + Math.ceil(keys.length / 2) * 45;
-            const toggleLabelX = col1X;
-            const toggleLabelY = toggleY + 15;
-            
+            const btnX = this.panelX + this.panelWidth - this.padding - btnWidth;
+            const btnY = y + 5;
+
             // Label
             this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillStyle = COLORS.textMuted;
-            this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillText('Scroll Wheel Switch', toggleLabelX, toggleLabelY);
-            
-            // Toggle
-            const toggleWidth = 50;
-            const toggleHeight = 26;
-            const toggleX = toggleLabelX + 120;
-            const toggleButtonY = toggleY;
-            
-            const isOn = this.settingsManager.getSetting('controls', 'scrollWheelSwitch') ?? true;
-            const isHover = mouse.x >= toggleX && mouse.x <= toggleX + toggleWidth &&
-                            mouse.y >= toggleButtonY && mouse.y <= toggleButtonY + toggleHeight;
-            
-            this.drawToggle(toggleX, toggleButtonY, toggleWidth, toggleHeight, isOn, isHover);
-            
-            this.keybindButtons['scrollWheelSwitch'] = {
-                x: toggleX,
-                y: toggleButtonY,
-                width: toggleWidth,
-                height: toggleHeight,
-                isToggle: true
-            };
-        }
-        
-        this.drawBackButton(x, y, width, height, mouse);
-    }
-
-    drawVideoView(x, y, width, height, mouse) {
-        // Title with Creepster font
-        this.drawTitle('VIDEO SETTINGS', x + width / 2, y + 50);
-
-        this.videoControls = {};
-        let currentY = y + 100;
-        const centerX = x + width / 2;
-
-        // Presets
-        this.ctx.font = '14px "Roboto Mono", monospace';
-        this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('Quality Preset', centerX, currentY);
-        
-        currentY += 30;
-        const presets = ['low', 'medium', 'high'];
-        const presetWidth = 80;
-        const presetHeight = 30;
-        const totalPresetWidth = presets.length * (presetWidth + 10) - 10;
-        let startX = centerX - totalPresetWidth / 2;
-
-        const currentPreset = this.settingsManager.getSetting('video', 'qualityPreset');
-
-        presets.forEach((preset, index) => {
-            const btnX = startX + index * (presetWidth + 10);
-            const btnY = currentY;
-            
-            const isSelected = currentPreset === preset;
-            const isHover = mouse.x >= btnX && mouse.x <= btnX + presetWidth &&
-                            mouse.y >= btnY && mouse.y <= btnY + presetHeight;
-
-            this.drawButton(btnX, btnY, presetWidth, presetHeight, preset.toUpperCase(), isHover, isSelected);
-
-            this.videoControls[`preset_${preset}`] = { x: btnX, y: btnY, width: presetWidth, height: presetHeight, type: 'preset', value: preset };
-        });
-
-        currentY += 60;
-
-        // Particle Count Slider (using improved helper)
-        const particleCount = this.settingsManager.getSetting('video', 'particleCount');
-        this.drawSlider(x, width, currentY, 'Max Particles', particleCount, 50, 500, 'particleCount');
-        currentY += 60;
-
-        // Toggles
-        const toggles = [
-            { label: 'Vignette', key: 'vignette' },
-            { label: 'Shadows', key: 'shadows' },
-            { label: 'Lighting', key: 'lighting' },
-            { label: 'Low Health Warning', key: 'lowHealthWarning' },
-            { label: 'Floating Text', key: 'floatingText' },
-            { label: 'Dynamic Crosshair', key: 'dynamicCrosshair' },
-            { label: 'Enemy Health Bars', key: 'enemyHealthBars' },
-            { label: 'Reload Bar', key: 'reloadBar' }
-        ];
-
-        toggles.forEach((toggle) => {
-            const isOn = this.settingsManager.getSetting('video', toggle.key);
-            
-            this.ctx.textAlign = 'left';
             this.ctx.fillStyle = COLORS.textMain;
             this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillText(toggle.label, x + 100, currentY + 15);
+            this.ctx.fillText(label, labelX, y + 25);
 
-            const toggleWidth = 50;
-            const toggleHeight = 26;
-            const toggleX = x + width - 150;
+            const isRebinding = this.rebindingAction === key;
+            const isHovered = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
+                              mouse.y >= btnY && mouse.y <= btnY + btnHeight &&
+                              mouse.y >= this.panelY + 80 && mouse.y <= this.panelY + 80 + this.viewportHeight;
+
+            // Button
+            if (isRebinding) {
+                this.ctx.fillStyle = COLORS.accent;
+                this.ctx.strokeStyle = '#fff';
+            } else {
+                this.ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)';
+                this.ctx.strokeStyle = COLORS.glassBorder;
+            }
             
-            const isHover = mouse.x >= toggleX && mouse.x <= toggleX + toggleWidth &&
-                            mouse.y >= currentY && mouse.y <= currentY + toggleHeight;
+            this.ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
+            this.ctx.strokeRect(btnX, btnY, btnWidth, btnHeight);
 
-            this.drawToggle(toggleX, currentY, toggleWidth, toggleHeight, isOn, isHover);
+            // Key Text
+            this.ctx.fillStyle = isRebinding ? '#fff' : COLORS.textMain;
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(isRebinding ? '...' : boundKey.toUpperCase(), btnX + btnWidth / 2, btnY + 20);
 
-            this.videoControls[`toggle_${toggle.key}`] = { x: toggleX, y: currentY, width: toggleWidth, height: toggleHeight, type: 'toggle', key: toggle.key };
+            this.controls.push({
+                type: 'keybind',
+                action: key,
+                x: btnX, y: btnY, width: btnWidth, height: btnHeight
+            });
 
-            currentY += 40;
+            y += rowHeight;
         });
 
-        this.drawBackButton(x, y, width, height, mouse);
+        return y;
     }
 
-
-    drawBackButton(x, y, width, height, mouse) {
-        const btnWidth = 120;
-        const btnHeight = 40;
-        const btnX = x + (width - btnWidth) / 2;
-        const btnY = y + height - 60;
+    handleWheel(e) {
+        if (!this.visible) return;
         
-        const mouseOver = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
-                         mouse.y >= btnY && mouse.y <= btnY + btnHeight;
+        // Add delta to target scroll
+        this.targetScrollY += e.deltaY;
         
-        this.drawButton(btnX, btnY, btnWidth, btnHeight, 'Back', mouseOver);
-        
-        this.backButtonBounds = {
-            x: btnX,
-            y: btnY,
-            width: btnWidth,
-            height: btnHeight
-        };
+        // Clamp target immediately to prevent infinite scroll accumulation
+        const maxScroll = Math.max(0, this.contentHeight - this.viewportHeight);
+        if (this.targetScrollY < 0) this.targetScrollY = 0;
+        if (this.targetScrollY > maxScroll) this.targetScrollY = maxScroll;
     }
 
     handleClick(x, y) {
         if (!this.visible) return false;
-        
-        // If rebinding, ignore other clicks unless it's a cancel mechanism
+
+        // Handle active dropdown selection
+        if (this.activeDropdown) {
+            const { x: dropX, y: dropY, width, options, category, key } = this.activeDropdown;
+            const itemHeight = 30;
+            const menuHeight = options.length * itemHeight;
+            
+            // Check if clicked inside menu
+            if (x >= dropX && x <= dropX + width && y >= dropY + 30 && y <= dropY + 30 + menuHeight) {
+                const index = Math.floor((y - (dropY + 30)) / itemHeight);
+                if (index >= 0 && index < options.length) {
+                    const selected = options[index];
+                    if (category === 'video' && key === 'qualityPreset') {
+                        this.settingsManager.applyVideoPreset(selected);
+                    } else {
+                        this.settingsManager.setSetting(category, key, selected);
+                    }
+                    
+                    // Apply FPS limit immediately if changed
+                    if (category === 'video' && key === 'fpsLimit') {
+                        if (window.gameEngine) {
+                            window.gameEngine.setFPSLimit(selected);
+                        }
+                    }
+                }
+                this.activeDropdown = null;
+                return true;
+            }
+            
+            // Clicked outside, close dropdown
+            this.activeDropdown = null;
+            return true;
+        }
+
+        // Handle Rebinding Cancel
         if (this.rebindingAction) {
-            // Could allow clicking to cancel?
+            // Clicking anywhere cancels rebind (except handled keys)
             this.cancelRebind();
             return true;
         }
 
-        // Check back button
-        if (this.backButtonBounds && 
-            x >= this.backButtonBounds.x && x <= this.backButtonBounds.x + this.backButtonBounds.width &&
-            y >= this.backButtonBounds.y && y <= this.backButtonBounds.y + this.backButtonBounds.height) {
-            
-            if (this.currentView === 'main') {
-                this.close();
-            } else {
-                this.currentView = 'main';
-            }
-            return true;
-        }
-
-        if (this.currentView === 'main') {
-            // Slider
-            if (this.sliderBounds &&
-                x >= this.sliderBounds.x && x <= this.sliderBounds.x + this.sliderBounds.width &&
-                y >= this.sliderBounds.y && y <= this.sliderBounds.y + this.sliderBounds.height) {
-                this.draggingSlider = true;
-                this.draggingSliderId = null; // Main volume slider has no ID
-                this.updateSlider(x);
-                return true;
-            }
-            
-            // Controls Button
-            if (this.controlsButtonBounds &&
-                x >= this.controlsButtonBounds.x && x <= this.controlsButtonBounds.x + this.controlsButtonBounds.width &&
-                y >= this.controlsButtonBounds.y && y <= this.controlsButtonBounds.y + this.controlsButtonBounds.height) {
-                this.currentView = 'controls';
-                return true;
-            }
-
-            // Video Button
-            if (this.videoButtonBounds &&
-                x >= this.videoButtonBounds.x && x <= this.videoButtonBounds.x + this.videoButtonBounds.width &&
-                y >= this.videoButtonBounds.y && y <= this.videoButtonBounds.y + this.videoButtonBounds.height) {
-                this.currentView = 'video';
-                return true;
-            }
-        } else if (this.currentView === 'controls') {
-            // Toggle Button
-            if (this.toggleButtonBounds &&
-                x >= this.toggleButtonBounds.x && x <= this.toggleButtonBounds.x + this.toggleButtonBounds.width &&
-                y >= this.toggleButtonBounds.y && y <= this.toggleButtonBounds.y + this.toggleButtonBounds.height) {
-                
-                const relativeX = x - this.toggleButtonBounds.x;
-                if (relativeX < this.toggleButtonBounds.width / 2) {
-                    this.controlMode = 'keyboard';
-                } else {
-                    this.controlMode = 'gamepad';
+        // Check controls
+        for (const ctrl of this.controls) {
+            // Skip controls if they are clipped (not visible in viewport)
+            // Exception: Scrollbar and Footer are static
+            if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar') {
+                if (ctrl.y < this.panelY + 80 || ctrl.y + ctrl.height > this.panelY + 80 + this.viewportHeight) {
+                    continue;
                 }
-                return true;
             }
-            
-            // Keybind buttons
-            for (const key in this.keybindButtons) {
-                const btn = this.keybindButtons[key];
-                if (x >= btn.x && x <= btn.x + btn.width &&
-                    y >= btn.y && y <= btn.y + btn.height) {
-                    // Handle toggle buttons (scrollWheelSwitch)
-                    if (btn.isToggle) {
-                        const currentValue = this.settingsManager.getSetting('controls', key) ?? true;
-                        this.settingsManager.setSetting('controls', key, !currentValue);
-                        return true;
-                    }
-                    // Regular keybind rebinding
-                    this.startRebind(key);
+
+            if (x >= ctrl.x && x <= ctrl.x + ctrl.width && y >= ctrl.y && y <= ctrl.y + ctrl.height) {
+                if (ctrl.type === 'button' && ctrl.action === 'close') {
+                    this.close();
                     return true;
                 }
-            }
-        } else if (this.currentView === 'video') {
-            for (const key in this.videoControls) {
-                const ctrl = this.videoControls[key];
-                if (x >= ctrl.x && x <= ctrl.x + ctrl.width && y >= ctrl.y && y <= ctrl.y + ctrl.height) {
-                    if (ctrl.type === 'preset') {
-                        this.settingsManager.applyVideoPreset(ctrl.value);
-                    } else if (ctrl.type === 'toggle') {
-                        this.settingsManager.setSetting('video', ctrl.key, !this.settingsManager.getSetting('video', ctrl.key));
-                    } else if (ctrl.type === 'slider') {
-                        this.draggingSlider = true;
-                        this.draggingSliderId = ctrl.setting;
-                        this.updateVideoSlider(x, ctrl);
-                    }
+                else if (ctrl.type === 'slider') {
+                    this.draggingSlider = true;
+                    this.draggingSliderId = { category: ctrl.category, key: ctrl.key, min: ctrl.min, max: ctrl.max, width: ctrl.width, x: ctrl.x };
+                    this.updateSlider(x);
+                    return true;
+                }
+                else if (ctrl.type === 'toggle') {
+                    const current = this.settingsManager.getSetting(ctrl.category, ctrl.key);
+                    this.settingsManager.setSetting(ctrl.category, ctrl.key, !current);
+                    return true;
+                }
+                else if (ctrl.type === 'dropdown') {
+                    this.activeDropdown = ctrl;
+                    return true;
+                }
+                else if (ctrl.type === 'keybind') {
+                    this.startRebind(ctrl.action);
+                    return true;
+                }
+                else if (ctrl.type === 'scrollbar') {
+                    this.draggingScrollBar = true;
+                    // Move scroll immediately
+                    this.updateScrollBar(y, ctrl);
                     return true;
                 }
             }
@@ -757,79 +673,74 @@ export class SettingsPanel {
 
     handleMouseMove(x, y) {
         if (!this.visible) return;
-        
-        if (this.draggingSlider) {
-            if (this.currentView === 'main') {
-                this.updateSlider(x);
-            } else if (this.currentView === 'video' && this.draggingSliderId) {
-                const ctrlKey = `slider_${this.draggingSliderId}`;
-                const ctrl = this.videoControls[ctrlKey];
-                if (ctrl) this.updateVideoSlider(x, ctrl);
-            }
+
+        if (this.draggingSlider && this.draggingSliderId) {
+            this.updateSlider(x);
+        }
+
+        if (this.draggingScrollBar) {
+            const trackY = this.panelY + 80;
+            const trackHeight = this.viewportHeight;
+            const relativeY = Math.max(0, Math.min(trackHeight, y - trackY));
+            const percent = relativeY / trackHeight;
+            const maxScroll = Math.max(0, this.contentHeight - this.viewportHeight);
+            
+            this.targetScrollY = percent * maxScroll;
+            this.scrollY = this.targetScrollY; // Snappy scroll when dragging bar
         }
     }
 
     handleMouseUp() {
         this.draggingSlider = false;
         this.draggingSliderId = null;
+        this.draggingScrollBar = false;
     }
 
     updateSlider(x) {
-        if (!this.sliderBounds) return;
+        const ctrl = this.draggingSliderId;
+        if (!ctrl) return;
+
+        const relativeX = Math.max(0, Math.min(ctrl.width, x - ctrl.x));
+        const percent = relativeX / ctrl.width;
+        let value = ctrl.min + percent * (ctrl.max - ctrl.min);
         
-        const relativeX = x - this.sliderBounds.x;
-        const value = Math.max(0, Math.min(1, relativeX / this.sliderWidth));
-        this.settingsManager.setSetting('audio', 'masterVolume', value);
+        // Special cases handling
+        if (ctrl.category === 'video' && ctrl.key === 'screenShakeIntensity') {
+            // Keep as float 0-1
+        } else if (ctrl.category === 'video' && (ctrl.key === 'particleCount' || ctrl.key === 'fpsLimit')) {
+             value = Math.round(value);
+        } else if (ctrl.category === 'audio') {
+            // Keep as float 0-1
+        }
+
+        this.settingsManager.setSetting(ctrl.category, ctrl.key, value);
         
-        // Apply volume change immediately
-        const masterGainNode = getMasterGainNode();
-        if (masterGainNode) {
-            masterGainNode.gain.value = value;
+        // Live updates
+        if (ctrl.category === 'audio') {
+            updateAudioSettings();
         }
     }
 
-    updateVideoSlider(x, ctrl) {
-        const relativeX = x - ctrl.x;
-        const percent = Math.max(0, Math.min(1, relativeX / ctrl.width));
-        const value = Math.round(ctrl.min + percent * (ctrl.max - ctrl.min));
-        this.settingsManager.setSetting('video', ctrl.setting, value);
+    updateScrollBar(y, ctrl) {
+         // Logic handled in mousemove for smoother dragging, but click-to-jump handled here
+         const trackY = this.panelY + 80;
+         const trackHeight = this.viewportHeight;
+         const relativeY = Math.max(0, Math.min(trackHeight, y - trackY));
+         const percent = relativeY / trackHeight;
+         
+         this.targetScrollY = percent * ctrl.maxScroll;
     }
 
-    open() {
-        this.visible = true;
-        this.currentView = 'main';
-    }
-
-    close() {
-        this.visible = false;
-        this.draggingSlider = false;
-        this.draggingSliderId = null;
-        this.rebindingAction = null;
-        this.controlMode = 'keyboard';
-        // Check if inputSystem has a pending rebind and cancel it
-        inputSystem.cancelRebind();
-        gameState.showSettingsPanel = false;
-    }
-    
     startRebind(action) {
         this.rebindingAction = action;
-        
-        if (this.controlMode === 'gamepad') {
-             inputSystem.startRebind((buttonIndex) => {
-                 this.handleGamepadRebind(buttonIndex);
-             });
-        }
     }
-    
+
     cancelRebind() {
         this.rebindingAction = null;
-        if (this.controlMode === 'gamepad') {
-            inputSystem.cancelRebind();
-        }
     }
-    
+
     handleRebind(key) {
-        if (!this.rebindingAction || this.controlMode !== 'keyboard') return;
+        if (!this.rebindingAction) return;
         
         // Prevent binding Escape
         if (key === 'Escape') {
@@ -841,21 +752,5 @@ export class SettingsPanel {
         this.settingsManager.setSetting('controls', this.rebindingAction, lowerKey);
         this.rebindingAction = null;
     }
-    
-    handleGamepadRebind(buttonIndex) {
-        if (!this.rebindingAction || this.controlMode !== 'gamepad') return;
-        
-        this.settingsManager.setSetting('gamepad', this.rebindingAction, buttonIndex);
-        this.rebindingAction = null;
-    }
-    
-    getGamepadButtonName(index) {
-        const names = [
-            'A', 'B', 'X', 'Y', 
-            'LB', 'RB', 'LT', 'RT', 
-            'View', 'Menu', 'L3', 'R3', 
-            'D-Up', 'D-Down', 'D-Left', 'D-Right'
-        ];
-        return names[index] !== undefined ? names[index] : `Btn ${index}`;
-    }
 }
+

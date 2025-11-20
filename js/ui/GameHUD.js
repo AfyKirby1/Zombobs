@@ -256,6 +256,12 @@ export class GameHUD {
             const timeLeft = Math.ceil((gameState.rapidFireEndTime - Date.now()) / 1000);
             this.drawStat('Rapid', '>>> ' + timeLeft + 's', '🔥', '#ff9800', x, currentY, width);
         }
+
+        if (gameState.adrenalineEndTime > Date.now()) {
+            currentY += height + this.itemSpacing;
+            const timeLeft = Math.ceil((gameState.adrenalineEndTime - Date.now()) / 1000);
+            this.drawStat('Adrenaline', '⚡⚡⚡ ' + timeLeft + 's', '💉', '#4caf50', x, currentY, width);
+        }
     }
 
     drawInstructions() {
@@ -284,6 +290,41 @@ export class GameHUD {
         this.ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
         this.ctx.fillText(line1, this.canvas.width / 2, lineY - 8);
         this.ctx.fillText(line2, this.canvas.width / 2, lineY + 20);
+        this.ctx.restore();
+    }
+
+    drawTooltip(text, x, y) {
+        if (!text) return;
+        
+        this.ctx.save();
+        this.ctx.font = '14px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'bottom';
+        
+        const padding = 10;
+        const textMetrics = this.ctx.measureText(text);
+        const textWidth = textMetrics.width;
+        const textHeight = 20;
+        const tooltipWidth = textWidth + padding * 2;
+        const tooltipHeight = textHeight + padding * 2;
+        
+        // Position tooltip above the point
+        const tooltipX = x;
+        const tooltipY = y - 10;
+        
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(tooltipX - tooltipWidth / 2, tooltipY - tooltipHeight, tooltipWidth, tooltipHeight);
+        
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(tooltipX - tooltipWidth / 2, tooltipY - tooltipHeight, tooltipWidth, tooltipHeight);
+        
+        // Text
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText(text, tooltipX, tooltipY - padding);
+        
         this.ctx.restore();
     }
 
@@ -1070,5 +1111,74 @@ export class GameHUD {
 
         this.ctx.fillStyle = vignette;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    drawCompass() {
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+        if (gameState.players.length === 0) return;
+        
+        const player = gameState.players[0];
+        const compassHeight = 30;
+        const compassY = 10;
+        const compassWidth = this.canvas.width * 0.4;
+        const compassX = (this.canvas.width - compassWidth) / 2;
+        
+        this.ctx.save();
+        
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(compassX, compassY, compassWidth, compassHeight);
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(compassX, compassY, compassWidth, compassHeight);
+        
+        // Get player angle and convert to compass direction
+        // Player angle: 0 = right (East), PI/2 = down (South), PI = left (West), -PI/2 = up (North)
+        const playerAngle = player.angle;
+        // Convert to compass angle (0 = North, clockwise)
+        const compassAngle = -playerAngle + Math.PI / 2;
+        
+        // Draw compass marks
+        const directions = ['N', 'E', 'S', 'W'];
+        const directionAngles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
+        
+        this.ctx.font = 'bold 14px "Roboto Mono", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Draw center indicator
+        const centerX = compassX + compassWidth / 2;
+        const centerY = compassY + compassHeight / 2;
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.fillRect(centerX - 2, centerY - 8, 4, 16);
+        
+        // Draw direction markers
+        directionAngles.forEach((angle, index) => {
+            const relativeAngle = angle - compassAngle;
+            // Normalize angle to -PI to PI
+            let normalizedAngle = relativeAngle;
+            while (normalizedAngle > Math.PI) normalizedAngle -= Math.PI * 2;
+            while (normalizedAngle < -Math.PI) normalizedAngle += Math.PI * 2;
+            
+            // Only show if within visible range (about 90 degrees each side)
+            if (Math.abs(normalizedAngle) < Math.PI / 2) {
+                const offset = normalizedAngle / (Math.PI / 2) * (compassWidth / 2 - 20);
+                const markerX = centerX + offset;
+                
+                // Draw tick mark
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(markerX, compassY + 5);
+                this.ctx.lineTo(markerX, compassY + 15);
+                this.ctx.stroke();
+                
+                // Draw direction label
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillText(directions[index], markerX, compassY + 25);
+            }
+        });
+        
+        this.ctx.restore();
     }
 }

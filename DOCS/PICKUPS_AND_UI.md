@@ -79,9 +79,10 @@ Powerup pickups are rare items that spawn randomly and provide temporary or inst
 - Distribution probabilities:
   - Damage Pickup: 20%
   - Nuke Pickup: 8%
-  - Speed Pickup: 24%
-  - Rapid Fire Pickup: 24%
+  - Speed Pickup: 18%
+  - Rapid Fire Pickup: 18%
   - Shield Pickup: 24%
+  - Adrenaline Pickup: 12%
 
 ---
 
@@ -154,7 +155,7 @@ Powerup pickups are rare items that spawn randomly and provide temporary or inst
 - **Glow:** Cyan radial gradient (`rgba(0, 255, 255, 0.9)`)
 
 **Spawn Conditions:**
-- Part of powerup spawn system (24% chance when powerup spawns)
+- Part of powerup spawn system (18% chance when powerup spawns)
 - Maximum 1 speed pickup can exist
 
 **Collection Requirements:**
@@ -183,7 +184,7 @@ Powerup pickups are rare items that spawn randomly and provide temporary or inst
 - **Glow:** Orange-red radial gradient (`rgba(255, 152, 0, 0.9)`)
 
 **Spawn Conditions:**
-- Part of powerup spawn system (24% chance when powerup spawns)
+- Part of powerup spawn system (18% chance when powerup spawns)
 - Maximum 1 rapid fire pickup can exist
 
 **Collection Requirements:**
@@ -230,6 +231,35 @@ Powerup pickups are rare items that spawn randomly and provide temporary or inst
 
 ---
 
+### Adrenaline Pickup
+
+**Visual Design:**
+- **Color Scheme:** Green/Yellow gradient (`#c8e6c9` to `#4caf50`)
+- **Icon:** White Syringe/Cross symbol
+- **Size:** 12px radius
+- **Animation:** Pulsing glow (0.8-1.0 scale, 200ms cycle)
+- **Glow:** Green-Yellow radial gradient (`rgba(76, 175, 80, 0.6)`)
+
+**Spawn Conditions:**
+- Part of powerup spawn system (12% chance when powerup spawns)
+- Maximum 1 adrenaline pickup can exist
+
+**Collection Requirements:**
+- Any player can collect
+- Collision detection via radius-based check
+
+**Effects:**
+- **Triple Buff Effect:** Activates Speed Boost, Rapid Fire, and Reload Speed buffs
+- **Duration:** **12 seconds** (longer than individual buffs)
+- Sets `gameState.adrenalineEndTime`, `gameState.speedBoostEndTime`, and `gameState.rapidFireEndTime`
+- Creates 15 green particles (`#4caf50`) at pickup location
+- Floating text: `"ADRENALINE RUSH!"` in yellow
+- HUD Indicator: Shows "Adrenaline ⚡⚡⚡" with timer
+
+**File Location:** `js/entities/Pickup.js` - `AdrenalinePickup` class
+
+---
+
 ## UI Feedback Systems
 
 ### Floating Text System
@@ -267,6 +297,7 @@ new DamageNumber(x, y, "+25 HP", false, '#ff1744')
 - **Cyan (`#00ffff`):** Ammo-related
 - **Yellow (default):** Damage dealt, general notifications
 - **Yellow-Red Gradient:** Critical hits, important powerups
+- **Green:** Adrenaline/Buffs
 
 ---
 
@@ -287,6 +318,7 @@ Particle effects are created when pickups are collected to provide visual feedba
 | Speed | `#00bcd4` (Cyan) | 12 | Speed boost activation |
 | Rapid Fire | `#ff9800` (Orange) | 12 | Rapid fire activation |
 | Shield | `#03a9f4` (Light Blue) | 12 | Shield gain feedback |
+| Adrenaline | `#4caf50` (Green) | 15 | Adrenaline rush activation |
 
 **Particle Behavior:**
 - Particles fade out over time
@@ -302,9 +334,9 @@ Particle effects are created when pickups are collected to provide visual feedba
 - Other pickups may trigger minor shake effects
 
 **Visual Indicators:**
-- HUD displays active buffs (damage multiplier, speed boost, rapid fire)
+- HUD displays active buffs (damage multiplier, speed boost, rapid fire, adrenaline)
 - Shield bar appears in HUD when shield > 0
-- Buff timers shown in HUD
+- Buff timers shown in HUD shared stats area
 
 ---
 
@@ -396,6 +428,7 @@ return dist < (player.radius + pickup.radius);
 **UI Feedback:**
 - `js/entities/Particle.js` - `DamageNumber` class
 - `js/systems/ParticleSystem.js` - Particle creation
+- `js/ui/GameHUD.js` - HUD overlay and buff timers
 
 **Constants:**
 - `js/core/constants.js` - Spawn intervals, amounts, limits
@@ -413,6 +446,7 @@ gameState.nukePickups = []
 gameState.speedPickups = []
 gameState.rapidFirePickups = []
 gameState.shieldPickups = []
+gameState.adrenalinePickups = []
 ```
 
 ---
@@ -424,6 +458,7 @@ Temporary buffs tracked in `gameState`:
 gameState.damageBuffEndTime = 0      // Double damage
 gameState.speedBoostEndTime = 0      // Speed boost
 gameState.rapidFireEndTime = 0       // Rapid fire
+gameState.adrenalineEndTime = 0      // Adrenaline
 ```
 
 Buffs are checked each frame:
@@ -442,6 +477,11 @@ const isActive = Date.now() < buffEndTime
   - Affects: Health and Ammo pickup text only
   - Powerup messages always show (gameplay critical)
 
+**Gameplay Settings:**
+- `showFps` (boolean) - Toggle FPS counter
+- `autoSprint` (boolean) - Invert sprint behavior (Run by default)
+- `pauseOnFocusLoss` (boolean) - Auto-pause when window loses focus
+
 ---
 
 ## Future Considerations
@@ -454,20 +494,3 @@ const isActive = Date.now() < buffEndTime
 - Pickup rarity tiers
 - Stacking buffs (multiple of same type)
 - Buff duration indicators in HUD
-
----
-
-## Summary
-
-Zombobs features **7 pickup types**:
-- **2 Basic Pickups:** Health (25 HP), Ammo (15 + grenades)
-- **5 Powerup Pickups:** Double Damage (10s), Nuke (instant), Speed Boost (8s), Rapid Fire (10s), Shield (+50)
-
-All pickups provide clear visual feedback through:
-- Floating text notifications
-- Particle effects
-- Screen effects (shake, etc.)
-- HUD indicators for active buffs
-
-The system is designed for both single-player and cooperative multiplayer gameplay, with balanced spawn rates and clear visual communication.
-

@@ -2,6 +2,110 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.2.7] - 2025-01-XX
+
+### Added
+- **Adrenaline Shot Pickup** - New power-up item
+  - Green/yellow pickup with syringe icon
+  - Grants triple buff: Speed Boost + Rapid Fire + Extended duration (12 seconds)
+  - Spawns rarely (12% chance when power-ups spawn)
+  - Shows "ADRENALINE RUSH!" notification when collected
+  - Displays in HUD shared stats with countdown timer
+
+- **Gameplay Settings** - New configuration options
+  - **Show FPS**: Toggle to show/hide the FPS counter in top right
+  - **Auto-Pause on Focus Loss**: Game automatically pauses when window loses focus (enabled by default)
+  - **Auto-Sprint**: Migrated to gameplay settings, toggles "Sprint by Default" behavior
+
+- **Hit Markers & Impact SFX** - Audio-visual feedback when hitting enemies
+  - New `playHitSound()` function generates sharp tick sound on successful hits
+  - Hit marker visual (X) already existed, now triggers sound feedback
+  - Provides satisfying audio confirmation for each hit
+
+- **Cursor Customization** - Multiple crosshair styles available
+  - Settings panel now includes "Crosshair Style" dropdown
+  - Options: Default (cross with dot), Dot, Cross (no dot), Circle
+  - Setting persists across sessions
+  - All styles respect dynamic crosshair expansion when moving/shooting
+
+- **Screen Shake Intensity Slider** - Accessibility option
+  - New slider in Video Settings (0% to 100%)
+  - Allows players to reduce or disable screen shake for motion sickness prevention
+  - Applies multiplier to all screen shake effects (shooting, damage, explosions)
+
+- **Damage Number Customization** - Control visual clutter
+  - Settings panel includes "Damage Numbers" style selector
+  - Options: Floating (default), Stacking, Off
+  - When set to "Off", all damage numbers are hidden
+  - Applies to all damage sources (bullets, melee, pickups)
+
+- **FPS Limit Options** - Performance control
+  - New FPS Limit dropdown in Video Settings
+  - Options: OFF (unlimited), 30, 60, 120 FPS
+  - Implemented in GameEngine with frame timing control
+  - Setting applies immediately when changed
+
+- **Detailed Stats Overlay** - Debug and performance monitoring
+  - New "Show Debug Stats" toggle in Video Settings
+  - When enabled, displays overlay panel showing:
+    - Entity counts (Zombies, Bullets, Particles)
+    - Player coordinates (X, Y)
+    - Memory usage (if available)
+  - Useful for debugging and performance analysis
+
+- **Contextual Tooltips** - Helpful interaction hints
+  - Tooltips appear when player is near pickups
+  - Shows pickup type and interaction hint ("Walk over to pickup...")
+  - Different messages for health, ammo, and power-up pickups
+  - Tooltips fade in/out smoothly
+
+- **Compass Bar** - Navigation aid
+  - New compass bar at top of screen during gameplay
+  - Shows cardinal directions (N, E, S, W) based on player facing angle
+  - Rotates dynamically as player turns
+  - Semi-transparent background for visibility
+
+### Changed
+- **Powerup Distribution** - Rebalanced spawn rates
+  - Adjusted probabilities to include Adrenaline pickup
+  - Damage (20%), Nuke (8%), Speed (18%), Rapid Fire (18%), Shield (24%), Adrenaline (12%)
+
+- **Settings Panel** - Expanded Video Settings section
+  - Added multiple new controls: Crosshair Style, Screen Shake Intensity, Damage Numbers, FPS Limit, Show Debug Stats
+  - Improved layout to accommodate new settings
+  - Scroll wheel now works in settings panel for scrolling lists/values
+
+- **GameEngine** - Enhanced with FPS limiting
+  - Added `setFPSLimit()` method for dynamic FPS control
+  - Frame timing logic prevents rendering faster than target FPS
+  - Maintains smooth gameplay even with FPS caps
+
+- **Combat System** - Enhanced feedback
+  - Hit markers now trigger audio feedback
+  - Damage numbers respect player preferences
+  - All combat feedback respects accessibility settings
+
+### Technical
+- **New Settings**:
+  - `video.crosshairStyle` - Crosshair appearance preference
+  - `video.screenShakeIntensity` - Screen shake multiplier (0.0-1.0)
+  - `video.damageNumberStyle` - Damage number display mode
+  - `video.fpsLimit` - Target FPS (0 = unlimited)
+  - `gameplay.autoSprint` - Inverted sprint behavior toggle (migrated from video)
+  - `gameplay.showFps` - Toggle FPS counter visibility
+  - `gameplay.pauseOnFocusLoss` - Window focus handling
+  - `video.showDebugStats` - Debug overlay toggle
+
+- **New Entity Class**:
+  - `AdrenalinePickup` (in `Pickup.js`) - Triple-buff power-up
+
+- **New Game State Properties**:
+  - `adrenalineEndTime` - Timer for adrenaline buff duration
+  - `adrenalinePickups[]` - Array of active adrenaline pickups
+
+- **New Audio Function**:
+  - `playHitSound()` (in `AudioSystem.js`) - Sharp tick sound for hit confirmation
+
 ## [0.2.6] - 2025-01-XX
 
 ### Added
@@ -71,7 +175,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - **Speed Boost**: Shows remaining time in HUD shared stats (e.g., "Speed: >> 8s")
   - **Rapid Fire**: Shows remaining time in HUD shared stats (e.g., "Rapid: >>> 10s")
   - **Shield**: Displays current shield value above ammo count (only visible when shield > 0)
-  - Consistent styling with existing Damage buff indicator
+  - **Consistent styling** with existing Damage buff indicator
 
 - **Day/Night Cycle System** - Dynamic time-based atmosphere
   - 2-minute cycle (120 seconds) transitioning between day and night

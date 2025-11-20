@@ -2,7 +2,9 @@ export class SettingsManager {
     constructor() {
         this.defaultSettings = {
             audio: {
-                masterVolume: 1.0
+                masterVolume: 1.0,
+                musicVolume: 0.5,
+                sfxVolume: 1.0
             },
             video: {
                 qualityPreset: 'high', // low, medium, high, custom
@@ -15,7 +17,17 @@ export class SettingsManager {
                 floatingText: true,
                 dynamicCrosshair: true,
                 enemyHealthBars: true,
-                reloadBar: true
+                reloadBar: true,
+                crosshairStyle: 'default', // default, dot, cross, circle
+                screenShakeIntensity: 1.0, // 0.0 to 1.0
+                damageNumberStyle: 'floating', // floating, stacking, off
+                fpsLimit: 0, // 0 = unlimited, 30, 60, 120
+                showDebugStats: false
+            },
+            gameplay: {
+                autoSprint: false,
+                pauseOnFocusLoss: true,
+                showFps: false
             },
             controls: {
                 moveUp: 'w',
@@ -72,6 +84,18 @@ export class SettingsManager {
                     merged[category][key] = saved[category][key];
                 }
             }
+        }
+
+        // Migration: Check if autoSprint is in video (old location) and move to gameplay
+        if (saved.video && saved.video.autoSprint !== undefined) {
+            if (!merged.gameplay) merged.gameplay = {};
+            merged.gameplay.autoSprint = saved.video.autoSprint;
+            // We don't delete it from video in 'merged' because it wasn't there in defaults (we overwrote defaults structure initially but then merged saved into it... wait)
+            // Actually merged starts as defaults. 
+            // If saved.video has autoSprint, it gets added to merged.video because of the loop above if we are not careful.
+            // But wait, the loop above iterates keys in saved[category]. If 'autoSprint' is in saved.video, it gets added to merged.video.
+            // We should clean it up from merged.video if it shouldn't be there.
+            delete merged.video.autoSprint;
         }
         
         // Ensure all default categories and keys exist (handles new updates)

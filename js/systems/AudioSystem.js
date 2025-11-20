@@ -4,6 +4,7 @@ import { settingsManager } from './SettingsManager.js';
 let audioContext = null;
 let gunshotBuffer = null; // Cache gunshot audio buffer
 let masterGainNode = null; // Master volume control
+let sfxGainNode = null; // SFX volume control
 let menuMusic = null; // HTMLAudioElement for menu music
 let menuMusicSource = null; // MediaElementSourceNode
 let menuMusicGain = null; // Gain node for menu music
@@ -13,14 +14,28 @@ export function initAudio() {
     if (!audioContext) {
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            // Create master gain node for volume control
+            
+            // Create master gain node for global volume control
             masterGainNode = audioContext.createGain();
-            // Apply saved volume setting or default to 100%
-            const savedVolume = settingsManager.getSetting('audio', 'masterVolume');
-            masterGainNode.gain.value = savedVolume !== undefined ? savedVolume : 1.0;
+            const masterVol = settingsManager.getSetting('audio', 'masterVolume');
+            masterGainNode.gain.value = masterVol !== undefined ? masterVol : 1.0;
             masterGainNode.connect(audioContext.destination);
+
+            // Create SFX gain node
+            sfxGainNode = audioContext.createGain();
+            const sfxVol = settingsManager.getSetting('audio', 'sfxVolume');
+            sfxGainNode.gain.value = sfxVol !== undefined ? sfxVol : 1.0;
+            sfxGainNode.connect(masterGainNode);
+
             // Pre-create the gunshot buffer once for performance
             createGunshotBuffer();
+            
+            // Update music volume if it exists
+            if (menuMusicGain) {
+                const musicVol = settingsManager.getSetting('audio', 'musicVolume');
+                menuMusicGain.gain.value = (musicVol !== undefined ? musicVol : 0.5);
+            }
+
         } catch (error) {
             console.log('Audio context not supported:', error);
         }
@@ -30,6 +45,28 @@ export function initAudio() {
 
 export function getMasterGainNode() {
     return masterGainNode;
+}
+
+export function updateAudioSettings() {
+    if (!audioContext) return;
+    
+    const masterVol = settingsManager.getSetting('audio', 'masterVolume');
+    if (masterGainNode) {
+        masterGainNode.gain.value = masterVol !== undefined ? masterVol : 1.0;
+    }
+
+    const sfxVol = settingsManager.getSetting('audio', 'sfxVolume');
+    if (sfxGainNode) {
+        sfxGainNode.gain.value = sfxVol !== undefined ? sfxVol : 1.0;
+    }
+
+    const musicVol = settingsManager.getSetting('audio', 'musicVolume');
+    if (menuMusicGain) {
+        menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
+    } else if (menuMusic) {
+        // Fallback if Web Audio API isn't fully connected for music
+        menuMusic.volume = (musicVol !== undefined ? musicVol : 0.5) * (masterVol !== undefined ? masterVol : 1.0);
+    }
 }
 
 export function playMenuMusic() {
@@ -47,7 +84,8 @@ export function playMenuMusic() {
         try {
             menuMusicSource = audioContext.createMediaElementSource(menuMusic);
             menuMusicGain = audioContext.createGain();
-            menuMusicGain.gain.value = 0.5; // Lower default volume for music
+            const musicVol = settingsManager.getSetting('audio', 'musicVolume');
+            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5; 
             menuMusicSource.connect(menuMusicGain);
             menuMusicGain.connect(masterGainNode || audioContext.destination);
         } catch (e) {
@@ -109,9 +147,9 @@ export function playGunshotSound() {
         const source = audioContext.createBufferSource();
         source.buffer = gunshotBuffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.4; // Volume level
+        gainNode.gain.value = 0.4; // Volume level relative to SFX
         source.connect(gainNode);
-        gainNode.connect(masterGainNode || audioContext.destination);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
     } catch (error) {
         // Silently fail if audio can't play (e.g., browser restrictions)
@@ -157,7 +195,7 @@ export function playDamageSound() {
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.375; // Volume level (reduced by 25%)
         source.connect(gainNode);
-        gainNode.connect(masterGainNode || audioContext.destination);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
     } catch (error) {
         // Silently fail if audio can't play
@@ -203,7 +241,7 @@ export function playKillSound() {
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.4; // Volume level
         source.connect(gainNode);
-        gainNode.connect(masterGainNode || audioContext.destination);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
     } catch (error) {
         // Silently fail if audio can't play
@@ -259,7 +297,7 @@ export function playFootstepSound(isSprinting = false) {
         // Sprinting footsteps are louder (50% increase vs normal)
         gainNode.gain.value = isSprinting ? 0.5625 : 0.375; // 0.375 * 1.5 = 0.5625
         source.connect(gainNode);
-        gainNode.connect(masterGainNode || audioContext.destination);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
     } catch (error) {
         // Silently fail if audio can't play
@@ -298,7 +336,7 @@ export function playExplosionSound() {
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.4;
         source.connect(gainNode);
-        gainNode.connect(masterGainNode || audioContext.destination);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
     } catch (error) {
         // Silently fail if audio can't play
@@ -341,7 +379,51 @@ export function playRestartSound() {
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.3; // Volume level
         source.connect(gainNode);
-        gainNode.connect(masterGainNode || audioContext.destination);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
+// Generate hit marker sound using Web Audio API
+export function playHitSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return;
+    }
+    
+    try {
+        // Create a quick, sharp hit marker sound (like a "tick" or "click")
+        const duration = 0.08; // 80ms - very short and sharp
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+        
+        // Generate hit sound waveform (sharp tick)
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+            // High frequency tick (around 1000Hz) for sharpness
+            sample += Math.sin(t * 1000 * 2 * Math.PI) * 0.4;
+            // Add higher harmonics for crispness
+            sample += Math.sin(t * 2000 * 2 * Math.PI) * 0.2;
+            // Add slight noise burst for texture
+            sample += (Math.random() * 2 - 1) * 0.1;
+            // Very quick envelope: fast attack, fast decay
+            const attack = Math.min(1, t / 0.005); // 5ms attack - very quick
+            const decay = Math.max(0, 1 - (t - 0.005) / (duration - 0.005));
+            const envelope = attack * decay;
+            data[i] = sample * envelope * 0.25; // Volume
+        }
+        
+        // Play the sound
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.35; // Volume level
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
     } catch (error) {
         // Silently fail if audio can't play

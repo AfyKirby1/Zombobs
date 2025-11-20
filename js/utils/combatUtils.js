@@ -6,7 +6,7 @@ import {
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES
 } from '../core/constants.js';
-import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound } from '../systems/AudioSystem.js';
+import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playHitSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet } from '../entities/Bullet.js';
@@ -360,12 +360,16 @@ export function handleBulletZombieCollisions() {
                         createBloodSplatter(zombieX, zombieY, impactAngle, true);
                     } else {
                         // Zombie survives but is burning
-                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                        }
                         createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
                         
                         // Trigger hit marker
                         gameState.hitMarker.active = true;
                         gameState.hitMarker.life = gameState.hitMarker.maxLife;
+                        playHitSound();
                     }
                     // Don't destroy flame bullets immediately? 
                     // Original code: gameState.bullets.splice(bulletIndex, 1);
@@ -427,7 +431,10 @@ export function handleBulletZombieCollisions() {
                         if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
                         if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
 
-                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                        }
                     }
 
                     // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
@@ -435,21 +442,27 @@ export function handleBulletZombieCollisions() {
                         playKillSound();
                     }
                     // Create floating damage number (with crit styling if crit)
-                    if (isCrit) {
-                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage), true));
-                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 25, "CRIT!", true));
-                    } else {
-                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage)));
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        if (isCrit) {
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage), true));
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 25, "CRIT!", true));
+                        } else {
+                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, Math.floor(finalDamage)));
+                        }
                     }
                     // Create blood splatter on kill
                     createBloodSplatter(zombieX, zombieY, impactAngle, true);
                 } else {
                     // Create floating damage number (with crit styling if crit)
-                    if (isCrit) {
-                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, Math.floor(finalDamage), true));
-                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y - 25, "CRIT!", true));
-                    } else {
-                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        if (isCrit) {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, Math.floor(finalDamage), true));
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y - 25, "CRIT!", true));
+                        } else {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
+                        }
                     }
                     // Create blood splatter on hit (not kill)
                     createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
@@ -466,6 +479,7 @@ export function handleBulletZombieCollisions() {
                 // Trigger hit marker
                 gameState.hitMarker.active = true;
                 gameState.hitMarker.life = gameState.hitMarker.maxLife;
+                playHitSound();
                 
                 bullet.markedForRemoval = true;
             }
@@ -632,8 +646,34 @@ export function handlePickupCollisions() {
             for (const player of gameState.players) {
                 if (checkCollision(player, pickup)) {
                     player.shield = Math.min(player.maxShield, player.shield + 50);
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "+50 SHIELD!"));
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "+50 SHIELD!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#03a9f4', 12);
+                    collected = true;
+                    break;
+                }
+            }
+            return !collected;
+        });
+    }
+
+    // Check adrenaline pickup collisions
+    if (gameState.adrenalinePickups.length > 0) {
+        gameState.adrenalinePickups = gameState.adrenalinePickups.filter(pickup => {
+            let collected = false;
+            for (const player of gameState.players) {
+                if (checkCollision(player, pickup)) {
+                    // Apply all three buffs: Speed + Reload Speed + Fire Rate
+                    gameState.adrenalineEndTime = Date.now() + 12000; // 12 seconds
+                    gameState.speedBoostEndTime = Math.max(gameState.speedBoostEndTime, Date.now() + 12000);
+                    gameState.rapidFireEndTime = Math.max(gameState.rapidFireEndTime, Date.now() + 12000);
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "ADRENALINE RUSH!"));
+                    }
+                    createParticles(pickup.x, pickup.y, '#4caf50', 15);
                     collected = true;
                     break;
                 }
