@@ -8,6 +8,13 @@
 - ⚫ **Nightmare** (Extreme difficulty, unforgiving mechanics)
 - 🟣 **Mystery** (Easter eggs, secrets, anomalies, classified content)
 
+**Status Legend (Roadmap Summary):**
+
+- Total items: 672
+- Completed items: 53 (7.9%)
+- Uncompleted items: 619
+- Phases completed: 0 / 14 (0.0%)
+
 ---
 
 ## Phase 1: Survival Essentials (Core Loop) 💀
@@ -31,6 +38,9 @@
 - [ ] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds) 🟡
 - [ ] **Weapon Accuracy Indicator** - Visual feedback showing current weapon accuracy level during burst-fire sequences 🟡
 - [ ] **Minimap/Compass** - A simple UI element to show player position relative to the base 🟡
+- [ ] **Prone/Crouch System** - Multiple stance options affecting visibility and accuracy for tactical positioning 🟡
+- [ ] **Looting Minigame** - Quick QTE for bonus loot quality when scavenging supplies 🟢
+- [ ] **Barricading System** - Board up windows and doors to slow zombie entry and create defensive choke points 🟡
 
 ---
 
@@ -62,6 +72,16 @@
 - [ ] **Orbital Strike** - Call down a devastating laser beam from space 🔴
 - [ ] **Smoke Grenade** - Creates a visual cover that confuses zombie pathfinding 🟢
 - [ ] **Weapon Crafting System** - Combine weapon parts to create custom guns with unique stats 🔴
+- [ ] **Cover System** - Take cover behind objects for damage reduction and tactical advantage 🟡
+- [ ] **Vault/Climb Mechanic** - Parkour movement over obstacles for enhanced mobility 🟡
+- [ ] **Voxel-Based Destruction** - Destroy terrain at any point using compute shaders for dynamic level destruction 🔴
+- [ ] **Soft Body Deformation** - Zombies squish when crushed with GPU physics simulation 🔴
+- [ ] **Dismemberment System** - Limbs separate with realistic physics simulation and collision 🟡
+- [ ] **Gore System** - Persistent blood, guts, organs rendered with GPU particles and decals 🟡
+- [ ] **Fire Propagation** - Fire spreads realistically using cellular automata on GPU 🔴
+- [ ] **Explosion Shockwaves** - Physics objects blown away with GPU-computed force fields 🟡
+- [ ] **Bullet Penetration** - Shoot through multiple zombies with raycast compute shaders 🟡
+- [ ] **Ricochet System** - Bullets bounce off metal surfaces with realistic physics 🟡
 
 ---
 
@@ -89,6 +109,41 @@
 - [ ] **Parasitic Infestation** - Enemies that split into smaller creatures upon death 🔴
 - [ ] **Flying Gargoyles** - Aerial enemies that swoop down and pick up players 🔴
 - [ ] **Zombie Mutation System** - Zombies evolve new abilities mid-wave 🔴
+- [ ] **Wound System** - Specific body part damage affecting player movement speed and weapon accuracy 🔴
+- [ ] **Infection Mechanic** - Player can get infected from zombie attacks, requiring cure items or facing slow death 🟡
+- [ ] **Zombie Camouflage** - Cover yourself in zombie blood to reduce detection range and move through hordes 🟡
+- [ ] **Hostage/Survivor Rescue** - Escort missions with NPC survivors for bonus rewards 🟡
+- [ ] **Destructible Walls** - Blow holes through certain barriers for strategic pathing and shortcuts 🟡
+- [ ] **Zombie Pets/Taming** - Rare ability to control a zombie companion temporarily with special items 🔴
+- [ ] **Perks & Traits System** - Choose 3 starting traits at game start that modify playstyle (Glass Cannon, Tank, etc.) 🟡
+- [ ] **Stealth Kills** - Silent melee takedowns from behind for bonus damage and no alert 🟡
+- [ ] **Weather-Based Buffs/Debuffs** - Rain reduces accuracy, fog reduces zombie detection range dynamically 🟡
+- [ ] **Hunger & Thirst Mechanics** - Survival stats requiring food/water management for sustained combat effectiveness 🟡
+
+### Advanced AI & Pathfinding 🧠
+
+- [ ] **Hierarchical Pathfinding** - Coarse grid + fine detail pathfinding, all computed on GPU for thousands of agents 🔴
+- [ ] **Jump Point Search** - Faster A* variant for grid-based maps with GPU optimization 🔴
+- [ ] **Theta* Pathfinding** - Any-angle paths eliminating grid artifacts for smoother movement 🔴
+- [ ] **Dynamic Obstacle Avoidance** - RVO (Reciprocal Velocity Obstacles) computed on GPU for crowd navigation 🔴
+- [ ] **Formation Movement** - Zombies move in coordinated tactical groups with maintained spacing 🟡
+- [ ] **Influence Maps** - GPU-computed heat maps of danger, noise, and player activity zones 🟡
+- [ ] **Behavior Trees on GPU** - Thousands of AI agents with complex decision logic running in parallel 🔴
+- [ ] **Utility AI** - Score-based decision making with all evaluations computed in parallel 🔴
+- [ ] **Goal-Oriented Action Planning (GOAP)** - AI plans multi-step strategies to achieve objectives 🔴
+- [ ] **Swarm Intelligence** - Emergent complex behavior from simple flocking rules 🟡
+- [ ] **Predator-Prey Dynamics** - Different zombie types hunt or flee from each other based on type 🟡
+- [ ] **Territory Control** - Zombies claim and defend specific map areas from intruders 🟡
+
+### Vision & Detection Systems 👁️
+
+- [ ] **Line of Sight Calculation** - GPU raycasts for real-time visibility determination 🔴
+- [ ] **Vision Cones** - Visualize what each zombie can see in real-time for stealth gameplay 🟡
+- [ ] **Sound Propagation for AI** - Zombies hear gunshots through walls with realistic attenuation 🔴
+- [ ] **Scent Trails** - Zombies follow player's path using GPU-computed flow fields 🟡
+- [ ] **Heat Vision** - Special zombie type sees player through walls via thermal signature 🟡
+- [ ] **Motion Detection** - Zombies react specifically to movement patterns and speed 🟡
+- [ ] **Peripheral Vision** - Zombies have realistic blind spots and limited peripheral awareness 🟡
 
 ---
 
@@ -140,6 +195,17 @@
 - [ ] **Shared Resource Pool & Item Sharing** - Players and AI companions draw from a shared ammo pool (configurable). Players can share ammo/health with teammates, drop items for others to pick up, and use medkits on teammates. UI shows shared resource bar with total ammo/medkits 🟡
 - [ ] **Tactical Ping/Marker System** - Players can mark zombies, locations, or resources with visual indicators and audio cues for better coordination in co-op. Contextual commands like "Revive [Player Name]" when teammate is down 🟢
 - [ ] **Character Customization** - Skins, outfits, and avatar personalization 🟡
+
+### Network Optimization & Synchronization 🌐
+
+- [ ] **Client-Side Prediction** - Smooth movement despite lag using predictive algorithms for responsive gameplay 🔴
+- [ ] **Server Reconciliation** - Correct mispredictions gracefully without jarring teleports 🔴
+- [ ] **Entity Interpolation** - Smooth other players' movement between network updates 🟡
+- [ ] **Lag Compensation** - Hit detection accounts for ping differences between players 🔴
+- [ ] **Delta Compression** - Only send changed data over network to minimize bandwidth usage 🔴
+- [ ] **Interest Management** - Only sync nearby entities to reduce network overhead 🟡
+- [ ] **Snapshot Interpolation** - Smooth state updates between server ticks 🟡
+- [ ] **Rollback Netcode** - Fighting game-style synchronization for competitive play 🔴
 
 ---
 
@@ -284,6 +350,16 @@
 - [ ] **Replay System Architecture** - Recording and playback functionality for gameplay analysis, bug reporting, and content creation 🔴
 - [ ] **AI Behavior Tree Implementation** - Hierarchical AI system enabling complex enemy behaviors, coordinated attacks, and adaptive strategies 🔴
 - [ ] **Cross-Platform Rendering** - Abstraction layer supporting multiple graphics APIs and hardware configurations for maximum compatibility 🔴
+- [ ] **Observer Pattern for Game Events** - Decouple event listeners for cleaner code and easier maintenance 🟡
+- [ ] **Command Pattern for Input** - Undo/replay system for inputs enabling replay functionality 🔴
+- [ ] **Asset Manifest System** - Centralized JSON for all game assets with versioning and dependency tracking 🟢
+- [ ] **Dependency Injection Container** - Modular system initialization and testing with loose coupling 🔴
+- [ ] **State Machine for Game Modes** - Clean transitions between menu/gameplay/pause states with validation 🟡
+- [ ] **Telemetry Analytics** - Track player behavior patterns (heatmaps, death locations) for game balance 🟡
+- [ ] **A/B Testing Framework** - Test different balance values with player cohorts for data-driven decisions 🔴
+- [ ] **Automated Balance Testing** - Simulate thousands of runs to test weapon balance and difficulty curves 🔴
+- [ ] **Version Migration System** - Automatically update old save files to new formats for backward compatibility 🟡
+- [ ] **Plugin Sandboxing** - Isolate mod code execution for security and stability 🔴
 
 ### Implementation Standards
 
@@ -359,6 +435,14 @@
 - [ ] **WebGPU Rendering Backend** - Rewriting the graphics engine for next-gen lighting and millions of particles 🔴
 - [ ] **VR / XR Support** - Full Virtual Reality integration with motion controller tracking 🔴
 - [ ] **Dismemberment Engine** - Procedural limb destruction and gore physics 🔴
+- [ ] **Squad Ranking System** - Team-based competitive rankings with seasonal resets and rewards 🔴
+- [ ] **Asymmetric PvP Mode** - One player controls zombie horde vs survivors for unique gameplay 🔴
+- [ ] **Tournament/Bracket System** - Organized competitive events with prizes and spectator support 🔴
+- [ ] **Guildhall/Social Hub** - 3D lobby space where players meet between matches with customization 🔴
+- [ ] **Trade Market System** - Player-to-player item trading with economy and marketplace 🔴
+- [ ] **Mentor/Apprentice System** - Veterans get rewards for helping new players level up 🟡
+- [ ] **Cross-Region Server Handoff** - Seamless migration between regional servers for optimal latency 🔴
+- [ ] **Session Recording & Sharing** - Save and share gameplay clips with others via cloud storage 🟡
 
 ### Visual & Audio Immersion 🎨
 
@@ -377,6 +461,30 @@
 - [ ] **Screen Space Reflections** - Reflective surfaces using screen-space reflection techniques. Puddles, glass, and metal surfaces reflect environment. Adds visual depth and realism to the game world 🔴
 - [ ] **Motion Blur & Temporal Effects** - Motion blur for fast-moving entities and camera movement. Temporal anti-aliasing for smoother edges. Motion trails for bullets and projectiles. Cinematic visual polish 🟡
 - [ ] **Procedural Animation System** - Procedural animations for entities (walking, running, aiming). IK (Inverse Kinematics) for natural limb movement. Dynamic animation blending based on movement speed and direction 🟡
+- [ ] **Canvas Post-Processing Pipeline** - Advanced effects including bloom, vignette, chromatic aberration for cinematic quality 🟡
+- [ ] **Projectile Tracer Effects** - Visible bullet trails for heavy weapons showing trajectory paths 🟢
+- [ ] **Impact Decal System** - Persistent bullet holes and scorch marks on surfaces with fade-out over time 🟢
+- [ ] **Animated Sky Transitions** - Smooth sunrise/sunset gradients with dynamic color shifts throughout day/night cycle 🟡
+- [ ] **Zombie Ragdoll Physics** - Bodies collapse and tumble realistically on death with momentum preservation 🟡
+- [ ] **Lens Flare Effects** - Dynamic lens flares from explosions and the sun for added visual flair 🟢
+- [ ] **Heat Distortion Shader** - Visual heat waves from fire and explosions distorting background 🟡
+- [ ] **Blood Pooling System** - Blood puddles expand and persist on ground surfaces, creating visceral environment 🟢
+- [ ] **Shader-Based Outlines** - Highlight important objects/enemies with customizable glowing outlines 🟡
+- [ ] **Dynamic Wind Grass Shader** - Grass sways in wind direction with realistic wave-like movement patterns 🟡
+
+### Atmospheric Effects 🌫️
+
+- [ ] **Atmospheric Scattering** - Realistic sky colors using Rayleigh scattering for natural dawn/dusk 🔴
+- [ ] **Aerial Perspective** - Distant objects fade to sky color naturally enhancing depth perception 🟡
+- [ ] **Height Fog** - Fog density increases near ground level for atmospheric valleys 🟡
+- [ ] **Exponential Fog** - Smooth fog falloff with distance for natural fog transitions 🟡
+- [ ] **Volumetric Clouds** - Raymarched 3D clouds with realistic lighting and shadows 🔴
+- [ ] **Cloud Shadows** - Clouds cast moving shadows on ground dynamically 🟡
+- [ ] **Rain Rendering** - Individual raindrops with splashes and puddle formation 🟡
+- [ ] **Snow Accumulation** - Snow piles up on surfaces over time with physics simulation 🔴
+- [ ] **Wind Simulation** - Grass, trees, particles react to dynamic wind vectors 🟡
+- [ ] **Dust Motes** - Floating particles visible in light shafts for atmosphere 🟢
+- [ ] **Heat Haze** - Distortion above hot surfaces like fire and explosions 🟡
 
 ### Interactive World 🌍
 
@@ -454,6 +562,40 @@
 - [ ] **Audio System Spatialization** - 3D positional audio using Web Audio API spatialization. Sound sources positioned in 3D space relative to player. Distance-based volume and doppler effects for moving entities. Enhanced immersion through directional audio cues 🟡
 - [ ] **State Management Event System** - Event-driven architecture for game state changes. Decouple systems through event bus. State change notifications for UI updates, achievements, and analytics. Reduces coupling and improves maintainability 🟡
 - [ ] **Modding System Framework** - Plugin architecture for custom content. Mod API for adding weapons, zombies, companions, and game modes. Mod loader and validation system. Steam Workshop-style integration for sharing mods 🔴
+- [ ] **WebGL Dynamic Texture Streaming** - On-the-fly texture compression based on available VRAM for memory optimization 🔴
+- [ ] **Bezier Curve Projectile System** - Non-linear bullet trajectories for special weapons with curved paths 🟡
+- [ ] **Virtual Scrolling for Large Entity Lists** - Performance optimization for rendering thousands of entities efficiently 🟡
+- [ ] **Service Worker Offline Mode** - Play offline with cached assets and local save sync for no-internet gameplay 🟡
+- [ ] **Custom Physics Solver** - Replace basic collision with Verlet integration for better stability and accuracy 🔴
+- [ ] **Canvas Layer Optimization** - Separate static/dynamic rendering layers to reduce full redraws and boost FPS 🟡
+- [ ] **Adaptive Resolution Scaling** - Dynamically adjust canvas resolution based on FPS performance 🟡
+- [ ] **BVH (Bounding Volume Hierarchy)** - Advanced collision detection for complex maps with many objects 🔴
+- [ ] **Memory Defragmentation System** - Periodic cleanup to prevent browser tab crashes on long sessions 🟡
+- [ ] **Incremental Build System** - Only rebuild changed modules during development for faster iteration 🟡
+
+### Memory & Streaming 💾
+
+- [ ] **Sparse Textures** - Only load visible texture tiles to minimize VRAM usage 🔴
+- [ ] **Texture Compression (BC7/ASTC)** - 4-8x smaller textures without quality loss 🟡
+- [ ] **Geometry Streaming** - Load map chunks dynamically as player moves through world 🟡
+- [ ] **Level of Detail (LOD) Chains** - Auto-generate lower detail meshes for distant objects 🟡
+- [ ] **Impostor Rendering** - Distant objects rendered as optimized billboards 🟡
+- [ ] **Occlusion Queries** - GPU tells CPU what's actually visible on screen 🔴
+- [ ] **Frustum Culling on GPU** - Don't submit invisible objects to render pipeline 🟡
+- [ ] **Backface Culling** - Skip polygons facing away from camera 🟢
+- [ ] **Small Feature Culling** - Skip rendering objects smaller than 1 pixel 🟡
+
+### Performance Wizardry ⚡
+
+- [ ] **Async Compute** - Run physics while rendering using parallel GPU work queues 🔴
+- [ ] **Multi-Queue Submission** - Separate Graphics + Compute + Transfer queues for parallelism 🔴
+- [ ] **Persistent Mapped Buffers** - Zero-copy CPU->GPU uploads for maximum throughput 🔴
+- [ ] **Indirect Drawing** - GPU decides what to draw without CPU roundtrip 🔴
+- [ ] **GPU-Driven Rendering** - Entire render pipeline controlled by GPU compute shaders 🔴
+- [ ] **Bindless Resources** - Access any texture/buffer without binding overhead 🔴
+- [ ] **Shader Compilation Caching** - Pre-compile shaders for instant load times 🟡
+- [ ] **Pipeline State Objects (PSO)** - Pre-compiled render states for fast switching 🟡
+- [ ] **Descriptor Indexing** - Dynamic shader resource access without rebinding 🔴
 
 ### Backend & Multiplayer Infrastructure 🖥️
 
@@ -529,7 +671,178 @@
 
 ---
 
-## Phase 7: Project: Z.E.R.O. (Classified) 🟣
+## Phase 8: The WebGPU Revolution (Next-Gen Engine) ⚡
+ 
+ ### Compute-Driven Physics (The "Everything Moves" Update) 🏗️
+ 
+ - [ ] **GPU Rigid Body Physics** - Move Box2D-style physics entirely to Compute Shaders, supporting 10,000+ colliding bodies (debris, corpses) 🔴
+ - [ ] **SPH Fluid Blood System** - Smoothed Particle Hydrodynamics for blood that flows, pools, and drips realistically, interacting with terrain 🔴
+ - [ ] **Pixel-Perfect Destructibility** - GPU-based terrain modification allowing zombies to tear through any wall pixel-by-pixel 🔴
+ - [ ] **Soft-Body Zombie Flesh** - Zombies deform when hit; limbs dangle and bounce using mass-spring systems calculated in parallel 🔴
+ - [ ] **Verlet Rope/Chain Physics** - GPU-simulated intestines, chains, and wires that react to explosions and collisions 🔴
+ - [ ] **Debris Flow Fields** - Thousands of shell casings and rubble pieces interacting with wind vectors and explosion shockwaves 🔴
+ - [ ] **Dynamic Liquid Simulation** - Water/Acid pools that ripple, splash, and displace when entities move through them 🔴
+ - [ ] **Position-Based Dynamics (PBD)** - Stable cloth, ropes, soft bodies using constraint-based approach 🔴
+ - [ ] **XPBD (Extended PBD)** - Even more stable physics, supports stiff materials and complex constraints 🔴
+ - [ ] **Constraint Solver on GPU** - Joints, springs, motors all computed in parallel for massive physics worlds 🔴
+ - [ ] **Continuous Collision Detection** - No tunneling even at extreme speeds using swept collision tests 🔴
+ - [ ] **Convex Hull Collisions** - Complex shapes collide accurately using GPU-computed support functions 🔴
+ - [ ] **Fracture & Destruction** - Walls shatter into realistic chunks using Voronoi fracture algorithms 🔴
+ - [ ] **Ragdoll Physics** - Every zombie is a multi-body ragdoll with realistic joint limits 🔴
+ - [ ] **Vehicle Physics** - Full suspension simulation for drivable vehicles if added to game 🔴
+ - [ ] **Cloth Simulation** - Zombie clothes, flags, tarps blow in wind with realistic folding 🔴
+ - [ ] **Hair/Fur Simulation** - Zombie hair strands simulated with strand dynamics 🔴
+ - [ ] **FLIP Fluid Simulation** - Hybrid particle/grid for realistic liquid behavior 🔴
+ - [ ] **Eulerian Fluid Sim** - Grid-based smoke and fire simulation with buoyancy 🔴
+ - [ ] **Shallow Water Equations** - Puddles, flooding, water flow using height-field simulation 🔴
+ - [ ] **Lava Lamp Physics** - Metaballs for gooey zombie guts and viscous fluids 🟡
+ - [ ] **Marching Cubes** - Convert particle fluids to smooth mesh surfaces for rendering 🔴
+ - [ ] **Dual Contouring** - Better surface extraction than marching cubes with sharp features 🔴
+ 
+ ### Next-Gen Rendering (2D Ray Tracing & Lighting) 🔦
+ 
+ - [ ] **2D Ray-Traced Shadows** - Pixel-perfect soft shadows with penumbra, calculated via raymarching SDFs (Signed Distance Fields) 🔴
+ - [ ] **Dynamic Global Illumination (GI)** - Light bounces off surfaces, coloring nearby objects (e.g., red emergency light tinting nearby walls) 🔴
+ - [ ] **Bindless Texture Arrays** - Access thousands of unique zombie textures/decals in a single shader without context switching overhead 🔴
+ - [ ] **Volumetric Fog & God Rays** - Raymarched lighting through fog volumes that react to dynamic lights and shadows 🔴
+ - [ ] **Screen-Space Reflections (SSR)** - Puddles, blood, and metallic surfaces reflect the world and dynamic entities 🔴
+ - [ ] **Normal Mapped 2D Sprites** - Dynamic lighting interaction on 2D sprites using generated normal/depth maps 🟡
+ - [ ] **Emissive Material System** - Glowing zombie eyes and toxic sludge actually emit light into the GI solution 🟡
+ - [ ] **Order-Independent Transparency (OIT)** - Correctly render overlapping smoke, glass, and fire without sorting artifacts 🔴
+ 
+ #### Lighting & Shadows
+ - [ ] **Cascaded Shadow Maps** - Multiple shadow resolutions for near/far objects for optimal quality 🔴
+ - [ ] **Contact-Hardening Shadows** - Shadows get softer the farther they are from the caster 🔴
+ - [ ] **Ambient Occlusion (SSAO/HBAO+)** - Corners and crevices naturally darken for depth 🔴
+ - [ ] **Light Probes & Irradiance Volumes** - Pre-baked GI data for static geometry with fast lookup 🔴
+ - [ ] **Voxel Cone Tracing** - Real-time GI using voxelized world representation 🔴
+ - [ ] **Signed Distance Field Shadows** - Ultra-sharp shadows with minimal performance cost 🔴
+ - [ ] **Capsule Shadows for Characters** - Cheap, convincing character shadows using capsule approximation 🟡
+ - [ ] **Light Shafts (Volumetric Lighting)** - God rays streaming through windows and fog 🔴
+ - [ ] **Subsurface Scattering** - Zombie flesh glows when backlit for gruesome realism 🔴
+ - [ ] **Caustics Rendering** - Light patterns from water/blood reflections on surfaces 🔴
+ 
+ #### Materials & Surfaces
+ - [ ] **Physically Based Rendering (PBR)** - Metallic/roughness workflow for realistic material response 🔴
+ - [ ] **Parallax Occlusion Mapping** - Fake 3D depth on 2D surfaces with self-shadowing 🟡
+ - [ ] **Tri-Planar Mapping** - Seamless textures on any surface angle without distortion 🟡
+ - [ ] **Decal System** - Bullet holes, blood splatters as GPU-rendered decals with proper blending 🟡
+ - [ ] **Wet Surface Shader** - Rain makes surfaces glossy and reflective dynamically 🟡
+ - [ ] **Rust/Damage Progression** - Materials degrade over time with visible wear 🟡
+ - [ ] **Iridescent Materials** - Oil slicks, zombie bile with rainbow sheen using thin-film interference 🟡
+ - [ ] **Animated Textures** - Pulsing flesh, flickering screens via compute shader animations 🟡
+ 
+ #### Advanced Rendering Techniques
+ - [ ] **Deferred Rendering Pipeline** - Handle hundreds of dynamic lights efficiently with G-buffer 🔴
+ - [ ] **Forward+ (Tiled Forward)** - Hybrid approach for transparency + many lights 🔴
+ - [ ] **Clustered Rendering** - 3D grid of light assignments for massive scenes 🔴
+ - [ ] **Virtual Shadow Maps** - Infinite shadow resolution where needed using adaptive allocation 🔴
+ - [ ] **Mesh Shaders** - Next-gen geometry pipeline when browser support arrives 🔴
+ - [ ] **Variable Rate Shading** - Render peripheral vision at lower quality for performance 🔴
+ - [ ] **Foveated Rendering** - For VR: ultra-sharp center, blurry edges matching eye fovea 🔴
+ - [ ] **Reprojection/ASW** - Fake high framerates by warping previous frames using motion vectors 🔴
+ 
+ ### Massive Scale (The "Horde" Update) 🧟‍♂️
+ 
+ - [ ] **GPU Occlusion Culling** - GPU determines visibility per-frame, allowing millions of off-screen objects with zero CPU cost 🔴
+ - [ ] **Multi-Draw Indirect** - Render the entire world (map, items, zombies) in a single API call (CPU just says "Draw World") 🔴
+ - [ ] **Compute-Based Flocking AI** - Simulate 50,000+ zombies with separation, alignment, and cohesion behaviors entirely on GPU 🔴
+ - [ ] **GPU Flow Field Pathfinding** - Calculate pathfinding for the entire map in parallel for thousands of agents instantly 🔴
+ - [ ] **Instanced Mesh Particles** - Debris are actual 3D/2D meshes with physics, not just billboards 🟡
+ - [ ] **Procedural Map Generation on GPU** - Generate infinite city blocks in milliseconds using compute noise shaders 🔴
+ 
+ ### Visual Polish & Post-Processing ✨
+ 
+ - [ ] **Temporal Anti-Aliasing (TAA)** - Smooth edges and reduce shimmering on moving pixel art using motion vectors 🟡
+ - [ ] **Motion Blur (Per-Object)** - Velocity buffer-based blur for fast zombies and projectiles (no full-screen smear) 🟡
+ - [ ] **Depth of Field (Bokeh)** - Cinematic focus effects based on player aim or cutscenes 🟢
+ - [ ] **Chromatic Aberration & Lens Distortion** - High-quality, physically based lens artifacts 🟢
+ - [ ] **LUT Color Grading** - Professional-grade color correction applied in a single optimized pass 🟢
+ - [ ] **Bloom & Glare** - Physically based bloom that accumulates light energy naturally 🟢
+ - [ ] **Screen-Space Global Illumination (SSGI)** - Cheap GI approximation using screen-space data 🔴
+ - [ ] **Screen-Space Directional Occlusion (SSDO)** - Better than SSAO with directional awareness 🔴
+ - [ ] **Horizon-Based Ambient Occlusion (HBAO+)** - High-quality AO with minimal artifacts 🔴
+ - [ ] **Bent Normal AO** - Directional occlusion for better lighting interaction 🔴
+ - [ ] **Distance Field Ambient Occlusion (DFAO)** - AO computed from SDF data for accuracy 🔴
+ - [ ] **Contact Shadows** - Tiny shadows where objects touch surfaces 🟡
+ - [ ] **Micro-Shadowing** - Surface roughness affects shadow appearance 🟡
+ - [ ] **Reflection Probes** - Localized environment reflections for interiors 🟡
+ - [ ] **Planar Reflections** - Perfect mirrors and water reflections 🔴
+ - [ ] **Cube Map Reflections** - 360° environment maps for metallic surfaces 🟡
+ - [ ] **Parallax-Corrected Reflections** - Accurate indoor reflections accounting for room geometry 🔴
+ - [ ] **Refraction** - See-through glass, water distortion with proper light bending 🟡
+ - [ ] **Fresnel Effects** - Edges of objects reflect more light realistically 🟡
+ - [ ] **Anisotropic Reflections** - Brushed metal, hair highlights with directional streaks 🟡
+ - [ ] **Iridescence** - Thin-film interference for oil, soap bubbles 🟡
+ 
+ ### Advanced Systems 🧠
+ 
+ - [ ] **GPU Audio Spatialization** - Ray-traced audio occlusion (sound muffles behind walls accurately based on geometry) 🔴
+ - [ ] **Vision/Light Field Computation** - Calculate stealth visibility for every pixel on the map instantly 🔴
+ - [ ] **Cellular Automata Fire Propagation** - Fire spreads pixel-by-pixel based on material flammability and wind 🔴
+ - [ ] **Weather Simulation** - Rain/Snow simulated as individual particles with collision and wind interaction 🔴
+ - [ ] **Texture Streaming/Virtual Texturing** - Stream gigabytes of high-res assets seamlessly without loading screens 🔴
+ - [ ] **Neural Network Inference (WebNN)** - Run AI models for zombie behavior or chat generation directly on GPU 🔴
+ - [ ] **HRTF (Head-Related Transfer Function)** - 3D audio positioning that accounts for head shape 🔴
+ - [ ] **Reverb Convolution** - Realistic room acoustics using impulse responses 🔴
+ - [ ] **Sound Occlusion Raytracing** - Walls muffle sound accurately based on geometry 🔴
+ - [ ] **Sound Propagation** - Sound bounces around corners and through openings 🔴
+ - [ ] **Doppler Effect** - Pitch shifts for moving sound sources (zombies, bullets) 🟡
+ - [ ] **Distance Attenuation** - Volume falls off realistically with distance 🟡
+ - [ ] **Material-Based Acoustics** - Metal sounds different than wood when hit 🟡
+ - [ ] **Dynamic Music System** - Layers fade in/out based on combat intensity 🟡
+ - [ ] **Procedural Footsteps** - Material-aware footstep sounds generated on the fly 🟡
+ - [ ] **Weapon Sound Synthesis** - Generate gun sounds procedurally for variety 🟡
+ 
+ ### Particle Systems 2.0 💥
+ 
+ - [ ] **GPU Particle Collisions** - Sparks bounce off walls, blood drips down surfaces 🔴
+ - [ ] **Particle-to-Particle Interaction** - Smoke pushes smoke, fire ignites nearby particles 🔴
+ - [ ] **Particle Sorting** - Correct transparency rendering for millions of particles 🔴
+ - [ ] **Particle Lighting** - Each particle casts and receives light dynamically 🔴
+ - [ ] **Particle Shadows** - Dense smoke casts volumetric shadows 🔴
+ - [ ] **Particle Trails** - Motion blur/trails baked into particle system 🟡
+ - [ ] **Attractors & Force Fields** - Vortexes, gravity wells, wind zones affect particles 🟡
+ - [ ] **Particle Spawning from Particles** - Explosions spawn debris that spawn dust 🟡
+ 
+ ### Procedural Generation 🌍
+ 
+ - [ ] **Perlin/Simplex Noise on GPU** - Terrain, clouds, textures generated procedurally 🟡
+ - [ ] **Worley Noise** - Cellular patterns for stone, organic textures 🟡
+ - [ ] **Wave Function Collapse** - Procedural level generation with constraint rules 🔴
+ - [ ] **L-Systems** - Procedural vegetation, veins, crack patterns 🟡
+ - [ ] **Voronoi Diagrams** - Shattered glass, territory maps, cell structures 🟡
+ - [ ] **Poisson Disk Sampling** - Evenly distributed spawns without clumping 🟡
+ - [ ] **Delaunay Triangulation** - Mesh generation from point sets 🔴
+ - [ ] **Marching Squares** - 2D terrain from heightmaps with smooth iso-contours 🟡
+ - [ ] **Cellular Automata** - Cave generation, erosion, fire spread simulation 🟡
+ - [ ] **Procedural Textures** - Never-repeating textures with infinite variety 🔴
+ - [ ] **Procedural Animation** - IK systems, procedural walk cycles 🔴
+ - [ ] **Procedural Audio** - Synthesize sounds on GPU (experimental feature!) 🔴
+ 
+ ---
+ 
+ ## Phase 9: Experimental & Future Tech 🔬
+ 
+ ### Cutting Edge Technologies
+ 
+ - [ ] **Ray Tracing (WebGPU Extension)** - Full ray tracing when browser support arrives for photorealistic lighting 🔴
+ - [ ] **Machine Learning on GPU** - AI-driven animations, procedural behaviors using neural networks 🔴
+ - [ ] **Generative AI** - Procedural dialogue generation, dynamic quest creation 🔴
+ - [ ] **Neural Radiance Fields (NeRF)** - Photorealistic 3D reconstruction from photo sets 🔴
+ - [ ] **Gaussian Splatting** - Novel 3D representation technique for ultra-realistic rendering 🔴
+ - [ ] **Signed Distance Field Rendering** - Represent entire world as SDFs for infinite detail 🔴
+ - [ ] **Voxel Ray Tracing** - Minecraft-style but fully ray traced for realistic lighting 🔴
+ - [ ] **Quantum-Inspired Algorithms** - Experimental optimization techniques for pathfinding 🔴
+ - [ ] **WebAssembly SIMD** - CPU code 4x faster with SIMD instructions 🟡
+ - [ ] **WebCodecs for Video** - Hardware-accelerated in-game video playback 🟡
+ - [ ] **WebTransport** - Ultra-low latency networking for competitive multiplayer 🔴
+ - [ ] **Shared Array Buffers** - True multi-threaded JavaScript for parallel processing 🔴
+ - [ ] **Atomics** - Lock-free data structures for high-performance threading 🔴
+ 
+ ---
+ 
+ ## Phase 7: Project: Z.E.R.O. (Classified) 🟣
 
 - [ ] **The Transmission** 🟣
 - [ ] **Subject 119** 🟣
@@ -566,7 +879,14 @@
 - [ ] **Talking Gun** - Gun complains when you miss 🟣
 - [ ] **Fake Crash** - Game simulates a BSOD then resumes 🟣
 - [ ] **Potato Mode** - Low poly graphics setting that makes everything look like potatoes 🟣
+- [ ] **The Cake is a Lie** - Hidden cake model with Portal reference that heals but is always one step away 🟣
+- [ ] **Zombie Shakespeare** - Rare zombie reciting Hamlet soliloquy in proper Shakespearean English 🟣
+- [ ] **Secret Developer Console** - Cheat codes enabled via hidden input sequence (up, up, down, down, left, right) 🟣
+- [ ] **Upside Down World** - Everything flips 180 degrees when you type "Australia" in chat 🟣
+- [ ] **Zombie Conga Line** - Chain of zombies following each other in a dance line with music 🟣
+- [ ] **The Matrix Moment** - Bullet time activates when specific conditions are met (kill 10 in 3 seconds) 🟣
+- [ ] **1% Chance Banana Peel** - Zombies slip on random banana peels with cartoonish sound effects 🟣
 
 ---
 
-Last Updated: 2025-01-XX
+Last Updated: 2025-11-20
