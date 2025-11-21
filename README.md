@@ -24,6 +24,9 @@
   <a href="LEGAL/LICENSE.md">
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
+  <a href="https://github.com/AfyKirby1/Zombobs/releases">
+    <img src="https://img.shields.io/badge/Version-0.7.0-00C853?style=for-the-badge" height="30" alt="Version 0.7.0" />
+  </a>
 </p>
 
 ![Gameplay Banner](https://via.placeholder.com/800x400/0f0f0f/ff0000?text=SURVIVE+THE+HORDE)
@@ -31,7 +34,8 @@
 <p align="center">
   <br>
   <b>No Engines. No Frameworks. Just Pure Adrenaline.</b><br>
-  A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.
+  A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.<br>
+  <i>Now featuring permanent progression, achievements, and seasonal battlepass!</i>
   <br><br>
   <a href="https://afykirby1.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
@@ -40,20 +44,62 @@
   <a href="https://otterdays.itch.io/zombobs">
     <img src="https://img.shields.io/badge/PLAY_ON_ITCH.IO-FA5C5C?style=for-the-badge&logo=itch.io&logoColor=white&labelColor=101010" height="50" alt="Play on Itch.io" />
   </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://otterdays.itch.io/zombobs">
-    <img src="https://img.shields.io/badge/PLAY_ON_ITCH.IO-FA5C5C?style=for-the-badge&logo=itch.io&logoColor=white&labelColor=101010" height="50" alt="Play on Itch.io" />
-  </a>
   <br>
 </p>
 
-[🎮 Features](#-features) • [🕹️ Controls](#-controls) • [🛠️ Tech](#-technology-stack) • [🗺️ Roadmap](#-roadmap)
+[🎮 Features](#-features) • [🏅 Progression](#-progression--rewards) • [🕹️ Controls](#-controls) • [🛠️ Tech](#-technology-stack) • [🗺️ Roadmap](#-roadmap)
 
 </div>
 
 ---
 
-## 🔥 What's New in V0.6.0
+## 🔥 What's New in V0.7.0
+
+> **The progression system is here. Rank up, unlock achievements, and dominate the leaderboard!**
+
+- **🏅 Permanent Rank & Progression System** - Long-term progression that persists across all game sessions
+  - **9 Ranks**: Private → Corporal → Sergeant → Lieutenant → Captain → Major → Colonel → General → Legend
+  - **5 Tiers per Rank**: Progress through each rank with exponential XP scaling
+  - **Rank XP Sources**: Earn from session score (1 score = 0.1 rank XP) and wave completion bonuses (10 XP per wave)
+  - **Rank Badges**: Display your rank on main menu and in multiplayer lobbies
+  - **Rank Progress**: Track your progress with visual progress bars and notifications
+
+- **🏆 Achievement System** - 30+ unlockable achievements across 5 categories
+  - **Combat Achievements**: Kill milestones (100, 500, 1K, 5K, 10K), headshots, combos
+  - **Survival Achievements**: Wave milestones (5, 10, 20, 30, 50), time survived, perfect waves
+  - **Collection Achievements**: Weapon master, skill collector, pickup hoarder
+  - **Skill Achievements**: Accuracy master, efficiency expert
+  - **Social Achievements**: Co-op warrior, dedicated player, first blood
+  - **Rewards**: Rank XP (100-10,000 XP) and unlockable titles
+  - **Achievement Gallery**: Browse all achievements with category filtering and progress tracking
+
+- **🎁 Battlepass/Expansion System** - Seasonal progression track with 50 tiers
+  - **Season 1: Outbreak** - 60-day season (January 1 - March 1, 2025)
+  - **Free Track**: Available to all players
+  - **50 Tiers**: Rank XP, Titles, Emblems, and Cosmetics rewards
+  - **Battlepass XP**: Earn from match completion (10 XP base), daily/weekly challenges, and achievements
+  - **Progress Tracking**: Visual tier track with progress bar and season information
+
+- **👤 Enhanced Player Profile System** - Comprehensive player data management
+  - **Persistent Profile**: Stored in localStorage, survives browser restarts
+  - **Statistics Tracking**: Total games, kills, waves, time played, records, and specialized stats
+  - **Profile Screen**: View rank, stats, achievements, and battlepass summary
+  - **Automatic Migration**: Seamlessly migrates from existing username/high score data
+
+- **📊 Global Highscore Leaderboard** - Server-side score tracking
+  - **Top 10 Global Scores**: Compete with players worldwide
+  - **Real-time Updates**: Leaderboard updates via Socket.IO when top 10 changes
+  - **Score Submission**: Automatic submission on game over with timeout handling
+  - **Player Highlighting**: Your score highlighted when in top 10
+
+- **🎨 Visual Settings Enhancements** - Comprehensive visual customization
+  - **Text Rendering Quality**: Global control over font smoothing (Low/Medium/High)
+  - **Rank Badge Settings**: Show/hide toggle and size control (Small/Normal/Large)
+  - **Crosshair Customization**: Color picker, size slider (0.5x-2.0x), opacity slider (0.0-1.0)
+  - **Enemy Health Bar Styles**: Three visual styles (Gradient/Solid/Simple)
+  - All settings apply in real-time and persist across sessions
+
+## 🔥 Previously in V0.6.0
 
 > **Balance overhaul and critical bug fixes**
 
@@ -97,9 +143,6 @@
 - **💫 Bloom & Post-Processing** - Physically based bloom effects for glowing elements and cinematic visuals.
 - **🎛️ Advanced Settings** - New options including WebGPU toggle, bloom intensity, particle count modes, lighting quality tiers, distortion effects, damage number scale, screen shake multiplier, crosshair color, auto-reload toggle, and spatial audio. All apply live.
 - **📊 WebGPU Status Indicator** - Real-time status icon showing WebGPU availability and current state.
-
-## 🔥 Previously in V0.3.0 ALPHA
-
 - **🔥 Flamethrower Weapon** - Burn through crowds with short-range, high-fire-rate devastation. Sets zombies ablaze with damage-over-time effects.
 - **🌙 Day/Night Cycle** - Dynamic 2-minute cycle where zombies move 20% faster at night. Survive the darkness.
 - **👥 Local Co-op** - Full 4-player shared-screen mode with grid HUD, distinct player colors, and smart input detection.
@@ -125,25 +168,30 @@
 
 | Weapon | Damage | Fire Rate | Mag Size | Range | Special |
 |:---|:---:|:---:|:---:|:---:|:---|
-| **Pistol** | 🩸 | ⚡ | 10 | Long | Balanced & Reliable |
-| **Shotgun** | 🩸🩸🩸 | ⚡ | 5 | Medium | 5-Pellet Spread |
-| **Rifle** | 🩸🩸 | ⚡⚡⚡ | 30 | Long | Full Auto Mayhem |
-| **Flamethrower** | 🔥 | ⚡⚡⚡⚡⚡ | 100 | Short | DoT Burning Effect |
+| **Pistol** | 2 | 400ms | 10 | Long | Balanced & Reliable |
+| **Shotgun** | 6×5 | 800ms | 5 | Medium | 5-Pellet Spread |
+| **Rifle** | 4 | 200ms | 30 | Long | Full Auto Mayhem |
+| **Flamethrower** | 1.0/tick | 50ms | 100 | Short | DoT Burning Effect |
+| **SMG** | 1.6 | 80ms | 40 | Medium | High Fire Rate |
+| **Sniper** | 30 | 1500ms | 5 | Very Long | Piercing Shots |
+| **RPG** | 120 AOE | 2000ms | 3 | Long | Explosive Damage |
 
 - **Grenades**: Clear the screen with satisfying AOE explosions (3 per game, 2s cooldown)
 - **Melee Attack**: Close-range swipe with 500ms cooldown (V key or right-click)
-- **Weapon Switching**: Hotkeys (1-4) or scroll wheel for seamless arsenal management
+- **Weapon Switching**: Hotkeys (1-7) or scroll wheel for seamless arsenal management
 - **Background Reloading**: Weapons reload automatically when holstered long enough
+- **Weapon Persistence**: Each weapon maintains its own ammo count across switches
 
 ### 🧠 Intelligent Enemies
 
-- **6 Zombie Variants**:
+- **7 Zombie Variants**:
   - 🟢 **Normal** - Classic shambling horde
   - 🔴 **Fast (Runners)** - 1.6x speed, smaller hitbox, speed trail particles
   - 🛡️ **Armored (Tanks)** - Heavy armor absorbs damage before health
   - 💥 **Exploding (Boomers)** - Explodes on death, AOE damage
   - 👻 **Ghost (Spectral)** - Semi-transparent, 1.3x speed, ethereal glow
   - 🟢 **Spitter (Ranged)** - Kites at optimal range, lobs acid projectiles
+  - 👑 **Boss** - Massive zombie with devastating attacks (spawns every 5 waves)
 
 - **Boss Waves**: Every 5 waves, a massive boss zombie spawns with devastating attacks
 - **Progressive Difficulty**: Waves get harder, faster, and more chaotic
@@ -151,15 +199,28 @@
 - **Environmental Hazards**: Acid pools from Spitter attacks create dangerous zones
 - **Crowd Control**: Bullets slow zombies on hit, allowing strategic kiting
 
+### 🎯 Skill & XP System
+
+- **16 Total Skills** - Expand your capabilities with strategic skill choices
+  - **Survival Skills**: Vitality Boost (Max HP +25%), Regeneration (1 HP/sec), Thick Skin (10% damage reduction), Armor Plating (+10 shield)
+  - **Combat Skills**: Eagle Eye (Crit chance +10%), Lucky Strike (15% double damage chance), Bloodlust (Heal 2 HP per kill), Adrenaline (20% speed boost after kill)
+  - **Utility Skills**: Swift Steps (Movement speed +15%), Quick Hands (50% faster weapon switching), Fast Fingers (15% faster reload), Iron Grip (20% faster reload)
+  - **Tactical Skills**: Hoarder (Max ammo +30%), Scavenger (25% more pickup spawns), Long Range (20% increased bullet range), Steady Aim (30% reduced spread)
+
+- **3-Choice Level-Up System** - Choose from 3 random skills when you level up
+- **Skill Upgrading** - Skills can be upgraded multiple times for stacking effects
+- **XP Gain** - Earn XP from zombie kills (scaled by zombie type, 1.5x rate for faster progression)
+- **XP Scaling** - Base 100 XP requirement, scales by 1.2 per level
+
 ### 🎨 Visual & Audio Feast
 
 - **Juicy Combat**: Screen shake, particle blood splatters, muzzle flashes, bullet trails, shell ejection
 - **Dynamic Audio**: Procedurally generated sound effects using Web Audio API + atmospheric menu music
 - **Retro Aesthetics**: Glowing neon zombies against a dark, gritty backdrop
 - **Horror Atmosphere**: Animated menu backgrounds with pulsing effects, scanlines, and dynamic blood splatters
-- **Theme Toggle**: Light/dark mode with Material Design toggle button
-- **Floating Damage Numbers**: See your damage output in real-time
+- **Floating Damage Numbers**: See your damage output in real-time with customizable styles
 - **Kill Streak Combos**: Chain kills within 1.5s for combo notifications ("RAMPAGE!", "UNSTOPPABLE!")
+- **WebGPU Rendering**: GPU-accelerated background shaders, bloom post-processing, and procedural effects (with Canvas 2D fallback)
 
 ### 💪 Power-Up System
 
@@ -168,7 +229,7 @@
 - **Speed Boost**: Temporary movement speed increase
 - **Rapid Fire**: Increased fire rate for all weapons
 - **Shield Pickup**: Temporary overshield that absorbs damage before health
-- **Kill Streak Combos**: Chain kills within 1.5s for combo notifications ("RAMPAGE!", "UNSTOPPABLE!")
+- **Adrenaline Pickup**: Instant speed boost and combat enhancement
 
 ### 👥 Multiplayer & Co-op
 
@@ -180,12 +241,95 @@
   - All players must die for Game Over
 
 - **Multiplayer Lobby**: Socket.io powered matchmaking with live player list
-  - Real-time connection tracking
-  - Custom usernames
-  - Ready/Back controls
-  - *Note: Full networked gameplay coming soon*
+  - **🌐 Cloud Server**: Deployed on Hugging Face Spaces for reliable hosting
+  - **⚡ Speed Sync**: Zombie speed synchronization prevents position desync
+  - **📉 Delta Compression**: 50-80% bandwidth reduction for large hordes
+  - **🔄 Adaptive Updates**: Dynamic 5-20Hz based on zombie count and latency
+  - **✨ Advanced Interpolation**: 60-80% reduction in movement jitter
+  - **💻 Binary Optimizations**: 10-20% CPU reduction for WebSocket operations
+  - **📊 Latency Measurement**: Real-time network quality tracking
+  - **🔌 Smart Connection**: Automatic server health checks and wake-up system
+  - **📊 Status Indicator**: Shows "Server Ready" on main menu when server is online
+  - **👥 Live Player List**: Real-time player roster with custom usernames and rank badges
+  - **🔄 Auto-Reconnect**: Automatic reconnection with exponential backoff
+  - **🌍 Direct Domain**: Uses `.hf.space` domain for stable connections
+  - **Ready/Back Controls**: Drawn directly on the canvas UI
+  - **Leader System**: First player designated as lobby leader with game start control
+  - **Ready System**: Players toggle ready status; all must be ready to start
 
 - **Controller Support**: Full Xbox/gamepad support with analog sticks and automatic input detection
+
+---
+
+## 🏅 Progression & Rewards
+
+### Rank System
+
+Progress through **9 ranks** with **5 tiers each**:
+
+1. **Private** (Tiers I-V)
+2. **Corporal** (Tiers I-V)
+3. **Sergeant** (Tiers I-V)
+4. **Lieutenant** (Tiers I-V)
+5. **Captain** (Tiers I-V)
+6. **Major** (Tiers I-V)
+7. **Colonel** (Tiers I-V)
+8. **General** (Tiers I-V)
+9. **Legend** (Tiers I-V)
+
+**Rank XP Sources**:
+- Session score (1 score = 0.1 rank XP)
+- Wave completion bonuses (10 XP per wave)
+- Achievement rewards (100-10,000 XP)
+
+**Rank Progression**:
+- Exponential XP scaling (base 100 XP, 1.15x per tier)
+- Rank badge displayed on main menu and in multiplayer lobbies
+- Rank progress bar and full rank display on profile screen
+- Rank XP and rank-up notifications on game over screen
+
+### Achievement System
+
+**30+ Achievements** across **5 categories**:
+
+- **Combat**: Kill milestones (100, 500, 1K, 5K, 10K), headshots, combos
+- **Survival**: Wave milestones (5, 10, 20, 30, 50), time survived, perfect waves
+- **Collection**: Weapon master, skill collector, pickup hoarder
+- **Skill**: Accuracy master, efficiency expert
+- **Social**: Co-op warrior, dedicated player, first blood
+
+**Achievement Features**:
+- Achievement unlock notifications during gameplay (non-intrusive popup)
+- Achievement gallery screen with category filtering
+- Progress bars for locked achievements showing completion percentage
+- Rank XP rewards (100-10,000 XP) and unlockable titles
+
+### Battlepass System
+
+**Season 1: Outbreak** (60-day season, January 1 - March 1, 2025)
+
+- **50 Tiers** of rewards (Rank XP, Titles, Emblems, Cosmetics)
+- **Free Track**: Available to all players
+- **Battlepass XP Sources**:
+  - Match completion (10 XP base)
+  - Daily/weekly challenges
+  - Achievement unlocks
+- **Progress Tracking**: Horizontal scrollable tier track with progress bar
+- **Season Information**: Name, days remaining, current tier display
+
+### Player Profile
+
+**Comprehensive Statistics Tracking**:
+- **Cumulative**: Total games, kills, waves, time played
+- **Records**: Highest wave, highest score, max combo
+- **Specialized**: Headshots, perfect waves, skills unlocked, pickups collected, co-op wins
+
+**Profile Features**:
+- Persistent profile stored in localStorage
+- Unique player ID generation
+- Username and title display (titles unlocked from achievements)
+- Profile screen showing rank, stats, achievements, and battlepass summary
+- Automatic profile migration from existing username/high score data
 
 ---
 
@@ -230,7 +374,7 @@
 ## 🎮 Game Modes
 
 ### Single Player
-Classic survival mode. Just you against the horde. How long can you last?
+Classic survival mode. Just you against the horde. How long can you last? Progress through ranks, unlock achievements, and climb the global leaderboard.
 
 ### Local Co-op (Up to 4 Players) ✅ **FULLY FUNCTIONAL**
 - Shared screen gameplay with 2x2 grid HUD
@@ -238,6 +382,7 @@ Classic survival mode. Just you against the horde. How long can you last?
 - Smart input assignment (mix keyboard and gamepads)
 - Zombies target the closest living player
 - All players must die for Game Over
+- Shared score and progression
 
 ### Multiplayer Lobby ✅ **FULLY FUNCTIONAL**
 - **🌐 Cloud Server**: Deployed on Hugging Face Spaces for reliable hosting
@@ -249,10 +394,12 @@ Classic survival mode. Just you against the horde. How long can you last?
 - **📊 Latency Measurement (V0.5.1)**: Real-time network quality tracking
 - **🔌 Smart Connection**: Automatic server health checks and wake-up system
 - **📊 Status Indicator**: Shows "Server Ready" on main menu when server is online
-- **👥 Live Player List**: Real-time player roster with custom usernames
+- **👥 Live Player List**: Real-time player roster with custom usernames and rank badges
 - **🔄 Auto-Reconnect**: Automatic reconnection with exponential backoff
 - **🌍 Direct Domain**: Uses `.hf.space` domain for stable connections
-- Ready/Back controls drawn directly on the canvas UI
+- **Ready/Back Controls**: Drawn directly on the canvas UI
+- **Leader System**: First player is leader, can start when all ready
+- **Ready System**: Players toggle ready status; all must be ready to start
 
 ---
 
@@ -267,7 +414,7 @@ Classic survival mode. Just you against the horde. How long can you last?
 | **Melee** | <kbd>V</kbd> |
 | **Reload** | <kbd>R</kbd> |
 | **Grenade** | <kbd>G</kbd> |
-| **Switch Weapon** | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> or 🖱️ Scroll Wheel |
+| **Switch Weapon** | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd> <kbd>7</kbd> or 🖱️ Scroll Wheel |
 | **Sprint** | <kbd>Shift</kbd> |
 | **Pause** | <kbd>ESC</kbd> |
 
@@ -293,9 +440,18 @@ The game features a comprehensive **tabbed settings panel** with compact, organi
 
 **Video Tab:**
 - **WebGPU Settings**: Enable/disable WebGPU features, bloom intensity slider, particle count modes (Low/High/Ultra), lighting quality (Off/Simple/Advanced), distortion effects toggle
-- **Quality Presets**: Low, Medium, High, or Custom configurations
+- **Quality Presets**: Low, Medium, High, Ultra, or Custom configurations
 - **Visual Effects**: Resolution scale, vignette, shadows, lighting toggles
+- **Effect Intensity**: Multiplier (0.0-2.0) for all quality-based effects
+- **Post-Processing Quality**: Off, Low, Medium, High
+- **Particle Detail**: Minimal, Standard, Detailed, Ultra
 - **Gameplay Visuals**: Screen shake multiplier, crosshair style & color, damage number style & scale, low health warning, enemy health bars, reload bar
+- **UI Elements** (V0.7.0):
+  - **Text Rendering Quality**: Low (no smoothing), Medium, High (best quality)
+  - **Rank Badge Settings**: Show/hide toggle, size control (Small/Normal/Large)
+  - **Crosshair Customization**: Color picker, size slider (0.5x-2.0x), opacity slider (0.0-1.0)
+  - **Enemy Health Bar Style**: Gradient (default), Solid, Simple
+- **UI Scaling**: 50-150% scale slider with preset buttons (Small 70%, Medium 100%, Large 130%)
 - **Performance**: FPS limit options, debug stats toggle
 
 **Audio Tab:**
@@ -309,7 +465,7 @@ The game features a comprehensive **tabbed settings panel** with compact, organi
 **Controls Tab:**
 - **Input Mode Toggle**: Switch between Keyboard and Controller modes
 - **Keybinds**: Fully remappable keys and buttons
-  - Keyboard: Movement, Sprint, Reload, Grenade, Melee, Weapon hotkeys (1-4), Scroll wheel toggle
+  - Keyboard: Movement, Sprint, Reload, Grenade, Melee, Weapon hotkeys (1-7), Scroll wheel toggle
   - Controller: Fire, Reload, Grenade, Sprint, Melee, Prev/Next Weapon, Pause
 - All settings apply in real-time and persist across sessions via localStorage
 
@@ -330,16 +486,161 @@ We believe in the power of the platform.
 ### Backend Server (Optional - for Multiplayer)
 - **Node.js** - Runtime environment
 - **Express** - Static file serving
-- **Socket.io** - WebSocket server for multiplayer lobby
+- **Socket.io** - WebSocket server for multiplayer lobby and real-time synchronization
+- **Cookie Parser** - User session tracking
+- **Compression** - Response compression for better performance
 
 ### Custom Systems
 Every system is custom-built:
-- **Particle System** - Hand-crafted particle engine for blood, fire, explosions
+- **Particle System** - Hand-crafted particle engine for blood, fire, explosions with quality scaling
 - **Audio System** - Procedural sound generation (no audio files needed)
 - **Input System** - Unified keyboard/mouse/gamepad handling
 - **Collision Detection** - Optimized quadtree-based spatial partitioning
 - **Entity Management** - Object pooling for performance
 - **State Management** - Custom game state system
+- **Rendering Cache** - Intelligent gradient and pattern caching
+- **Viewport Culling** - Efficient entity rendering with update culling
+
+---
+
+## ⚡ Performance & Optimization
+
+### Rendering Optimizations
+
+- **RenderingCache System**: Intelligent gradient and pattern caching
+  - Caches expensive-to-create gradients until canvas size changes (>10px threshold)
+  - Caches lighting gradient until player moves >50px
+  - Reduces expensive gradient creation from every frame to only when needed
+
+- **Viewport Culling**: Efficient entity rendering
+  - All entities checked against viewport bounds before rendering
+  - Uses 100px margin for smooth entry/exit
+  - **Update Culling**: Skip updating entities far off-screen (300px margin)
+  - **Small Feature Culling**: Skip rendering entities <1px on screen
+
+- **WebGPU Optimizations**:
+  - **Dirty Flag System**: Only writes to uniform buffer when values actually change
+  - **Buffer Reuse**: Particle buffers reused when count doesn't change
+  - **Bind Group Caching**: Efficient bind group management
+  - **Graceful Fallback**: Automatic fallback to Canvas 2D on errors
+
+- **Particle System Optimizations**:
+  - Quality-based particle limits (50/100/200/500 based on quality preset)
+  - Efficient update loop (filter pattern instead of reverse loop + splice)
+  - Object pooling for particle reuse
+  - Quality-aware spawning and rendering
+
+### Engine Micro-Optimizations (V0.5.2)
+
+- **Math.sqrt() Elimination**: 26+ sqrt calls replaced with squared distance comparisons
+- **Loop Optimizations**: forEach() converted to for loops in hot paths (5-10% faster)
+- **Object Reuse**: Quadtree and query range objects reused instead of recreated
+- **Settings Caching**: Frequently accessed settings cached at frame start
+- **Viewport Caching**: Viewport bounds calculated once per frame and reused
+- **Property Caching**: Object properties cached in local variables within loops
+- **Early Returns**: Early exits for entities that don't need processing
+- **Math Constants**: TWO_PI constant added to reduce repeated calculations
+
+### Network Optimizations (V0.5.1)
+
+- **Delta Compression**: Only sends changed zombies (50-80% bandwidth reduction)
+- **Adaptive Update Rate**: Dynamic 5-20Hz based on zombie count and latency
+- **Advanced Interpolation**: Adaptive lerp + velocity extrapolation (60-80% jitter reduction)
+- **Socket.IO Binary Add-ons**: 10-20% CPU reduction for WebSocket operations
+- **Latency Measurement**: Real-time network quality tracking with exponential moving average
+
+### Performance Metrics
+
+- **Canvas 2D**: 30-50% FPS improvement (gradient caching + viewport culling)
+- **WebGPU**: 20-40% improvement (dirty flags + buffer optimization)
+- **Entity Rendering**: 15-25% improvement (culling + batching)
+- **Particle System**: 25-35% improvement (optimized loops)
+- **Engine Micro-Optimizations**: 5-15% additional FPS improvement on low-end hardware
+
+Performance improvements are most noticeable with:
+- High entity counts (50+ zombies)
+- Many particles (explosions, blood splatter)
+- Low-end hardware/browsers
+- Complex scenes with multiple effects
+
+---
+
+## 🏗️ Architecture Highlights
+
+### Modular ES6 Architecture
+
+The game has been refactored into a clean, modular ES6 architecture:
+
+**Core Modules** (`js/core/`):
+- `constants.js` - Game constants and configuration
+- `canvas.js` - Canvas initialization and management
+- `gameState.js` - Centralized game state management
+- `rankConstants.js` - Rank system constants and formulas
+- `achievementDefinitions.js` - Achievement definitions
+- `battlepassDefinitions.js` - Battlepass season definitions
+
+**Entity Modules** (`js/entities/`):
+- `Bullet.js` - Bullet and FlameBullet projectile classes
+- `Zombie.js` - All zombie variants (Normal, Fast, Exploding, Armored, Ghost, Spitter, Boss)
+- `Particle.js` - Particle and damage number classes
+- `Pickup.js` - All pickup types (Health, Ammo, Damage, Nuke, Speed, RapidFire, Shield, Adrenaline)
+- `Grenade.js` - Grenade projectile class
+- `Shell.js` - Shell casing class
+- `AcidProjectile.js` - Acid projectile from Spitter Zombie
+- `AcidPool.js` - Acid pool ground hazard
+
+**System Modules** (`js/systems/`):
+- `AudioSystem.js` - Web Audio API sound generation
+- `GraphicsSystem.js` - Graphics utilities and quality scaling
+- `ParticleSystem.js` - Particle effects with quality scaling
+- `SettingsManager.js` - Settings persistence and management
+- `InputSystem.js` - Gamepad input handling
+- `SkillSystem.js` - Skill upgrade system and XP management
+- `RankSystem.js` - Permanent rank progression system
+- `AchievementSystem.js` - Achievement tracking and unlock system
+- `BattlepassSystem.js` - Seasonal battlepass progression
+- `PlayerProfileSystem.js` - Player profile data management
+- `MultiplayerSystem.js` - Multiplayer networking and synchronization
+- `ZombieSpawnSystem.js` - Zombie and boss spawning logic
+- `ZombieUpdateSystem.js` - Zombie AI updates and multiplayer sync
+- `PlayerSystem.js` - Player updates, rendering, co-op lobby
+- `GameStateManager.js` - Game lifecycle management
+- `MeleeSystem.js` - Melee attack logic
+- `PickupSpawnSystem.js` - Pickup spawning logic
+- `EntityRenderSystem.js` - Entity rendering with viewport culling
+- `RenderingCache.js` - Intelligent caching system
+
+**UI Modules** (`js/ui/`):
+- `GameHUD.js` - In-game HUD, menus, lobbies, and UI overlays
+- `SettingsPanel.js` - Settings UI panel
+- `RankDisplay.js` - Rank badge and progress display
+- `AchievementScreen.js` - Achievement gallery UI
+- `BattlepassScreen.js` - Battlepass progression UI
+- `ProfileScreen.js` - Player profile UI
+
+**Utility Modules** (`js/utils/`):
+- `combatUtils.js` - Combat-related functions
+- `gameUtils.js` - General game utilities and viewport culling
+- `drawingUtils.js` - Drawing utilities for UI elements
+
+**Companion Modules** (`js/companions/`):
+- `CompanionSystem.js` - AI NPC companion behavior and lifecycle
+
+### System Organization
+
+- **Clear Separation of Concerns**: Each module has a single, well-defined responsibility
+- **No Circular Dependencies**: Careful import structure prevents dependency cycles
+- **Centralized State**: Single `gameState` object prevents globals
+- **Component-Based**: Reusable UI components (GameHUD, SettingsPanel, etc.)
+- **Update-Render Loop**: Classic game loop pattern with clear separation
+
+### Code Quality
+
+- **ES6 Modules**: Native module system, no bundler required
+- **Consistent Naming**: Clear, descriptive names throughout
+- **Performance-First**: Optimizations built into core systems
+- **Documentation**: Comprehensive inline comments and architecture docs
+- **Maintainability**: Modular structure enables easy testing and modification
 
 ---
 
@@ -349,13 +650,26 @@ Every system is custom-built:
 | :--- | :--- |
 | `launch.bat` | One-click entry: opens the styled PowerShell wrapper |
 | `launch.ps1` | Checks Node.js, installs deps, prints neon banner + live socket.io logs |
-| `server/server.js` | Serves the entire game and coordinates lobby updates over socket.io |
+| `LOCAL_SERVER/server.js` | Serves the entire game and coordinates lobby updates over socket.io |
+| `huggingface-space-SERVER/server.js` | Production server for Hugging Face Spaces deployment |
 
 ---
 
 ## 🗺️ Roadmap
 
 The horde is growing. Here's what's coming next:
+
+### ✅ Recently Completed (V0.7.0)
+- [x] **Permanent Rank & Progression System** - 9 ranks, 5 tiers each, persistent across sessions
+- [x] **Achievement System** - 30+ achievements across 5 categories with rewards
+- [x] **Battlepass System** - Seasonal progression track with 50 tiers
+- [x] **Enhanced Player Profile** - Comprehensive statistics tracking and profile screen
+- [x] **Global Highscore Leaderboard** - Server-side score tracking with top 10 display
+- [x] **Visual Settings Enhancements** - Text rendering, rank badge, crosshair, health bar customization
+
+### ✅ Recently Completed (V0.6.0)
+- [x] **Balance Overhaul** - Crit rate reduction, zombie HP doubling, weapon damage doubling
+- [x] **Hoarder Skill Bug Fix** - Ammo multiplier now persists across weapon switches
 
 ### ✅ Recently Completed (V0.5.1)
 - [x] **Zombie Speed Synchronization** - Perfect sync across all clients
@@ -378,15 +692,18 @@ The horde is growing. Here's what's coming next:
 - [x] **Background Reloading** - Tactical weapon switching
 - [x] **Weapon Persistence** - Independent ammo tracking
 - [x] **Cloud Multiplayer Server** - Hugging Face Spaces deployment
+- [x] **Skill System** - 16 skills with 3-choice level-up system
+- [x] **7 Weapons** - Complete arsenal including SMG, Sniper, and RPG
+- [x] **7 Zombie Types** - Full enemy variety including Boss zombies
 
 ### 🚧 Coming Soon
 - [ ] **Online Multiplayer** - Full networked gameplay (lobby system ready)
 - [ ] **Base Building** - Walls, gates, and auto-turrets
-- [ ] **Progression System** - Skill trees and permanent perks
-- [ ] **More Power-ups** - Quad-damage, Speed Boost, Shield (some already implemented!)
+- [ ] **More Power-ups** - Additional temporary buffs and effects
 - [ ] **Multiple Maps** - Urban, forest, military base environments
 - [ ] **More Zombie Variants** - Crawlers, Jumpers, Swarmers, Summoners
-- [ ] **Rocket Launcher** - High-damage explosive weapon
+- [ ] **Additional Weapons** - More variety in the arsenal
+- [ ] **Daily/Weekly Challenges** - Battlepass challenge system expansion
 
 See [DOCS/roadmap.md](DOCS/roadmap.md) for the full plan.
 
@@ -394,7 +711,7 @@ See [DOCS/roadmap.md](DOCS/roadmap.md) for the full plan.
 
 ## 🤝 Contributing
 
-Found a bug? Want to add a flamethrower? *(Wait, we already have one!)* Want to add something else awesome?
+Found a bug? Want to add a feature? Want to improve something awesome?
 
 1. Fork it.
 2. Branch it (`git checkout -b feature/your-awesome-feature`).

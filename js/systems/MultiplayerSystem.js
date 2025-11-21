@@ -6,6 +6,7 @@ import { initAudio } from '../systems/AudioSystem.js';
 import { createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
 import { triggerExplosion } from '../utils/combatUtils.js';
 import { skillSystem } from './SkillSystem.js';
+import { rankSystem } from './RankSystem.js';
 import { GameEngine } from '../core/GameEngine.js';
 
 /**
@@ -151,7 +152,8 @@ export class MultiplayerSystem {
                 gameState.multiplayer.isReady = false;
                 gameState.multiplayer.isLeader = false;
                 socket.emit('player:register', {
-                    name: gameState.username || `Survivor-${socket.id.slice(-4)}`
+                    name: gameState.username || `Survivor-${socket.id.slice(-4)}`,
+                    rank: rankSystem.getData() // { rankXP, rank, rankTier, rankName }
                 });
                 
                 // Start latency measurement (ping/pong)
@@ -571,6 +573,22 @@ export class MultiplayerSystem {
             socket.on('reconnect_failed', () => {
                 console.error('Failed to reconnect to server after all attempts');
                 gameState.multiplayer.status = 'error';
+            });
+
+            // Listen for leaderboard updates from server
+            socket.on('highscores:update', (data) => {
+                if (data.highscores && Array.isArray(data.highscores) && gameHUD) {
+                    gameHUD.leaderboard = data.highscores;
+                    gameHUD.leaderboardLastFetch = Date.now();
+                }
+            });
+
+            // Listen for score submission result
+            socket.on('game:score:result', (data) => {
+                if (data.success && data.isInTop10 && gameHUD) {
+                    // Refresh leaderboard if score made it to top 10
+                    gameHUD.fetchLeaderboard();
+                }
             });
         } else {
             console.error('Socket.io not found. Make sure the CDN script is loaded.');

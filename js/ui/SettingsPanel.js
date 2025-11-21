@@ -393,10 +393,13 @@ export class SettingsPanel {
         y = this.drawSlider("Blood & Gore", "video", "bloodGoreLevel", 0, 1, y, mouse);
         y = this.drawDropdown("Crosshair Style", "video", "crosshairStyle", ['default', 'dot', 'cross', 'circle'], y, mouse);
         y = this.drawToggle("Dynamic Crosshair", "video", "dynamicCrosshair", y, mouse);
+        y = this.drawSlider("Crosshair Size", "video", "crosshairSize", 0.5, 2.0, y, mouse);
+        y = this.drawSlider("Crosshair Opacity", "video", "crosshairOpacity", 0.0, 1.0, y, mouse);
         y = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], y, mouse);
         y = this.drawSlider("Damage Number Scale", "video", "damageNumberScale", 0.5, 2.0, y, mouse);
         y = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", y, mouse);
         y = this.drawToggle("Enemy Health Bars", "video", "enemyHealthBars", y, mouse);
+        y = this.drawDropdown("Enemy Health Bar Style", "video", "enemyHealthBarStyle", ['gradient', 'solid', 'simple'], y, mouse);
         y = this.drawToggle("Reload Bar", "video", "reloadBar", y, mouse);
         y = this.drawToggle("Show Debug Stats", "video", "showDebugStats", y, mouse);
         y = this.drawDropdown("FPS Limit", "video", "fpsLimit", [0, 30, 60, 120], y, mouse);
@@ -467,6 +470,14 @@ export class SettingsPanel {
         });
         
         y += presetButtonHeight + 10 * presetScale;
+        
+        // Text Rendering Quality
+        y = this.drawDropdown("Text Rendering Quality", "video", "textRenderingQuality", ['low', 'medium', 'high'], y, mouse);
+        
+        // UI Elements section
+        y = this.drawSectionHeader("UI ELEMENTS", y);
+        y = this.drawToggle("Show Rank Badge", "video", "showRankBadge", y, mouse);
+        y = this.drawDropdown("Rank Badge Size", "video", "rankBadgeSize", ['small', 'normal', 'large'], y, mouse);
         
         // New graphics quality settings
         y = this.drawSectionHeader("QUALITY", y);

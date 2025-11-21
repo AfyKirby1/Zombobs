@@ -1,6 +1,7 @@
 import { Zombie } from './Zombie.js';
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 import { triggerExplosion } from '../utils/combatUtils.js';
 
 export class BossZombie extends Zombie {
@@ -133,8 +134,33 @@ export class BossZombie extends Zombie {
             ctx.fillRect(barX, barY, barWidth, barHeight);
             
             const healthPct = this.health / this.maxHealth;
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(barX, barY, barWidth * healthPct, barHeight);
+            const fillWidth = barWidth * healthPct;
+            
+            // Get health bar style setting
+            const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+            
+            if (healthBarStyle === 'gradient') {
+                // Red gradient for boss
+                const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                gradient.addColorStop(0, '#ff0000');
+                gradient.addColorStop(1, '#ff6666');
+                ctx.fillStyle = gradient;
+            } else if (healthBarStyle === 'solid') {
+                // Solid red for boss
+                ctx.fillStyle = '#ff0000';
+            } else if (healthBarStyle === 'simple') {
+                // Simple white fill
+                ctx.fillStyle = '#ffffff';
+            }
+            
+            ctx.fillRect(barX, barY, fillWidth, barHeight);
+            
+            // Border (only for gradient and solid styles)
+            if (healthBarStyle !== 'simple') {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
         }
     }
 }

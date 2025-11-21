@@ -1,17 +1,20 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { BossHealthBar } from './BossHealthBar.js';
-import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS } from '../core/constants.js';
+import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
 import { saveMultiplierStats } from '../utils/gameUtils.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
+import { rankSystem } from '../systems/RankSystem.js';
+import { RankDisplay } from './RankDisplay.js';
 
 export class GameHUD {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.bossHealthBar = new BossHealthBar(canvas);
+        this.rankDisplay = new RankDisplay(canvas);
         this.basePadding = 15;
         this.baseItemSpacing = 12;
         this.baseFontSize = 16;
@@ -27,6 +30,11 @@ export class GameHUD {
         this.hoveredSkillIndex = null;
         this.lobbyEnterTime = null; // Track when lobby was entered for fade-in animations
         this.lastLobbyState = false; // Track previous lobby state to reset animation
+        this.leaderboard = []; // Global leaderboard from server
+        this.leaderboardLastFetch = 0; // Timestamp of last fetch
+        this.leaderboardFetchInterval = 30000; // Fetch every 30 seconds
+        this.leaderboardFetchState = 'loading'; // 'loading' | 'success' | 'timeout' | 'error'
+        this.leaderboardFetchStartTime = 0; // Timestamp when fetch started
     }
 
     getUIScale() {
@@ -179,6 +187,11 @@ export class GameHUD {
         } else if (gameState.showAILobby) {
             this.drawAILobby();
         } else if (this.mainMenu) {
+            // Auto-refresh leaderboard when on main menu (throttled)
+            const now = Date.now();
+            if (now - this.leaderboardLastFetch >= this.leaderboardFetchInterval) {
+                this.fetchLeaderboard();
+            }
             this.drawMainMenu();
         } else {
             if (!this.gameOver && !this.paused && !gameState.showLevelUp) {
@@ -188,6 +201,7 @@ export class GameHUD {
                     this.drawSinglePlayerHUD();
                 }
                 this.drawOffScreenIndicators();
+                this.drawAchievementNotifications();
             }
 
             if (this.gameOver) {
@@ -912,6 +926,23 @@ export class GameHUD {
             }
         }
 
+        // Display rank XP gained
+        if (gameState.sessionResults && gameState.sessionResults.rankProgress) {
+            const rankProgress = gameState.sessionResults.rankProgress;
+            const scale = this.getUIScale();
+            let yOffset = 60;
+            
+            this.ctx.font = `${Math.max(16, 18 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#ff6b00';
+            this.ctx.fillText(`Rank XP Gained: +${rankProgress.xpGained}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
+            
+            if (rankProgress.rankUp) {
+                yOffset += 25;
+                this.ctx.fillStyle = '#00ff00';
+                this.ctx.fillText(`RANK UP! ${rankProgress.rankName} Tier ${rankProgress.newTier}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
+            }
+        }
+
         this.ctx.fillStyle = '#ff0000';
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 100);
@@ -1251,8 +1282,20 @@ export class GameHUD {
         // Row 4: Gallery (centered)
         this.drawMenuButton('Gallery', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery', false);
 
-        // Row 5: About (centered)
-        this.drawMenuButton('About', centerX - buttonWidth / 2, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
+        // Row 5: Profile (left), Achievements (right)
+        this.drawMenuButton('Profile', leftColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'profile', false);
+        this.drawMenuButton('Achievements', rightColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'achievements', false);
+
+        // Row 6: Battlepass (left), About (right)
+        const row6Y = buttonStartY + (buttonHeight + buttonSpacing) * 5;
+        this.drawMenuButton('Battlepass', leftColumnX, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'battlepass', false);
+        this.drawMenuButton('About', rightColumnX, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
+
+        // Draw rank badge next to username
+        this.drawRankBadge();
+
+        // Global Leaderboard
+        this.drawLeaderboard();
 
         // High score - scaled
         const highScoreFontSize = Math.max(10, 12 * scale);
@@ -1315,6 +1358,22 @@ export class GameHUD {
 
         // Draw technology branding in bottom-left
         this.drawTechnologyBranding();
+    }
+
+    drawRankBadge() {
+        // Check if rank badge should be shown
+        const showRankBadge = settingsManager.getSetting('video', 'showRankBadge') !== false;
+        if (!showRankBadge) return;
+        
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const usernameY = centerY - (130 * scale);
+        
+        // Draw rank badge to the right of username
+        const badgeX = centerX + 120 * scale;
+        const badgeY = usernameY - 30 * scale;
+        this.rankDisplay.drawRankBadge(badgeX, badgeY, 50 * scale);
     }
 
     drawNewsTicker() {
@@ -2367,17 +2426,40 @@ export class GameHUD {
         const playerName = player?.name || `Player ${index + 1}`;
         this.ctx.fillText(playerName, nameX, nameY);
 
+        // Rank badge display
+        if (player?.rank) {
+            const rankName = player.rank.rankName || 'Private';
+            const rankTier = player.rank.rankTier || 1;
+            const rankText = `${rankName} T${rankTier}`;
+            const rankX = nameX;
+            const rankY = nameY + 18 * scale;
+            
+            // Rank badge background (orange/amber color)
+            const rankBadgeWidth = this.ctx.measureText(rankText).width + 8 * scale;
+            const rankBadgeHeight = 14 * scale;
+            this.ctx.fillStyle = 'rgba(255, 152, 0, 0.2)';
+            this.ctx.fillRect(rankX, rankY, rankBadgeWidth, rankBadgeHeight);
+            
+            // Rank badge text
+            this.ctx.fillStyle = '#ff9800';
+            this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillText(rankText, rankX + 4 * scale, rankY + 2 * scale);
+        }
+
         // Leader indicator
         if (player?.isLeader) {
             const leaderX = nameX + this.ctx.measureText(playerName).width + 6 * scale;
             this.drawStatusIndicator(leaderX, nameY + 6 * scale, 'leader', true, 14 * scale);
         }
 
-        // Player ID badge
+        // Player ID badge (moved down to make room for rank)
         const idSuffix = player?.id ? player.id.slice(-4) : '----';
+        const idY = player?.rank ? nameY + 34 * scale : nameY + 18 * scale;
         this.ctx.fillStyle = '#9e9e9e';
         this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
-        this.ctx.fillText(`#${idSuffix}`, nameX, nameY + 18 * scale);
+        this.ctx.fillText(`#${idSuffix}`, nameX, idY);
 
         // Ready status indicator
         const isReady = player?.isReady || false;
@@ -2980,12 +3062,15 @@ export class GameHUD {
         const row3Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 2;
         const row4Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 3;
         const row5Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 4;
+        const row6Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 5;
 
         // Check left column
         if (mouseX >= leftColumnX && mouseX <= leftColumnX + mainMenuButtonWidth) {
             if (mouseY >= row1Y - mainMenuButtonHeight / 2 && mouseY <= row1Y + mainMenuButtonHeight / 2) return 'single';
             if (mouseY >= row2Y - mainMenuButtonHeight / 2 && mouseY <= row2Y + mainMenuButtonHeight / 2) return 'local_coop';
             if (mouseY >= row3Y - mainMenuButtonHeight / 2 && mouseY <= row3Y + mainMenuButtonHeight / 2) return 'settings';
+            if (mouseY >= row5Y - mainMenuButtonHeight / 2 && mouseY <= row5Y + mainMenuButtonHeight / 2) return 'profile';
+            if (mouseY >= row6Y - mainMenuButtonHeight / 2 && mouseY <= row6Y + mainMenuButtonHeight / 2) return 'battlepass';
         }
 
         // Check right column
@@ -2993,16 +3078,13 @@ export class GameHUD {
             if (mouseY >= row1Y - mainMenuButtonHeight / 2 && mouseY <= row1Y + mainMenuButtonHeight / 2) return 'campaign';
             if (mouseY >= row2Y - mainMenuButtonHeight / 2 && mouseY <= row2Y + mainMenuButtonHeight / 2) return 'play_ai';
             if (mouseY >= row3Y - mainMenuButtonHeight / 2 && mouseY <= row3Y + mainMenuButtonHeight / 2) return 'multiplayer';
+            if (mouseY >= row5Y - mainMenuButtonHeight / 2 && mouseY <= row5Y + mainMenuButtonHeight / 2) return 'achievements';
+            if (mouseY >= row6Y - mainMenuButtonHeight / 2 && mouseY <= row6Y + mainMenuButtonHeight / 2) return 'about';
         }
 
         // Check Gallery button (centered in row 4)
         if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
             if (mouseY >= row4Y - mainMenuButtonHeight / 2 && mouseY <= row4Y + mainMenuButtonHeight / 2) return 'gallery';
-        }
-
-        // Check About button (centered in row 5)
-        if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
-            if (mouseY >= row5Y - mainMenuButtonHeight / 2 && mouseY <= row5Y + mainMenuButtonHeight / 2) return 'about';
         }
 
         // Check About screen back button
@@ -3762,5 +3844,214 @@ export class GameHUD {
         this.ctx.fillStyle = '#9e9e9e';
         this.ctx.textAlign = 'center';
         this.ctx.fillText(`${killsRemaining} kills to ${player.scoreMultiplier + 1.0}x`, x + width / 2, y + 16);
+    }
+
+    /**
+     * Fetch global leaderboard from server with 10-second timeout
+     */
+    async fetchLeaderboard() {
+        // Throttle fetches - don't fetch more than once every 30 seconds
+        const now = Date.now();
+        if (now - this.leaderboardLastFetch < this.leaderboardFetchInterval && this.leaderboardFetchState === 'success') {
+            return;
+        }
+
+        // Set loading state
+        this.leaderboardFetchState = 'loading';
+        this.leaderboardFetchStartTime = now;
+
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, 10000); // 10 second timeout
+
+        try {
+            const response = await fetch(`${SERVER_URL}/api/highscores`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.highscores && Array.isArray(data.highscores)) {
+                    this.leaderboard = data.highscores;
+                    this.leaderboardLastFetch = now;
+                    this.leaderboardFetchState = 'success';
+                } else {
+                    // Invalid response format
+                    this.leaderboardLastFetch = now; // Update timestamp to prevent infinite retries
+                    this.leaderboardFetchState = 'error';
+                }
+            } else {
+                // HTTP error response
+                this.leaderboardLastFetch = now; // Update timestamp to prevent infinite retries
+                this.leaderboardFetchState = 'error';
+            }
+        } catch (error) {
+            clearTimeout(timeoutId);
+            // Always update timestamp on error to prevent infinite retries
+            this.leaderboardLastFetch = now;
+            
+            if (error.name === 'AbortError') {
+                // Timeout occurred
+                this.leaderboardFetchState = 'timeout';
+                console.log('[GameHUD] Leaderboard fetch timed out after 10 seconds');
+            } else {
+                // Other error (network, CORS, etc.)
+                this.leaderboardFetchState = 'error';
+                console.log('[GameHUD] Could not fetch leaderboard:', error);
+            }
+        }
+    }
+
+    /**
+     * Draw global leaderboard on main menu
+     */
+    drawLeaderboard() {
+        const scale = this.getUIScale();
+        const leaderboardFontSize = Math.max(9, 11 * scale);
+        const titleFontSize = Math.max(11, 13 * scale);
+        const centerX = this.canvas.width / 2;
+        const startY = this.canvas.height - 150 * scale; // Position above high score
+
+        // Leaderboard title
+        this.ctx.font = `bold ${titleFontSize}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+        this.ctx.fillText('Global Leaderboard', centerX, startY);
+
+        // Check fetch state and show appropriate message
+        const now = Date.now();
+        const timeSinceFetchStart = now - this.leaderboardFetchStartTime;
+        const timeSinceLastFetch = now - this.leaderboardLastFetch;
+        const showTimeoutMessage = (this.leaderboardFetchState === 'timeout' || this.leaderboardFetchState === 'error') || 
+                                   (this.leaderboardFetchState === 'loading' && timeSinceFetchStart >= 10000);
+
+        if (this.leaderboard.length === 0 || showTimeoutMessage) {
+            this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+            
+            if (showTimeoutMessage) {
+                // Show timeout/error message
+                this.ctx.fillStyle = 'rgba(255, 152, 0, 0.9)';
+                this.ctx.fillText('Highscore server wasn\'t reached', centerX, startY + 20 * scale);
+                
+                // Calculate retry countdown
+                const retryInSeconds = Math.ceil((this.leaderboardFetchInterval - timeSinceLastFetch) / 1000);
+                if (retryInSeconds > 0 && retryInSeconds < this.leaderboardFetchInterval / 1000) {
+                    this.ctx.fillStyle = 'rgba(158, 158, 158, 0.7)';
+                    this.ctx.font = `${Math.max(8, 9 * scale)}px "Roboto Mono", monospace`;
+                    this.ctx.fillText(`Retrying in ${retryInSeconds}s...`, centerX, startY + 35 * scale);
+                    this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+                }
+                
+                // Show local high score as fallback
+                if (gameState.highScore > 0) {
+                    this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
+                    const localScoreY = retryInSeconds > 0 && retryInSeconds < this.leaderboardFetchInterval / 1000 
+                        ? startY + 50 * scale 
+                        : startY + 35 * scale;
+                    this.ctx.fillText(`Local High Score: ${gameState.highScore.toLocaleString()}`, centerX, localScoreY);
+                }
+            } else {
+                // Show loading state
+                this.ctx.fillStyle = 'rgba(158, 158, 158, 0.5)';
+                this.ctx.fillText('Loading leaderboard...', centerX, startY + 20 * scale);
+            }
+            return;
+        }
+
+        // Leaderboard entries (top 10)
+        this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+        const entryHeight = (leaderboardFontSize + 4) * scale;
+        const maxEntries = Math.min(10, this.leaderboard.length);
+
+        for (let i = 0; i < maxEntries; i++) {
+            const entry = this.leaderboard[i];
+            const y = startY + (i + 1.5) * entryHeight;
+            const isPlayerEntry = entry.username === gameState.username;
+
+            // Highlight player's own score
+            if (isPlayerEntry) {
+                this.ctx.fillStyle = 'rgba(255, 152, 0, 0.3)';
+                this.ctx.fillRect(centerX - 140 * scale, y - entryHeight / 2, 280 * scale, entryHeight);
+            }
+
+            // Rank (right-aligned)
+            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
+            this.ctx.textAlign = 'right';
+            this.ctx.fillText(`#${i + 1}`, centerX - 120 * scale, y);
+
+            // Username (left-aligned)
+            this.ctx.textAlign = 'left';
+            const username = entry.username && entry.username.length > 15 ? entry.username.substring(0, 15) + '...' : (entry.username || 'Survivor');
+            this.ctx.fillText(username, centerX - 100 * scale, y);
+
+            // Score (right-aligned)
+            this.ctx.textAlign = 'right';
+            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 215, 0, 0.8)';
+            const score = entry.score || 0;
+            this.ctx.fillText(score.toLocaleString(), centerX + 100 * scale, y);
+
+            // Wave (right-aligned, smaller font)
+            this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
+            this.ctx.font = `${Math.max(8, 9 * scale)}px "Roboto Mono", monospace`;
+            const wave = entry.wave || 0;
+            this.ctx.fillText(`Wave ${wave}`, centerX + 130 * scale, y);
+            this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+        }
+
+        // Reset text alignment
+        this.ctx.textAlign = 'center';
+    }
+
+    drawAchievementNotifications() {
+        if (!gameState.achievementNotifications || gameState.achievementNotifications.length === 0) return;
+
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        let startY = 100 * scale;
+
+        // Update and draw notifications
+        gameState.achievementNotifications = gameState.achievementNotifications.filter(notification => {
+            notification.life--;
+
+            if (notification.life <= 0) return false;
+
+            const alpha = Math.min(1, notification.life / 60); // Fade in first 60 frames
+            const achievement = notification.achievement;
+
+            // Background
+            const width = 400 * scale;
+            const height = 80 * scale;
+            const x = centerX - width / 2;
+
+            this.ctx.fillStyle = `rgba(42, 42, 42, ${0.9 * alpha})`;
+            this.ctx.fillRect(x, startY, width, height);
+
+            // Border
+            this.ctx.strokeStyle = `rgba(255, 107, 0, ${alpha})`;
+            this.ctx.lineWidth = 3 * scale;
+            this.ctx.strokeRect(x, startY, width, height);
+
+            // Icon
+            this.ctx.font = `${40 * scale}px serif`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(achievement.icon, x + 20 * scale, startY + height / 2);
+
+            // Text
+            const fontSize = Math.max(14, 18 * scale);
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            this.ctx.font = `bold ${fontSize}px 'Roboto Mono', monospace`;
+            this.ctx.fillText('ACHIEVEMENT UNLOCKED!', x + 70 * scale, startY + 25 * scale);
+
+            this.ctx.fillStyle = `rgba(255, 107, 0, ${alpha})`;
+            this.ctx.font = `${Math.max(12, 14 * scale)}px 'Roboto Mono', monospace`;
+            this.ctx.fillText(achievement.name, x + 70 * scale, startY + 50 * scale);
+
+            startY += height + 10 * scale;
+            return true;
+        });
     }
 }

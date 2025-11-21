@@ -291,23 +291,40 @@ export class Zombie {
                 const healthPercent = Math.max(0, this.health / this.maxHealth);
                 const fillWidth = barWidth * healthPercent;
 
-                // Color gradient: green -> yellow -> red
-                const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
-                if (healthPercent > 0.5) {
-                    gradient.addColorStop(0, '#4caf50'); // Green
-                    gradient.addColorStop(1, '#ffeb3b'); // Yellow
-                } else {
-                    gradient.addColorStop(0, '#ffeb3b'); // Yellow
-                    gradient.addColorStop(1, '#f44336'); // Red
+                // Get health bar style setting
+                const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+
+                if (healthBarStyle === 'gradient') {
+                    // Color gradient: green -> yellow -> red
+                    const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                    if (healthPercent > 0.5) {
+                        gradient.addColorStop(0, '#4caf50'); // Green
+                        gradient.addColorStop(1, '#ffeb3b'); // Yellow
+                    } else {
+                        gradient.addColorStop(0, '#ffeb3b'); // Yellow
+                        gradient.addColorStop(1, '#f44336'); // Red
+                    }
+                    ctx.fillStyle = gradient;
+                } else if (healthBarStyle === 'solid') {
+                    // Single color based on health percent
+                    let color = '#4caf50'; // Green
+                    if (healthPercent < 0.5) {
+                        color = healthPercent < 0.25 ? '#f44336' : '#ffeb3b'; // Red or Yellow
+                    }
+                    ctx.fillStyle = color;
+                } else if (healthBarStyle === 'simple') {
+                    // Simple white fill
+                    ctx.fillStyle = '#ffffff';
                 }
 
-                ctx.fillStyle = gradient;
                 ctx.fillRect(barX, barY, fillWidth, barHeight);
 
-                // Border
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
+                // Border (only for gradient and solid styles)
+                if (healthBarStyle !== 'simple') {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(barX, barY, barWidth, barHeight);
+                }
             }
         }
     }

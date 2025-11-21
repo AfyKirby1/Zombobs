@@ -75,12 +75,26 @@ export function drawCrosshair(mouse) {
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
 
     ctx.save();
-    const baseCrosshairSize = 12;
+    
+    // Get crosshair settings
+    const crosshairColorHex = settingsManager.getSetting('video', 'crosshairColor') || '#00ff00';
+    const crosshairSizeMult = settingsManager.getSetting('video', 'crosshairSize') ?? 1.0;
+    const crosshairOpacity = settingsManager.getSetting('video', 'crosshairOpacity') ?? 1.0;
+    
+    // Convert hex to rgba helper
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    
+    const baseCrosshairSize = 12 * crosshairSizeMult;
     const crosshairLineWidth = 2;
-    const crosshairColor = '#ffffff';
-    const crosshairOutlineColor = '#000000';
+    const crosshairColor = hexToRgba(crosshairColorHex, crosshairOpacity);
+    const crosshairOutlineColor = `rgba(0, 0, 0, ${crosshairOpacity * 0.8})`; // Outline with reduced opacity
 
-    const crosshairColorCurrent = localPlayer.isReloading ? '#888888' : crosshairColor;
+    const crosshairColorCurrent = localPlayer.isReloading ? hexToRgba('#888888', crosshairOpacity) : crosshairColor;
 
     // Dynamic crosshair: expand when moving or shooting
     let crosshairSize = baseCrosshairSize;

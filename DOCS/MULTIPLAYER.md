@@ -263,6 +263,156 @@ The `gameState.multiplayer` object tracks:
 - **Interpolation Quality**: 60-80% reduction in jitter compared to fixed 20% lerp
 - **Speed Sync Accuracy**: Eliminates position desync from speed differences
 
+## Highscore System
+
+### Overview
+
+The server maintains a global leaderboard of top 10 player scores. Scores are submitted on game over and persist across server restarts via file-based storage.
+
+### Server-Side (`huggingface-space-SERVER/server.js`)
+
+#### File-Based Storage
+
+- **Storage File**: `highscores.json` in server root directory
+- **Max Entries**: Top 10 scores only
+- **Persistence**: Scores survive server restarts
+
+#### Storage Functions
+
+- `loadHighscores()`: Loads top 10 scores from JSON file (sorted by score descending)
+- `saveHighscores(highscores)`: Saves sorted highscore array to file
+- `addHighscore(entry)`: Adds new entry, maintains top 10 limit, returns updated list
+
+#### Highscore Entry Structure
+
+```javascript
+{
+  userId: string,        // User ID from cookie (zombobs_user_id)
+  username: string,      // Player display name
+  score: number,         // Final game score
+  wave: number,          // Wave reached
+  zombiesKilled: number, // Total zombies killed
+  timestamp: string      // ISO timestamp when score was achieved
+}
+```
+
+#### HTTP API Endpoints
+
+**GET `/api/highscores`**
+- Returns top 10 global leaderboard
+- Response: `{ highscores: [...] }`
+- No authentication required
+
+**POST `/api/highscore`**
+- Submits a new score
+- Request body: `{ username, score, wave, zombiesKilled }`
+- Validates input (score must be number >= 0)
+- Extracts `userId` from cookie automatically
+- Returns: `{ success: true, isInTop10: boolean, rank: number | null }`
+
+#### Socket.IO Events
+
+**Client → Server: `game:score`**
+- Submits score on game over
+- Payload: `{ username, score, wave, zombiesKilled }`
+- Server extracts `userId` from socket handshake cookies
+- Server saves score and checks if it qualifies for top 10
+
+**Server → Client: `game:score:result`**
+- Sent after score submission
+- Payload: `{ success: boolean, isInTop10: boolean, rank: number | null, highscores: [...] }`
+- Includes top 10 leaderboard if score made it to top 10
+
+**Server → All Clients: `highscores:update`**
+- Broadcast when a new score enters top 10
+- Payload: `{ highscores: [...] }`
+- All connected clients receive updated leaderboard
+
+### Client-Side
+
+#### Score Submission (`js/systems/GameStateManager.js`)
+
+**`submitScoreToServer(score, wave, zombiesKilled)`**
+- Called automatically on game over
+- Prefers Socket.IO if multiplayer connected
+- Falls back to HTTP POST if not in multiplayer
+- Non-blocking (doesn't delay game over screen)
+
+**`submitScoreViaHTTP(scoreData)`**
+- Sends HTTP POST to `/api/highscore` endpoint
+- Refreshes leaderboard if score made it to top 10
+
+#### Leaderboard Display (`js/ui/GameHUD.js`)
+
+**`fetchLeaderboard()`**
+- Fetches top 10 from `/api/highscores` endpoint
+- Throttled to once every 30 seconds
+- Stores result in `this.leaderboard` array
+
+**`drawLeaderboard()`**
+- Displays global leaderboard on main menu
+- Shows rank, username, score, and wave for each entry
+- Highlights player's own score if in top 10
+- Positioned above local high score display
+- Shows "Loading leaderboard..." if not yet fetched
+
+#### Socket.IO Integration (`js/systems/MultiplayerSystem.js`)
+
+**`highscores:update` Event Handler**
+- Listens for real-time leaderboard updates
+- Updates `gameHUD.leaderboard` automatically
+- Provides instant feedback when scores change
+
+**`game:score:result` Event Handler**
+- Receives score submission confirmation
+- Refreshes leaderboard if score made top 10
+
+#### Initialization (`js/main.js`)
+
+- Fetches leaderboard on page load
+- Auto-refreshes when entering main menu (throttled)
+
+### Score Submission Flow
+
+#### Multiplayer Session
+
+1. Game ends (all players dead)
+2. `GameStateManager.gameOver()` called
+3. `submitScoreToServer()` checks if socket connected
+4. If connected: Emits `game:score` via Socket.IO
+5. Server processes, saves score, checks top 10
+6. Server sends `game:score:result` with confirmation
+7. Server broadcasts `highscores:update` if in top 10
+8. All clients receive updated leaderboard
+
+#### Single Player Session
+
+1. Game ends (player dead)
+2. `GameStateManager.gameOver()` called
+3. `submitScoreToServer()` checks if socket connected
+4. If not connected: Sends HTTP POST to `/api/highscore`
+5. Server processes, saves score, checks top 10
+6. Server returns JSON response with confirmation
+7. Client refreshes leaderboard if score made top 10
+
+### Leaderboard Display Flow
+
+1. Player enters main menu
+2. `drawMainMenu()` checks if leaderboard needs refresh (30s throttle)
+3. If needed: `fetchLeaderboard()` sends GET request to `/api/highscores`
+4. Server returns top 10 scores
+5. Client stores in `gameHUD.leaderboard`
+6. `drawLeaderboard()` renders list on main menu
+7. Player's own score highlighted if present
+
+### Performance Considerations
+
+- **File I/O**: Synchronous file operations (acceptable for low-frequency writes)
+- **Throttling**: Client fetches throttled to 30 seconds to reduce load
+- **Top 10 Limit**: Only top 10 stored in memory/file (efficient)
+- **Non-Blocking**: Score submission doesn't block game over screen
+- **Real-Time Updates**: Socket.IO broadcasts only when top 10 changes
+
 ## Future Enhancements
 
 - Room/Game session management (multiple concurrent games)
@@ -271,4 +421,9 @@ The `gameState.multiplayer` object tracks:
 - Reconnection handling (resume ready state)
 - Client-side prediction for local player
 - Binary protocol for zombie updates (30-50% smaller payloads)
+- **Leaderboard Enhancements**:
+  - Time-based leaderboards (daily/weekly/monthly)
+  - Category-specific leaderboards (wave-based, score-based, kills-based)
+  - Pagination for more than 10 scores
+  - Player rank lookup (where am I on the leaderboard?)
 

@@ -38,6 +38,30 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Special styling for top 3 entries (gold/silver/bronze)
   - Automatic saving on game over for qualifying sessions
   - Time and date formatting with relative timestamps
+
+✅ **Global Highscore Leaderboard System** - Server-side global score tracking
+  - File-based persistence (`highscores.json`) for top 10 global scores
+  - HTTP API endpoints: `GET /api/highscores`, `POST /api/highscore`
+  - Socket.IO real-time score submission and leaderboard updates
+  - Automatic score submission on game over (Socket.IO or HTTP fallback)
+  - Global leaderboard display on main menu (top 10 with rank, username, score, wave)
+  - Player score highlighting when in top 10
+  - Auto-refresh when entering main menu (throttled to 30 seconds)
+  - Real-time leaderboard updates via Socket.IO when top 10 changes
+  - **10-second timeout handling** with error state tracking
+  - **LocalStorage fallback** when server unavailable (shows local high score)
+  - **Timeout message display**: "Highscore server wasn't reached" with fallback info
+  - **In-memory caching**: Backend uses cache for instant API responses (no disk I/O per request)
+  - **Asynchronous file saving**: Non-blocking file writes prevent API delays
+  - **Fixed infinite retry loop**: Proper cooldown enforcement prevents 429 errors
+  - **Retry countdown display**: Shows "Retrying in X seconds..." for better user feedback
+✅ **Multiplayer Rank Display** - Rank badges in multiplayer lobby
+  - Player cards display rank name and tier (e.g., "Private T1", "Corporal T3")
+  - Orange/amber color scheme matching game aesthetic
+  - Rank data synchronized from client to server on player registration
+  - Server tracks and broadcasts rank information in lobby updates
+  - Server status page displays rank information for connected players
+  - Non-blocking score submission (doesn't delay game over screen)
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **System Refactoring** - Large systems extracted from main.js into dedicated modules
   - ZombieUpdateSystem: Zombie AI, multiplayer sync, interpolation (~173 lines extracted)
@@ -100,6 +124,14 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
   - Dynamic viewport calculations based on scaled element heights
   - News ticker font reduced to 85% size to fit more content
+✅ **Visual Settings Enhancements** - Comprehensive visual customization options
+  - **Text Rendering Quality**: Global control over font smoothing (low, medium, high)
+  - **Rank Badge Settings**: Show/hide toggle and size control (small, normal, large)
+  - **Crosshair Customization**: Color picker, size slider (0.5x-2.0x), opacity slider (0.0-1.0)
+  - **Enemy Health Bar Styles**: Three visual styles (gradient, solid, simple)
+  - All settings apply in real-time with immediate visual feedback
+  - Settings organized in logical sections (UI ELEMENTS, CROSSHAIR, etc.)
+  - All settings persist across game sessions via localStorage
 ✅ **Skill System Expansion** - 10 new basic skills added with full effect integration
   - Total skills now: 16 (6 original + 10 new)
   - New skills: Thick Skin, Lucky Strike, Quick Hands, Scavenger, Adrenaline, Armor Plating, Long Range, Fast Fingers, Bloodlust, Steady Aim
@@ -113,6 +145,37 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Normal: 8 XP, Fast: 15 XP, Exploding: 23 XP, Armored: 18 XP, Ghost: 27 XP, Spitter: 23 XP, Boss: 375 XP
   - Provides more engaging leveling experience
   - Players level up more frequently while maintaining meaningful progression
+✅ **Permanent Rank & Progression System** - Long-term progression that persists across all game sessions
+  - **Rank System**: 9 ranks (Private → Legend) with 5 tiers per rank
+  - Rank XP accumulates from session score (1 score = 0.1 rank XP) and wave completion bonuses
+  - Rank badge displayed on main menu next to username
+  - Rank progress bar and full rank display on profile screen
+  - Rank XP and rank-up notifications on game over screen
+✅ **Achievement System** - 30+ unlockable achievements across 5 categories
+  - Categories: Combat, Survival, Collection, Skill, Social
+  - Achievement unlock notifications during gameplay (non-intrusive popup)
+  - Achievement gallery screen with category filtering and progress tracking
+  - Rank XP rewards (100-10,000 XP) and unlockable titles
+  - Progress bars for locked achievements showing completion percentage
+✅ **Battlepass/Expansion System** - Seasonal progression track with 50 tiers
+  - Season 1: Outbreak (60-day season)
+  - Free track available to all players
+  - Battlepass XP from match completion, daily/weekly challenges, achievements
+  - Horizontal scrollable tier track with reward previews
+  - Progress bar showing current tier and XP
+  - Season information display (name, days remaining)
+✅ **Enhanced Player Profile System** - Comprehensive player data management
+  - Persistent player profile stored in localStorage
+  - Unique player ID generation
+  - Username and title display (titles unlocked from achievements)
+  - Comprehensive statistics tracking (games, kills, waves, time, records, specialized stats)
+  - Profile screen showing rank, stats, achievements, and battlepass summary
+  - Automatic profile migration from existing username/high score data
+✅ **New UI Screens** - Three new full-screen interfaces
+  - Profile Screen: Player stats, rank display, achievement summary, battlepass summary
+  - Achievement Screen: Grid layout with category filtering, progress tracking, unlock dates
+  - Battlepass Screen: Horizontal tier track, progress bar, season info, challenge list
+  - All screens support UI scaling (50%-150%) and scrollable interfaces
 
 ## Technology Stack
 - **Frontend**: HTML5 Canvas, Vanilla JavaScript (ES6 Modules)
@@ -169,7 +232,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │       ├── combatUtils.js        # Combat functions (shooting, explosions, collisions)
 │       ├── gameUtils.js          # General game utilities
 │       └── drawingUtils.js       # Drawing utilities (crosshair, wave UI, FPS counter)
-├── server/
+├── LOCAL_SERVER/
 │   ├── server.js                 # Express + socket.io server
 │   └── package.json              # Node.js dependencies
 ├── sample_assets/

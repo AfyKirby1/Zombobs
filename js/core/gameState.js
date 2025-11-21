@@ -96,6 +96,9 @@ export const gameState = {
     showAILobby: false,
     showAbout: false,
     showGallery: false,
+    showProfile: false,
+    showAchievements: false,
+    showBattlepass: false,
 
     multiplayer: {
         active: false,
@@ -221,6 +224,10 @@ export const gameState = {
 
     // Game Session Tracking
     gameStartTime: 0, // Timestamp when current game session started
+
+    // Achievement Notifications
+    achievementNotifications: [], // Array of achievement notifications to display
+    sessionResults: null, // Session results from profile system (rank XP, achievements, etc.)
 };
 
 // Compatibility getters/setters for single-player code
@@ -350,4 +357,8 @@ export function resetGameState(canvasWidth, canvasHeight) {
 
     // Reset game start time (will be set when game actually starts)
     gameState.gameStartTime = 0;
+
+    // Clear session results
+    gameState.sessionResults = null;
+    gameState.achievementNotifications = [];
 }

@@ -27,6 +27,21 @@ function Write-Colored {
     }
 }
 
+function Get-BackendRAM {
+    try {
+        # Get Node.js processes (server should be running as node.exe)
+        $nodeProcesses = Get-Process -Name "node" -ErrorAction SilentlyContinue
+        if ($nodeProcesses) {
+            # Sum up memory usage of all Node.js processes (in MB)
+            $totalBackendRAM = ($nodeProcesses | Measure-Object -Property WorkingSet64 -Sum).Sum / 1MB
+            return [math]::Round($totalBackendRAM, 2)
+        }
+        return 0
+    } catch {
+        return 0
+    }
+}
+
 function Get-SystemStats {
     $stats = @{}
     try {
@@ -41,6 +56,9 @@ function Get-SystemStats {
         $stats.UsedRAM = $usedRAM
         $stats.FreeRAM = $freeRAM
         $stats.RAMPercent = $ramPercent
+        
+        # Get backend RAM usage
+        $stats.BackendRAM = Get-BackendRAM
         
         # Get CPU usage (average over 1 second)
         $cpu = Get-Counter '\Processor(_Total)\% Processor Time' -ErrorAction SilentlyContinue
@@ -76,8 +94,9 @@ function Show-Taskbar {
     # Build taskbar line
     $ramColor = if ($stats.RAMPercent -gt 80) { "Red" } elseif ($stats.RAMPercent -gt 60) { "Yellow" } else { "Green" }
     $cpuColor = if ($stats.CPUPercent -gt 80) { "Red" } elseif ($stats.CPUPercent -gt 60) { "Yellow" } else { "Green" }
+    $backendRAMColor = if ($stats.BackendRAM -gt 500) { "Yellow" } elseif ($stats.BackendRAM -gt 0) { "Cyan" } else { "DarkGray" }
     
-    $taskbarLine = "RAM: $($stats.UsedRAM)GB/$($stats.TotalRAM)GB ($($stats.RAMPercent)%) | CPU: $($stats.CPUPercent)% | Uptime: $($stats.Uptime) | Time: $($stats.CurrentTime) | Port: $SERVER_PORT"
+    $taskbarLine = "RAM: $($stats.UsedRAM)GB/$($stats.TotalRAM)GB ($($stats.RAMPercent)%) | CPU: $($stats.CPUPercent)% | Backend: $($stats.BackendRAM)MB | Uptime: $($stats.Uptime) | Time: $($stats.CurrentTime) | Port: $SERVER_PORT"
     
     # Clear the line and write taskbar
     Write-Host (" " * ([Console]::WindowWidth - 1)) -NoNewline
@@ -88,6 +107,8 @@ function Show-Taskbar {
     Write-Host "$($stats.UsedRAM)GB/$($stats.TotalRAM)GB ($($stats.RAMPercent)%)" -ForegroundColor $ramColor -NoNewline
     Write-Host " | CPU: " -NoNewline
     Write-Host "$($stats.CPUPercent)%" -ForegroundColor $cpuColor -NoNewline
+    Write-Host " | Backend: " -NoNewline
+    Write-Host "$($stats.BackendRAM)MB" -ForegroundColor $backendRAMColor -NoNewline
     Write-Host " | Uptime: $($stats.Uptime) | Time: $($stats.CurrentTime) | Port: $($script:SERVER_PORT)" -NoNewline
     
     # Restore cursor position
@@ -142,10 +163,24 @@ function Start-TaskbarMonitor {
             $ramColor = if ($ramPercent -gt 80) { "Red" } elseif ($ramPercent -gt 60) { "Yellow" } else { "Green" }
             $cpuColor = if ($cpuPercent -gt 80) { "Red" } elseif ($cpuPercent -gt 60) { "Yellow" } else { "Green" }
             
+            # Get backend RAM usage
+            $backendRAM = 0
+            try {
+                $nodeProcesses = Get-Process -Name "node" -ErrorAction SilentlyContinue
+                if ($nodeProcesses) {
+                    $backendRAM = [math]::Round(($nodeProcesses | Measure-Object -Property WorkingSet64 -Sum).Sum / 1MB, 2)
+                }
+            } catch {
+                # Silently fail
+            }
+            $backendRAMColor = if ($backendRAM -gt 500) { "Yellow" } elseif ($backendRAM -gt 0) { "Cyan" } else { "DarkGray" }
+            
             Write-Host "RAM: " -NoNewline
             Write-Host "$usedRAM GB/$totalRAM GB ($ramPercent%)" -ForegroundColor $ramColor -NoNewline
             Write-Host " | CPU: " -NoNewline
             Write-Host "$cpuPercent%" -ForegroundColor $cpuColor -NoNewline
+            Write-Host " | Backend: " -NoNewline
+            Write-Host "$backendRAM MB" -ForegroundColor $backendRAMColor -NoNewline
             Write-Host " | Uptime: $uptimeStr | Time: $currentTime | Port: $($script:SERVER_PORT)" -NoNewline
             
             # Restore cursor
@@ -311,12 +346,12 @@ function Install-Dependencies {
     Write-Host ""
     Write-Colored "[*] Checking dependencies..." "Yellow"
     
-    if (-not (Test-Path "server\node_modules")) {
+    if (-not (Test-Path "LOCAL_SERVER\node_modules")) {
         Write-Colored "[!] Dependencies not found. Installing..." "Yellow"
         Write-Colored "    This may take a few moments..." "DarkGray"
         Write-Host ""
         
-        Push-Location server
+        Push-Location LOCAL_SERVER
         $installStart = Get-Date
         & npm install
         $installSuccess = $?
@@ -337,9 +372,9 @@ function Install-Dependencies {
         Write-Colored "[+] Dependencies already installed" "Green"
         
         # Check package.json version
-        if (Test-Path "server\package.json") {
+        if (Test-Path "LOCAL_SERVER\package.json") {
             try {
-                $packageJson = Get-Content "server\package.json" | ConvertFrom-Json
+                $packageJson = Get-Content "LOCAL_SERVER\package.json" | ConvertFrom-Json
                 if ($packageJson.version) {
                     Write-Colored "    Server version: $($packageJson.version)" "DarkGray"
                 }
@@ -471,7 +506,7 @@ function Start-Server {
         Start-TaskbarMonitor
     }
     
-    Push-Location server
+    Push-Location LOCAL_SERVER
     try {
         $confirmationShown = $false
         $localIP = Get-LocalIP

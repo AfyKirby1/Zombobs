@@ -2,8 +2,10 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 const packageJson = require('./package.json');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const crypto = require('crypto');
 
 const app = express();
@@ -13,6 +15,7 @@ const httpServer = createServer(app);
 app.set('trust proxy', true);
 
 // Middleware
+app.use(compression()); // Compress all responses for better performance
 app.use(cookieParser());
 app.use(express.json());
 
@@ -41,7 +44,7 @@ const io = new Server(httpServer, {
     allowedHeaders: ["*"],
     credentials: false // Set to false when origin is "*"
   },
-  transports: ['polling', 'websocket'], // Support both transports (polling first for compatibility)
+  transports: ['websocket', 'polling'], // Prefer websockets for better performance
   allowEIO3: true, // Allow Engine.IO v3 clients (for compatibility)
   pingTimeout: 60000, // Increase timeout for slower connections
   pingInterval: 25000, // Standard ping interval
@@ -49,8 +52,14 @@ const io = new Server(httpServer, {
 });
 
 const players = new Map();
-const recentEvents = [];
+// Use circular buffer for recent events (more efficient than array unshift/pop)
+const MAX_RECENT_EVENTS = 10;
+const recentEvents = new Array(MAX_RECENT_EVENTS);
+let recentEventsIndex = 0;
 const userSessions = new Map(); // Track user sessions with cookies
+
+// Track leader ID directly instead of iterating
+let currentLeaderId = null;
 
 // Generate unique user ID from cookie or create new one
 function getOrCreateUserId(req, res) {
@@ -90,44 +99,57 @@ function getOrCreateUserId(req, res) {
 
 function logEvent(message) {
   const timestamp = new Date().toLocaleTimeString();
-  recentEvents.unshift(`[${timestamp}] ${message}`);
-  if (recentEvents.length > 10) recentEvents.pop();
+  recentEvents[recentEventsIndex] = `[${timestamp}] ${message}`;
+  recentEventsIndex = (recentEventsIndex + 1) % MAX_RECENT_EVENTS;
+}
+
+function getRecentEvents() {
+  // Return events in chronological order (oldest first)
+  const events = [];
+  for (let i = 0; i < MAX_RECENT_EVENTS; i++) {
+    const idx = (recentEventsIndex + i) % MAX_RECENT_EVENTS;
+    if (recentEvents[idx]) {
+      events.push(recentEvents[idx]);
+    }
+  }
+  return events;
 }
 
 function assignLeader() {
   // Assign leader to first player in Map
-  if (players.size === 0) return;
+  if (players.size === 0) {
+    currentLeaderId = null;
+    return;
+  }
 
-  // Clear all leader flags
-  players.forEach((player) => {
-    player.isLeader = false;
-  });
+  // If current leader still exists, keep them
+  if (currentLeaderId && players.has(currentLeaderId)) {
+    return;
+  }
 
-  // Assign to first player
-  const firstPlayerId = Array.from(players.keys())[0];
+  // Clear old leader flag if exists
+  if (currentLeaderId) {
+    const oldLeader = players.get(currentLeaderId);
+    if (oldLeader) oldLeader.isLeader = false;
+  }
+
+  // Get first player efficiently using iterator
+  const firstPlayerId = players.keys().next().value;
   const firstPlayer = players.get(firstPlayerId);
+  
   if (firstPlayer) {
     firstPlayer.isLeader = true;
+    currentLeaderId = firstPlayerId;
   }
 }
 
 function broadcastLobby() {
   const playerList = Array.from(players.values());
-  console.log(`[broadcastLobby] Broadcasting lobby update to all clients`);
-  console.log(`[broadcastLobby] Player count: ${playerList.length}`);
-  console.log(`[broadcastLobby] Players:`, playerList.map(p => ({
-    id: p.id,
-    name: p.name,
-    isReady: p.isReady,
-    isLeader: p.isLeader
-  })));
-
+  // Reduced logging for performance - only log errors
   try {
     io.emit('lobby:update', playerList);
-    console.log(`[broadcastLobby] Successfully emitted lobby:update event`);
   } catch (error) {
     console.error(`[broadcastLobby] ERROR emitting lobby:update:`, error);
-    console.error(`[broadcastLobby] Error stack:`, error.stack);
     throw error;
   }
 }
@@ -157,14 +179,21 @@ function formatMemory(bytes) {
 app.get('/', (req, res) => {
   const userId = getOrCreateUserId(req, res);
   const uptime = formatUptime(process.uptime());
-  const memoryMB = formatMemory(process.memoryUsage().heapUsed);
-  const totalMemoryMB = formatMemory(process.memoryUsage().heapTotal);
+  
+  // Cache memory usage calculation (don't call multiple times per request)
+  const memUsage = process.memoryUsage();
+  const memoryMB = formatMemory(memUsage.heapUsed);
+  const totalMemoryMB = formatMemory(memUsage.heapTotal);
+  
   const version = packageJson.version;
-  const eventsHTML = recentEvents.length > 0
-    ? recentEvents.map(event => `<li>${event}</li>`).join('')
+  
+  // Use optimized recent events getter
+  const events = getRecentEvents();
+  const eventsHTML = events.length > 0
+    ? events.map(event => `<li>${event}</li>`).join('')
     : '<li><em>No recent activity... yet.</em></li>';
   
-  // Get player list with details
+  // Get player list once and reuse
   const playerList = Array.from(players.values());
   const readyCount = playerList.filter(p => p.isReady).length;
   const leader = playerList.find(p => p.isLeader);
@@ -177,9 +206,11 @@ app.get('/', (req, res) => {
     playersHTML = playerList.map(player => {
       const readyClass = player.isReady ? 'ready' : 'not-ready';
       const leaderBadge = player.isLeader ? '<span class="leader-badge">👑 LEADER</span>' : '';
+      const rankInfo = player.rank ? `<span class="rank-badge">${player.rank.rankName} T${player.rank.rankTier}</span>` : '';
       return `
         <li class="player-item ${readyClass}">
           <span class="player-name">${player.name}</span>
+          ${rankInfo}
           ${leaderBadge}
           <span class="player-status">${player.isReady ? '✓ READY' : '○ NOT READY'}</span>
         </li>
@@ -536,6 +567,85 @@ app.get('/', (req, res) => {
   `);
 });
 
+// Highscore Storage System
+const HIGHSCORES_FILE = './highscores.json';
+const MAX_HIGHSCORES = 10;
+
+// In-memory cache for highscores (loaded on server start)
+let highscoresCache = [];
+
+/**
+ * Load highscores from file (used only on server start)
+ * @returns {Array} Array of highscore entries, sorted by score descending
+ */
+function loadHighscoresFromFile() {
+  try {
+    if (fs.existsSync(HIGHSCORES_FILE)) {
+      const data = fs.readFileSync(HIGHSCORES_FILE, 'utf8');
+      const highscores = JSON.parse(data);
+      if (Array.isArray(highscores)) {
+        // Sort by score descending and limit to top 10
+        return highscores.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
+      }
+    }
+  } catch (error) {
+    console.error('[highscores] Error loading highscores from file:', error);
+  }
+  return [];
+}
+
+/**
+ * Save highscores to file asynchronously (non-blocking)
+ * @param {Array} highscores - Array of highscore entries
+ */
+async function saveHighscoresAsync(highscores) {
+  try {
+    // Ensure sorted and limited to top 10
+    const sorted = highscores.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
+    await fs.promises.writeFile(HIGHSCORES_FILE, JSON.stringify(sorted, null, 2), 'utf8');
+  } catch (error) {
+    console.error('[highscores] Error saving highscores to file:', error);
+    // Don't throw - file write errors shouldn't crash the server
+  }
+}
+
+/**
+ * Get highscores from cache (instant, no disk I/O)
+ * @returns {Array} Array of highscore entries, sorted by score descending
+ */
+function getHighscores() {
+  // Return cached highscores (already sorted and limited)
+  return [...highscoresCache];
+}
+
+/**
+ * Add a new highscore entry
+ * @param {Object} entry - Highscore entry { userId, username, score, wave, zombiesKilled }
+ * @returns {Array} Updated highscores array
+ */
+function addHighscore(entry) {
+  // Add new entry with timestamp
+  highscoresCache.push({
+    userId: entry.userId,
+    username: entry.username || 'Survivor',
+    score: entry.score || 0,
+    wave: entry.wave || 0,
+    zombiesKilled: entry.zombiesKilled || 0,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Sort and limit to top 10
+  highscoresCache = highscoresCache.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
+  
+  // Save to file asynchronously (non-blocking)
+  saveHighscoresAsync(highscoresCache).catch(err => {
+    console.error('[highscores] Background save failed:', err);
+  });
+  
+  // Return updated cache immediately
+  return [...highscoresCache];
+}
+
 // Health check endpoint for Hugging Face
 app.get('/health', (req, res) => {
   res.json({
@@ -543,6 +653,51 @@ app.get('/health', (req, res) => {
     players: players.size,
     timestamp: new Date().toISOString()
   });
+});
+
+// Highscore API Endpoints
+app.get('/api/highscores', (req, res) => {
+  try {
+    // Return cached highscores instantly (no disk I/O)
+    const highscores = getHighscores();
+    res.json({ highscores });
+  } catch (error) {
+    console.error('[highscores] Error fetching highscores:', error);
+    res.status(500).json({ error: 'Failed to fetch highscores' });
+  }
+});
+
+app.post('/api/highscore', (req, res) => {
+  try {
+    const userId = getOrCreateUserId(req, res);
+    const { username, score, wave, zombiesKilled } = req.body;
+    
+    // Validate input
+    if (typeof score !== 'number' || score < 0) {
+      return res.status(400).json({ error: 'Invalid score' });
+    }
+    
+    // Add highscore
+    const updatedHighscores = addHighscore({
+      userId,
+      username: username || 'Survivor',
+      score,
+      wave: wave || 0,
+      zombiesKilled: zombiesKilled || 0
+    });
+    
+    // Check if this score made it to top 10
+    const isInTop10 = updatedHighscores.some(h => h.userId === userId && h.score === score);
+    
+    res.json({
+      success: true,
+      isInTop10,
+      rank: isInTop10 ? updatedHighscores.findIndex(h => h.userId === userId && h.score === score) + 1 : null
+    });
+  } catch (error) {
+    console.error('[highscores] Error submitting highscore:', error);
+    res.status(500).json({ error: 'Failed to submit highscore' });
+  }
 });
 
 // Socket.io connection handling
@@ -560,8 +715,18 @@ io.on('connection', (socket) => {
     name: defaultName,
     isReady: false,
     isLeader: isFirstPlayer,
-    userId: userId || 'unknown'
+    userId: userId || 'unknown',
+    rank: {
+      rankName: 'Private',
+      rank: 1,
+      rankTier: 1
+    }
   });
+  
+  // Set leader ID if first player
+  if (isFirstPlayer) {
+    currentLeaderId = socket.id;
+  }
   
   // Link socket to user session
   if (userId && userSessions.has(userId)) {
@@ -575,11 +740,8 @@ io.on('connection', (socket) => {
     assignLeader();
   }
 
-  console.log(
-    `[+] ${defaultName} connected (${socket.id}) | Players online: ${players.size}`
-  );
-  console.log(`    Is Leader: ${isFirstPlayer}`);
-  console.log(`    Active players: ${formatPlayerList()}`);
+  // Reduced logging for better performance
+  console.log(`[+] ${defaultName} connected | Players: ${players.size} | Leader: ${isFirstPlayer}`);
   logEvent(`${defaultName} joined the fight`);
   broadcastLobby();
 
@@ -589,12 +751,18 @@ io.on('connection', (socket) => {
     const rawName = typeof payload.name === 'string' ? payload.name : defaultName;
     const name = rawName.trim().substring(0, 24) || defaultName;
 
-    const current = players.get(socket.id) || { id: socket.id, isReady: false, isLeader: false };
-    players.set(socket.id, { ...current, name });
+    // Extract rank data from payload, with defaults
+    const rankData = payload.rank || {};
+    const rank = {
+      rankName: rankData.rankName || 'Private',
+      rank: typeof rankData.rank === 'number' ? rankData.rank : 1,
+      rankTier: typeof rankData.rankTier === 'number' ? rankData.rankTier : 1
+    };
 
-    console.log(
-      `[~] ${socket.id} set name to "${name}" | Players online: ${players.size}`
-    );
+    const current = players.get(socket.id) || { id: socket.id, isReady: false, isLeader: false };
+    players.set(socket.id, { ...current, name, rank });
+
+    // Reduced logging
     logEvent(`${name} updated their ID tag`);
     broadcastLobby();
   });
@@ -602,49 +770,20 @@ io.on('connection', (socket) => {
   // Handle ready toggle
   socket.on('player:ready', () => {
     try {
-      console.log(`[player:ready] Event received from socket.id: ${socket.id}`);
-      console.log(`[player:ready] Current players in Map: ${players.size}`);
-      console.log(`[player:ready] Player IDs in Map:`, Array.from(players.keys()));
-
       const player = players.get(socket.id);
       if (player) {
-        const oldReadyState = player.isReady;
-        console.log(`[player:ready] Player found: ${player.name}, current ready state: ${oldReadyState}`);
-
         player.isReady = !player.isReady;
-        const newReadyState = player.isReady;
-
-        console.log(
-          `[~] ${player.name} ${player.isReady ? 'READY' : 'NOT READY'} | Players online: ${players.size}`
-        );
-        console.log(`[player:ready] State changed: ${oldReadyState} -> ${newReadyState}`);
-
         logEvent(`${player.name} ${player.isReady ? 'is ready' : 'is not ready'}`);
-
-        try {
-          console.log(`[player:ready] Calling broadcastLobby()...`);
-          broadcastLobby();
-          console.log(`[player:ready] broadcastLobby() completed successfully`);
-        } catch (error) {
-          console.error(`[player:ready] ERROR in broadcastLobby():`, error);
-          console.error(`[player:ready] Error stack:`, error.stack);
-          throw error; // Re-throw to be caught by outer try-catch
-        }
+        broadcastLobby();
       } else {
-        console.error(`[player:ready] ERROR: Player not found in Map for socket.id: ${socket.id}`);
-        console.error(`[player:ready] Available socket IDs:`, Array.from(players.keys()));
-        console.error(`[player:ready] This may indicate a disconnect or connection issue`);
-        // Emit error back to client for debugging
+        // Only log errors, not every validation
         socket.emit('player:ready:error', {
           message: 'Player not found in server Map',
-          socketId: socket.id,
-          availablePlayers: Array.from(players.keys())
+          socketId: socket.id
         });
       }
     } catch (error) {
-      console.error(`[player:ready] UNEXPECTED ERROR in handler:`, error);
-      console.error(`[player:ready] Error stack:`, error.stack);
-      // Emit error back to client
+      console.error(`[player:ready] ERROR:`, error);
       socket.emit('player:ready:error', {
         message: 'Server error processing ready toggle',
         error: error.message
@@ -774,6 +913,66 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('game:resume');
   });
 
+  // Handle score submission (game over)
+  socket.on('game:score', (data) => {
+    try {
+      // Get user ID from socket handshake cookies
+      const cookies = socket.handshake.headers.cookie || '';
+      const cookieMatch = cookies.match(/zombobs_user_id=([^;]+)/);
+      const userId = cookieMatch ? cookieMatch[1] : null;
+      
+      if (!userId) {
+        console.log('[game:score] No user ID found, skipping score submission');
+        return;
+      }
+      
+      // Get username from player Map or data
+      const player = players.get(socket.id);
+      const username = player?.name || data.username || 'Survivor';
+      
+      // Validate score data
+      const score = typeof data.score === 'number' ? data.score : 0;
+      const wave = typeof data.wave === 'number' ? data.wave : 0;
+      const zombiesKilled = typeof data.zombiesKilled === 'number' ? data.zombiesKilled : 0;
+      
+      if (score <= 0) {
+        console.log('[game:score] Invalid score, skipping submission');
+        return;
+      }
+      
+      // Add highscore
+      const updatedHighscores = addHighscore({
+        userId,
+        username,
+        score,
+        wave,
+        zombiesKilled
+      });
+      
+      // Check if this score made it to top 10
+      const entry = updatedHighscores.find(h => h.userId === userId && h.score === score && h.wave === wave);
+      const isInTop10 = !!entry;
+      const rank = isInTop10 ? updatedHighscores.indexOf(entry) + 1 : null;
+      
+      // Notify client of submission result
+      socket.emit('game:score:result', {
+        success: true,
+        isInTop10,
+        rank,
+        highscores: updatedHighscores.slice(0, 10) // Send top 10 back
+      });
+      
+      // Broadcast new leaderboard to all clients if score is in top 10
+      if (isInTop10) {
+        io.emit('highscores:update', { highscores: updatedHighscores.slice(0, 10) });
+        logEvent(`${username} achieved rank #${rank} with ${score} points!`);
+      }
+    } catch (error) {
+      console.error('[game:score] Error processing score submission:', error);
+      socket.emit('game:score:result', { success: false, error: 'Failed to process score' });
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
@@ -793,15 +992,11 @@ io.on('connection', (socket) => {
     // If leader disconnected, assign new leader
     if (wasLeader && players.size > 0) {
       assignLeader();
-      console.log(`[~] New leader assigned after ${displayName} disconnected`);
       logEvent(`New leader assigned after ${displayName} left`);
     }
 
-    console.log(
-      `[-] ${displayName} disconnected (${socket.id}) | Players online: ${players.size}`
-    );
-    console.log(`    Was Leader: ${wasLeader}`);
-    console.log(`    Active players: ${formatPlayerList()}`);
+    // Reduced logging
+    console.log(`[-] ${displayName} disconnected | Players: ${players.size}`);
     logEvent(`${displayName} was lost to the horde`);
     broadcastLobby();
 
@@ -818,6 +1013,10 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[!] Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+// Initialize highscores cache on server start
+highscoresCache = loadHighscoresFromFile();
+console.log(`[highscores] Loaded ${highscoresCache.length} highscores from file`);
 
 // Start server with error handling
 try {

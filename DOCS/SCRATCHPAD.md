@@ -4,6 +4,143 @@
 
 ## 2025 - Active Development Notes
 
+### Visual Settings Enhancements [2025-11-21]
+- ✅ **Text Rendering Quality Setting** - Global font smoothing control
+  - Three quality levels: Low (no smoothing), Medium, High (best quality)
+  - Applies to all canvas contexts via `applyTextRenderingQualityToAll()` function
+  - Real-time updates when setting changes via SettingsManager callback
+  - Location: `js/core/canvas.js` - `applyTextRenderingQuality()`, `applyTextRenderingQualityToAll()`
+  - Location: `js/main.js` - Settings change listener integration
+
+- ✅ **Rank Badge Display Settings** - Customize rank badge appearance
+  - Show/hide toggle: `showRankBadge` setting controls visibility
+  - Size control: `rankBadgeSize` setting (small 0.8x, normal 1.0x, large 1.2x)
+  - Settings organized in new "UI ELEMENTS" section in video settings panel
+  - Wired into `RankDisplay.drawRankBadge()` and `GameHUD.drawRankBadge()`
+  - Location: `js/ui/RankDisplay.js`, `js/ui/GameHUD.js`, `js/ui/SettingsPanel.js`
+
+- ✅ **Crosshair Customization** - Complete crosshair visual control
+  - Wired existing `crosshairColor` setting (was previously hardcoded to '#ffffff')
+  - Added `crosshairSize` setting (0.5x to 2.0x multiplier, default 1.0)
+  - Added `crosshairOpacity` setting (0.0 to 1.0, default 1.0)
+  - Hex to RGBA conversion with opacity support in `drawCrosshair()` function
+  - All settings apply in real-time during gameplay
+  - Location: `js/utils/drawingUtils.js` - `drawCrosshair()` function
+
+- ✅ **Enemy Health Bar Style** - Multiple visual styles for enemy health bars
+  - Three styles: Gradient (default), Solid (single color), Simple (minimal)
+  - Applies to both regular zombies and boss zombies
+  - Style setting: `enemyHealthBarStyle` ('gradient', 'solid', 'simple')
+  - Location: `js/entities/Zombie.js` - health bar rendering in `draw()` method
+  - Location: `js/entities/BossZombie.js` - boss health bar rendering
+
+### Highscore System Performance & Reliability [2025-11-21]
+- ✅ **Fixed Infinite Retry Loop**: Updated `fetchLeaderboard()` to set `leaderboardLastFetch` on all error paths
+  - Prevents 429 errors from request spam
+  - Ensures 30-second cooldown applies after failures
+  - Location: `js/ui/GameHUD.js` - `fetchLeaderboard()` method
+
+- ✅ **Backend In-Memory Caching**: Implemented cache for instant API responses
+  - `highscoresCache` global variable loaded on server start
+  - `GET /api/highscores` returns cached data instantly (no disk I/O)
+  - Cache initialized from file on server startup
+  - Location: `huggingface-space-SERVER/server.js` - cache initialization, `getHighscores()`
+
+- ✅ **Asynchronous File Saving**: File writes are now non-blocking
+  - Replaced `fs.writeFileSync` with `fs.promises.writeFile`
+  - File saves happen in background, don't delay API responses
+  - Error handling prevents server crashes on write failures
+  - Location: `huggingface-space-SERVER/server.js` - `saveHighscoresAsync()`, `addHighscore()`
+
+- ✅ **Enhanced Visual Feedback**: Improved error state display
+  - Shows "Retrying in X seconds..." countdown when in error/timeout state
+  - Better visibility of fallback messages
+  - Clear indication of when next retry will occur
+  - Location: `js/ui/GameHUD.js` - `drawLeaderboard()` method
+
+### Server Launcher Improvements [2025-11-21]
+- ✅ **Fixed Server Folder Reference**: Updated launch.ps1 to use LOCAL_SERVER folder
+  - Fixed all path references from `server` to `LOCAL_SERVER`
+  - Updated dependency checks, installation paths, and server startup paths
+  - Script now correctly works with renamed folder structure
+  - Location: `launch.ps1` - multiple path references updated
+
+- ✅ **Backend RAM Monitoring**: Added Node.js process memory tracking to taskbar
+  - New `Get-BackendRAM()` function finds all Node.js processes and sums memory
+  - Memory displayed in MB with color coding (Cyan/Yellow/DarkGray)
+  - Integrated into `Get-SystemStats()` and taskbar display
+  - Updates every 2 seconds with other system stats
+  - Helps monitor server resource usage during development
+  - Location: `launch.ps1` - `Get-BackendRAM()`, `Get-SystemStats()`, `Show-Taskbar()`
+
+### Permanent Rank & Progression System [2025-01-XX]
+- ✅ **Rank System Implementation** - Permanent rank progression across all game sessions
+  - 9 Ranks: Private → Corporal → Sergeant → Lieutenant → Captain → Major → Colonel → General → Legend
+  - 5 Tiers per rank before advancing
+  - Rank XP from session score (1 score = 0.1 rank XP) and wave completion bonuses (10 XP per wave)
+  - Exponential XP scaling: Base 100 XP, scales by 1.15 per tier
+  - Rank badge displayed on main menu next to username
+  - Rank progress bar and full rank display on profile screen
+  - Rank XP and rank-up notifications on game over screen
+  - Location: `js/systems/RankSystem.js`, `js/core/rankConstants.js`, `js/ui/RankDisplay.js`
+
+- ✅ **Achievement System Implementation** - 30+ unlockable achievements
+  - 5 Categories: Combat, Survival, Collection, Skill, Social
+  - Achievement unlock notifications during gameplay (non-intrusive popup, 5 second fade)
+  - Achievement gallery screen with category filtering and progress tracking
+  - Progress bars for locked achievements showing completion percentage
+  - Rank XP rewards (100-10,000 XP) and unlockable titles
+  - Achievement definitions in `js/core/achievementDefinitions.js`
+  - Location: `js/systems/AchievementSystem.js`, `js/ui/AchievementScreen.js`
+
+- ✅ **Battlepass System Implementation** - Seasonal progression track
+  - Season 1: Outbreak (60-day season, January 1 - March 1, 2025)
+  - 50 tiers of rewards (Rank XP, Titles, Emblems, Cosmetics)
+  - Free track available to all players
+  - Battlepass XP from match completion (10 XP base), daily/weekly challenges, achievements
+  - Horizontal scrollable tier track with reward previews
+  - Progress bar showing current tier and XP
+  - Season information display (name, days remaining)
+  - Location: `js/systems/BattlepassSystem.js`, `js/core/battlepassDefinitions.js`, `js/ui/BattlepassScreen.js`
+
+- ✅ **Player Profile System Implementation** - Comprehensive player data management
+  - Persistent player profile stored in localStorage (`zombobs_player_profile`)
+  - Unique player ID generation (UUID-like)
+  - Username and title display (titles unlocked from achievements)
+  - Comprehensive statistics tracking:
+    - Cumulative: Total games, kills, waves, time played
+    - Records: Highest wave, highest score, max combo
+    - Specialized: Headshots, perfect waves, skills unlocked, pickups collected, co-op wins
+  - Profile screen showing rank, stats, achievements, and battlepass summary
+  - Automatic profile migration from existing username/high score data
+  - Export/import functionality ready (future feature)
+  - Location: `js/systems/PlayerProfileSystem.js`, `js/ui/ProfileScreen.js`
+
+- ✅ **UI Integration** - Three new full-screen interfaces
+  - Profile Screen: Player stats, rank display, achievement summary, battlepass summary
+  - Achievement Screen: Grid layout (2-3 columns) with category filtering, progress tracking, unlock dates
+  - Battlepass Screen: Horizontal tier track, progress bar, season info, challenge list
+  - All screens support UI scaling (50%-150%) and scrollable interfaces
+  - Consistent glassmorphism styling matching game aesthetic
+  - New menu buttons added: Profile, Achievements, Battlepass (rows 5-6)
+
+- ✅ **Game Integration** - Session end processing and notifications
+  - Session stats automatically processed on game over
+  - Rank XP calculated and added to profile (score + waves)
+  - Achievements checked and unlocked
+  - Battlepass progress updated
+  - Profile automatically saved to localStorage
+  - Achievement notifications displayed during gameplay
+  - Rank XP and rank-up notifications on game over screen
+  - Location: `js/systems/GameStateManager.js` - `gameOver()`, `js/ui/GameHUD.js` - `drawAchievementNotifications()`
+
+- ✅ **Documentation** - Comprehensive documentation created
+  - `DOCS/RANK_PROGRESSION_SYSTEM.md` - Complete system documentation
+  - Updated `CHANGELOG.md` with V0.7.0 release notes
+  - Updated `ARCHITECTURE.md` with new systems and UI components
+  - Updated `SUMMARY.md` with new features
+  - Updated `SCRATCHPAD.md` with implementation notes
+
 ### Balance Changes [2025-01-XX]
 - ✅ **Crit Rate Reduction** - Reduced base critical hit chance by 2/3
   - Base crit chance: 10% → ~3.33% (reduced by 2/3)

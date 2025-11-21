@@ -2,6 +2,306 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [Unreleased] - 2025-11-21
+
+### 🚀 Highscore System Performance & Reliability Improvements
+
+> **Fixed infinite retry loop and optimized backend with in-memory caching**
+
+### Fixed
+- **Infinite Retry Loop**: Fixed critical bug where `fetchLeaderboard()` only updated `leaderboardLastFetch` on success
+  - Now updates timestamp on all error paths (timeout, network error, HTTP error)
+  - Prevents 429 (Too Many Requests) errors from request spam
+  - Ensures 30-second cooldown applies after failures
+  - Location: `js/ui/GameHUD.js` - `fetchLeaderboard()` method
+
+### Changed
+- **Backend Highscore Caching**: Implemented in-memory caching for instant API responses
+  - Added `highscoresCache` global variable loaded on server start
+  - `GET /api/highscores` now returns cached data instantly (no disk I/O per request)
+  - Cache initialized from file on server startup
+  - Location: `huggingface-space-SERVER/server.js` - `loadHighscoresFromFile()`, `getHighscores()`, cache initialization
+
+- **Asynchronous File Saving**: File writes are now non-blocking
+  - Replaced `fs.writeFileSync` with `fs.promises.writeFile`
+  - File saves happen in background, don't delay API responses
+  - Added error handling to prevent server crashes on write failures
+  - Location: `huggingface-space-SERVER/server.js` - `saveHighscoresAsync()`, `addHighscore()`
+
+- **Enhanced Visual Feedback**: Improved error state display with retry countdown
+  - Shows "Retrying in X seconds..." when in error/timeout state
+  - Better visibility of fallback messages
+  - Clear indication of when next retry will occur
+  - Location: `js/ui/GameHUD.js` - `drawLeaderboard()` method
+
+### 🎨 Visual Settings Enhancements
+
+> **Added comprehensive visual customization options to settings panel**
+
+### Added
+- **Text Rendering Quality Setting** - Global control over font smoothing and anti-aliasing
+  - Three quality levels: Low (no smoothing), Medium, High (best quality)
+  - Applies to all canvas contexts (main game, HUD, settings panel, rank display)
+  - Real-time updates when setting changes
+  - Location: `js/systems/SettingsManager.js`, `js/core/canvas.js`, `js/main.js`
+
+- **Rank Badge Display Settings** - Customize rank badge appearance
+  - **Show/Hide Toggle**: Toggle rank badge visibility on main menu
+  - **Size Control**: Three size options (Small 0.8x, Normal 1.0x, Large 1.2x)
+  - Settings organized in new "UI ELEMENTS" section in video settings
+  - Location: `js/ui/RankDisplay.js`, `js/ui/GameHUD.js`, `js/ui/SettingsPanel.js`
+
+- **Crosshair Customization** - Complete crosshair visual control
+  - **Color**: Wire existing crosshair color setting (was previously unused)
+  - **Size**: Slider control (0.5x to 2.0x multiplier)
+  - **Opacity**: Slider control (0.0 to 1.0)
+  - Hex color to RGBA conversion with opacity support
+  - All settings apply in real-time during gameplay
+  - Location: `js/utils/drawingUtils.js`, `js/ui/SettingsPanel.js`
+
+- **Enemy Health Bar Style** - Multiple visual styles for enemy health bars
+  - **Gradient**: Original green→yellow→red gradient (default)
+  - **Solid**: Single color based on health percentage (green/yellow/red)
+  - **Simple**: Minimal white fill with no border
+  - Applies to both regular zombies and boss zombies
+  - Location: `js/entities/Zombie.js`, `js/entities/BossZombie.js`
+
+### Changed
+- **Settings Panel Organization**: Added new "UI ELEMENTS" section for UI-related visual settings
+- **Crosshair Rendering**: Now uses settings for color, size, and opacity instead of hardcoded values
+- **Rank Badge Rendering**: Now respects size and visibility settings from SettingsManager
+
+### 🎮 Multiplayer Rank Display & Highscore Fallback
+
+> **Added rank badges in multiplayer lobby and improved highscore system reliability**
+
+### Added
+- **Rank Display in Multiplayer Lobby**: Player cards now show rank badges with rank name and tier
+  - Rank badges displayed below player name in lobby cards
+  - Orange/amber color scheme matching game aesthetic
+  - Format: "Rank Name T#" (e.g., "Private T1", "Corporal T3")
+  - Rank data synchronized from client to server on player registration
+  - Server tracks and broadcasts rank information in lobby updates
+  - Server status page displays rank information for connected players
+  - Location: `js/ui/GameHUD.js` - `drawPlayerCard()` method, `huggingface-space-SERVER/server.js` - player registration handler
+
+- **Highscore System Fallback**: Improved reliability with timeout handling and localStorage fallback
+  - 10-second timeout for leaderboard fetch requests
+  - Timeout/error state tracking (`leaderboardFetchState`: 'loading' | 'success' | 'timeout' | 'error')
+  - Displays "Highscore server wasn't reached" message when server unavailable
+  - Falls back to localStorage high score when server fetch fails or times out
+  - Shows local high score as fallback: "Local High Score: [value]"
+  - Prevents indefinite loading states and provides user feedback
+  - Location: `js/ui/GameHUD.js` - `fetchLeaderboard()`, `drawLeaderboard()` methods
+
+### Changed
+- **Player Registration**: Now includes rank data in registration payload
+  - Client sends rank information from `rankSystem.getData()` on connection
+  - Server stores rank data in player Map and includes in lobby broadcasts
+  - Default rank (Private T1) assigned if rank data not provided
+  - Location: `js/systems/MultiplayerSystem.js` - `initializeNetwork()` method
+
+### 🔧 Server Launcher Improvements
+
+> **Fixed server folder reference and enhanced taskbar monitoring**
+
+### Fixed
+- **Server Folder Path**: Updated `launch.ps1` to reference `LOCAL_SERVER` folder instead of `server`
+  - Fixed `Push-Location server` errors when folder was renamed
+  - Updated all path references: `server\node_modules`, `server\package.json`, etc.
+  - Script now correctly finds and installs dependencies in `LOCAL_SERVER` directory
+  - Location: `launch.ps1` lines 314, 319, 340, 342, 474
+
+### Added
+- **Backend RAM Monitoring**: PowerShell taskbar now displays Node.js server process memory usage
+  - New `Get-BackendRAM()` function tracks all Node.js processes and sums their memory
+  - Backend RAM displayed in taskbar: `RAM: XGB/YGB (Z%) | CPU: X% | Backend: XMB | ...`
+  - Color-coded display:
+    - **Cyan**: Backend running (0-500MB) - normal operation
+    - **Yellow**: Backend using >500MB - high memory usage
+    - **DarkGray**: Backend not running (0MB) - server stopped
+  - Updates every 2 seconds along with other system stats
+  - Helps monitor server resource usage during development
+  - Location: `launch.ps1` - `Get-BackendRAM()`, `Get-SystemStats()`, `Show-Taskbar()`, timer event handler
+
+### Changed
+- **Taskbar Display**: Enhanced system monitoring taskbar
+  - Added backend RAM usage to real-time system stats
+  - Provides complete system overview: system RAM, CPU, backend RAM, uptime, time, port
+  - Better visibility into server resource consumption
+
+## [0.7.0] - 2025-01-XX
+
+### 🎉 VERSION 0.7.0 RELEASE - Permanent Rank & Progression System
+
+> **Major feature addition: Long-term progression system with ranks, achievements, and battlepass**
+
+### Added
+- **🏅 Permanent Rank System** - Long-term progression that persists across all game sessions
+  - 9 Ranks: Private → Corporal → Sergeant → Lieutenant → Captain → Major → Colonel → General → Legend
+  - 5 Tiers per rank (e.g., Private I, Private II, Private III, Private IV, Private V)
+  - Rank XP accumulates from session score (1 score = 0.1 rank XP) and wave completion bonuses (10 XP per wave)
+  - Exponential XP scaling (base 100 XP, 1.15x per tier)
+  - Rank badge displayed on main menu next to username
+  - Rank progress bar and full rank display on profile screen
+  - Rank XP and rank-up notifications on game over screen
+  - Location: `js/systems/RankSystem.js`, `js/core/rankConstants.js`, `js/ui/RankDisplay.js`
+
+- **🏆 Achievement System** - 30+ unlockable achievements across 5 categories
+  - **Combat Achievements**: Kill milestones (100, 500, 1K, 5K, 10K), headshots, combos
+  - **Survival Achievements**: Wave milestones (5, 10, 20, 30, 50), time survived, perfect waves
+  - **Collection Achievements**: Weapon master, skill collector, pickup hoarder
+  - **Skill Achievements**: Accuracy master, efficiency expert
+  - **Social Achievements**: Co-op warrior, dedicated player, first blood
+  - Achievement unlock notifications during gameplay (non-intrusive popup)
+  - Achievement gallery screen with category filtering (All, Combat, Survival, Collection, Skill, Social)
+  - Progress bars for locked achievements showing completion percentage
+  - Rank XP rewards (100-10,000 XP) and unlockable titles
+  - Location: `js/systems/AchievementSystem.js`, `js/core/achievementDefinitions.js`, `js/ui/AchievementScreen.js`
+
+- **🎁 Battlepass/Expansion System** - Seasonal progression track with 50 tiers
+  - **Season 1: Outbreak** - 60-day season (January 1 - March 1, 2025)
+  - 50 tiers of rewards (Rank XP, Titles, Emblems, Cosmetics)
+  - Free track available to all players
+  - Battlepass XP from match completion (10 XP base), daily/weekly challenges, achievements
+  - Horizontal scrollable tier track with reward previews
+  - Progress bar showing current tier and XP
+  - Season information display (name, days remaining)
+  - Unlocked tier highlighting and current tier glow effect
+  - Location: `js/systems/BattlepassSystem.js`, `js/core/battlepassDefinitions.js`, `js/ui/BattlepassScreen.js`
+
+- **👤 Enhanced Player Profile System** - Comprehensive player data management
+  - Persistent player profile stored in localStorage (`zombobs_player_profile`)
+  - Unique player ID generation (UUID-like)
+  - Username and title display (titles unlocked from achievements)
+  - Comprehensive statistics tracking:
+    - Cumulative: Total games, kills, waves, time played
+    - Records: Highest wave, highest score, max combo
+    - Specialized: Headshots, perfect waves, skills unlocked, pickups collected, co-op wins
+  - Profile screen showing rank, stats, achievements, and battlepass summary
+  - Automatic profile migration from existing username/high score data
+  - Export/import functionality for profile backup (future feature ready)
+  - Location: `js/systems/PlayerProfileSystem.js`, `js/ui/ProfileScreen.js`
+
+- **📊 Profile Statistics Tracking** - Detailed player statistics
+  - Tracks all gameplay metrics across sessions
+  - Calculates averages (e.g., average wave per game)
+  - Records maximums (highest wave, highest score, max combo)
+  - Specialized tracking (headshots, perfect waves, efficiency)
+  - Statistics displayed on profile screen with formatted numbers
+
+- **🎨 New UI Screens** - Three new full-screen interfaces
+  - **Profile Screen**: Player stats, rank display, achievement summary, battlepass summary
+  - **Achievement Screen**: Grid layout with category filtering, progress tracking, unlock dates
+  - **Battlepass Screen**: Horizontal tier track, progress bar, season info, challenge list
+  - All screens support UI scaling (50%-150%)
+  - Scrollable interfaces for large content lists
+  - Consistent glassmorphism styling matching game aesthetic
+
+- **🔔 Achievement Notifications** - In-game achievement unlock popups
+  - Non-intrusive notification in top-center during gameplay
+  - Shows achievement icon, name, and "ACHIEVEMENT UNLOCKED!" text
+  - Fades out after 5 seconds
+  - Multiple achievements can stack vertically
+  - Location: `js/ui/GameHUD.js` - `drawAchievementNotifications()`
+
+- **📈 Game Over Enhancements** - Rank progression display
+  - Shows rank XP gained from session
+  - Displays rank-up notification if player advanced
+  - Shows new rank name and tier
+  - Integrated with existing game over screen
+  - Location: `js/ui/GameHUD.js` - `drawGameOver()`
+
+- **🏆 Global Highscore Leaderboard System** - Server-side score tracking
+  - **Server-Side Storage**: File-based persistence (`highscores.json`) for top 10 global scores
+  - **HTTP API Endpoints**: 
+    - `GET /api/highscores` - Retrieves top 10 leaderboard
+    - `POST /api/highscore` - Submits new score with validation
+  - **Socket.IO Integration**: Real-time score submission and leaderboard updates
+    - `game:score` - Client submits score on game over
+    - `game:score:result` - Server confirms submission and rank
+    - `highscores:update` - Broadcasts updated leaderboard when top 10 changes
+  - **Client-Side Features**:
+    - Automatic score submission on game over (Socket.IO or HTTP POST fallback)
+    - Global leaderboard display on main menu (top 10 scores)
+    - Player score highlighting when in top 10
+    - Auto-refresh when entering main menu (throttled to 30 seconds)
+    - Real-time leaderboard updates via Socket.IO
+  - **Score Entry Structure**: Includes userId, username, score, wave, zombiesKilled, timestamp
+  - **Performance**: File I/O, throttled fetches, non-blocking submission
+  - **Location**: `huggingface-space-SERVER/server.js`, `js/systems/GameStateManager.js`, `js/ui/GameHUD.js`, `js/systems/MultiplayerSystem.js`
+
+### Changed
+- **Main Menu Layout** - Added new menu buttons for progression system
+  - Row 5: Profile (left), Achievements (right)
+  - Row 6: Battlepass (left), About (right)
+  - Gallery moved to Row 4 (centered)
+  - Rank badge displayed next to username
+  - Location: `js/ui/GameHUD.js` - `drawMainMenu()`
+
+- **Game Over Flow** - Enhanced with profile system integration
+  - Session stats automatically processed on game over
+  - Rank XP calculated and added to profile
+  - Achievements checked and unlocked
+  - Battlepass progress updated
+  - Profile automatically saved
+  - Location: `js/systems/GameStateManager.js` - `gameOver()`
+
+- **Game Start Flow** - Profile system initialization
+  - Profile loaded from localStorage on game start
+  - All systems initialized from profile data
+  - Username synced from profile
+  - Rank badge displayed on main menu
+  - Location: `js/main.js` - initialization section
+
+- **Username System** - Enhanced with profile integration
+  - Username stored in player profile
+  - Synced with existing username system
+  - Profile username takes precedence
+  - Changes update both systems
+  - Location: `js/systems/PlayerProfileSystem.js`, `js/main.js`
+
+### Technical
+- **New Core Constants Files**:
+  - `js/core/rankConstants.js` - Rank names, XP formulas, progression constants
+  - `js/core/achievementDefinitions.js` - All 30+ achievement definitions
+  - `js/core/battlepassDefinitions.js` - Season 1 battlepass tier definitions
+
+- **New System Files**:
+  - `js/systems/RankSystem.js` - Rank progression logic (~150 lines)
+  - `js/systems/AchievementSystem.js` - Achievement tracking (~250 lines)
+  - `js/systems/BattlepassSystem.js` - Battlepass progression (~200 lines)
+  - `js/systems/PlayerProfileSystem.js` - Profile management (~350 lines)
+
+- **New UI Component Files**:
+  - `js/ui/RankDisplay.js` - Rank UI components (~150 lines)
+  - `js/ui/AchievementScreen.js` - Achievement gallery (~300 lines)
+  - `js/ui/BattlepassScreen.js` - Battlepass UI (~250 lines)
+  - `js/ui/ProfileScreen.js` - Profile screen (~200 lines)
+
+- **Modified Files**:
+  - `js/core/gameState.js` - Added profile state flags (`showProfile`, `showAchievements`, `showBattlepass`, `achievementNotifications`, `sessionResults`)
+  - `js/systems/GameStateManager.js` - Added session end processing for profile system
+  - `js/main.js` - Added profile initialization, new screen rendering, scroll handling
+  - `js/ui/GameHUD.js` - Added menu buttons, rank badge, achievement notifications
+
+- **Data Persistence**:
+  - Profile stored in localStorage key `zombobs_player_profile`
+  - Single JSON object containing all permanent data
+  - Automatic save on game over
+  - Profile versioning for migration support
+
+### 📚 Documentation
+- **Rank & Progression System Documentation** - Created comprehensive documentation (`DOCS/RANK_PROGRESSION_SYSTEM.md`)
+  - Complete rank system overview with progression formulas
+  - Full achievement catalog with all 30+ achievements
+  - Battlepass system details with season structure
+  - Player profile system architecture
+  - UI components documentation
+  - Integration points and data flow
+  - Technical implementation details
+  - Balance notes and future considerations
+
 ## [0.6.0] - 2025-01-XX
 
 ### 🎉 VERSION 0.6.0 RELEASE - Balance Overhaul & Bug Fixes

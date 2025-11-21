@@ -5,6 +5,44 @@ export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d', { willReadFrequently: true });
 export const gpuCanvas = document.getElementById('gpuCanvas');
 
+/**
+ * Apply text rendering quality to a canvas context
+ * @param {CanvasRenderingContext2D} context - The canvas context to apply settings to
+ * @param {string} quality - 'low', 'medium', or 'high'
+ */
+export function applyTextRenderingQuality(context, quality) {
+    if (!context) return;
+    
+    if (quality === 'low') {
+        context.imageSmoothingEnabled = false;
+    } else {
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = quality; // 'medium' or 'high'
+    }
+}
+
+/**
+ * Apply text rendering quality to all canvas contexts
+ * This should be called when the setting changes
+ */
+export function applyTextRenderingQualityToAll() {
+    const quality = settingsManager.getSetting('video', 'textRenderingQuality') || 'high';
+    applyTextRenderingQuality(ctx, quality);
+    
+    // Apply to other contexts if they exist
+    if (window.gameHUD) {
+        if (window.gameHUD.ctx) {
+            applyTextRenderingQuality(window.gameHUD.ctx, quality);
+        }
+        if (window.gameHUD.rankDisplay && window.gameHUD.rankDisplay.ctx) {
+            applyTextRenderingQuality(window.gameHUD.rankDisplay.ctx, quality);
+        }
+    }
+    if (window.settingsPanel && window.settingsPanel.ctx) {
+        applyTextRenderingQuality(window.settingsPanel.ctx, quality);
+    }
+}
+
 // Function to resize canvas to fit window
 export function resizeCanvas(player) {
     const displayWidth = window.innerWidth;

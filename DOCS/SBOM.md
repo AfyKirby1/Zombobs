@@ -48,7 +48,7 @@ This document lists all external dependencies, packages, and libraries used in t
 
 ## Server Dependencies (Node.js)
 
-### Backend Server (`server/`)
+### Backend Server (`LOCAL_SERVER/`)
 - **Express** v4.18.2 - HTTP server framework for serving static files
   - Source: npm registry
   - Usage: Static file serving and HTTP server
@@ -63,7 +63,7 @@ This document lists all external dependencies, packages, and libraries used in t
 
 **Frontend:** No package manager or dependencies required (vanilla JavaScript).
 
-**Backend:** Node.js and npm required. Dependencies managed via `server/package.json`.
+**Backend:** Node.js and npm required. Dependencies managed via `LOCAL_SERVER/package.json`.
 
 The frontend game code is intentionally dependency-free for simplicity (following KISS principle). The backend server is minimal and lightweight.
 

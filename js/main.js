@@ -9,7 +9,7 @@ import {
     MAX_GRENADES,
     TWO_PI
 } from './core/constants.js';
-import { canvas, ctx, resizeCanvas } from './core/canvas.js';
+import { canvas, ctx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
@@ -56,6 +56,10 @@ import { PlayerSystem } from './systems/PlayerSystem.js';
 import { GameStateManager } from './systems/GameStateManager.js';
 import { MeleeSystem } from './systems/MeleeSystem.js';
 import { drawMeleeSwipe, drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawFpsCounter } from './utils/drawingUtils.js';
+import { playerProfileSystem } from './systems/PlayerProfileSystem.js';
+import { ProfileScreen } from './ui/ProfileScreen.js';
+import { AchievementScreen } from './ui/AchievementScreen.js';
+import { BattlepassScreen } from './ui/BattlepassScreen.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -69,6 +73,12 @@ window.companionSystem = companionSystem;
 
 // Initialize HUD (needed by GameStateManager)
 const gameHUD = new GameHUD(canvas);
+window.gameHUD = gameHUD; // Make globally accessible for text rendering quality
+
+// Initialize profile UI screens
+const profileScreen = new ProfileScreen(canvas);
+const achievementScreen = new AchievementScreen(canvas);
+const battlepassScreen = new BattlepassScreen(canvas);
 
 // Initialize new systems
 const meleeSystem = new MeleeSystem();
@@ -98,6 +108,10 @@ if (!initialVSync) {
 
 // Initialize Settings Panel
 const settingsPanel = new SettingsPanel(canvas, settingsManager);
+window.settingsPanel = settingsPanel; // Make globally accessible for text rendering quality
+
+// Apply initial text rendering quality
+applyTextRenderingQualityToAll();
 
 // Input state
 const keys = {};
@@ -171,6 +185,11 @@ settingsManager.addChangeListener((category, key, value) => {
         if (key === 'uiScale') {
             // UI scaling applies immediately on next render, no action needed
             // GameHUD and SettingsPanel will recalculate scaled values on next draw
+        }
+        
+        // Handle Text Rendering Quality (affects all canvas contexts)
+        if (key === 'textRenderingQuality') {
+            applyTextRenderingQualityToAll();
         }
         
         // Handle VSync and FPS limit (affects all rendering)
@@ -281,7 +300,7 @@ function drawPlayers() {
 // Drawing functions are now imported from drawingUtils.js
 
 function updateGame() {
-    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout) return;
+    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout || gameState.showProfile || gameState.showAchievements || gameState.showBattlepass) return;
     if (gameState.showLevelUp) return; // Pause game during level up selection
 
     // Cache frequently accessed settings to reduce repeated lookups
@@ -567,6 +586,27 @@ function drawGame() {
         gameHUD.mainMenu = false;
         canvas.style.cursor = 'default';
         gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showProfile) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        profileScreen.draw();
+        return;
+    }
+
+    if (gameState.showAchievements) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        achievementScreen.draw();
+        return;
+    }
+
+    if (gameState.showBattlepass) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        battlepassScreen.draw();
         return;
     }
 
@@ -1096,6 +1136,7 @@ canvas.addEventListener('mousedown', (e) => {
             if (newUsername !== null && newUsername.trim() !== '') {
                 gameState.username = newUsername.trim();
                 saveUsername();
+                playerProfileSystem.setUsername(gameState.username);
             }
         } else if (clickedButton === 'multiplayer') {
             gameState.showMainMenu = false;
@@ -1111,6 +1152,15 @@ canvas.addEventListener('mousedown', (e) => {
             }
         } else if (clickedButton === 'about') {
             gameState.showAbout = true;
+            gameState.showMainMenu = false;
+        } else if (clickedButton === 'profile') {
+            gameState.showProfile = true;
+            gameState.showMainMenu = false;
+        } else if (clickedButton === 'achievements') {
+            gameState.showAchievements = true;
+            gameState.showMainMenu = false;
+        } else if (clickedButton === 'battlepass') {
+            gameState.showBattlepass = true;
             gameState.showMainMenu = false;
         } else if (clickedButton === 'mute_music') {
             gameState.menuMusicMuted = !gameState.menuMusicMuted;
@@ -1139,6 +1189,36 @@ canvas.addEventListener('mousedown', (e) => {
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
         if (clickedButton === 'about_back') {
             gameState.showAbout = false;
+            gameState.showMainMenu = true;
+        }
+        return;
+    }
+
+    // Profile Screen
+    if (gameState.showProfile) {
+        const result = profileScreen.handleClick(clickX, clickY);
+        if (result && result.action === 'back') {
+            gameState.showProfile = false;
+            gameState.showMainMenu = true;
+        }
+        return;
+    }
+
+    // Achievement Screen
+    if (gameState.showAchievements) {
+        const result = achievementScreen.handleClick(clickX, clickY);
+        if (result && result.action === 'back') {
+            gameState.showAchievements = false;
+            gameState.showMainMenu = true;
+        }
+        return;
+    }
+
+    // Battlepass Screen
+    if (gameState.showBattlepass) {
+        const result = battlepassScreen.handleClick(clickX, clickY);
+        if (result && result.action === 'back') {
+            gameState.showBattlepass = false;
             gameState.showMainMenu = true;
         }
         return;
@@ -1274,6 +1354,20 @@ canvas.addEventListener('wheel', (e) => {
         return;
     }
 
+    // Achievement screen scrolling
+    if (gameState.showAchievements) {
+        e.preventDefault();
+        achievementScreen.handleScroll(e.deltaY * 0.5);
+        return;
+    }
+
+    // Battlepass screen scrolling
+    if (gameState.showBattlepass) {
+        e.preventDefault();
+        battlepassScreen.handleScroll(e.deltaX * 0.5); // Horizontal scroll for battlepass
+        return;
+    }
+
     // Only handle scroll wheel weapon switching if enabled and game is running
     if (!settingsManager.getSetting('controls', 'scrollWheelSwitch')) return;
     if (!gameState.gameRunning || gameState.gamePaused) return;
@@ -1305,7 +1399,18 @@ window.addEventListener('blur', () => {
 // Initialization
 loadHighScore();
 loadUsername();
+
+// Initialize Profile System (after username is loaded)
+playerProfileSystem.loadProfile();
+playerProfileSystem.initializeSystems();
+
+// Sync username from profile if it exists
+const profile = playerProfileSystem.getProfile();
+if (profile && profile.username) {
+    gameState.username = profile.username;
+}
 loadMenuMusicMuted();
 loadMultiplierStats();
 checkServerHealth(); // Start checking server status
+gameHUD.fetchLeaderboard(); // Fetch initial leaderboard
 gameEngine.start();

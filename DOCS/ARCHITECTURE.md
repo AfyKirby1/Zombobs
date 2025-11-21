@@ -16,13 +16,34 @@ The game has been refactored into a modular ES6 architecture:
 
 This modular structure improves maintainability, testability, and scalability.
 
-### Backend Server (`server/`)
+### Backend Server (`LOCAL_SERVER/`)
 - `server.js`: Express + socket.io server
   - Serves static files from project root
   - Socket.io WebSocket server for multiplayer
   - Default port: 3000 (configurable via PORT env var)
 - `package.json`: Node.js dependencies (Express, socket.io)
-- `launch.ps1`: Styled PowerShell launcher script
+- `launch.ps1`: Styled PowerShell launcher script with enhanced monitoring
+  - System stats taskbar (RAM, CPU, Backend RAM, Uptime, Time, Port)
+  - Backend RAM monitoring tracks Node.js process memory usage
+  - Automatic dependency installation
+
+### Production Server (`huggingface-space-SERVER/`)
+- `server.js`: Express + socket.io server for Hugging Face Spaces deployment
+  - Socket.io WebSocket server for multiplayer
+  - Global highscore leaderboard system with **in-memory caching** for performance
+    - `highscoresCache`: Global variable loaded on server start from `highscores.json`
+    - `GET /api/highscores`: Returns cached data instantly (no disk I/O per request)
+    - `POST /api/highscore`: Updates cache immediately, saves to file asynchronously
+    - File writes are non-blocking using `fs.promises.writeFile`
+  - HTTP API endpoints for score submission and leaderboard retrieval
+  - Cookie-based user session tracking (`zombobs_user_id`)
+  - Performance optimizations (compression, circular buffers, efficient leader tracking)
+  - Default port: 7860 (Hugging Face Spaces standard, configurable via PORT env var)
+- `package.json`: Node.js dependencies (Express, socket.io, cookie-parser, compression)
+- `Dockerfile`: Container configuration for Hugging Face Spaces deployment
+- `highscores.json`: File-based storage for top 10 global scores (auto-generated, persists across restarts)
+  - Loaded into memory cache on server startup
+  - Updated asynchronously when new scores are submitted
 - `launch.bat`: Windows batch file that calls PowerShell wrapper
 
 ## Module Structure
@@ -101,8 +122,62 @@ This modular structure improves maintainability, testability, and scalability.
 - `acidProjectiles[]` - Active acid projectiles
 - `acidPools[]` - Active acid pool hazards
 - `gameStartTime` - Timestamp when current game session started (for scoreboard time tracking)
+- `showProfile` - Profile screen visibility flag
+- `showAchievements` - Achievement screen visibility flag
+- `showBattlepass` - Battlepass screen visibility flag
+- `achievementNotifications[]` - Array of achievement notifications to display
+- `sessionResults` - Session results from profile system (rank XP, achievements, battlepass progress)
 
 **Dependencies**: `constants.js`
+
+#### rankConstants.js
+**Purpose**: Rank system constants and progression formulas
+
+**Exports**:
+- `RANK_NAMES` - Array of rank names in progression order
+- `TIERS_PER_RANK` - Number of tiers per rank (5)
+- `RANK_XP_BASE_REQUIREMENT` - Base XP for first tier (100)
+- `RANK_XP_SCALING_FACTOR` - XP scaling factor per tier (1.15)
+- `SCORE_TO_RANK_XP_RATE` - Score to rank XP conversion rate (0.1)
+- `WAVE_COMPLETION_BONUS` - Rank XP per wave completed (10)
+- `getRankXPRequirement(rank, tier)` - Calculate XP required for rank/tier
+- `getRankName(rank)` - Get rank name by rank number
+- `getTotalRankXPForRank(rank, tier)` - Get total XP needed for rank/tier
+- `getRankFromXP(totalRankXP)` - Calculate rank/tier from total XP
+
+**Dependencies**: None
+
+#### achievementDefinitions.js
+**Purpose**: Achievement definitions and helper functions
+
+**Exports**:
+- `ACHIEVEMENT_DEFINITIONS` - Array of all achievement definitions (30+ achievements)
+- `getAchievementById(id)` - Get achievement by ID
+- `getAchievementsByCategory(category)` - Filter achievements by category
+- `getAchievementCategories()` - Get all achievement categories
+
+**Achievement Categories**:
+- Combat: Kill milestones, headshots, combos
+- Survival: Wave milestones, time survived, perfect waves
+- Collection: Weapon master, skill collector, pickup hoarder
+- Skill: Accuracy, efficiency challenges
+- Social: Co-op wins, games played milestones
+
+**Dependencies**: None
+
+#### battlepassDefinitions.js
+**Purpose**: Battlepass season and tier definitions
+
+**Exports**:
+- `BATTLEPASS_SEASON_1` - Season 1 battlepass definition (50 tiers)
+- `BATTLEPASS_XP_PER_TIER` - Base XP per tier (100)
+- `BATTLEPASS_XP_SCALING` - XP scaling factor (1.1)
+- `getBattlepassXPRequirement(tier)` - Calculate XP required for tier
+- `getCurrentSeason()` - Get current active season
+- `isSeasonActive(season)` - Check if season is currently active
+- `getDaysRemaining(season)` - Get days remaining in season
+
+**Dependencies**: None
 
 ### Entity Modules (`js/entities/`)
 
@@ -139,6 +214,9 @@ This modular structure improves maintainability, testability, and scalability.
 **Methods**:
 - `update(player)` - AI pathfinding (kiting for SpitterZombie)
 - `draw()` - Complex rendering (variant-specific visuals)
+  - Health bar rendering with configurable styles (gradient, solid, simple)
+  - Health bar shown for 2 seconds after taking damage (if enabled)
+  - Style controlled by `enemyHealthBarStyle` setting
 - `takeDamage(bulletDamage)` - Damage handling
 
 **Burning State** (Base Zombie):
@@ -336,6 +414,20 @@ This modular structure improves maintainability, testability, and scalability.
 - `getSetting(category, key)` - Get setting value
 - `setSetting(category, key, value)` - Set setting value
 - `applyVideoPreset(preset)` - Apply quality preset (low/medium/high/custom)
+- `addChangeListener(callback)` - Register callback for setting changes
+- `removeChangeListener(callback)` - Unregister callback
+
+**New Visual Settings (V0.7.0+)**:
+- `video.textRenderingQuality` - Text rendering quality ('low', 'medium', 'high')
+  - Controls `imageSmoothingEnabled` and `imageSmoothingQuality` on all canvas contexts
+  - Applied globally via `applyTextRenderingQualityToAll()` function
+- `video.rankBadgeSize` - Rank badge size ('small', 'normal', 'large')
+  - Size multipliers: small 0.8x, normal 1.0x, large 1.2x
+- `video.showRankBadge` - Show/hide rank badge on main menu (boolean)
+- `video.crosshairColor` - Crosshair color (hex code, e.g., '#00ff00')
+- `video.crosshairSize` - Crosshair size multiplier (0.5 to 2.0, default 1.0)
+- `video.crosshairOpacity` - Crosshair opacity (0.0 to 1.0, default 1.0)
+- `video.enemyHealthBarStyle` - Enemy health bar style ('gradient', 'solid', 'simple')
 
 **Dependencies**: None (localStorage only)
 
@@ -386,6 +478,106 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`
 
+#### RankSystem.js
+**Purpose**: Permanent rank progression system that accumulates across all game sessions
+
+**Exports**: `RankSystem` class, `rankSystem` singleton
+
+**Methods**:
+- `initialize(profileData)` - Initialize rank system from profile data
+- `addSessionXP(score, wavesCompleted)` - Add rank XP from game session
+- `addRankXP(amount)` - Add rank XP directly (from achievements)
+- `updateRankFromXP()` - Recalculate rank and tier from total XP
+- `getProgress()` - Get current rank progress information
+- `getData()` - Get rank data for saving
+
+**Features**:
+- 9 Ranks: Private → Corporal → Sergeant → Lieutenant → Captain → Major → Colonel → General → Legend
+- 5 Tiers per rank before advancing
+- Rank XP from session score (1 score = 0.1 rank XP) and wave completion bonuses (10 XP per wave)
+- Exponential XP scaling: Base 100 XP, scales by 1.15 per tier
+- Rank progression tracking and display
+
+**Dependencies**: `core/rankConstants.js`
+
+#### AchievementSystem.js
+**Purpose**: Achievement tracking and unlock system
+
+**Exports**: `AchievementSystem` class, `achievementSystem` singleton
+
+**Methods**:
+- `initializeAchievements()` - Initialize achievements from definitions
+- `loadAchievements(profileAchievements)` - Load achievement progress from profile
+- `updateProgress(sessionStats)` - Update progress and check for unlocks
+- `unlockAchievement(achievement)` - Unlock achievement and apply rewards
+- `getAchievement(id)` - Get achievement by ID
+- `getAllAchievements()` - Get all achievements
+- `getAchievementsByCategory(category)` - Filter by category
+- `getUnlockedAchievements()` - Get unlocked achievements only
+- `getStatistics()` - Get achievement completion statistics
+
+**Features**:
+- 30+ achievements across 5 categories (Combat, Survival, Collection, Skill, Social)
+- Progress tracking for locked achievements
+- Rank XP rewards (100-10,000 XP) and unlockable titles
+- Achievement unlock notifications during gameplay
+- Achievement gallery with category filtering
+
+**Dependencies**: `core/achievementDefinitions.js`, `systems/RankSystem.js`, `systems/PlayerProfileSystem.js`
+
+#### BattlepassSystem.js
+**Purpose**: Seasonal battlepass progression and rewards
+
+**Exports**: `BattlepassSystem` class, `battlepassSystem` singleton
+
+**Methods**:
+- `initialize(profileData)` - Initialize battlepass from profile data
+- `checkSeasonValidity()` - Reset if season expired
+- `addXP(amount)` - Add battlepass XP and check tier unlocks
+- `completeChallenge(challengeId, xpReward)` - Complete challenge
+- `getSeasonInfo()` - Get current season information
+- `getTierReward(tier)` - Get reward for specific tier
+- `isTierUnlocked(tier)` - Check if tier is unlocked
+- `getProgress()` - Get battlepass progress information
+- `getData()` - Get battlepass data for saving
+
+**Features**:
+- Seasonal progression (60-90 day seasons)
+- 50 tiers per season with increasing XP requirements
+- Free track available to all players
+- Battlepass XP from match completion, challenges, achievements
+- Tier reward system (Rank XP, Titles, Emblems, Cosmetics)
+
+**Dependencies**: `core/battlepassDefinitions.js`
+
+#### PlayerProfileSystem.js
+**Purpose**: Player profile data management and persistence
+
+**Exports**: `PlayerProfileSystem` class, `playerProfileSystem` singleton
+
+**Methods**:
+- `loadProfile()` - Load profile from localStorage
+- `saveProfile()` - Save profile to localStorage
+- `createDefaultProfile()` - Create new player profile
+- `migrateProfile(profile)` - Migrate old profile data
+- `initializeSystems()` - Initialize all systems from profile
+- `processSessionEnd(sessionStats)` - Process game session results
+- `updateStats(sessionStats)` - Update profile statistics
+- `setUsername(username)` - Update username
+- `setTitle(title)` - Set player title
+- `exportProfile()` - Export profile as JSON (backup)
+- `importProfile(profileJson)` - Import profile from JSON (restore)
+- `getProfile()` - Get profile data
+
+**Features**:
+- Persistent player profile in localStorage (`zombobs_player_profile`)
+- Unique player ID generation
+- Comprehensive statistics tracking
+- Profile versioning and migration
+- Export/import functionality for backup
+
+**Dependencies**: `systems/RankSystem.js`, `systems/AchievementSystem.js`, `systems/BattlepassSystem.js`, `utils/gameUtils.js`
+
 #### MultiplayerSystem.js
 **Purpose**: Handles all multiplayer networking logic including Socket.IO connections, player synchronization, zombie sync, and game state sync
 
@@ -405,6 +597,7 @@ This modular structure improves maintainability, testability, and scalability.
 - Game state synchronization (XP, level up, skills)
 - Latency measurement with exponential moving average
 - Leader/non-leader client handling
+- Rank data synchronization (sends player rank on registration, displays in lobby)
 
 **Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `systems/SkillSystem.js`, `systems/AudioSystem.js`, `systems/ParticleSystem.js`, `utils/combatUtils.js`
 
@@ -569,6 +762,13 @@ This modular structure improves maintainability, testability, and scalability.
 - `video.effectIntensity` - Visual effects multiplier (0.0 to 2.0)
 - `video.postProcessingQuality` - Post-processing quality (off, low, medium, high)
 - `video.particleDetail` - Particle rendering quality (minimal, standard, detailed, ultra)
+- `video.textRenderingQuality` - Text rendering quality (low, medium, high) - affects font smoothing
+- `video.rankBadgeSize` - Rank badge size (small, normal, large)
+- `video.showRankBadge` - Show/hide rank badge on main menu (boolean)
+- `video.crosshairColor` - Crosshair color (hex code, e.g., '#00ff00')
+- `video.crosshairSize` - Crosshair size multiplier (0.5 to 2.0)
+- `video.crosshairOpacity` - Crosshair opacity (0.0 to 1.0)
+- `video.enemyHealthBarStyle` - Enemy health bar style (gradient, solid, simple)
 - `controls.*` - Keyboard keybinds (moveUp, moveDown, etc.)
 - `gamepad.*` - Controller button mappings (fire, reload, etc.)
 
@@ -629,6 +829,9 @@ This modular structure improves maintainability, testability, and scalability.
 - `getScaledPadding()` - Get scaled padding value
 - `getScaledItemSpacing()` - Get scaled item spacing value
 - `getScaledFontSize()` - Get scaled font size (minimum 8px for readability)
+- `drawPlayerCard(x, y, player, index, isLocalPlayer)` - Render player card in multiplayer lobby with rank badge
+- `fetchLeaderboard()` - Fetch global leaderboard from server with 10-second timeout
+- `drawLeaderboard()` - Draw global leaderboard with timeout/error handling and localStorage fallback
 
 **HUD Layout**:
 - **Top Left**: Player stats (Health, Shield, Multiplier) and shared stats (Wave, Kills, Left, Score, Buffs)
@@ -651,6 +854,22 @@ This modular structure improves maintainability, testability, and scalability.
 - Scaling applied to: fonts, padding, spacing, button sizes, panel dimensions, health displays
 - Minimum font size enforced (8px) for readability at low scales
 - Real-time scaling - changes apply immediately on next render
+
+**Multiplayer Lobby Features**:
+- Player cards display rank badges (rank name and tier) with orange/amber styling
+- Rank data synchronized from client to server on player registration
+- Rank badges positioned below player name in lobby cards
+
+**Leaderboard System**:
+- Global leaderboard fetched from server with 10-second timeout
+- Timeout/error state tracking (`leaderboardFetchState`: 'loading' | 'success' | 'timeout' | 'error')
+- **Fixed infinite retry loop**: `leaderboardLastFetch` updated on all error paths (not just success)
+- **30-second cooldown enforcement**: Prevents 429 errors from request spam
+- **Retry countdown display**: Shows "Retrying in X seconds..." for better user feedback
+- Fallback to localStorage high score when server unavailable
+- Displays "Highscore server wasn't reached" message on timeout/error
+- Shows local high score as fallback when server fetch fails
+- Backend uses in-memory cache for instant responses (no disk I/O per request)
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `core/constants.js`, `systems/SettingsManager.js`
 
@@ -678,6 +897,98 @@ This modular structure improves maintainability, testability, and scalability.
 - Real-time scaling - changes apply immediately on next render
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `systems/SettingsManager.js`, `systems/AudioSystem.js`
+
+#### RankDisplay.js
+**Purpose**: UI component for displaying rank information
+
+**Exports**: `RankDisplay` class
+
+**Methods**:
+- `drawRankBadge(x, y, size)` - Draw compact rank badge (for menus)
+  - Respects `showRankBadge` setting (returns early if disabled)
+  - Applies `rankBadgeSize` multiplier (small 0.8x, normal 1.0x, large 1.2x)
+  - Enhanced font rendering with text shadows for better visibility
+  - Improved font sizes: rank name 14px (min 12px), tier text 12px (min 10px)
+- `drawRankProgressBar(x, y, width, height)` - Draw rank progress bar
+- `drawFullRankDisplay(x, y, width)` - Draw full rank display (for profile screen)
+
+**Features**:
+- Rank badge with rank name and tier (configurable visibility and size)
+- Progress bar showing current tier progress
+- Total rank XP display
+- Orange/amber color scheme matching game aesthetic
+- Full UI scaling support (50%-150%)
+- Settings-aware rendering (size and visibility controlled by SettingsManager)
+
+**Dependencies**: `core/canvas.js`, `systems/RankSystem.js`, `systems/SettingsManager.js`
+
+#### AchievementScreen.js
+**Purpose**: Achievement gallery UI component
+
+**Exports**: `AchievementScreen` class
+
+**Methods**:
+- `draw()` - Render achievement screen
+- `drawAchievementCard(achievement, x, y, width, height)` - Draw individual achievement card
+- `drawBackButton(x, y, width, height)` - Draw back button
+- `handleClick(x, y)` - Handle mouse clicks (category filters, back button)
+- `handleScroll(deltaY)` - Handle scroll wheel for achievement list
+
+**Features**:
+- Grid layout of all achievements (2-3 columns)
+- Category filtering (All, Combat, Survival, Collection, Skill, Social)
+- Progress bars for locked achievements
+- Unlock date display for completed achievements
+- Scrollable interface for large achievement lists
+- Full UI scaling support
+
+**Dependencies**: `core/canvas.js`, `systems/AchievementSystem.js`, `core/achievementDefinitions.js`, `systems/SettingsManager.js`
+
+#### BattlepassScreen.js
+**Purpose**: Battlepass progression UI component
+
+**Exports**: `BattlepassScreen` class
+
+**Methods**:
+- `draw()` - Render battlepass screen
+- `drawProgressBar(x, y, width, height, progress)` - Draw battlepass progress bar
+- `drawTierCard(tier, x, y, width, height, tierReward, isUnlocked, isCurrent)` - Draw tier card
+- `drawBackButton(x, y, width, height)` - Draw back button
+- `handleClick(x, y)` - Handle mouse clicks (back button)
+- `handleScroll(deltaX)` - Handle horizontal scroll for tier track
+
+**Features**:
+- Horizontal scrollable tier track (50 tiers)
+- Progress bar showing current tier and XP
+- Season information (name, days remaining)
+- Tier cards showing rewards and unlock status
+- Unlocked tier highlighting
+- Current tier glow effect
+- Full UI scaling support
+
+**Dependencies**: `core/canvas.js`, `systems/BattlepassSystem.js`, `systems/SettingsManager.js`
+
+#### ProfileScreen.js
+**Purpose**: Player profile UI component
+
+**Exports**: `ProfileScreen` class
+
+**Methods**:
+- `draw()` - Render profile screen
+- `drawStatLine(label, value, x, y, width, fontSize)` - Draw statistics line
+- `drawBackButton(x, y, width, height)` - Draw back button
+- `handleClick(x, y)` - Handle mouse clicks (back button)
+
+**Features**:
+- Player username and title display
+- Full rank display with progress
+- Comprehensive statistics overview
+- Achievement summary (unlocked/total, completion %)
+- Battlepass progress summary
+- Formatted numbers and time displays
+- Full UI scaling support
+
+**Dependencies**: `core/canvas.js`, `systems/PlayerProfileSystem.js`, `systems/RankSystem.js`, `systems/AchievementSystem.js`, `systems/BattlepassSystem.js`, `ui/RankDisplay.js`, `systems/SettingsManager.js`
 
 ### Companion Modules (`js/companions/`)
 
@@ -766,7 +1077,19 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Exports**:
 - `drawMeleeSwipe(player)` - Draw melee swipe animation
+#### drawingUtils.js
+**Purpose**: Drawing utility functions for UI elements and visual effects
+
+**Exports**: `drawCrosshair(mouse)`, `drawWaveUI()`, `drawFPS()`, `drawMeleeSwipe()`
+
+**Methods**:
 - `drawCrosshair(mouse)` - Draw crosshair at mouse position
+  - Respects `crosshairColor` setting (hex color code)
+  - Applies `crosshairSize` multiplier (0.5x to 2.0x)
+  - Applies `crosshairOpacity` (0.0 to 1.0)
+  - Supports multiple styles: default, dot, cross, circle
+  - Dynamic crosshair expansion when moving or shooting (if enabled)
+  - Hex to RGBA conversion with opacity support
 - `drawWaveBreak()` - Draw wave break UI overlay
 - `drawWaveNotification()` - Draw wave notification text
 - `drawFpsCounter()` - Draw FPS counter and debug stats
@@ -774,7 +1097,9 @@ This modular structure improves maintainability, testability, and scalability.
 **Features**:
 - Melee swipe animation with gradient and glow effects
 - Dynamic crosshair with multiple styles (dot, circle, cross, default)
-- Crosshair expansion based on movement and shooting
+- Crosshair customization: color, size (0.5x-2.0x), opacity (0.0-1.0) via settings
+- Crosshair expansion based on movement and shooting (if dynamic crosshair enabled)
+- Hex color to RGBA conversion with opacity support
 - Wave break countdown timer display
 - Wave notification with fade-out animation
 - FPS counter with optional debug stats overlay
@@ -1251,7 +1576,7 @@ Performance improvements are most noticeable with:
 
 ## Server Architecture
 
-### Express Server (`server/server.js`)
+### Express Server (`LOCAL_SERVER/server.js`)
 **Purpose**: HTTP server for static file serving and WebSocket multiplayer support
 
 **Features**:
@@ -1347,3 +1672,37 @@ Local scoreboard system that tracks and displays top 10 game sessions on the HTM
 5. `saveScoreboardEntry()` called
 6. Entry only saved if qualifies for top 10
 7. Scoreboard UI loads and displays on landing page
+
+## Global Highscore System
+
+### Overview
+Server-side global highscore leaderboard system that tracks top 10 scores across all players. Uses in-memory caching for performance and asynchronous file persistence.
+
+### Backend Storage (`huggingface-space-SERVER/server.js`)
+- **File Storage**: `highscores.json` (top 10 entries, auto-generated)
+- **In-Memory Cache**: `highscoresCache` global variable loaded on server start
+- **Cache Initialization**: `loadHighscoresFromFile()` called on server startup
+- **Cache Updates**: `addHighscore()` updates cache immediately, saves to file asynchronously
+- **File Persistence**: `saveHighscoresAsync()` uses `fs.promises.writeFile` (non-blocking)
+
+### API Endpoints
+- **`GET /api/highscores`**: Returns cached highscores instantly (no disk I/O)
+  - Returns: `{ highscores: Array }` (top 10, sorted by score descending)
+- **`POST /api/highscore`**: Submits new score
+  - Body: `{ username, score, wave, zombiesKilled }`
+  - Updates cache immediately, saves to file in background
+  - Returns: `{ success: boolean, isInTop10: boolean, rank: number | null }`
+
+### Frontend Integration (`js/ui/GameHUD.js`)
+- **Fetch Function**: `fetchLeaderboard()` with 10-second timeout
+- **State Tracking**: `leaderboardFetchState` ('loading' | 'success' | 'timeout' | 'error')
+- **Cooldown System**: 30-second interval between fetches (enforced on all paths)
+- **Error Handling**: Updates `leaderboardLastFetch` on all error paths to prevent infinite retries
+- **Visual Feedback**: Shows retry countdown ("Retrying in X seconds...") and fallback messages
+- **LocalStorage Fallback**: Displays local high score when server unavailable
+
+### Performance Optimizations
+- **Instant API Responses**: Cache eliminates disk I/O on every GET request
+- **Non-Blocking Writes**: File saves happen asynchronously, don't delay API responses
+- **Request Throttling**: Frontend enforces 30-second cooldown to prevent 429 errors
+- **Error Recovery**: Proper state management prevents infinite retry loops
