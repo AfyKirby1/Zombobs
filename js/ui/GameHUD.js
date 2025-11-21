@@ -1624,13 +1624,13 @@ export class GameHUD {
         const centerY = this.canvas.height / 2;
 
         // Title with enhanced effects
-        const uiScale = this.getUIScale();
-        this.ctx.font = `bold ${Math.max(36, 40 * uiScale)}px "Creepster", cursive`;
+        const lobbyScale = this.getUIScale();
+        this.ctx.font = `bold ${Math.max(36, 40 * lobbyScale)}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 25 * uiScale;
+        this.ctx.shadowBlur = 25 * lobbyScale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.9)';
-        this.ctx.fillText('MULTIPLAYER LOBBY', centerX, 60 * uiScale);
+        this.ctx.fillText('MULTIPLAYER LOBBY', centerX, 60 * lobbyScale);
         this.ctx.shadowBlur = 0;
 
         // --- COUNTDOWN OVERLAY ---
@@ -1667,7 +1667,7 @@ export class GameHUD {
         }
 
         const players = Array.isArray(gameState.multiplayer.players) ? gameState.multiplayer.players : [];
-        const scale = uiScale;
+        const scale = lobbyScale;
 
         // Layout: Three-column design
         // Left: Connection status panel

@@ -390,6 +390,7 @@ export class SettingsPanel {
             y = this.drawToggle("Lighting", "video", "lighting", y, mouse);
         }
         y = this.drawSlider("Screen Shake", "video", "screenShakeMultiplier", 0, 2, y, mouse);
+        y = this.drawSlider("Blood & Gore", "video", "bloodGoreLevel", 0, 1, y, mouse);
         y = this.drawDropdown("Crosshair Style", "video", "crosshairStyle", ['default', 'dot', 'cross', 'circle'], y, mouse);
         y = this.drawToggle("Dynamic Crosshair", "video", "dynamicCrosshair", y, mouse);
         y = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], y, mouse);
