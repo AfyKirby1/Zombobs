@@ -2,7 +2,7 @@
 
 ## Current State [2025-11-20]
 
-The project is currently at **V0.4.1**. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
+The project is currently at **V0.5.0**. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
 
 ### Recent Fixes
 - **Critical Bug Fix**: Resolved `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.

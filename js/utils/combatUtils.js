@@ -142,7 +142,10 @@ export function shootBullet(target, canvas, player) {
         const isLocalPlayer = player.id === gameState.multiplayer.playerId;
         if (isLocalPlayer) {
             gameState.multiplayer.socket.emit('player:action', {
-                action: 'shoot'
+                action: 'shoot',
+                x: player.x,
+                y: player.y,
+                angle: angle
             });
         }
     }
@@ -258,7 +261,10 @@ export function throwGrenade(target, canvas, player) {
         const isLocalPlayer = player.id === gameState.multiplayer.playerId;
         if (isLocalPlayer) {
             gameState.multiplayer.socket.emit('player:action', {
-                action: 'grenade'
+                action: 'grenade',
+                x: player.x,
+                y: player.y,
+                angle: angle
             });
         }
     }

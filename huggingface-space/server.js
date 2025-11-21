@@ -472,10 +472,24 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // All checks passed - broadcast game start to all clients
-    console.log(`[+] Game starting! All players ready.`);
-    logEvent('Game starting - all survivors ready!');
-    io.emit('game:start');
+    // All checks passed - broadcast game starting countdown
+    console.log(`[+] Leader ${player.name} initiated game start. Countdown starting...`);
+
+    // Broadcast countdown start (3 seconds)
+    const countdownDuration = 3000;
+    const startTime = Date.now() + countdownDuration;
+
+    io.emit('game:starting', {
+      startTime: startTime,
+      duration: countdownDuration
+    });
+
+    // Set timeout to actually start the game
+    setTimeout(() => {
+      console.log(`[+] Game starting! All players ready.`);
+      logEvent('Game starting - all survivors ready!');
+      io.emit('game:start');
+    }, countdownDuration);
   });
 
   // Handle player state updates (position, angle, actions)
@@ -541,6 +555,16 @@ io.on('connection', (socket) => {
   // Handle Skill Selection
   socket.on('game:skill', (skillId) => {
     socket.broadcast.emit('game:skill', skillId);
+  });
+
+  // Handle Game Pause
+  socket.on('game:pause', () => {
+    socket.broadcast.emit('game:pause');
+  });
+
+  // Handle Game Resume
+  socket.on('game:resume', () => {
+    socket.broadcast.emit('game:resume');
   });
 
   // Handle disconnection

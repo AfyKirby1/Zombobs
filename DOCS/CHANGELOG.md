@@ -2,6 +2,23 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.5.0] - 2025-01-XX
+
+### 🎉 VERSION 0.5.0 RELEASE
+
+> **Major update with enhanced features and improvements**
+
+### Added
+- Version bump to 0.5.0 across all project files
+- Updated news reel with V0.5.0 highlights
+- Enhanced version tracking and display
+
+### Changed
+- Updated all version references from 0.4.x to 0.5.0
+- Updated engine version to ZOMBS-XFX-NGIN V0.5.0
+- Updated server version to 0.5.0
+- Updated documentation to reflect current version
+
 ## [0.4.2] - 2025-01-XX
 
 ### 🐛 FIXED: Ready Button Not Working & Game Start Synchronization

@@ -297,7 +297,7 @@ export class GameHUD {
         currentY += height + this.itemSpacing;
         const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
         this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
-        
+
         // Multiplier indicator (if active)
         if (player.scoreMultiplier > 1.0) {
             currentY += height + this.itemSpacing;
@@ -333,7 +333,7 @@ export class GameHUD {
         if (!gameState.isCoop) {
             currentY += height + this.itemSpacing;
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', x, currentY, width);
-            
+
             // Draw multiplier indicator for player 1 (single player)
             const player = gameState.players[0];
             if (player.scoreMultiplier > 1.0) {
@@ -616,7 +616,7 @@ export class GameHUD {
             this.ctx.font = '18px "Roboto Mono", monospace';
             this.ctx.fillStyle = '#ffd700';
             this.ctx.fillText(`Max Multiplier: ${player.maxMultiplierThisSession}x`, this.canvas.width / 2, this.canvas.height / 2 + 10);
-            
+
             if (player.totalMultiplierBonus > 0) {
                 this.ctx.fillStyle = '#4caf50';
                 this.ctx.fillText(`Bonus Score: +${Math.floor(player.totalMultiplierBonus)}`, this.canvas.width / 2, this.canvas.height / 2 + 35);
@@ -654,14 +654,14 @@ export class GameHUD {
     showGameOver(scoreText) {
         this.gameOver = true;
         this.finalScore = scoreText;
-        
+
         // Update all-time max multiplier if any player exceeded it
         gameState.players.forEach(player => {
             if (player.maxMultiplierThisSession > gameState.allTimeMaxMultiplier) {
                 gameState.allTimeMaxMultiplier = player.maxMultiplierThisSession;
             }
         });
-        
+
         // Save multiplier stats
         saveMultiplierStats();
     }
@@ -861,7 +861,7 @@ export class GameHUD {
         const buttonStartY = centerY + 40;
         const leftColumnX = centerX - buttonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
-        
+
         // Row positions
         const row1Y = buttonStartY;
         const row2Y = buttonStartY + (buttonHeight + buttonSpacing);
@@ -871,22 +871,22 @@ export class GameHUD {
         // Row 1: Arcade (left), Campaign (right)
         this.drawMenuButton('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
         this.drawMenuButton('Campaign', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'campaign', false);
-        
+
         // Row 2: Local Co-op (left), Play with AI (right)
         this.drawMenuButton('Local Co-op', leftColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
         this.drawMenuButton('Play with AI', rightColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
-        
+
         // Row 3: Settings (left), Multiplayer (right)
         this.drawMenuButton('Settings', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
         this.drawMenuButton('Multiplayer', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
-        
+
         // Row 4: About (centered)
         this.drawMenuButton('About', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
         this.ctx.font = '12px "Roboto Mono", monospace';
         this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
         this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 40);
-        
+
         // Display all-time best multiplier
         if (gameState.allTimeMaxMultiplier > 1.0) {
             this.ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
@@ -901,29 +901,29 @@ export class GameHUD {
         const muteButtonX = this.canvas.width - 60;
         const muteButtonY = this.canvas.height - 60;
         const muteButtonHovered = this.hoveredButton === 'mute_music';
-        
+
         // Draw button background
         const bgColor = muteButtonHovered ? '#ff1744' : '#1a1a1a';
         const borderColor = muteButtonHovered ? '#ff5252' : '#ff1744';
-        
+
         const bgGradient = this.ctx.createLinearGradient(muteButtonX, muteButtonY, muteButtonX, muteButtonY + muteButtonSize);
         bgGradient.addColorStop(0, muteButtonHovered ? 'rgba(255, 23, 68, 0.3)' : 'rgba(26, 26, 26, 0.9)');
         bgGradient.addColorStop(1, muteButtonHovered ? 'rgba(255, 23, 68, 0.2)' : 'rgba(10, 10, 10, 0.9)');
-        
+
         this.ctx.fillStyle = bgGradient;
         this.ctx.fillRect(muteButtonX, muteButtonY, muteButtonSize, muteButtonSize);
-        
+
         this.ctx.strokeStyle = borderColor;
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(muteButtonX, muteButtonY, muteButtonSize, muteButtonSize);
-        
+
         if (muteButtonHovered) {
             this.ctx.shadowBlur = 20;
             this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
             this.ctx.strokeRect(muteButtonX, muteButtonY, muteButtonSize, muteButtonSize);
             this.ctx.shadowBlur = 0;
         }
-        
+
         // Draw speaker icon
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = '24px Arial';
@@ -942,52 +942,52 @@ export class GameHUD {
     drawNewsTicker() {
         const canvas = this.canvas;
         const ctx = this.ctx;
-        
+
         // Dimensions
         const boxWidth = 600;
         const boxHeight = 30;
         const centerX = canvas.width / 2;
         const boxX = centerX - (boxWidth / 2);
         const boxY = canvas.height - 100; // Position above footer area
-        
+
         // Measure text width for scrolling calculation
         ctx.font = '14px "Roboto Mono", monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         const textWidth = ctx.measureText(NEWS_UPDATES).width;
-        
+
         // Calculate scroll offset (stateless animation using Date.now)
         // Scroll speed: divide by 30 for pixel-per-30ms movement (3x slower)
         const scrollSpeed = 30;
         const scrollOffset = (Date.now() / scrollSpeed) % (textWidth + boxWidth);
         const textX = boxX - scrollOffset;
-        
+
         // Draw background box
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-        
+
         // Draw border with amber glow
         ctx.strokeStyle = 'rgba(255, 193, 7, 0.3)';
         ctx.lineWidth = 1;
         ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-        
+
         // Clip to box area to prevent text overflow
         ctx.save();
         ctx.beginPath();
         ctx.rect(boxX, boxY, boxWidth, boxHeight);
         ctx.clip();
-        
+
         // Draw scrolling text (amber/gold color)
         ctx.fillStyle = '#ffc107';
         ctx.font = '14px "Roboto Mono", monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        
+
         // Draw text twice for seamless loop (when first copy scrolls out, second appears)
         const textY = boxY + boxHeight / 2;
         ctx.fillText(NEWS_UPDATES, textX, textY);
         ctx.fillText(NEWS_UPDATES, textX + textWidth + boxWidth, textY);
-        
+
         // Restore clipping
         ctx.restore();
     }
@@ -1011,31 +1011,31 @@ export class GameHUD {
         this.ctx.font = '20px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#ffffff';
         this.ctx.textAlign = 'center';
-        
+
         let y = centerY - 150;
         this.ctx.fillText('ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS', centerX, y);
         y += 40;
-        
+
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Version: V0.3.1', centerX, y);
+        this.ctx.fillText('Version: V0.5.0', centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.4.0', centerX, y);
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.5.0', centerX, y);
         y += 50;
-        
+
         this.ctx.font = '14px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#cccccc';
         this.ctx.fillText('A fast-paced, top-down zombie survival game', centerX, y);
         y += 25;
         this.ctx.fillText('built with vanilla HTML5 Canvas and JavaScript.', centerX, y);
         y += 50;
-        
+
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#ff9800';
         this.ctx.fillText('Features:', centerX, y);
         y += 30;
-        
+
         this.ctx.font = '14px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#aaaaaa';
         const features = [
@@ -1072,6 +1072,30 @@ export class GameHUD {
 
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
+
+        // --- COUNTDOWN OVERLAY ---
+        if (gameState.multiplayer.isGameStarting) {
+            const timeLeft = Math.max(0, Math.ceil((gameState.multiplayer.gameStartTime - Date.now()) / 1000));
+
+            // Draw dimming overlay
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Draw Countdown Number
+            this.ctx.font = 'bold 120px "Roboto Mono", monospace';
+            this.ctx.fillStyle = '#ff1744';
+            this.ctx.shadowBlur = 50;
+            this.ctx.shadowColor = '#ff0000';
+            this.ctx.fillText(timeLeft > 0 ? timeLeft : 'GO!', centerX, centerY);
+            this.ctx.shadowBlur = 0;
+
+            this.ctx.font = '30px "Roboto Mono", monospace';
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillText('DEPLOYING...', centerX, centerY + 80);
+
+            // Don't draw the rest of the UI interactive elements, or draw them disabled
+            // For visual continuity, we'll draw the player list but disable buttons below
+        }
 
         const players = Array.isArray(gameState.multiplayer.players) ? gameState.multiplayer.players : [];
 
@@ -1123,22 +1147,22 @@ export class GameHUD {
                 const isLocalPlayer = player?.id === gameState.multiplayer.playerId;
                 const isLeader = player?.isLeader || false;
                 const isReady = player?.isReady || false;
-                
+
                 // Player name with leader indicator
                 let playerText = `${index + 1}. ${name}`;
                 if (isLeader) {
                     playerText += ' 👑';
                 }
                 playerText += ` (#${idSuffix})`;
-                
+
                 // Ready status
                 const readyText = isReady ? '✅ Ready' : '❌ Not Ready';
-                
+
                 // Color: green for local player, white for others
                 this.ctx.fillStyle = isLocalPlayer ? '#76ff03' : '#ffffff';
                 this.ctx.font = '16px "Roboto Mono", monospace';
                 this.ctx.fillText(playerText, panelX + 20, panelY + 60 + index * 40);
-                
+
                 // Ready status
                 this.ctx.fillStyle = isReady ? '#76ff03' : '#ff9800';
                 this.ctx.font = '14px "Roboto Mono", monospace';
@@ -1149,39 +1173,42 @@ export class GameHUD {
         const buttonWidth = 200;
         const buttonHeight = 50;
         const buttonSpacing = 60;
-        
+
+        // Disable buttons if game is starting
+        const buttonsDisabled = gameState.multiplayer.isGameStarting;
+
         if (gameState.multiplayer.connected) {
             const isLeader = gameState.multiplayer.isLeader;
             const allReady = players.length > 0 && players.every(p => p.isReady);
-            
+
             if (isLeader) {
                 // Leader sees Ready button, Start Game button, then Back button
                 const readyY = this.canvas.height - 170;
                 const startY = this.canvas.height - 100;
                 const backY = this.canvas.height - 40;
-                
+
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
-                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', false);
-                
-                const canStart = allReady && players.length > 0;
+                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', buttonsDisabled);
+
+                const canStart = allReady && players.length > 0 && !buttonsDisabled;
                 this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_start', !canStart);
-                
-                if (!canStart) {
+
+                if (!canStart && !buttonsDisabled) {
                     this.ctx.font = '12px "Roboto Mono", monospace';
                     this.ctx.fillStyle = '#ff9800';
                     this.ctx.textAlign = 'center';
                     this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 20);
                 }
-                
-                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
+
+                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', buttonsDisabled);
             } else {
                 // Non-leader sees Ready button, then Back button
                 const readyY = this.canvas.height - 170;
                 const backY = this.canvas.height - 100;
-                
+
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
-                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', false);
-                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
+                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', buttonsDisabled);
+                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', buttonsDisabled);
             }
         } else {
             // Not connected - just show Back button
@@ -1268,26 +1295,29 @@ export class GameHUD {
 
         // Check Multiplayer Lobby
         if (gameState.showLobby) {
+            // Prevent clicks if game is starting
+            if (gameState.multiplayer.isGameStarting) return null;
+
             if (gameState.multiplayer.connected) {
                 const isLeader = gameState.multiplayer.isLeader;
                 const readyY = this.canvas.height - 170;
-                
+
                 // Check ready button (all players can click this)
                 if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                     mouseY >= readyY && mouseY <= readyY + buttonHeight) {
                     return 'lobby_ready';
                 }
-                
+
                 if (isLeader) {
                     // Leader: Check Start Game button, then Back button
                     const startY = this.canvas.height - 100;
                     const backY = this.canvas.height - 40;
-                    
+
                     if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                         mouseY >= startY && mouseY <= startY + buttonHeight) {
                         return 'lobby_start';
                     }
-                    
+
                     if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                         mouseY >= backY && mouseY <= backY + buttonHeight) {
                         return 'lobby_back';
@@ -1329,7 +1359,7 @@ export class GameHUD {
         const buttonStartY = centerY + 40;
         const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
-        
+
         // Row positions
         const row1Y = buttonStartY;
         const row2Y = buttonStartY + (buttonHeight + buttonSpacing);
@@ -1342,14 +1372,14 @@ export class GameHUD {
             if (mouseY >= row2Y - buttonHeight / 2 && mouseY <= row2Y + buttonHeight / 2) return 'local_coop';
             if (mouseY >= row3Y - buttonHeight / 2 && mouseY <= row3Y + buttonHeight / 2) return 'settings';
         }
-        
+
         // Check right column
         if (mouseX >= rightColumnX && mouseX <= rightColumnX + mainMenuButtonWidth) {
             if (mouseY >= row1Y - buttonHeight / 2 && mouseY <= row1Y + buttonHeight / 2) return 'campaign';
             if (mouseY >= row2Y - buttonHeight / 2 && mouseY <= row2Y + buttonHeight / 2) return 'play_ai';
             if (mouseY >= row3Y - buttonHeight / 2 && mouseY <= row3Y + buttonHeight / 2) return 'multiplayer';
         }
-        
+
         // Check About button (centered in row 4)
         if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
             if (mouseY >= row4Y - buttonHeight / 2 && mouseY <= row4Y + buttonHeight / 2) return 'about';
@@ -1937,7 +1967,7 @@ export class GameHUD {
 
     drawServerStatus() {
         let status = gameState.multiplayer.status || 'disconnected';
-        
+
         // If not actively connected to multiplayer lobby, show general server health
         if (status === 'disconnected' || status === 'error') {
             const serverHealth = gameState.multiplayer.serverStatus;

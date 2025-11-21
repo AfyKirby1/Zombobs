@@ -138,7 +138,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (V0.4.1)
+## Recent Updates (V0.5.0)
 - **Multiplayer Lobby Synchronization**:
   - Implemented ready system - players toggle ready status before game starts
   - Leader-based game start - first player is leader, can start when all ready

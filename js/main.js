@@ -288,6 +288,16 @@ function initializeNetwork() {
             }
         });
 
+        socket.on('game:pause', () => {
+            gameState.gamePaused = true;
+            gameHUD.showPauseMenu();
+        });
+
+        socket.on('game:resume', () => {
+            gameState.gamePaused = false;
+            gameHUD.hidePauseMenu();
+        });
+
         // Handle remote player state updates
         socket.on('player:state:update', (data) => {
             // Debug: Log received state updates (throttled to avoid spam)
@@ -336,8 +346,15 @@ function initializeNetwork() {
             }
 
             // Update remote player position and angle
-            if (data.x !== undefined) remotePlayer.x = data.x;
-            if (data.y !== undefined) remotePlayer.y = data.y;
+            // Simple LERP for smoother movement
+            if (data.x !== undefined) {
+                // Move 30% of the way to target position (smoothing)
+                remotePlayer.x = remotePlayer.x * 0.7 + data.x * 0.3;
+            }
+            if (data.y !== undefined) {
+                remotePlayer.y = remotePlayer.y * 0.7 + data.y * 0.3;
+            }
+
             if (data.angle !== undefined) remotePlayer.angle = data.angle;
             if (data.health !== undefined) remotePlayer.health = data.health;
             if (data.stamina !== undefined) remotePlayer.stamina = data.stamina;
@@ -359,27 +376,61 @@ function initializeNetwork() {
             const remotePlayer = gameState.players.find(p => p.id === data.playerId);
             if (remotePlayer && remotePlayer.inputSource === 'remote') {
                 if (data.action === 'shoot') {
+                    // Use exact position from packet if available to prevent "ghost bullets"
+                    // Temporarily override player position to spawn bullet correctly
+                    const originalX = remotePlayer.x;
+                    const originalY = remotePlayer.y;
+                    const originalAngle = remotePlayer.angle;
+                    
+                    if (data.x !== undefined) remotePlayer.x = data.x;
+                    if (data.y !== undefined) remotePlayer.y = data.y;
+                    if (data.angle !== undefined) remotePlayer.angle = data.angle;
+
                     const target = {
                         x: remotePlayer.x + Math.cos(remotePlayer.angle) * 200,
                         y: remotePlayer.y + Math.sin(remotePlayer.angle) * 200
                     };
                     shootBullet(target, canvas, remotePlayer);
+
+                    // Restore visual position (it will interpolate to correct spot anyway)
+                    remotePlayer.x = originalX;
+                    remotePlayer.y = originalY;
+                    remotePlayer.angle = originalAngle;
                 } else if (data.action === 'melee') {
                     performMeleeAttack(remotePlayer);
                 } else if (data.action === 'reload') {
                     reloadWeapon(remotePlayer);
                 } else if (data.action === 'grenade') {
+                    // Use exact position for grenades too
+                    const originalX = remotePlayer.x;
+                    const originalY = remotePlayer.y;
+                    const originalAngle = remotePlayer.angle;
+
+                    if (data.x !== undefined) remotePlayer.x = data.x;
+                    if (data.y !== undefined) remotePlayer.y = data.y;
+                    if (data.angle !== undefined) remotePlayer.angle = data.angle;
+
                     const target = {
                         x: remotePlayer.x + Math.cos(remotePlayer.angle) * 200,
                         y: remotePlayer.y + Math.sin(remotePlayer.angle) * 200
                     };
                     throwGrenade(target, canvas, remotePlayer);
+
+                    remotePlayer.x = originalX;
+                    remotePlayer.y = originalY;
+                    remotePlayer.angle = originalAngle;
                 } else if (data.action === 'switchWeapon') {
                     if (data.weaponName && WEAPONS[data.weaponName]) {
                         switchWeapon(WEAPONS[data.weaponName], remotePlayer);
                     }
                 }
             }
+        });
+
+        socket.on('game:starting', (data) => {
+            console.log('Game starting in ' + data.duration + 'ms');
+            gameState.multiplayer.isGameStarting = true;
+            gameState.multiplayer.gameStartTime = data.startTime;
         });
 
         // Handle player disconnection
@@ -431,9 +482,18 @@ function initializeNetwork() {
             zombiesData.forEach(data => {
                 const zombie = gameState.zombies.find(z => z.id === data.id);
                 if (zombie) {
-                    zombie.x = data.x;
-                    zombie.y = data.y;
+                    // Set target for interpolation
+                    zombie.targetX = data.x;
+                    zombie.targetY = data.y;
                     zombie.health = data.health;
+
+                    // If distance is too large (teleport/spawn), snap immediately
+                    const dx = data.x - zombie.x;
+                    const dy = data.y - zombie.y;
+                    if (dx * dx + dy * dy > 10000) {
+                        zombie.x = data.x;
+                        zombie.y = data.y;
+                    }
                 }
             });
         });
@@ -700,11 +760,21 @@ function togglePause() {
 function pauseGame() {
     gameState.gamePaused = true;
     gameHUD.showPauseMenu();
+
+    // Notify server
+    if (gameState.multiplayer.active && gameState.multiplayer.socket) {
+        gameState.multiplayer.socket.emit('game:pause');
+    }
 }
 
 function resumeGame() {
     gameState.gamePaused = false;
     gameHUD.hidePauseMenu();
+
+    // Notify server
+    if (gameState.multiplayer.active && gameState.multiplayer.socket) {
+        gameState.multiplayer.socket.emit('game:resume');
+    }
 }
 
 function performMeleeAttack(player) {
@@ -1713,6 +1783,17 @@ function updateGame() {
     const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
 
     gameState.zombies.forEach(zombie => {
+        // Only the Leader or Singleplayer should run Zombie AI logic
+        if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
+            // Interpolation for smooth movement between server updates
+            if (zombie.targetX !== undefined && zombie.targetY !== undefined) {
+                // Simple LERP: Move 20% towards target per frame
+                zombie.x += (zombie.targetX - zombie.x) * 0.2;
+                zombie.y += (zombie.targetY - zombie.y) * 0.2;
+            }
+            return;
+        }
+
         // Find closest living player
         let closestPlayer = null;
         let minDist = Infinity;

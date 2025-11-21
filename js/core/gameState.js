@@ -106,7 +106,9 @@ export const gameState = {
         players: [],
         latency: 0,
         isLeader: false,
-        isReady: false
+        isReady: false,
+        isGameStarting: false,
+        gameStartTime: 0
     },
     username: 'Survivor',
     menuMusicMuted: false,

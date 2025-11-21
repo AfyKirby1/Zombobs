@@ -53,7 +53,7 @@
 
 ---
 
-## 🔥 What's New in V0.4.0 - THE MULTIPLAYER UPDATE
+## 🔥 What's New in V0.5.0
 
 > **The horde is connected. Are you ready?**
 
