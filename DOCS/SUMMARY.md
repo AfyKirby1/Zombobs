@@ -13,17 +13,43 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Background Reload** - Weapons auto-reload when holstered long enough
 ✅ **Auto-Reload** - Automatic reload when ammo reaches 0
 ✅ **UI Systems** - In-game HUD component with pause menu and game over screens
+  - Reorganized HUD layout: Skills (bottom left), XP bar (bottom middle), Weapon info (bottom right)
+  - XP progress bar showing level and XP with green gradient fill
+  - Active skills display showing collected skills with icons and levels
+  - Enhanced keybind instructions showing all 7 weapons and sprint
+✅ **Interactive Pause Menu** - Clickable buttons (Resume, Restart, Settings, Return to Menu) with hover effects
+✅ **Custom Cursor System** - Custom drawn cursor for all menus and pause screen with automatic system cursor hiding
 ✅ **Multiplayer Lobby** - Modern glassmorphism lobby with animated background, player cards, and enhanced UI
 ✅ **Leader System** - First player designated as lobby leader with game start control
 ✅ **Ready System** - Players can toggle ready status; all must be ready to start
 ✅ **Synchronized Game Start** - All players enter game simultaneously in same session
 ✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights
+✅ **Gallery Screen** - Full showcase gallery displaying zombies, weapons, and pickups
+  - Gallery button on main menu (row 4)
+  - Three sections: Zombies (7 types), Weapons (7 types), Pickups (8 types)
+  - Visual icons with stats, descriptions, and animations
+  - Card-based layout with scrolling support
+  - Glassmorphism styling matching lobby design
+✅ **Local Scoreboard System** - Top 10 scoreboard on HTML landing page
+  - Displays top 10 game sessions sorted by score
+  - Shows: Score, Wave, Kills, Time Survived, Max Multiplier, Username, Date/Time
+  - Only saves entries that qualify for top 10
+  - Floating glassmorphism container with responsive layout
+  - Special styling for top 3 entries (gold/silver/bronze)
+  - Automatic saving on game over for qualifying sessions
+  - Time and date formatting with relative timestamps
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **System Refactoring** - Large systems extracted from main.js into dedicated modules
   - ZombieUpdateSystem: Zombie AI, multiplayer sync, interpolation (~173 lines extracted)
   - EntityRenderSystem: Entity rendering with viewport culling (~102 lines extracted)
   - PickupSpawnSystem: Pickup spawning logic (~52 lines extracted)
-  - main.js reduced from ~3,230 to ~2,537 lines (21% reduction)
+  - MultiplayerSystem: Multiplayer networking, player sync, zombie sync (~545 lines extracted)
+  - ZombieSpawnSystem: Zombie and boss spawning logic (~155 lines extracted)
+  - PlayerSystem: Player updates, rendering, co-op lobby (~520 lines extracted)
+  - GameStateManager: Game lifecycle (start, restart, game over) (~83 lines extracted)
+  - MeleeSystem: Melee attack logic and range checking (~131 lines extracted)
+  - drawingUtils: Drawing utilities (crosshair, wave UI, FPS counter) (~263 lines extracted)
+  - main.js reduced from ~2,536 to ~1,241 lines (51% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
 ✅ **Enemy Variety** - 6 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter)
@@ -74,6 +100,19 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
   - Dynamic viewport calculations based on scaled element heights
   - News ticker font reduced to 85% size to fit more content
+✅ **Skill System Expansion** - 10 new basic skills added with full effect integration
+  - Total skills now: 16 (6 original + 10 new)
+  - New skills: Thick Skin, Lucky Strike, Quick Hands, Scavenger, Adrenaline, Armor Plating, Long Range, Fast Fingers, Bloodlust, Steady Aim
+  - All skills have proper icons, descriptions, and functional effects
+  - Skills integrated into combat system, player movement, pickup spawning, and bullet mechanics
+✅ **3-Choice Level-Up System** - Expanded skill selection screen
+  - Level-up now shows 3 skill choices instead of 2
+  - Updated UI layout and click detection for 3 cards
+  - More strategic choices per level-up
+✅ **XP Rate Increase** - Increased XP gains by 1.5x (50% faster)
+  - Normal: 8 XP, Fast: 15 XP, Exploding: 23 XP, Armored: 18 XP, Ghost: 27 XP, Spitter: 23 XP, Boss: 375 XP
+  - Provides more engaging leveling experience
+  - Players level up more frequently while maintaining meaningful progression
 
 ## Technology Stack
 - **Frontend**: HTML5 Canvas, Vanilla JavaScript (ES6 Modules)
@@ -117,13 +156,19 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── InputSystem.js        # Gamepad input handling (HTML5 Gamepad API)
 │   │   ├── ZombieUpdateSystem.js # Zombie AI updates and multiplayer sync
 │   │   ├── EntityRenderSystem.js # Entity rendering with viewport culling
-│   │   └── PickupSpawnSystem.js  # Pickup spawning logic
+│   │   ├── PickupSpawnSystem.js  # Pickup spawning logic
+│   │   ├── MultiplayerSystem.js  # Multiplayer networking and synchronization
+│   │   ├── ZombieSpawnSystem.js  # Zombie and boss spawning logic
+│   │   ├── PlayerSystem.js       # Player updates, rendering, co-op lobby
+│   │   ├── GameStateManager.js   # Game lifecycle (start, restart, game over)
+│   │   └── MeleeSystem.js        # Melee attack logic and range checking
 │   ├── ui/
 │   │   ├── GameHUD.js            # In-game HUD component
 │   │   └── SettingsPanel.js      # Settings UI panel
 │   └── utils/
 │       ├── combatUtils.js        # Combat functions (shooting, explosions, collisions)
-│       └── gameUtils.js          # General game utilities
+│       ├── gameUtils.js          # General game utilities
+│       └── drawingUtils.js       # Drawing utilities (crosshair, wave UI, FPS counter)
 ├── server/
 │   ├── server.js                 # Express + socket.io server
 │   └── package.json              # Node.js dependencies
@@ -190,6 +235,17 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
+## Recent Updates (V0.6.0)
+- **Balance Overhaul**: Major combat balance adjustments
+  - Crit rate reduced from 10% to ~3.33% (2/3 reduction) for more balanced combat
+  - All zombie HP doubled (except Boss) - makes zombies more durable and combat more challenging
+  - All weapon damage doubled - maintains relative weapon balance while increasing overall damage output
+  - Pistol: 1→2, Shotgun: 3→6 per pellet, Rifle: 2→4, Flamethrower: 0.5→1.0, SMG: 0.8→1.6, Sniper: 15→30, RPG: 60→120 explosion damage
+- **Bug Fix**: Hoarder skill ammo multiplier now persists correctly across weapon switches
+  - Fixed issue where Hoarder skill's 30% ammo increase was lost when switching weapons
+  - All weapon switching, reloading, and ammo restoration now correctly applies ammoMultiplier
+  - Location: `js/utils/combatUtils.js` - `switchWeapon()`, `reloadWeapon()`, `shootBullet()`
+
 ## Recent Updates (V0.5.3)
 - **Main Menu UI Adjustments**: Improved proportions and layout
   - Reduced button sizes (180×36px scaled, down from 200×40px)
@@ -226,7 +282,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Particle system optimization with improved update loops
   - 30-50% FPS improvement on Canvas 2D, 20-40% on WebGPU
 - **Main Menu UI Layout Improvements**:
-  - Added version text box (V0.5.0) in bottom-left corner
+  - Added version text box (V0.6.0) in bottom-left corner
   - Enhanced news ticker: reduced size and positioned below UI buttons
   - Moved UI buttons up for better spacing and visual balance
   - Smaller, more compact button design (200px x 40px, down from 240px x 50px)

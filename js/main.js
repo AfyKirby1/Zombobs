@@ -67,6 +67,9 @@ const companionSystem = new CompanionSystem();
 // Make companionSystem globally accessible
 window.companionSystem = companionSystem;
 
+// Initialize HUD (needed by GameStateManager)
+const gameHUD = new GameHUD(canvas);
+
 // Initialize new systems
 const meleeSystem = new MeleeSystem();
 const playerSystem = new PlayerSystem(companionSystem);
@@ -92,9 +95,6 @@ gameEngine.setVSync(initialVSync);
 if (!initialVSync) {
     gameEngine.setFPSLimit(initialFpsLimit);
 }
-
-// Initialize HUD
-const gameHUD = new GameHUD(canvas);
 
 // Initialize Settings Panel
 const settingsPanel = new SettingsPanel(canvas, settingsManager);
@@ -281,7 +281,7 @@ function drawPlayers() {
 // Drawing functions are now imported from drawingUtils.js
 
 function updateGame() {
-    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) return;
+    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout) return;
     if (gameState.showLevelUp) return; // Pause game during level up selection
 
     // Cache frequently accessed settings to reduce repeated lookups
@@ -375,7 +375,7 @@ function updateGame() {
         // Early exit for exploded grenades
         if (grenade.exploded) return false;
         // Update if near viewport
-        if (shouldUpdateEntity(grenade, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
+        if (shouldUpdateEntity(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             grenade.update(canvas.width, canvas.height);
         }
         return !grenade.exploded;
@@ -386,7 +386,7 @@ function updateGame() {
     gameState.acidProjectiles = gameState.acidProjectiles.filter(projectile => {
         // Early exit for off-screen projectiles
         if (projectile.isOffScreen(canvas.width, canvas.height)) return false;
-        if (shouldUpdateEntity(projectile, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
+        if (shouldUpdateEntity(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             projectile.update();
         }
         return !projectile.isOffScreen(canvas.width, canvas.height);
@@ -397,7 +397,7 @@ function updateGame() {
     gameState.acidPools = gameState.acidPools.filter(pool => {
         // Early exit for expired pools
         if (pool.isExpired()) return false;
-        if (shouldUpdateEntity(pool, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
+        if (shouldUpdateEntity(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pool.update();
         }
         return !pool.isExpired();
@@ -530,28 +530,49 @@ function drawGame() {
 
     if (gameState.showMainMenu) {
         gameHUD.mainMenu = true;
-        canvas.style.cursor = 'default';
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
 
     if (gameState.showLobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
 
     if (gameState.showCoopLobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
 
     if (gameState.showAILobby) {
         gameHUD.mainMenu = false;
+        canvas.style.cursor = 'none'; // Use custom cursor
+        gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showGallery) {
+        gameHUD.mainMenu = false;
         canvas.style.cursor = 'default';
+        gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showAbout) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showLevelUp) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
@@ -559,11 +580,17 @@ function drawGame() {
     gameHUD.mainMenu = false;
     const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
 
-    // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
-    if (activeInputSource === 'gamepad') {
-        canvas.style.cursor = 'none';
+    // Hide cursor during gameplay (crosshair used) or when paused (custom cursor used)
+    // Settings panel uses default cursor, otherwise use custom
+    if (!gameState.showSettingsPanel && gameState.gamePaused) {
+        canvas.style.cursor = 'none'; // Use custom cursor when paused
     } else {
-        canvas.style.cursor = 'none';
+        // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
+        if (activeInputSource === 'gamepad') {
+            canvas.style.cursor = 'none';
+        } else {
+            canvas.style.cursor = 'none';
+        }
     }
 
     // Cache settings at frame start to avoid repeated lookups
@@ -813,7 +840,7 @@ gameEngine.update = (dt) => {
     if (gameState.showCoopLobby) {
         updateCoopLobby();
     }
-    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout) {
         updateGame();
     }
 
@@ -821,7 +848,7 @@ gameEngine.update = (dt) => {
     inputSystem.update(settingsManager.settings.gamepad);
 
     // Check for Gamepad Actions (Mostly P1 if we allow it, or Global Menus)
-    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && gameState.gameRunning) {
+    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout && gameState.gameRunning) {
 
         // Find local player using gamepad
         const localPlayer = gameState.players.find(p => p.inputSource === 'gamepad');
@@ -896,12 +923,12 @@ gameEngine.draw = () => {
     if (gameState.showCoopLobby) {
         gameHUD.draw(); // Draw lobby
     }
-    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
-        drawGame(); // Only draw game if not in lobby
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout) {
+        drawGame(); // Only draw game if not in lobby/menu
     }
     // Only draw game if not in lobbies/main menu (drawGame handles mainmenu/lobby drawing internally too but structured oddly)
     // Let's rely on drawGame() for everything except pure lobby updates
-    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby) {
+    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout) {
         drawGame();
     }
     // If paused
@@ -1003,7 +1030,7 @@ canvas.addEventListener('mousemove', (e) => {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
     } else if (gameState.showLevelUp) {
         gameHUD.updateLevelUpHover(mouse.x, mouse.y);
-    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout) {
+    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout || gameState.showGallery || gameState.gamePaused) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
 });
@@ -1074,6 +1101,14 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showMainMenu = false;
             gameState.showLobby = true;
             connectToMultiplayer();
+        } else if (clickedButton === 'gallery') {
+            gameState.showGallery = true;
+            gameState.showMainMenu = false;
+            // Reset gallery scroll when entering
+            if (gameHUD.galleryScrollY !== undefined) {
+                gameHUD.galleryScrollY = 0;
+                gameHUD.galleryTargetScrollY = 0;
+            }
         } else if (clickedButton === 'about') {
             gameState.showAbout = true;
             gameState.showMainMenu = false;
@@ -1085,6 +1120,16 @@ canvas.addEventListener('mousedown', (e) => {
             } else {
                 playMenuMusic();
             }
+        }
+        return;
+    }
+
+    // Gallery Screen
+    if (gameState.showGallery) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'gallery_back') {
+            gameState.showGallery = false;
+            gameState.showMainMenu = true;
         }
         return;
     }
@@ -1177,6 +1222,22 @@ canvas.addEventListener('mousedown', (e) => {
         return;
     }
 
+    // Pause Menu
+    if (gameState.gamePaused && !gameState.showSettingsPanel) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'pause_resume') {
+            resumeGame();
+        } else if (clickedButton === 'pause_restart') {
+            restartGame();
+        } else if (clickedButton === 'pause_settings') {
+            gameState.showSettingsPanel = true;
+            settingsPanel.open();
+        } else if (clickedButton === 'pause_menu') {
+            restartGame();
+        }
+        return;
+    }
+
     if (gameState.gameRunning && !gameState.gamePaused) {
         if (e.button === 0) {
             initAudio();
@@ -1200,6 +1261,16 @@ canvas.addEventListener('mouseleave', () => mouse.isDown = false);
 canvas.addEventListener('wheel', (e) => {
     if (gameState.showSettingsPanel) {
         settingsPanel.handleWheel(e);
+        return;
+    }
+
+    // Gallery scrolling
+    if (gameState.showGallery) {
+        e.preventDefault();
+        const scrollSpeed = 30;
+        if (gameHUD.galleryTargetScrollY !== undefined) {
+            gameHUD.galleryTargetScrollY -= e.deltaY * 0.5; // Invert for natural scrolling
+        }
         return;
     }
 

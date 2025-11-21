@@ -1,7 +1,7 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { BossHealthBar } from './BossHealthBar.js';
-import { LOW_AMMO_FRACTION, NEWS_UPDATES } from '../core/constants.js';
+import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
 import { saveMultiplierStats } from '../utils/gameUtils.js';
@@ -168,7 +168,9 @@ export class GameHUD {
     }
 
     draw() {
-        if (gameState.showAbout) {
+        if (gameState.showGallery) {
+            this.drawGallery();
+        } else if (gameState.showAbout) {
             this.drawAboutScreen();
         } else if (gameState.showLobby) {
             this.drawLobby();
@@ -203,6 +205,13 @@ export class GameHUD {
 
         // Always draw WebGPU status icon on top of everything
         this.drawWebGPUStatusIcon();
+
+        // Draw custom cursor when in menus or paused
+        if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || 
+            gameState.showAILobby || gameState.showAbout || gameState.showGallery || 
+            this.paused || gameState.gamePaused || gameState.showLevelUp) {
+            this.drawCursor();
+        }
     }
 
     drawSinglePlayerHUD() {
@@ -210,14 +219,45 @@ export class GameHUD {
         const startX = this.padding;
         let startY = this.padding;
         const itemSpacing = this.getScaledItemSpacing();
+        const scale = this.getUIScale();
 
         this.drawPlayerStats(player, startX, startY);
 
         // Draw shared stats below player stats for single player
-        // 3 stats (Health, Ammo, Grenades) * (50 height + 12 spacing) + spacing
-        const statHeight = 50 * this.getUIScale();
-        startY += (statHeight + itemSpacing) * 3 + itemSpacing;
-        this.drawSharedStats(startX, startY);
+        // Health and Shield only now (removed Ammo/Grenades)
+        const statHeight = 50 * scale;
+        startY += (statHeight + itemSpacing) * 2 + itemSpacing; // Health + Shield (or just Health if no shield)
+        const finalY = this.drawSharedStats(startX, startY);
+        
+        // Calculate bottom UI positions (above instructions)
+        // Instructions start at canvas.height - 55 * scale, with 80 * scale height
+        // So instructions box top is at canvas.height - 55 * scale - 30 * scale = canvas.height - 85 * scale
+        const instructionsTop = this.canvas.height - (85 * scale);
+        const bottomSpacing = 15 * scale;
+        const bottomUIBaseline = instructionsTop - bottomSpacing;
+        
+        const bottomWidth = 160 * scale;
+        const xpBarWidth = 240 * scale; // Wider XP bar
+        const bottomHeight = 50 * scale; // XP bar height
+        const weaponInfoHeight = (bottomHeight + itemSpacing) * 2; // Weapon + Grenades
+        
+        // Bottom left: Active Skills
+        const skillsX = this.padding;
+        const skillCount = gameState.activeSkills?.length || 0;
+        const skillHeight = 40 * scale;
+        const skillsTotalHeight = skillCount > 0 ? (skillCount * (skillHeight + itemSpacing) - itemSpacing) : 0;
+        const skillsY = bottomUIBaseline - skillsTotalHeight;
+        this.drawActiveSkills(skillsX, skillsY, bottomWidth);
+        
+        // Bottom middle: XP Bar
+        const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
+        const xpBarY = bottomUIBaseline - bottomHeight;
+        this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
+        
+        // Bottom right: Weapon Info
+        const weaponX = this.canvas.width - bottomWidth - this.padding;
+        const weaponY = bottomUIBaseline - weaponInfoHeight;
+        this.drawWeaponInfo(player, weaponX, weaponY, bottomWidth);
 
         this.drawInstructions();
     }
@@ -230,13 +270,14 @@ export class GameHUD {
         const itemSpacing = this.getScaledItemSpacing();
         const statHeight = 50 * scale;
         const width = 160 * scale;
-        const statsHeight = (statHeight + itemSpacing) * 3; // 3 stats per player (health, ammo, grenades)
+        // Health and Shield only now (removed Ammo/Grenades)
+        const statsHeight = (statHeight + itemSpacing) * 2; // Health + Shield
 
         // Calculate positions for 2x2 grid
         const leftX = padding;
         const rightX = this.canvas.width - width - padding;
         const topY = padding;
-        const bottomY = this.canvas.height - statsHeight - padding;
+        const playerBottomY = this.canvas.height - statsHeight - padding;
 
         // Draw players in grid positions
         if (gameState.players.length >= 1) {
@@ -246,15 +287,48 @@ export class GameHUD {
             this.drawPlayerStats(gameState.players[1], rightX, topY, "P2");
         }
         if (gameState.players.length >= 3) {
-            this.drawPlayerStats(gameState.players[2], leftX, bottomY, "P3");
+            this.drawPlayerStats(gameState.players[2], leftX, playerBottomY, "P3");
         }
         if (gameState.players.length >= 4) {
-            this.drawPlayerStats(gameState.players[3], rightX, bottomY, "P4");
+            this.drawPlayerStats(gameState.players[3], rightX, playerBottomY, "P4");
         }
 
         // Shared stats in Top Center
         const centerX = this.canvas.width / 2 - (80 * scale);
         this.drawSharedStats(centerX, padding);
+        
+        // Calculate bottom UI positions (above instructions)
+        const instructionsTop = this.canvas.height - (85 * scale);
+        const bottomSpacing = 15 * scale;
+        const bottomUIBaseline = instructionsTop - bottomSpacing;
+        
+        const bottomWidth = 160 * scale;
+        const xpBarWidth = 240 * scale; // Wider XP bar
+        const bottomHeight = 50 * scale; // XP bar height
+        const weaponInfoHeight = (bottomHeight + itemSpacing) * 2; // Weapon + Grenades
+        
+        // Get local player (mouse input) or first player
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
+        
+        // Bottom left: Active Skills
+        const skillsX = padding;
+        const skillCount = gameState.activeSkills?.length || 0;
+        const skillHeight = 40 * scale;
+        const skillsTotalHeight = skillCount > 0 ? (skillCount * (skillHeight + itemSpacing) - itemSpacing) : 0;
+        const skillsY = bottomUIBaseline - skillsTotalHeight;
+        this.drawActiveSkills(skillsX, skillsY, bottomWidth);
+        
+        // Bottom middle: XP Bar
+        const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
+        const xpBarY = bottomUIBaseline - bottomHeight;
+        this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
+        
+        // Bottom right: Weapon Info (for local player)
+        if (localPlayer) {
+            const weaponX = this.canvas.width - bottomWidth - padding;
+            const weaponY = bottomUIBaseline - weaponInfoHeight;
+            this.drawWeaponInfo(localPlayer, weaponX, weaponY, bottomWidth);
+        }
     }
 
     drawPlayerStats(player, x, y, labelPrefix = "") {
@@ -274,69 +348,6 @@ export class GameHUD {
             this.drawStat('Shield', shieldValue, '🛡️', '#29b6f6', x, currentY, width);
             currentY += height + itemSpacing;
         }
-
-        // Ammo
-        let ammoColor;
-        if (player.isReloading) {
-            ammoColor = '#ff9800';
-        } else if (player.currentAmmo === 0) {
-            ammoColor = '#ff5722';
-        } else if (player.currentAmmo <= player.maxAmmo * LOW_AMMO_FRACTION) {
-            const t = Date.now() / 200;
-            const pulse = 0.5 + 0.5 * Math.sin(t);
-            ammoColor = pulse > 0.5 ? '#ff0000' : '#ff4444';
-        } else {
-            ammoColor = '#ff9800';
-        }
-
-        const weaponLabel = labelPrefix ? `${labelPrefix} ${player.currentWeapon.name}` : player.currentWeapon.name;
-
-        if (player.isReloading) {
-            // Draw reload progress bar
-            const now = Date.now();
-            const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
-            const progressBarWidth = width - (20 * scale);
-            const progressBarHeight = 6 * scale;
-            const progressBarX = x + (10 * scale);
-            const progressBarY = currentY + (35 * scale);
-
-            // Background
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.fillRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
-
-            // Progress fill
-            const fillWidth = progressBarWidth * reloadProgress;
-            const progressGradient = this.ctx.createLinearGradient(progressBarX, progressBarY, progressBarX + fillWidth, progressBarY);
-            progressGradient.addColorStop(0, '#ff9800');
-            progressGradient.addColorStop(1, '#ffc107');
-            this.ctx.fillStyle = progressGradient;
-            this.ctx.fillRect(progressBarX, progressBarY, fillWidth, progressBarHeight);
-
-            // Border
-            this.ctx.strokeStyle = ammoColor;
-            this.ctx.lineWidth = 1;
-            this.ctx.strokeRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
-
-            // Text
-            const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.font = this.font;
-            this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'middle';
-            const fontSize = this.getScaledFontSize();
-            this.ctx.fillText(`${weaponLabel}:`, x + (10 * scale), currentY + (15 * scale));
-            this.ctx.fillStyle = ammoColor;
-            this.ctx.font = `700 ${fontSize + Math.round(2 * scale)}px 'Roboto Mono', monospace`;
-            this.ctx.fillText(ammoText, x + (10 * scale), currentY + (35 * scale));
-        } else {
-            const ammoText = `${player.currentAmmo}/${player.maxAmmo}`;
-            this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
-        }
-
-        // Grenades (Optional to show per player, maybe skip to save space in coop or show small)
-        currentY += height + itemSpacing;
-        const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-        this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
 
         // Multiplier indicator (if active)
         if (player.scoreMultiplier > 1.0) {
@@ -409,11 +420,227 @@ export class GameHUD {
             const timeLeft = Math.ceil((gameState.adrenalineEndTime - Date.now()) / 1000);
             this.drawStat('Adrenaline', '⚡⚡⚡ ' + timeLeft + 's', '💉', '#4caf50', x, currentY, width);
         }
+
+        return currentY;
+    }
+
+    drawXPBar(x, y, width) {
+        const scale = this.getUIScale();
+        const height = 50 * scale;
+        const padding = 10 * scale;
+        const fontSize = this.getScaledFontSize();
+        
+        // Calculate XP progress
+        const xpProgress = Math.min(1, gameState.xp / gameState.nextLevelXP);
+        
+        // Background with glow
+        const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+        bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.85)');
+        bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.85)');
+
+        this.ctx.fillStyle = bgGradient;
+        this.ctx.fillRect(x, y, width, height);
+
+        // XP progress bar background
+        const barPadding = 4 * scale;
+        const barWidth = width - (barPadding * 2);
+        const barHeight = 8 * scale;
+        const barX = x + barPadding;
+        const barY = y + height - barHeight - 8 * scale;
+
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // XP progress bar fill
+        const fillWidth = Math.max(0, barWidth * xpProgress);
+        const xpGradient = this.ctx.createLinearGradient(barX, barY, barX + fillWidth, barY);
+        xpGradient.addColorStop(0, '#4caf50');
+        xpGradient.addColorStop(1, '#2e7d32');
+
+        this.ctx.fillStyle = xpGradient;
+        this.ctx.shadowBlur = 10 * scale;
+        this.ctx.shadowColor = '#4caf50';
+        this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+        this.ctx.shadowBlur = 0;
+
+        // Border
+        const xpColor = '#4caf50';
+        this.ctx.strokeStyle = xpColor;
+        this.ctx.lineWidth = 2 * scale;
+        this.ctx.strokeRect(x, y, width, height);
+
+        this.ctx.shadowBlur = 10 * scale;
+        this.ctx.shadowColor = xpColor;
+        this.ctx.strokeRect(x, y, width, height);
+        this.ctx.shadowBlur = 0;
+
+        // Text: Level and XP
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `700 ${fontSize}px 'Roboto Mono', monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+
+        const levelText = `⭐ Level ${gameState.level}`;
+        this.ctx.fillText(levelText, x + padding, y + height * 0.3);
+
+        const xpText = `${gameState.xp}/${gameState.nextLevelXP} XP`;
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText(xpText, x + width - padding, y + height * 0.3);
+        this.ctx.textAlign = 'left';
+    }
+
+    drawActiveSkills(x, y, width) {
+        const scale = this.getUIScale();
+        const itemSpacing = this.getScaledItemSpacing();
+        const skillHeight = 40 * scale;
+        let currentY = y;
+
+        // If no active skills, don't draw anything
+        if (!gameState.activeSkills || gameState.activeSkills.length === 0) {
+            return;
+        }
+
+        // Draw each active skill
+        for (const activeSkill of gameState.activeSkills) {
+            const skillData = SKILLS_POOL.find(s => s.id === activeSkill.id);
+            if (!skillData) continue;
+
+            const skillLevel = activeSkill.level || 1;
+            const skillName = skillLevel > 1 ? `${skillData.name} Lv.${skillLevel}` : skillData.name;
+
+            // Background with glow
+            const bgGradient = this.ctx.createLinearGradient(x, currentY, x, currentY + skillHeight);
+            bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.85)');
+            bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.85)');
+
+            this.ctx.fillStyle = bgGradient;
+            this.ctx.fillRect(x, currentY, width, skillHeight);
+
+            // Border
+            const skillColor = '#9c27b0'; // Purple for skills
+            this.ctx.strokeStyle = skillColor;
+            this.ctx.lineWidth = 2 * scale;
+            this.ctx.strokeRect(x, currentY, width, skillHeight);
+
+            this.ctx.shadowBlur = 8 * scale;
+            this.ctx.shadowColor = skillColor;
+            this.ctx.strokeRect(x, currentY, width, skillHeight);
+            this.ctx.shadowBlur = 0;
+
+            // Icon and text
+            const padding = 10 * scale;
+            const fontSize = this.getScaledFontSize();
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = `${fontSize}px 'Roboto Mono', monospace`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+
+            // Icon
+            this.ctx.font = `${20 * scale}px serif`;
+            this.ctx.fillText(skillData.icon, x + padding, currentY + skillHeight * 0.5);
+
+            // Skill name
+            this.ctx.font = `700 ${fontSize}px 'Roboto Mono', monospace`;
+            this.ctx.fillText(skillName, x + padding + (25 * scale), currentY + skillHeight * 0.5);
+
+            currentY += skillHeight + itemSpacing;
+        }
+    }
+
+    drawWeaponInfo(player, x, y, width) {
+        const scale = this.getUIScale();
+        const itemSpacing = this.getScaledItemSpacing();
+        const height = 50 * scale;
+        let currentY = y;
+
+        // Ammo/Weapon display
+        let ammoColor;
+        if (player.isReloading) {
+            ammoColor = '#ff9800';
+        } else if (player.currentAmmo === 0) {
+            ammoColor = '#ff5722';
+        } else if (player.currentAmmo <= player.maxAmmo * LOW_AMMO_FRACTION) {
+            const t = Date.now() / 200;
+            const pulse = 0.5 + 0.5 * Math.sin(t);
+            ammoColor = pulse > 0.5 ? '#ff0000' : '#ff4444';
+        } else {
+            ammoColor = '#ff9800';
+        }
+
+        const weaponLabel = player.currentWeapon.name;
+
+        if (player.isReloading) {
+            // Draw reload progress bar
+            const now = Date.now();
+            const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
+            const progressBarWidth = width - (20 * scale);
+            const progressBarHeight = 6 * scale;
+            const progressBarX = x + (10 * scale);
+            const progressBarY = currentY + (35 * scale);
+
+            // Background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
+
+            // Progress fill
+            const fillWidth = progressBarWidth * reloadProgress;
+            const progressGradient = this.ctx.createLinearGradient(progressBarX, progressBarY, progressBarX + fillWidth, progressBarY);
+            progressGradient.addColorStop(0, '#ff9800');
+            progressGradient.addColorStop(1, '#ffc107');
+            this.ctx.fillStyle = progressGradient;
+            this.ctx.fillRect(progressBarX, progressBarY, fillWidth, progressBarHeight);
+
+            // Border
+            this.ctx.strokeStyle = ammoColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
+
+            // Text
+            const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = this.font;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            const fontSize = this.getScaledFontSize();
+            this.ctx.fillText(`${weaponLabel}:`, x + (10 * scale), currentY + (15 * scale));
+            this.ctx.fillStyle = ammoColor;
+            this.ctx.font = `700 ${fontSize + Math.round(2 * scale)}px 'Roboto Mono', monospace`;
+            this.ctx.fillText(ammoText, x + (10 * scale), currentY + (35 * scale));
+        } else {
+            const ammoText = `${player.currentAmmo}/${player.maxAmmo}`;
+            this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
+        }
+
+        // Grenades
+        currentY += height + itemSpacing;
+        const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
+        this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
     }
 
     drawInstructions() {
-        const line1 = 'WASD to move • Mouse to aim • Click to shoot • 1/2/3/4 to switch weapons';
-        const line2 = 'G for grenade • V or Right-Click for melee';
+        // Get keybinds from settings
+        const controls = settingsManager.settings.controls;
+        const sprintKey = controls.sprint || 'shift';
+        const grenadeKey = controls.grenade || 'g';
+        const meleeKey = controls.melee || 'v';
+        
+        // Build weapon keybind string
+        const weaponKeybinds = [
+            { key: controls.weapon1 || '1', weapon: WEAPONS.pistol },
+            { key: controls.weapon2 || '2', weapon: WEAPONS.shotgun },
+            { key: controls.weapon3 || '3', weapon: WEAPONS.rifle },
+            { key: controls.weapon4 || '4', weapon: WEAPONS.flamethrower },
+            { key: controls.weapon5 || '5', weapon: WEAPONS.smg },
+            { key: controls.weapon6 || '6', weapon: WEAPONS.sniper },
+            { key: controls.weapon7 || '7', weapon: WEAPONS.rocketLauncher }
+        ];
+        
+        const weaponString = weaponKeybinds.map(w => `${w.key}=${w.weapon.name}`).join(' ');
+        
+        // Format lines
+        const line1 = `WASD to move • Mouse to aim • Click to shoot • ${sprintKey.toUpperCase()} to sprint`;
+        const line2 = weaponString;
+        const line3 = `${grenadeKey.toUpperCase()} for grenade • ${meleeKey.toUpperCase()} or Right-Click for melee`;
 
         this.ctx.save();
         const scale = this.getUIScale();
@@ -421,26 +648,36 @@ export class GameHUD {
         this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
 
-        const textWidth = Math.max(this.ctx.measureText(line1).width, this.ctx.measureText(line2).width);
-        const lineY = this.canvas.height - (45 * scale);
+        // Calculate max text width for all lines
+        const textWidth = Math.max(
+            this.ctx.measureText(line1).width,
+            this.ctx.measureText(line2).width,
+            this.ctx.measureText(line3).width
+        );
+        const lineY = this.canvas.height - (55 * scale);
 
-        // Semi-transparent background for readability
+        // Semi-transparent background for readability (adjusted for 3 lines)
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         const bgPadding = 20 * scale;
-        const bgHeight = 60 * scale;
-        this.ctx.fillRect(this.canvas.width / 2 - textWidth / 2 - bgPadding, lineY - (25 * scale), textWidth + bgPadding * 2, bgHeight);
+        const bgHeight = 80 * scale; // Increased for 3 lines
+        this.ctx.fillRect(this.canvas.width / 2 - textWidth / 2 - bgPadding, lineY - (30 * scale), textWidth + bgPadding * 2, bgHeight);
 
-        // Divider line
+        // Divider lines
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.lineWidth = 1;
         this.ctx.beginPath();
         this.ctx.moveTo(this.canvas.width / 2 - textWidth / 2, lineY);
         this.ctx.lineTo(this.canvas.width / 2 + textWidth / 2, lineY);
         this.ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.canvas.width / 2 - textWidth / 2, lineY + 24);
+        this.ctx.lineTo(this.canvas.width / 2 + textWidth / 2, lineY + 24);
+        this.ctx.stroke();
 
         this.ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
         this.ctx.fillText(line1, this.canvas.width / 2, lineY - 8);
-        this.ctx.fillText(line2, this.canvas.width / 2, lineY + 20);
+        this.ctx.fillText(line2, this.canvas.width / 2, lineY + 16);
+        this.ctx.fillText(line3, this.canvas.width / 2, lineY + 40);
         this.ctx.restore();
     }
 
@@ -684,23 +921,91 @@ export class GameHUD {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.font = '48px "Creepster", cursive';
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        // PAUSED title
+        const titleFontSize = Math.max(32, 48 * scale);
+        this.ctx.font = `${titleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff0000';
         this.ctx.shadowBlur = 20;
         this.ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-        this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2 - 80);
+        this.ctx.fillText('PAUSED', centerX, centerY - 120 * scale);
         this.ctx.shadowBlur = 0;
 
-        this.ctx.font = '20px "Roboto Mono", monospace';
+        // Subtitle
+        const subtitleFontSize = Math.max(14, 20 * scale);
+        this.ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#cccccc';
-        this.ctx.fillText('Game is currently paused', this.canvas.width / 2, this.canvas.height / 2 - 20);
+        this.ctx.fillText('Game is currently paused', centerX, centerY - 60 * scale);
 
-        this.ctx.fillStyle = '#ff0000';
-        this.ctx.font = '16px "Roboto Mono", monospace';
-        this.ctx.fillText('Press ESC to Resume', this.canvas.width / 2, this.canvas.height / 2 + 40);
-        this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 70);
-        this.ctx.fillText('Press M to Return to Menu', this.canvas.width / 2, this.canvas.height / 2 + 100);
+        // Buttons
+        const buttonWidth = 180 * scale;
+        const buttonHeight = 36 * scale;
+        const buttonSpacing = 15 * scale;
+        const buttonStartY = centerY;
+
+        // Calculate button positions
+        const resumeY = buttonStartY;
+        const restartY = buttonStartY + (buttonHeight + buttonSpacing);
+        const settingsY = buttonStartY + (buttonHeight + buttonSpacing) * 2;
+        const menuY = buttonStartY + (buttonHeight + buttonSpacing) * 3;
+
+        // Draw buttons
+        this.drawMenuButton('Resume', centerX - buttonWidth / 2, resumeY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_resume', false);
+        this.drawMenuButton('Restart', centerX - buttonWidth / 2, restartY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_restart', false);
+        this.drawMenuButton('Settings', centerX - buttonWidth / 2, settingsY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_settings', false);
+        this.drawMenuButton('Return to Menu', centerX - buttonWidth / 2, menuY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_menu', false);
+    }
+
+    drawCursor() {
+        // Get mouse position (from tracked position or return if not available)
+        const x = this.mouseX;
+        const y = this.mouseY;
+        
+        // Only draw if mouse position is tracked and valid
+        if (x === undefined || y === undefined || 
+            x < 0 || x > this.canvas.width || 
+            y < 0 || y > this.canvas.height) return;
+
+        const scale = this.getUIScale();
+        const size = 18 * scale;
+
+        this.ctx.save();
+
+        // Draw classic pointer cursor (simple triangle pointing up-left)
+        // Outline (black for contrast)
+        this.ctx.strokeStyle = '#000000';
+        this.ctx.fillStyle = '#000000';
+        this.ctx.lineWidth = 3;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
+        // Simple triangle pointer
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y); // Tip at top-left
+        this.ctx.lineTo(x + size * 0.5, y + size * 0.5); // Bottom-right of arrow head
+        this.ctx.lineTo(x + size * 0.2, y + size * 0.85); // Bottom of arrow shaft
+        this.ctx.lineTo(x + size * 0.05, y + size * 0.7); // Left side of shaft
+        this.ctx.closePath();
+        this.ctx.stroke();
+
+        // Fill (white for visibility)
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y); // Tip at top-left
+        this.ctx.lineTo(x + size * 0.5, y + size * 0.5); // Bottom-right of arrow head
+        this.ctx.lineTo(x + size * 0.2, y + size * 0.85); // Bottom of arrow shaft
+        this.ctx.lineTo(x + size * 0.05, y + size * 0.7); // Left side of shaft
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        this.ctx.restore();
     }
 
     showGameOver(scoreText) {
@@ -929,6 +1234,7 @@ export class GameHUD {
         const row2Y = buttonStartY + (buttonHeight + buttonSpacing);
         const row3Y = buttonStartY + (buttonHeight + buttonSpacing) * 2;
         const row4Y = buttonStartY + (buttonHeight + buttonSpacing) * 3;
+        const row5Y = buttonStartY + (buttonHeight + buttonSpacing) * 4;
 
         // Row 1: Arcade (left), Campaign (right)
         this.drawMenuButton('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
@@ -942,8 +1248,11 @@ export class GameHUD {
         this.drawMenuButton('Settings', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
         this.drawMenuButton('Multiplayer', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
 
-        // Row 4: About (centered)
-        this.drawMenuButton('About', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
+        // Row 4: Gallery (centered)
+        this.drawMenuButton('Gallery', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery', false);
+
+        // Row 5: About (centered)
+        this.drawMenuButton('About', centerX - buttonWidth / 2, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
         // High score - scaled
         const highScoreFontSize = Math.max(10, 12 * scale);
@@ -1025,7 +1334,7 @@ export class GameHUD {
         // Position below UI buttons
         // Last row center is roughly centerY + 135 (see drawMainMenu)
         // Bottom of buttons is roughly centerY + 155
-        const boxY = centerY + 180;
+        const boxY = centerY + 230;
 
         // Measure text width for scrolling calculation (using smaller font)
         ctx.font = `${newsFontSize}px "Roboto Mono", monospace`;
@@ -1070,7 +1379,7 @@ export class GameHUD {
     }
 
     drawVersionBox() {
-        const version = "V0.5.3";
+        const version = "V0.6.0";
         const padding = 15;
         const boxHeight = 24;
         
@@ -1130,10 +1439,10 @@ export class GameHUD {
         const versionFontSize = Math.max(12, 16 * scale);
         this.ctx.font = `${versionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Version: V0.5.3', centerX, y);
+        this.ctx.fillText('Version: V0.6.0', centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.5.3', centerX, y);
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.6.0', centerX, y);
         y += 50;
 
         const descriptionFontSize = Math.max(11, 14 * scale);
@@ -1170,6 +1479,648 @@ export class GameHUD {
         const buttonHeight = 50 * scale;
         const backY = this.canvas.height - (100 * scale);
         this.drawMenuButton('Back', centerX - buttonWidth / 2, backY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about_back', false);
+    }
+
+    // Helper function to draw zombie icon
+    drawZombieIcon(x, y, size, type) {
+        const ctx = this.ctx;
+        const time = Date.now();
+        ctx.save();
+        ctx.translate(x, y);
+
+        const radius = size * 0.4;
+        
+        switch(type) {
+            case 'normal':
+                // Green zombie
+                const normalGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+                normalGradient.addColorStop(0, '#9acd32');
+                normalGradient.addColorStop(1, '#33691e');
+                ctx.fillStyle = normalGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Eyes
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.7 + Math.sin(time / 167) * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.25, 0, Math.PI * 2);
+                ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'fast':
+                // Reddish/orange zombie
+                const fastGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+                fastGradient.addColorStop(0, '#ff8c42');
+                fastGradient.addColorStop(1, '#8b4513');
+                ctx.fillStyle = fastGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
+                ctx.fill();
+                // Bright red eyes
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.8 + Math.sin(time / 100) * 0.2})`;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.35, -radius * 0.2, radius * 0.2, 0, Math.PI * 2);
+                ctx.arc(radius * 0.35, -radius * 0.2, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'exploding':
+                // Orange/yellow pulsing zombie
+                const pulse = 0.8 + Math.sin(time / 150) * 0.2;
+                const explodeGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+                explodeGradient.addColorStop(0, `rgba(255, ${165 + pulse * 50}, 0, 1)`);
+                explodeGradient.addColorStop(1, '#ff6600');
+                ctx.fillStyle = explodeGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Yellow eyes
+                ctx.fillStyle = '#ffeb3b';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'armored':
+                // Dark gray with armor plates
+                const armorGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+                armorGradient.addColorStop(0, '#616161');
+                armorGradient.addColorStop(1, '#212121');
+                ctx.fillStyle = armorGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 1.1, 0, Math.PI * 2);
+                ctx.fill();
+                // Armor plates
+                ctx.strokeStyle = '#9e9e9e';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.3, radius * 0.3, 0, Math.PI);
+                ctx.stroke();
+                // Red eyes
+                ctx.fillStyle = '#ff1744';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'ghost':
+                // Semi-transparent pale blue
+                ctx.globalAlpha = 0.5;
+                const ghostGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+                ghostGradient.addColorStop(0, '#b3e5fc');
+                ghostGradient.addColorStop(1, '#0277bd');
+                ctx.fillStyle = ghostGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                // Pale blue eyes
+                ctx.fillStyle = '#81d4fa';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'spitter':
+                // Green with toxic aura
+                const spitterGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+                spitterGradient.addColorStop(0, '#66bb6a');
+                spitterGradient.addColorStop(1, '#1b5e20');
+                ctx.fillStyle = spitterGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Toxic green eyes
+                ctx.fillStyle = '#4caf50';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'boss':
+                // Large dark red zombie
+                const bossGradient = ctx.createRadialGradient(-4, -4, 0, 0, 0, radius * 1.3);
+                bossGradient.addColorStop(0, '#d32f2f');
+                bossGradient.addColorStop(1, '#b71c1c');
+                ctx.fillStyle = bossGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 1.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Glowing red eyes
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff0000';
+                ctx.fillStyle = '#ff5252';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.5, -radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+                ctx.arc(radius * 0.5, -radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                break;
+        }
+        ctx.restore();
+    }
+
+    // Helper function to draw weapon icon
+    drawWeaponIcon(x, y, size, weaponKey) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(x, y);
+
+        const width = size * 0.6;
+        const height = size * 0.3;
+
+        switch(weaponKey) {
+            case 'pistol':
+                // Simple pistol shape
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width, height);
+                ctx.fillStyle = '#212121';
+                ctx.fillRect(-width/2 + width * 0.7, -height/2, width * 0.3, height);
+                break;
+            case 'shotgun':
+                // Wider shotgun
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width * 1.2, height * 1.2);
+                ctx.fillStyle = '#212121';
+                ctx.fillRect(-width/2 + width * 0.8, -height/2, width * 0.4, height * 1.2);
+                break;
+            case 'rifle':
+                // Long rifle
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width * 1.5, height);
+                ctx.fillStyle = '#212121';
+                ctx.fillRect(-width/2 + width * 1.2, -height/2, width * 0.3, height);
+                break;
+            case 'flamethrower':
+                // Flamethrower with flame
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width * 1.2, height * 1.3);
+                // Flame effect
+                const flameGradient = ctx.createRadialGradient(width/2, 0, 0, width/2, 0, width * 0.4);
+                flameGradient.addColorStop(0, '#ffeb3b');
+                flameGradient.addColorStop(0.5, '#ff9800');
+                flameGradient.addColorStop(1, 'rgba(255, 152, 0, 0)');
+                ctx.fillStyle = flameGradient;
+                ctx.beginPath();
+                ctx.arc(width/2, 0, width * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'smg':
+                // Compact SMG
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width * 1.1, height * 0.9);
+                ctx.fillStyle = '#212121';
+                ctx.fillRect(-width/2 + width * 0.9, -height/2, width * 0.2, height * 0.9);
+                break;
+            case 'sniper':
+                // Long sniper with scope
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width * 1.8, height);
+                // Scope
+                ctx.fillStyle = '#212121';
+                ctx.fillRect(-width/2 + width * 0.3, -height/2 - height * 0.3, width * 0.4, height * 0.6);
+                break;
+            case 'rocketLauncher':
+                // RPG launcher
+                ctx.fillStyle = '#424242';
+                ctx.fillRect(-width/2, -height/2, width * 1.3, height * 1.5);
+                // Rocket tip
+                ctx.fillStyle = '#ff1744';
+                ctx.beginPath();
+                ctx.moveTo(width/2, -height/2);
+                ctx.lineTo(width/2 + width * 0.3, 0);
+                ctx.lineTo(width/2, height/2);
+                ctx.closePath();
+                ctx.fill();
+                break;
+        }
+        ctx.restore();
+    }
+
+    // Helper function to draw pickup icon
+    drawPickupIcon(x, y, size, type) {
+        const ctx = this.ctx;
+        const time = Date.now();
+        ctx.save();
+        ctx.translate(x, y);
+
+        const radius = size * 0.35;
+        const pulse = 0.8 + Math.sin(time / 500) * 0.15;
+
+        switch(type) {
+            case 'health':
+                // Red health orb
+                const healthGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                healthGlow.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+                healthGlow.addColorStop(1, 'rgba(255, 0, 80, 0)');
+                ctx.fillStyle = healthGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const healthGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                healthGradient.addColorStop(0, '#ff8a80');
+                healthGradient.addColorStop(1, '#d50000');
+                ctx.fillStyle = healthGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Cross
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-radius/2, 0);
+                ctx.lineTo(radius/2, 0);
+                ctx.moveTo(0, -radius/2);
+                ctx.lineTo(0, radius/2);
+                ctx.stroke();
+                break;
+            case 'ammo':
+                // Yellow ammo box
+                const ammoGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                ammoGlow.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+                ammoGlow.addColorStop(1, 'rgba(255, 152, 0, 0)');
+                ctx.fillStyle = ammoGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const ammoGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                ammoGradient.addColorStop(0, '#ffd54f');
+                ammoGradient.addColorStop(1, '#ff9800');
+                ctx.fillStyle = ammoGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Bullet icon
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(-radius/3, -radius/2, radius * 0.4, radius);
+                break;
+            case 'damage':
+                // Purple damage buff
+                const damageGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                damageGlow.addColorStop(0, 'rgba(224, 64, 251, 0.9)');
+                damageGlow.addColorStop(1, 'rgba(123, 31, 162, 0)');
+                ctx.fillStyle = damageGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const damageGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                damageGradient.addColorStop(0, '#e1bee7');
+                damageGradient.addColorStop(1, '#7b1fa2');
+                ctx.fillStyle = damageGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // 2x text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${radius * 0.8}px "Roboto Mono", monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('2x', 0, 0);
+                break;
+            case 'nuke':
+                // Black/yellow nuke
+                const nukeGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.5 * pulse);
+                nukeGlow.addColorStop(0, 'rgba(255, 235, 59, 0.9)');
+                nukeGlow.addColorStop(1, 'rgba(255, 235, 59, 0)');
+                ctx.fillStyle = nukeGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.5 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#212121';
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffeb3b';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // Radiation symbol
+                ctx.strokeStyle = '#ffeb3b';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 3; i++) {
+                    const angle = (i * Math.PI * 2 / 3) - Math.PI / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(angle) * radius * 0.6, Math.sin(angle) * radius * 0.6);
+                    ctx.stroke();
+                }
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'speed':
+                // Cyan speed boost
+                const speedGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                speedGlow.addColorStop(0, 'rgba(0, 255, 255, 0.9)');
+                speedGlow.addColorStop(1, 'rgba(0, 172, 193, 0)');
+                ctx.fillStyle = speedGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const speedGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                speedGradient.addColorStop(0, '#80deea');
+                speedGradient.addColorStop(1, '#00acc1');
+                ctx.fillStyle = speedGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Double arrow
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${radius * 0.8}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('»', 0, 0);
+                break;
+            case 'rapidfire':
+                // Orange rapid fire
+                const rapidGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                rapidGlow.addColorStop(0, 'rgba(255, 152, 0, 0.9)');
+                rapidGlow.addColorStop(1, 'rgba(245, 124, 0, 0)');
+                ctx.fillStyle = rapidGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const rapidGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                rapidGradient.addColorStop(0, '#ffcc80');
+                rapidGradient.addColorStop(1, '#f57c00');
+                ctx.fillStyle = rapidGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Lightning
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${radius * 0.8}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⚡', 0, 0);
+                break;
+            case 'shield':
+                // Light blue shield
+                const shieldGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                shieldGlow.addColorStop(0, 'rgba(129, 212, 250, 0.9)');
+                shieldGlow.addColorStop(1, 'rgba(2, 136, 209, 0)');
+                ctx.fillStyle = shieldGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const shieldGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                shieldGradient.addColorStop(0, '#b3e5fc');
+                shieldGradient.addColorStop(1, '#0288d1');
+                ctx.fillStyle = shieldGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Shield hexagon
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * Math.PI * 2 / 6) - Math.PI / 2;
+                    const px = Math.cos(angle) * radius * 0.7;
+                    const py = Math.sin(angle) * radius * 0.7;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                break;
+            case 'adrenaline':
+                // Green/yellow adrenaline
+                const adrenGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
+                adrenGlow.addColorStop(0, 'rgba(200, 230, 201, 0.9)');
+                adrenGlow.addColorStop(1, 'rgba(76, 175, 80, 0)');
+                ctx.fillStyle = adrenGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.2 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const adrenGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                adrenGradient.addColorStop(0, '#c8e6c9');
+                adrenGradient.addColorStop(1, '#4caf50');
+                ctx.fillStyle = adrenGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                // Cross/syringe
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -radius/2);
+                ctx.lineTo(0, radius/2);
+                ctx.moveTo(-radius/2, 0);
+                ctx.lineTo(radius/2, 0);
+                ctx.stroke();
+                break;
+        }
+        ctx.restore();
+    }
+
+    drawGallery() {
+        this.drawCreepyBackground();
+
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        const canvas = this.canvas;
+        const ctx = this.ctx;
+
+        // Initialize scroll if not exists
+        if (!this.galleryScrollY) this.galleryScrollY = 0;
+        if (!this.galleryTargetScrollY) this.galleryTargetScrollY = 0;
+
+        // Title - scaled
+        const galleryTitleFontSize = Math.max(36, 48 * scale);
+        ctx.font = `bold ${galleryTitleFontSize}px "Creepster", cursive`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ff1744';
+        ctx.shadowBlur = 30 * scale;
+        ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
+        ctx.fillText('GALLERY', centerX, 60 * scale);
+        ctx.shadowBlur = 0;
+
+        // Subtitle
+        const subtitleFontSize = Math.max(12, 16 * scale);
+        ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
+        ctx.fillStyle = '#9e9e9e';
+        ctx.fillText('Showcase of Zombies, Weapons & Pickups', centerX, 90 * scale);
+
+        // Smooth scroll
+        this.galleryScrollY += (this.galleryTargetScrollY - this.galleryScrollY) * 0.2;
+        
+        // Content area with clipping
+        const contentStartY = 120 * scale;
+        const contentHeight = canvas.height - contentStartY - (120 * scale); // Space for back button
+        const padding = 20 * scale;
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(padding, contentStartY, canvas.width - padding * 2, contentHeight);
+        ctx.clip();
+
+        let currentY = contentStartY - this.galleryScrollY;
+
+        // Section spacing
+        const sectionSpacing = 40 * scale;
+        const cardSpacing = 20 * scale;
+        const cardWidth = (canvas.width - padding * 4) / 2; // 2 columns
+        const cardHeight = 140 * scale;
+
+        // ZOMBIES SECTION
+        currentY = this.drawGallerySection('ZOMBIES', centerX, currentY, scale, cardWidth, cardHeight, cardSpacing, padding, [
+            { type: 'normal', name: 'Normal Zombie', health: 'Base', speed: 'Base', desc: 'Standard zombie enemy', spawn: 'Always' },
+            { type: 'fast', name: 'Fast Zombie', health: '60%', speed: '1.6x', desc: 'The Runner - faster but weaker', spawn: 'Wave 3+' },
+            { type: 'exploding', name: 'Exploding Zombie', health: '80%', speed: '0.9x', desc: 'The Boomer - explodes on death', spawn: 'Wave 5+' },
+            { type: 'armored', name: 'Armored Zombie', health: '2x', speed: '0.8x', desc: 'The Tank - heavily armored', spawn: 'Wave 4+' },
+            { type: 'ghost', name: 'Ghost Zombie', health: '80%', speed: '1.3x', desc: 'Semi-transparent spectral enemy', spawn: 'Wave 4+' },
+            { type: 'spitter', name: 'Spitter Zombie', health: '80%', speed: '1.2x', desc: 'Ranged acid projectile attacks', spawn: 'Wave 6+' },
+            { type: 'boss', name: 'Boss Zombie', health: 'Massive', speed: '1.2x', desc: 'Epic boss with devastating attacks', spawn: 'Every 5 waves' }
+        ], 'zombie');
+
+        currentY += sectionSpacing;
+
+        // WEAPONS SECTION
+        currentY = this.drawGallerySection('WEAPONS', centerX, currentY, scale, cardWidth, cardHeight, cardSpacing, padding, [
+            { key: 'pistol', name: 'Pistol', damage: '1', fireRate: '400ms', ammo: '10', desc: 'Balanced starting weapon' },
+            { key: 'shotgun', name: 'Shotgun', damage: '3', fireRate: '800ms', ammo: '5', desc: 'High damage, close range' },
+            { key: 'rifle', name: 'Rifle', damage: '2', fireRate: '200ms', ammo: '30', desc: 'Fast firing, high capacity' },
+            { key: 'flamethrower', name: 'Flamethrower', damage: '0.5/tick', fireRate: '50ms', ammo: '100', desc: 'Short range DoT weapon' },
+            { key: 'smg', name: 'SMG', damage: '0.8', fireRate: '80ms', ammo: '40', desc: 'Rapid fire submachine gun' },
+            { key: 'sniper', name: 'Sniper', damage: '15', fireRate: '1500ms', ammo: '5', desc: 'High damage, piercing shots' },
+            { key: 'rocketLauncher', name: 'RPG', damage: '60 AOE', fireRate: '2000ms', ammo: '3', desc: 'Explosive area damage' }
+        ], 'weapon');
+
+        currentY += sectionSpacing;
+
+        // PICKUPS SECTION
+        currentY = this.drawGallerySection('PICKUPS', centerX, currentY, scale, cardWidth, cardHeight, cardSpacing, padding, [
+            { type: 'health', name: 'Health Pickup', effect: '+25 HP', desc: 'Restores health' },
+            { type: 'ammo', name: 'Ammo Pickup', effect: '+15 Ammo', desc: 'Refills ammo and grenades' },
+            { type: 'damage', name: 'Damage Buff', effect: '2x Damage (10s)', desc: 'Double damage for 10 seconds' },
+            { type: 'nuke', name: 'Tactical Nuke', effect: 'Instant Kill All', desc: 'Rare - clears all zombies' },
+            { type: 'speed', name: 'Speed Boost', effect: '1.5x Speed (8s)', desc: 'Increased movement speed' },
+            { type: 'rapidfire', name: 'Rapid Fire', effect: '2x Fire Rate (10s)', desc: 'Faster weapon firing' },
+            { type: 'shield', name: 'Shield', effect: '+50 Shield', desc: 'Absorbs damage before health' },
+            { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects' }
+        ], 'pickup');
+
+        const totalContentHeight = currentY + this.galleryScrollY - contentStartY;
+        const maxScroll = Math.max(0, totalContentHeight - contentHeight);
+        
+        // Clamp scroll
+        if (this.galleryTargetScrollY < 0) this.galleryTargetScrollY = 0;
+        if (this.galleryTargetScrollY > maxScroll) this.galleryTargetScrollY = maxScroll;
+        if (this.galleryScrollY < 0) this.galleryScrollY = 0;
+        if (this.galleryScrollY > maxScroll) this.galleryScrollY = maxScroll;
+
+        ctx.restore();
+
+        // Scroll indicator (if scrollable)
+        if (maxScroll > 0) {
+            const scrollBarWidth = 6 * scale;
+            const scrollBarX = canvas.width - padding - scrollBarWidth;
+            const scrollBarHeight = contentHeight;
+            const scrollBarY = contentStartY;
+            const thumbHeight = Math.max(20 * scale, (contentHeight / totalContentHeight) * scrollBarHeight);
+            const thumbY = scrollBarY + (this.galleryScrollY / maxScroll) * (scrollBarHeight - thumbHeight);
+
+            // Scrollbar track
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(scrollBarX, scrollBarY, scrollBarWidth, scrollBarHeight);
+
+            // Scrollbar thumb
+            ctx.fillStyle = 'rgba(255, 23, 68, 0.6)';
+            ctx.fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight);
+        }
+
+        // Back button (always visible)
+        const buttonWidth = 240 * scale;
+        const buttonHeight = 50 * scale;
+        const backY = canvas.height - (100 * scale);
+        this.drawMenuButton('Back', centerX - buttonWidth / 2, backY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery_back', false);
+    }
+
+    drawGallerySection(title, centerX, startY, scale, cardWidth, cardHeight, cardSpacing, padding, items, itemType) {
+        const ctx = this.ctx;
+        const canvas = this.canvas;
+        
+        // Section title
+        const sectionTitleSize = Math.max(20, 24 * scale);
+        ctx.font = `bold ${sectionTitleSize}px "Roboto Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ff9800';
+        ctx.shadowBlur = 15 * scale;
+        ctx.shadowColor = 'rgba(255, 152, 0, 0.5)';
+        ctx.fillText(title, centerX, startY);
+        ctx.shadowBlur = 0;
+        
+        let currentY = startY + (40 * scale);
+        
+        // Draw items in 2-column grid
+        for (let i = 0; i < items.length; i++) {
+            const row = Math.floor(i / 2);
+            const col = i % 2;
+            const cardX = padding + col * (cardWidth + cardSpacing);
+            const cardY = currentY + row * (cardHeight + cardSpacing);
+            
+            // Draw glass card
+            this.drawGlassCard(cardX, cardY, cardWidth, cardHeight);
+            
+            // Icon area (left side)
+            const iconSize = 60 * scale;
+            const iconX = cardX + (30 * scale);
+            const iconY = cardY + cardHeight / 2;
+            
+            // Draw icon based on type
+            if (itemType === 'zombie') {
+                this.drawZombieIcon(iconX, iconY, iconSize, items[i].type);
+            } else if (itemType === 'weapon') {
+                this.drawWeaponIcon(iconX, iconY, iconSize, items[i].key);
+            } else if (itemType === 'pickup') {
+                this.drawPickupIcon(iconX, iconY, iconSize, items[i].type);
+            }
+            
+            // Text area (right side)
+            const textX = cardX + (100 * scale);
+            const textY = cardY + (20 * scale);
+            const textWidth = cardWidth - (110 * scale);
+            
+            // Name
+            const nameSize = Math.max(14, 16 * scale);
+            ctx.font = `bold ${nameSize}px "Roboto Mono", monospace`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(items[i].name, textX, textY);
+            
+            // Stats/Info
+            const statSize = Math.max(10, 12 * scale);
+            ctx.font = `${statSize}px "Roboto Mono", monospace`;
+            ctx.fillStyle = '#ff9800';
+            let statY = textY + (22 * scale);
+            
+            if (itemType === 'zombie') {
+                ctx.fillText(`Health: ${items[i].health}`, textX, statY);
+                statY += (18 * scale);
+                ctx.fillText(`Speed: ${items[i].speed}`, textX, statY);
+                statY += (18 * scale);
+                ctx.fillText(`Spawn: ${items[i].spawn}`, textX, statY);
+            } else if (itemType === 'weapon') {
+                ctx.fillText(`Damage: ${items[i].damage}`, textX, statY);
+                statY += (18 * scale);
+                ctx.fillText(`Fire Rate: ${items[i].fireRate}`, textX, statY);
+                statY += (18 * scale);
+                ctx.fillText(`Ammo: ${items[i].ammo}`, textX, statY);
+            } else if (itemType === 'pickup') {
+                ctx.fillText(`Effect: ${items[i].effect}`, textX, statY);
+            }
+            
+            // Description
+            const descSize = Math.max(9, 11 * scale);
+            ctx.font = `${descSize}px "Roboto Mono", monospace`;
+            ctx.fillStyle = '#cccccc';
+            statY += (22 * scale);
+            ctx.fillText(items[i].desc, textX, statY, textWidth);
+        }
+        
+        // Calculate final Y position
+        const rows = Math.ceil(items.length / 2);
+        return startY + (40 * scale) + rows * (cardHeight + cardSpacing);
     }
 
     drawLobbyBackground() {
@@ -1860,6 +2811,42 @@ export class GameHUD {
         const buttonWidth = 200 * uiScale;
         const buttonHeight = 50 * uiScale;
 
+        // Check Pause Menu
+        if (gameState.gamePaused && !gameState.showSettingsPanel) {
+            const pauseButtonWidth = 180 * uiScale;
+            const pauseButtonHeight = 36 * uiScale;
+            const pauseButtonSpacing = 15 * uiScale;
+            const centerY = this.canvas.height / 2;
+            const buttonStartY = centerY;
+
+            const resumeY = buttonStartY;
+            const restartY = buttonStartY + (pauseButtonHeight + pauseButtonSpacing);
+            const settingsY = buttonStartY + (pauseButtonHeight + pauseButtonSpacing) * 2;
+            const menuY = buttonStartY + (pauseButtonHeight + pauseButtonSpacing) * 3;
+
+            // Resume button
+            if (mouseX >= centerX - pauseButtonWidth / 2 && mouseX <= centerX + pauseButtonWidth / 2 &&
+                mouseY >= resumeY - pauseButtonHeight / 2 && mouseY <= resumeY + pauseButtonHeight / 2) {
+                return 'pause_resume';
+            }
+            // Restart button
+            if (mouseX >= centerX - pauseButtonWidth / 2 && mouseX <= centerX + pauseButtonWidth / 2 &&
+                mouseY >= restartY - pauseButtonHeight / 2 && mouseY <= restartY + pauseButtonHeight / 2) {
+                return 'pause_restart';
+            }
+            // Settings button
+            if (mouseX >= centerX - pauseButtonWidth / 2 && mouseX <= centerX + pauseButtonWidth / 2 &&
+                mouseY >= settingsY - pauseButtonHeight / 2 && mouseY <= settingsY + pauseButtonHeight / 2) {
+                return 'pause_settings';
+            }
+            // Return to Menu button
+            if (mouseX >= centerX - pauseButtonWidth / 2 && mouseX <= centerX + pauseButtonWidth / 2 &&
+                mouseY >= menuY - pauseButtonHeight / 2 && mouseY <= menuY + pauseButtonHeight / 2) {
+                return 'pause_menu';
+            }
+            return null;
+        }
+
         // Check AI Lobby
         if (gameState.showAILobby) {
             const addBotY = this.canvas.height - (220 * uiScale);
@@ -1964,7 +2951,7 @@ export class GameHUD {
             return null;
         }
 
-        if (!this.mainMenu && !gameState.showAbout) return null;
+        if (!this.mainMenu && !gameState.showAbout && !gameState.showGallery) return null;
 
         const scale = this.getUIScale();
         const mainMenuButtonWidth = 180 * scale;  // Reduced from 200
@@ -1981,7 +2968,7 @@ export class GameHUD {
             return 'username';
         }
 
-        // 2x4 Grid Layout: 2 columns, 4 rows
+        // 2x5 Grid Layout: 2 columns, 5 rows
         const columnSpacing = 20 * scale;
         const buttonStartY = centerY - (30 * scale);
         const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
@@ -1992,6 +2979,7 @@ export class GameHUD {
         const row2Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing);
         const row3Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 2;
         const row4Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 3;
+        const row5Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 4;
 
         // Check left column
         if (mouseX >= leftColumnX && mouseX <= leftColumnX + mainMenuButtonWidth) {
@@ -2007,9 +2995,14 @@ export class GameHUD {
             if (mouseY >= row3Y - mainMenuButtonHeight / 2 && mouseY <= row3Y + mainMenuButtonHeight / 2) return 'multiplayer';
         }
 
-        // Check About button (centered in row 4)
+        // Check Gallery button (centered in row 4)
         if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
-            if (mouseY >= row4Y - mainMenuButtonHeight / 2 && mouseY <= row4Y + mainMenuButtonHeight / 2) return 'about';
+            if (mouseY >= row4Y - mainMenuButtonHeight / 2 && mouseY <= row4Y + mainMenuButtonHeight / 2) return 'gallery';
+        }
+
+        // Check About button (centered in row 5)
+        if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
+            if (mouseY >= row5Y - mainMenuButtonHeight / 2 && mouseY <= row5Y + mainMenuButtonHeight / 2) return 'about';
         }
 
         // Check About screen back button
@@ -2018,6 +3011,15 @@ export class GameHUD {
             if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2 &&
                 mouseY >= backY - mainMenuButtonHeight / 2 && mouseY <= backY + mainMenuButtonHeight / 2) {
                 return 'about_back';
+            }
+        }
+
+        // Check Gallery screen back button
+        if (gameState.showGallery) {
+            const backY = this.canvas.height - 100;
+            if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2 &&
+                mouseY >= backY - mainMenuButtonHeight / 2 && mouseY <= backY + mainMenuButtonHeight / 2) {
+                return 'gallery_back';
             }
         }
 
@@ -2036,7 +3038,7 @@ export class GameHUD {
     updateMenuHover(mouseX, mouseY) {
         this.mouseX = mouseX;
         this.mouseY = mouseY;
-        if (!this.mainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby) {
+        if (!this.mainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && !gameState.showAbout && !gameState.showGallery && !gameState.gamePaused) {
             this.hoveredButton = null;
             return;
         }
@@ -2484,7 +3486,7 @@ export class GameHUD {
         const cardWidth = 300;
         const cardHeight = 400;
         const cardSpacing = 40;
-        const totalWidth = (cardWidth * 2) + cardSpacing;
+        const totalWidth = (cardWidth * 3) + (cardSpacing * 2);
         const startX = (canvas.width - totalWidth) / 2;
         const cardY = canvas.height / 2 - cardHeight / 2 + 40;
 
@@ -2576,7 +3578,7 @@ export class GameHUD {
         const cardWidth = 300;
         const cardHeight = 400;
         const cardSpacing = 40;
-        const totalWidth = (cardWidth * 2) + cardSpacing;
+        const totalWidth = (cardWidth * 3) + (cardSpacing * 2);
         const startX = (canvas.width - totalWidth) / 2;
         const cardY = canvas.height / 2 - cardHeight / 2 + 40;
 
@@ -2591,6 +3593,8 @@ export class GameHUD {
     }
 
     updateLevelUpHover(x, y) {
+        this.mouseX = x;
+        this.mouseY = y;
         this.hoveredSkillIndex = this.checkLevelUpClick(x, y);
     }
 

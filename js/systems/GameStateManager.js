@@ -2,7 +2,7 @@ import { gameState, resetGameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
 import { PLAYER_MAX_HEALTH, PLAYER_STAMINA_MAX } from '../core/constants.js';
 import { playRestartSound, playMenuMusic, stopMenuMusic } from '../systems/AudioSystem.js';
-import { saveHighScore, saveMultiplierStats } from '../utils/gameUtils.js';
+import { saveHighScore, saveMultiplierStats, saveScoreboardEntry } from '../utils/gameUtils.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 
 /**
@@ -22,12 +22,30 @@ export class GameStateManager {
         saveHighScore();
 
         // Update and save multiplier stats
+        let maxMultiplier = 1.0;
         gameState.players.forEach(player => {
             if (player.maxMultiplierThisSession > gameState.allTimeMaxMultiplier) {
                 gameState.allTimeMaxMultiplier = player.maxMultiplierThisSession;
             }
+            if (player.maxMultiplierThisSession > maxMultiplier) {
+                maxMultiplier = player.maxMultiplierThisSession;
+            }
         });
         saveMultiplierStats();
+
+        // Save scoreboard entry if game session was valid
+        if (gameState.gameStartTime > 0) {
+            const timeSurvived = (Date.now() - gameState.gameStartTime) / 1000; // in seconds
+            saveScoreboardEntry({
+                score: gameState.score,
+                wave: gameState.wave,
+                kills: gameState.zombiesKilled,
+                timeSurvived: timeSurvived,
+                maxMultiplier: maxMultiplier,
+                username: gameState.username,
+                dateTime: new Date().toISOString()
+            });
+        }
 
         const p1 = gameState.players[0];
         const p2 = gameState.players[1];
@@ -71,6 +89,9 @@ export class GameStateManager {
         gameState.showLobby = false;
         gameState.showCoopLobby = false;
         gameState.showAILobby = false;
+
+        // Set game start time for session tracking
+        gameState.gameStartTime = Date.now();
 
         // Do NOT reset players here for coop, we want to keep the lobby configuration
         if (!gameState.isCoop) {

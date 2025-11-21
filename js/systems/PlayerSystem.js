@@ -114,7 +114,18 @@ export class PlayerSystem {
             // Sprint Logic (with speed boost buff and skill multiplier)
             const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
             const skillSpeedMultiplier = player.speedMultiplier || 1.0;
-            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier;
+            
+            // Adrenaline boost (20% speed for 3s after kill)
+            let adrenalineBoostMultiplier = 1.0;
+            if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime > Date.now()) {
+                adrenalineBoostMultiplier = 1.2; // 20% speed boost
+            } else if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime <= Date.now()) {
+                // Expire adrenaline boost
+                player.adrenalineBoostActive = false;
+                player.adrenalineBoostEndTime = null;
+            }
+            
+            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier;
             // autoSprint moved to gameplay, check both for migration safety or just gameplay
             const autoSprint = settingsManager.getSetting('gameplay', 'autoSprint') || false;
 
@@ -512,6 +523,11 @@ export class PlayerSystem {
                         maxLife: 5
                     });
                 }
+            }
+
+            // Draw melee swipe animation if active
+            if (player.activeMeleeSwipe) {
+                drawMeleeSwipe(player);
             }
         });
     }

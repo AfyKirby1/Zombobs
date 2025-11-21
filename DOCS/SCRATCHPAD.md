@@ -4,6 +4,124 @@
 
 ## 2025 - Active Development Notes
 
+### Balance Changes [2025-01-XX]
+- ✅ **Crit Rate Reduction** - Reduced base critical hit chance by 2/3
+  - Base crit chance: 10% → ~3.33% (reduced by 2/3)
+  - Location: `js/utils/combatUtils.js` line 601
+  - Crits now occur 1/3 as often for more balanced combat
+  - Eagle Eye skill bonuses still apply additively
+- ✅ **Zombie HP Doubling** - All zombie HP doubled (except Boss)
+  - Base zombie health formula: `(2 + Math.floor(wave / 3)) * 2`
+  - Location: `js/entities/Zombie.js` line 22
+  - All zombie variants (Normal, Fast, Exploding, Armored, Ghost, Spitter) now have double HP
+  - Boss zombie HP intentionally unchanged
+  - Makes zombies more durable and combat more challenging
+- ✅ **Weapon Damage Doubling** - All weapon damage values doubled
+  - Pistol: 1 → 2 damage
+  - Shotgun: 3 → 6 damage per pellet (30 total potential per shot)
+  - Rifle: 2 → 4 damage
+  - Flamethrower: 0.5 → 1.0 damage per tick
+  - SMG: 0.8 → 1.6 damage
+  - Sniper: 15 → 30 damage
+  - RPG: 60 → 120 explosion damage
+  - Location: `js/core/constants.js` lines 103-166
+  - Maintains relative weapon balance while increasing overall damage output
+  - Comprehensive documentation updates in CHANGELOG.md, guns.md, DIFFICULTY_PROGRESSION.md, ARCHITECTURE.md
+
+### Skill System Expansion [2025-01-XX]
+- ✅ **10 New Skills Added** - Expanded skill pool from 6 to 16 skills
+  - Thick Skin: 10% damage reduction (applied in handlePlayerZombieCollisions)
+  - Lucky Strike: 15% double damage chance (applied in handleBulletZombieCollisions)
+  - Quick Hands: 50% faster weapon switching (skill effect defined, weapon switching is instant currently)
+  - Scavenger: 25% more pickup spawn rate (applied in PickupSpawnSystem for all pickups)
+  - Adrenaline: 20% speed boost for 3s after kill (applied in PlayerSystem, triggered on kill)
+  - Armor Plating: +10 shield points (applied in skill activation)
+  - Long Range: 20% increased bullet range (applied to bullet.maxDistance on creation)
+  - Fast Fingers: 15% faster reload (stacks multiplicatively with Iron Grip via reloadSpeedMultiplier)
+  - Bloodlust: Heal 2 HP per kill (applied on zombie kill in combatUtils)
+  - Steady Aim: 30% reduced bullet spread (applied to spread angle calculations for shotgun/flamethrower/SMG)
+  - All skills properly integrated into game systems with visual effects and proper stacking
+
+- ✅ **3-Choice Level-Up System** - Expanded skill selection from 2 to 3 choices
+  - Updated drawLevelUpScreen() to display 3 cards with proper spacing
+  - Updated checkLevelUpClick() to detect clicks on all 3 cards
+  - Updated generateChoices() to return 3 choices instead of 2
+  - Improved layout: (cardWidth * 3) + (cardSpacing * 2) for total width
+  - Works in both single-player and multiplayer modes
+
+- ✅ **XP Rate Increase** - Increased XP gains by 1.5x (50% faster) for more engaging progression
+  - Normal: 5 → 8 XP (60% increase)
+  - Fast: 10 → 15 XP (50% increase)
+  - Exploding: 15 → 23 XP (53% increase)
+  - Armored: 12 → 18 XP (50% increase)
+  - Ghost: 18 → 27 XP (50% increase)
+  - Spitter: 15 → 23 XP (53% increase)
+  - Boss: 250 → 375 XP (50% increase)
+  - Players level up more frequently while maintaining meaningful progression
+  - Comprehensive documentation created in `DOCS/XP_AND_SKILLS_SYSTEM.md`
+  - Creates more balanced progression curve
+
+### Pause Menu & Custom Cursor System [2025-01-XX]
+- ✅ **Interactive Pause Menu**
+  - Converted pause menu from text instructions to clickable buttons
+  - Added 4 buttons: Resume, Restart, Settings (NEW), Return to Menu
+  - Buttons match main menu styling with red theme and hover effects
+  - Click detection and hover state tracking implemented
+  - Settings button opens settings panel while keeping game paused
+  - All buttons scale with UI scale setting
+
+- ✅ **Custom Cursor System**
+  - Custom drawn pointer cursor (white fill, black outline) for all menus
+  - Appears in: main menu, lobbies, pause menu, about screen, gallery, level-up screen
+  - System cursor automatically hidden (`cursor: none`) when custom cursor is active
+  - Cursor follows mouse position and scales with UI scale
+  - Implemented in `GameHUD.drawCursor()` method
+  - Mouse position tracking via `updateMenuHover()` for hover detection
+
+### Gallery Showcase Implementation [2025-01-XX]
+- ✅ **Gallery Button Added to Main Menu**
+  - Gallery button positioned in row 4 (centered, where About previously was)
+  - About button moved to row 5 (centered)
+  - Gallery screen state management (`showGallery` flag in gameState)
+  - Click detection and hover states implemented
+
+- ✅ **Full Gallery Showcase Implementation**
+  - **Zombies Section**: 7 zombie types with visual icons and stats
+    - Normal, Fast (Runner), Exploding (Boomer), Armored (Tank), Ghost, Spitter, Boss
+    - Each displays: health multiplier, speed multiplier, spawn wave, description
+  - **Weapons Section**: 7 weapons with visual icons and stats
+    - Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG
+    - Each displays: damage, fire rate, ammo capacity, description
+  - **Pickups Section**: 8 pickups with visual icons and effects
+    - Health, Ammo, Damage Buff, Nuke, Speed Boost, Rapid Fire, Shield, Adrenaline
+    - Each displays: effect description and details
+  - **Visual Drawing Functions**: Helper functions for icon rendering
+    - `drawZombieIcon()` - Simplified zombie representations with animations (pulsing, eye effects)
+    - `drawWeaponIcon()` - Weapon shapes matching in-game appearance
+    - `drawPickupIcon()` - Pickup visuals with pulsing glows matching in-game colors
+  - **Card-Based Layout**: 2-column responsive grid with glassmorphism styling
+  - **Scrolling Support**: Smooth mouse wheel scrolling with visual scrollbar indicator
+  - **UI Scaling**: All elements properly scale with UI scale setting (50%-150%)
+  - **Game State Fix**: Fixed bug where game logic was running during gallery view (prevented wave timers from appearing)
+
+- ✅ **News Ticker Position Adjustment**
+  - Moved news ticker down from `centerY + 180` to `centerY + 230` (~50 pixels, ~28% lower)
+  - Better visual spacing from menu buttons
+  - Improved main menu layout balance
+
+### Major Code Refactoring - Phase 2 [2025-01-XX]
+- ✅ **Extracted 6 New Systems from main.js**
+  - MultiplayerSystem: Multiplayer networking, player sync, zombie sync (~545 lines)
+  - ZombieSpawnSystem: Zombie and boss spawning logic (~155 lines)
+  - PlayerSystem: Player updates, rendering, co-op lobby (~520 lines)
+  - GameStateManager: Game lifecycle management (~83 lines)
+  - MeleeSystem: Melee attack logic and range checking (~131 lines)
+  - drawingUtils: Drawing utilities for UI elements (~263 lines)
+- ✅ **main.js Size Reduction**: Reduced from ~2,536 to ~1,241 lines (51% reduction)
+- ✅ **Improved Code Organization**: Related functionality grouped into logical modules
+- ✅ **Better Maintainability**: Systems can be tested and modified independently
+- ✅ **Consistent Architecture**: Follows existing system pattern (ParticleSystem, AudioSystem, etc.)
+
 ### Engine Performance Micro-Optimizations [2025-01-21]
 - ✅ **Math.sqrt() Elimination**: Replaced 26+ expensive sqrt calls with squared distance comparisons
   - Optimized `checkCollision()` function to use squared distance
@@ -184,7 +302,7 @@
 ### Main Menu UI Layout Improvements [2025-01-XX]
 - ✅ **Version Display Box**: Added version text box in bottom-left corner
   - Created `drawVersionBox()` method in `GameHUD.js`
-  - Small, compact box showing "V0.5.0"
+  - Small, compact box showing "V0.6.0"
   - Positioned above technology branding with proper spacing
   - Red accent color (#ff1744) matching game aesthetic
   - Semi-transparent background with subtle border

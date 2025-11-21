@@ -53,7 +53,17 @@
 
 ---
 
-## 🔥 What's New in V0.5.1
+## 🔥 What's New in V0.6.0
+
+> **Balance overhaul and critical bug fixes**
+
+- **⚖️ Balance Overhaul** - Major combat balance adjustments
+  - **🎯 Crit Rate Reduction**: Base crit chance reduced from 10% to ~3.33% (2/3 reduction)
+  - **💪 Zombie HP Doubling**: All zombie HP doubled (except Boss) for more challenging combat
+  - **🔫 Weapon Damage Doubling**: All weapon damage values doubled to match increased zombie durability
+- **🐛 Bug Fix**: Hoarder skill ammo multiplier now persists correctly across weapon switches
+
+## 🔥 Previously in V0.5.1
 
 > **The horde moves in perfect sync. Ready for optimized multiplayer?**
 

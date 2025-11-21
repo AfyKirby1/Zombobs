@@ -95,6 +95,7 @@ export const gameState = {
     showCoopLobby: false,
     showAILobby: false,
     showAbout: false,
+    showGallery: false,
 
     multiplayer: {
         active: false,
@@ -217,6 +218,9 @@ export const gameState = {
         startTime: 0 // When the cycle started
     },
     isNight: false,
+
+    // Game Session Tracking
+    gameStartTime: 0, // Timestamp when current game session started
 };
 
 // Compatibility getters/setters for single-player code
@@ -343,4 +347,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.gameTime = 0;
     gameState.dayNightCycle.startTime = Date.now();
     gameState.isNight = false;
+
+    // Reset game start time (will be set when game actually starts)
+    gameState.gameStartTime = 0;
 }

@@ -34,18 +34,18 @@ speed = 1 + (wave * 0.1)
 
 ### Zombie Health (Base)
 ```javascript
-health = 2 + Math.floor(wave / 3)
+health = (2 + Math.floor(wave / 3)) * 2
 ```
-- **Waves 1-2**: 2 HP
-- **Waves 3-5**: 3 HP
-- **Waves 6-8**: 4 HP
-- **Waves 9-11**: 5 HP
-- **Waves 12-14**: 6 HP
-- **Waves 15-17**: 7 HP
-- **Waves 18-20**: 8 HP
-- **Waves 21-23**: 9 HP
-- **Waves 24-26**: 10 HP
-- **Pattern**: +1 HP every 3 waves
+- **Waves 1-2**: 4 HP (doubled from 2)
+- **Waves 3-5**: 6 HP (doubled from 3)
+- **Waves 6-8**: 8 HP (doubled from 4)
+- **Waves 9-11**: 10 HP (doubled from 5)
+- **Waves 12-14**: 12 HP (doubled from 6)
+- **Waves 15-17**: 14 HP (doubled from 7)
+- **Waves 18-20**: 16 HP (doubled from 8)
+- **Waves 21-23**: 18 HP (doubled from 9)
+- **Waves 24-26**: 20 HP (doubled from 10)
+- **Pattern**: +2 HP every 3 waves (doubled from +1 HP)
 
 **Note**: This is the base health for Normal zombies. Special zombie variants apply multipliers to this base value.
 
@@ -215,17 +215,17 @@ The spawn system uses a priority-based random selection:
 ## Weapon Effectiveness by Wave
 
 ### Weapon Damage Values
-- **Pistol**: 1 damage per shot
-- **Shotgun**: 3 damage per pellet × 5 pellets = 15 total potential damage
-- **Rifle**: 2 damage per shot
-- **Flamethrower**: 0.5 damage per tick (very fast fire rate)
-- **SMG**: 0.8 damage per shot
-- **Sniper**: 15 damage per shot
-- **RPG**: 60 explosion damage (AOE)
+- **Pistol**: 2 damage per shot (doubled from 1)
+- **Shotgun**: 6 damage per pellet × 5 pellets = 30 total potential damage (doubled from 3 per pellet)
+- **Rifle**: 4 damage per shot (doubled from 2)
+- **Flamethrower**: 1.0 damage per tick (doubled from 0.5, very fast fire rate)
+- **SMG**: 1.6 damage per shot (doubled from 0.8)
+- **Sniper**: 30 damage per shot (doubled from 15)
+- **RPG**: 120 explosion damage (doubled from 60, AOE)
 
 **Code Reference**: `js/core/constants.js:103-166`
 
-### Pistol (1 damage)
+### Pistol (2 damage, doubled from 1)
 - **Waves 1-2**: 2 shots per zombie (efficient)
 - **Waves 3-5**: 3 shots per zombie (still viable)
 - **Waves 6-8**: 4 shots per zombie (getting inefficient)
@@ -237,31 +237,31 @@ The spawn system uses a priority-based random selection:
 - Exploding/Ghost/Spitter: 2-4 shots (80% health)
 - Armored: 3-10+ shots (depends on armor pool)
 
-### Shotgun (3 damage per pellet, 5 pellets)
+### Shotgun (6 damage per pellet, 5 pellets, doubled from 3 per pellet)
 - **Waves 1-2**: 1 pellet = kill (very efficient)
-- **Waves 3-5**: 1-2 pellets = kill (efficient)
-- **Waves 6-8**: 2 pellets = kill (good)
+- **Waves 3-5**: 1 pellet = kill (efficient)
+- **Waves 6-8**: 1-2 pellets = kill (good)
 - **Waves 9-11**: 2 pellets = kill (still viable)
-- **Waves 12-14**: 2-3 pellets = kill (ammo intensive)
-- **Waves 15+**: 3+ pellets = kill (very ammo intensive)
+- **Waves 12-14**: 2 pellets = kill (ammo intensive)
+- **Waves 15+**: 2-3 pellets = kill (very ammo intensive)
 
 **Against Special Types:**
 - Fast Zombie: Often 1 pellet (very weak)
-- Exploding/Ghost/Spitter: 1-2 pellets (80% health)
-- Armored: 2-5+ pellets (armor absorbs most damage)
+- Exploding/Ghost/Spitter: 1 pellet (80% health)
+- Armored: 1-3+ pellets (armor absorbs most damage)
 
-### Rifle (2 damage)
+### Rifle (4 damage, doubled from 2)
 - **Waves 1-2**: 1 shot = kill (very efficient)
-- **Waves 3-5**: 2 shots = kill (efficient)
+- **Waves 3-5**: 1-2 shots = kill (efficient)
 - **Waves 6-8**: 2 shots = kill (good)
-- **Waves 9-11**: 3 shots = kill (viable)
+- **Waves 9-11**: 2-3 shots = kill (viable)
 - **Waves 12-14**: 3 shots = kill (ammo intensive)
-- **Waves 15+**: 4+ shots = kill (very ammo intensive)
+- **Waves 15+**: 3-4 shots = kill (very ammo intensive)
 
 **Against Special Types:**
-- Fast Zombie: 1-2 shots (60% health)
-- Exploding/Ghost/Spitter: 2-3 shots (80% health)
-- Armored: 3-8+ shots (armor system)
+- Fast Zombie: 1 shot (60% health)
+- Exploding/Ghost/Spitter: 1-2 shots (80% health)
+- Armored: 2-4+ shots (armor system)
 
 ## Difficulty Curve Analysis
 
@@ -351,7 +351,7 @@ this.speed = 1 + (gameState.wave * 0.1);
 
 **Zombie Health**: `js/entities/Zombie.js:22`
 ```javascript
-this.health = 2 + Math.floor(gameState.wave / 3);
+this.health = (2 + Math.floor(gameState.wave / 3)) * 2; // Doubled HP
 ```
 
 **Zombie Count**: `js/main.js:784-892`

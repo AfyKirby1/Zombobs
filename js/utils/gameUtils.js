@@ -173,3 +173,73 @@ export function loadMultiplierStats() {
     }
 }
 
+// Scoreboard System
+
+/**
+ * Load scoreboard from localStorage
+ * @returns {Array} Array of scoreboard entries (max 10), sorted by score descending
+ */
+export function loadScoreboard() {
+    try {
+        const saved = localStorage.getItem('zombobs_scoreboard');
+        if (saved) {
+            const scoreboard = JSON.parse(saved);
+            // Ensure it's an array and sort by score descending
+            if (Array.isArray(scoreboard)) {
+                return scoreboard.sort((a, b) => b.score - a.score).slice(0, 10);
+            }
+        }
+    } catch (error) {
+        console.log('Failed to load scoreboard:', error);
+    }
+    return [];
+}
+
+/**
+ * Save a new scoreboard entry if it qualifies for top 10
+ * @param {Object} entry - Scoreboard entry object
+ * @param {number} entry.score - Final score
+ * @param {number} entry.wave - Wave reached
+ * @param {number} entry.kills - Zombies killed
+ * @param {number} entry.timeSurvived - Time survived in seconds
+ * @param {number} entry.maxMultiplier - Maximum multiplier achieved
+ * @param {string} entry.username - Player username
+ * @returns {boolean} True if entry was saved (qualified for top 10)
+ */
+export function saveScoreboardEntry(entry) {
+    try {
+        const scoreboard = loadScoreboard();
+        
+        // Add new entry
+        scoreboard.push({
+            score: entry.score || 0,
+            wave: entry.wave || 0,
+            kills: entry.kills || 0,
+            timeSurvived: entry.timeSurvived || 0,
+            maxMultiplier: entry.maxMultiplier || 1.0,
+            dateTime: entry.dateTime || new Date().toISOString(),
+            username: entry.username || 'Survivor'
+        });
+        
+        // Sort by score descending
+        scoreboard.sort((a, b) => b.score - a.score);
+        
+        // Keep only top 10
+        const top10 = scoreboard.slice(0, 10);
+        
+        // Check if new entry made it into top 10
+        const entryQualified = top10.some(e => 
+            e.score === entry.score && 
+            e.dateTime === entry.dateTime
+        );
+        
+        // Save to localStorage
+        localStorage.setItem('zombobs_scoreboard', JSON.stringify(top10));
+        
+        return entryQualified;
+    } catch (error) {
+        console.log('Failed to save scoreboard entry:', error);
+        return false;
+    }
+}
+

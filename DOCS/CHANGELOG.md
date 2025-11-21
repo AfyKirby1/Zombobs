@@ -2,11 +2,267 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
-## [Unreleased] - 2025-01-XX
+## [0.6.0] - 2025-01-XX
+
+### 🎉 VERSION 0.6.0 RELEASE - Balance Overhaul & Bug Fixes
+
+> **Major balance adjustments and critical bug fixes**
+
+### Changed
+- **Version Bump**: Updated all version references across the project to V0.6.0
+  - Updated `index.html` landing page version display
+  - Updated `js/ui/GameHUD.js` version display
+  - Updated `js/core/constants.js` news ticker
+  - Updated `server/package.json` and `huggingface-space/package.json` versions
+  - Updated `launch.ps1` server version
+  - Updated all documentation files
+
+### ⚖️ Balance Changes
+- **Crit Rate Reduction** - Reduced base critical hit chance by 2/3
+  - Base crit chance: 10% → ~3.33% (reduced by 2/3)
+  - Crits now occur 1/3 as often for more balanced combat
+  - Eagle Eye skill bonuses still apply additively
+  - Location: `js/utils/combatUtils.js` line 601
+- **Zombie HP Doubling** - All zombie HP doubled (except Boss)
+  - Base zombie health formula: `(2 + Math.floor(wave / 3)) * 2`
+  - All zombie variants (Normal, Fast, Exploding, Armored, Ghost, Spitter) now have double HP
+  - Boss zombie HP intentionally unchanged
+  - Makes zombies more durable and combat more challenging
+  - Location: `js/entities/Zombie.js` line 22
+- **Weapon Damage Doubling** - All weapon damage values doubled
+  - Pistol: 1 → 2 damage
+  - Shotgun: 3 → 6 damage per pellet (30 total potential per shot)
+  - Rifle: 2 → 4 damage
+  - Flamethrower: 0.5 → 1.0 damage per tick
+  - SMG: 0.8 → 1.6 damage
+  - Sniper: 15 → 30 damage
+  - RPG: 60 → 120 explosion damage
+  - Maintains relative weapon balance while increasing overall damage output
+  - Location: `js/core/constants.js` lines 103-166
+
+### 🐛 Bug Fixes
+- **Hoarder Skill Bug Fix** - Fixed ammo multiplier not persisting across weapon switches
+  - Issue: Hoarder skill's 30% ammo increase was lost when switching weapons
+  - Fix: Applied `ammoMultiplier` in `switchWeapon()`, `reloadWeapon()`, and `shootBullet()` reload check
+  - All weapon switching now correctly applies Hoarder skill's ammo bonus
+  - Background reload and saved ammo restoration now respect multiplied maxAmmo
+  - Location: `js/utils/combatUtils.js` - `switchWeapon()`, `reloadWeapon()`, `shootBullet()`
+
+### 🏆 Local Scoreboard System
+- **Top 10 Scoreboard** - New local scoreboard system on HTML landing page
+  - Displays top 10 game sessions sorted by score
+  - Each entry shows: Score, Wave, Kills, Time Survived, Max Multiplier, Username, Date/Time
+  - Only saves entries that qualify for top 10 (score-based ranking)
+  - Floating glassmorphism container on the side of landing page
+  - Special styling for top 3 entries (gold/silver/bronze medals)
+  - Responsive layout (3 columns on large screens, stacks on mobile)
+  - Custom scrollbar styling for scoreboard container
+  - Time formatting: "5m 23s" or "1h 5m 23s" for longer sessions
+  - Relative date formatting: "2h ago", "3d ago", or absolute date
+  - Number formatting with commas for readability
+  - Empty state message when no scores exist
+  - Integrated with game over system to automatically save qualifying sessions
+  - Tracks game session start time for accurate time survived calculation
+
+### 📈 XP Rate Increase
+- **1.5x XP Rate** - Increased XP gains by 50% for faster progression
+  - Normal zombies: 5 → 8 XP (60% increase)
+  - Fast zombies: 10 → 15 XP (50% increase)
+  - Exploding zombies: 15 → 23 XP (53% increase)
+  - Armored zombies: 12 → 18 XP (50% increase)
+  - Ghost zombies: 18 → 27 XP (50% increase)
+  - Spitter zombies: 15 → 23 XP (53% increase)
+  - Boss zombies: 250 → 375 XP (50% increase)
+  - Provides more engaging leveling experience
+  - Players level up more frequently while maintaining meaningful progression
+
+### 📚 Documentation
+- **XP and Skills System Documentation** - Created comprehensive documentation (`DOCS/XP_AND_SKILLS_SYSTEM.md`)
+  - Complete XP system overview with all zombie type values
+  - Detailed level-up progression formula and examples
+  - Full skill catalog with 16 skills, effects, and implementation details
+  - Skill effects integration across all game systems
+  - Multiplayer synchronization architecture
+  - Technical implementation details and code flow diagrams
+  - Balance notes and future considerations
+
+### 🎮 Skill System Expansion
+
+### Added
+- **10 New Skills** - Expanded skill pool with 10 additional basic skills
+  - **Thick Skin** (🛡️) - Reduce damage taken by 10% (stacks multiplicatively)
+  - **Lucky Strike** (🍀) - 15% chance for double damage on hits
+  - **Quick Hands** (⚡) - 50% faster weapon switching
+  - **Scavenger** (🔍) - 25% more pickup spawn rate
+  - **Adrenaline** (💉) - 20% speed boost for 3s after each kill
+  - **Armor Plating** (🛡️) - Gain 10 shield points on activation
+  - **Long Range** (📏) - 20% increased bullet range
+  - **Fast Fingers** (👆) - 15% faster reload speed (stacks with Iron Grip)
+  - **Bloodlust** (🩸) - Heal 2 HP per kill
+  - **Steady Aim** (🎯) - 30% reduced bullet spread
+  - All new skills are upgradeable and work with existing skill system
+  - Skills have proper visual icons and descriptions in level-up screen
+  - Effects properly integrated into combat, player, pickup, and bullet systems
+
+- **3-Choice Level-Up System** - Expanded skill selection from 2 to 3 choices
+  - Level-up screen now displays 3 skill cards instead of 2
+  - Improved layout and positioning for 3-card display
+  - Click detection updated to handle all 3 skill cards
+  - More strategic choices for players on each level-up
+  - Works in both single-player and multiplayer modes
+
+### Changed
+- **XP Rate Reduction** - Reduced XP gains by approximately 50% to slow down leveling progression
+  - Normal zombies: 10 → 5 XP (50% reduction)
+  - Fast zombies: 20 → 10 XP (50% reduction)
+  - Exploding zombies: 30 → 15 XP (50% reduction)
+  - Armored zombies: 25 → 12 XP (52% reduction)
+  - Ghost zombies: 35 → 18 XP (49% reduction)
+  - Spitter zombies: 30 → 15 XP (50% reduction)
+  - Boss zombies: 500 → 250 XP (50% reduction)
+  - Prevents rapid level-ups after initial level-up
+  - Creates more balanced progression curve
+
+### Changed
+- **News Ticker Position** - Moved news ticker down by ~50 pixels (from centerY + 180 to centerY + 230)
+  - Better spacing from menu buttons
+  - Improved visual balance on main menu
+
+### 🎨 UI Improvements
+
+### Added
+- **Interactive Pause Menu** - Converted pause menu from text instructions to clickable buttons
+  - Resume button - Click to resume game
+  - Restart button - Click to restart game
+  - Settings button - Opens settings panel from pause menu (NEW)
+  - Return to Menu button - Returns to main menu
+  - All buttons match main menu styling (red theme, hover effects)
+  - Button click detection and hover states implemented
+  - Full UI scaling support for all pause menu elements
+
+- **Custom Cursor System** - Custom drawn cursor for menus and pause screen
+  - White pointer cursor with black outline for visibility
+  - Appears in all menus (main menu, lobbies, pause, about, gallery, level-up)
+  - System cursor automatically hidden when custom cursor is shown
+  - Follows mouse position and scales with UI scale setting
+  - Consistent visual experience across all menu screens
+
+- **HUD Layout Reorganization** - Complete redesign of in-game HUD layout
+  - **Bottom Left**: Active Skills display showing collected skills with icons, names, and levels
+  - **Bottom Middle**: XP Bar (widened to 240px) showing current level and XP progress with green gradient
+  - **Bottom Right**: Weapon/Ammo and Grenades info moved from top left
+  - **Top Left**: Health, Shield, and shared stats (Wave, Kills, Left, Score, Buffs)
+  - All bottom UI elements positioned above instruction text with proper spacing
+  - Skills display shows up to 6 active skills with purple styling
+  - Weapon info shows current weapon, ammo count, reload progress, and grenade count
+  - Layout works for both single-player and co-op modes
+
+- **XP Bar Display** - New XP progress bar in HUD
+  - Shows current level with star icon
+  - Displays current XP / next level XP requirement
+  - Green progress bar with gradient fill
+  - Positioned at bottom center of screen
+  - Width: 240px (50% wider than other stat boxes)
+
+- **Active Skills Display** - New UI element showing collected skills
+  - Displays all active skills from `gameState.activeSkills`
+  - Shows skill icon, name, and level (if upgraded)
+  - Purple border styling to distinguish from other UI elements
+  - Compact vertical layout at bottom left
+  - Handles empty skills array gracefully
+
+- **Enhanced Instructions** - Updated keybind display
+  - Shows all 7 weapons with keybinds: `1=Pistol 2=Shotgun 3=Rifle 4=Flamethrower 5=SMG 6=Sniper 7=RPG`
+  - Added sprint keybind display (Shift to sprint)
+  - Split into 3 lines for better readability
+  - Dynamically reads keybinds from settings manager
+  - All keybinds use actual configured values
+
+- **Gallery Screen** - New Gallery button added to main menu with full showcase implementation
+  - Gallery button positioned in row 4 (centered, where About previously was)
+  - About button moved to row 5 (centered)
+  - **Showcase Implementation**: Full gallery displaying zombies, weapons, and pickups
+    - **Zombies Section**: 7 zombie types with visual icons and stats (Normal, Fast, Exploding, Armored, Ghost, Spitter, Boss)
+    - **Weapons Section**: 7 weapons with visual icons and stats (Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG)
+    - **Pickups Section**: 8 pickups with visual icons and effects (Health, Ammo, Damage, Nuke, Speed, Rapid Fire, Shield, Adrenaline)
+    - Card-based 2-column grid layout with glassmorphism styling
+    - Visual representations drawn using canvas (animated icons matching in-game appearance)
+    - Smooth scrolling support with mouse wheel and visual scrollbar
+    - Full UI scaling support for all gallery elements
+  - Back button to return to main menu
+
+### Changed
+- **HUD Layout** - Reorganized player stats display
+  - Removed ammo and grenades from top-left player stats
+  - Top-left now shows only: Health, Shield (if active), and Multiplier indicator
+  - Weapon/Ammo and Grenades moved to bottom-right corner
+  - Improved visual hierarchy and information organization
+
+### 🔧 Code Refactoring & Architecture Improvements (Phase 2)
+
+> **Major refactoring to extract large systems from main.js into dedicated modules**
+
+### Added
+- **MultiplayerSystem** (`js/systems/MultiplayerSystem.js`)
+  - Extracted multiplayer networking logic (~545 lines)
+  - Handles Socket.IO connections, player synchronization, zombie sync, and game state sync
+  - Methods: `checkServerHealth()`, `startLatencyMeasurement()`, `initializeNetwork()`, `connectToMultiplayer()`
+  - Features: connection management, player state sync, remote action handling, zombie synchronization, latency measurement
+
+- **ZombieSpawnSystem** (`js/systems/ZombieSpawnSystem.js`)
+  - Extracted zombie and boss spawning logic (~155 lines)
+  - Handles wave-based zombie spawning and boss waves
+  - Methods: `getZombieClassByType()`, `spawnBoss()`, `spawnZombies()`
+  - Features: wave-based zombie type selection, staggered spawn timing, spawn indicators, multiplayer sync
+
+- **PlayerSystem** (`js/systems/PlayerSystem.js`)
+  - Extracted player updates, rendering, and co-op lobby management (~520 lines)
+  - Handles player movement, input, actions, and rendering
+  - Methods: `updatePlayers()`, `updateCoopLobby()`, `drawPlayers()`
+  - Features: multi-input support, sprint/stamina system, player rendering with effects, co-op lobby logic
+
+- **GameStateManager** (`js/systems/GameStateManager.js`)
+  - Extracted game lifecycle management (~83 lines)
+  - Handles game start, restart, and game over logic
+  - Methods: `gameOver()`, `restartGame()`, `startGame()`
+  - Features: high score saving, co-op state management, player reset
+
+- **MeleeSystem** (`js/systems/MeleeSystem.js`)
+  - Extracted melee attack logic (~131 lines)
+  - Handles melee attacks and range checking
+  - Methods: `performMeleeAttack()`, `isInMeleeRange()`
+  - Features: cooldown checking, swipe animation, hit detection, multiplayer sync
+
+- **drawingUtils** (`js/utils/drawingUtils.js`)
+  - Extracted drawing utility functions (~263 lines)
+  - Handles UI element rendering and visual effects
+  - Methods: `drawMeleeSwipe()`, `drawCrosshair()`, `drawWaveBreak()`, `drawWaveNotification()`, `drawFpsCounter()`
+  - Features: melee swipe animation, dynamic crosshair, wave UI overlays, FPS counter
+
+### Changed
+- **main.js Refactoring** - Reduced from ~2,536 lines to ~1,241 lines (1,295 lines removed, ~51% reduction)
+  - Multiplayer networking extracted to `MultiplayerSystem`
+  - Zombie spawning extracted to `ZombieSpawnSystem`
+  - Player updates and rendering extracted to `PlayerSystem`
+  - Game lifecycle extracted to `GameStateManager`
+  - Melee combat extracted to `MeleeSystem`
+  - Drawing utilities extracted to `drawingUtils.js`
+  - Improved code organization and maintainability
+  - Better separation of concerns
+
+### Benefits
+- **Improved Maintainability**: Large systems now isolated in dedicated modules
+- **Better Testability**: Systems can be tested independently
+- **Consistent Architecture**: Follows existing pattern (ParticleSystem, AudioSystem, etc.)
+- **Reduced Complexity**: main.js is now more focused on coordination rather than implementation
+- **Better Code Organization**: Related functionality grouped together logically
+- **Easier Debugging**: Issues can be traced to specific system modules
+
+## [Unreleased] - 2025-01-XX (Phase 1)
 
 ### 🔧 Code Refactoring & Architecture Improvements
 
-> **Major refactoring to extract large systems from main.js into dedicated modules**
+> **Initial refactoring to extract large systems from main.js into dedicated modules**
 
 ### Added
 - **ZombieUpdateSystem** (`js/systems/ZombieUpdateSystem.js`)
@@ -34,12 +290,6 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Pickup spawning logic extracted to `PickupSpawnSystem`
   - Improved code organization and maintainability
   - Better separation of concerns
-
-### Benefits
-- **Improved Maintainability**: Large systems now isolated in dedicated modules
-- **Better Testability**: Systems can be tested independently
-- **Consistent Architecture**: Follows existing pattern (ParticleSystem, AudioSystem, etc.)
-- **Reduced Complexity**: main.js is now more focused on coordination rather than implementation
 
 ## [0.5.3] - 2025-01-21
 

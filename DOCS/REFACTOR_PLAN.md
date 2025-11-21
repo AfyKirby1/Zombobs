@@ -3,6 +3,7 @@
 ## Status
 **Phase 1: COMPLETED** ✅ (2025-11-19)  
 **Phase 2: COMPLETED** ✅ (2025-11-19)
+**Phase 3: COMPLETED** ✅ (2025-01-XX)
 
 ## Objective
 Decompose the monolithic `zombie-game.html` file into separate HTML, CSS, and JavaScript files, then further modularize the JavaScript into ES6 modules to improve maintainability, readability, and development workflow.
@@ -89,6 +90,46 @@ Decompose the monolithic `zombie-game.html` file into separate HTML, CSS, and Ja
 - All functionality preserved
 - Improved code organization and maintainability
 
+### Phase 3: System Extraction from main.js ✅ **COMPLETED** [2025-01-XX]
+- [x] **Extract Multiplayer System**
+  - [x] Create `js/systems/MultiplayerSystem.js`
+  - [x] Extract multiplayer networking logic (~545 lines)
+  - [x] Handle Socket.IO connections, player sync, zombie sync, game state sync
+- [x] **Extract Zombie Spawn System**
+  - [x] Create `js/systems/ZombieSpawnSystem.js`
+  - [x] Extract zombie and boss spawning logic (~155 lines)
+  - [x] Handle wave-based spawning and spawn indicators
+- [x] **Extract Player System**
+  - [x] Create `js/systems/PlayerSystem.js`
+  - [x] Extract player updates, rendering, and co-op lobby (~520 lines)
+  - [x] Handle multi-input support, movement, actions, rendering
+- [x] **Extract Game State Manager**
+  - [x] Create `js/systems/GameStateManager.js`
+  - [x] Extract game lifecycle management (~83 lines)
+  - [x] Handle game start, restart, game over
+- [x] **Extract Melee System**
+  - [x] Create `js/systems/MeleeSystem.js`
+  - [x] Extract melee attack logic (~131 lines)
+  - [x] Handle melee attacks and range checking
+- [x] **Extract Drawing Utilities**
+  - [x] Create `js/utils/drawingUtils.js`
+  - [x] Extract drawing utility functions (~263 lines)
+  - [x] Handle crosshair, wave UI, FPS counter, melee swipe rendering
+- [x] **Update main.js**
+  - [x] Import new system modules
+  - [x] Create system instances
+  - [x] Replace function calls with system method calls
+  - [x] Remove old function definitions
+
+**Phase 3 Results:**
+- main.js reduced from ~2,536 lines to ~1,241 lines (51% reduction)
+- 6 new system modules created (MultiplayerSystem, ZombieSpawnSystem, PlayerSystem, GameStateManager, MeleeSystem, drawingUtils)
+- Total of ~1,697 lines extracted from main.js
+- Improved code organization and maintainability
+- Better separation of concerns
+- Systems can be tested independently
+- Consistent architecture pattern
+
 ## Detailed Refactor Plans
 
 ### 1. CSS Extraction
@@ -120,25 +161,44 @@ main.js
 ├── core/
 │   ├── constants.js (no dependencies)
 │   ├── canvas.js → constants.js
-│   └── gameState.js → constants.js
+│   ├── gameState.js → constants.js
+│   ├── GameEngine.js (no dependencies)
+│   └── WebGPURenderer.js (no dependencies)
 ├── systems/
 │   ├── AudioSystem.js → SettingsManager.js
 │   ├── GraphicsSystem.js → core/canvas.js
 │   ├── ParticleSystem.js → core/gameState.js, entities/Particle.js
-│   └── SettingsManager.js (no dependencies)
+│   ├── SettingsManager.js (no dependencies)
+│   ├── InputSystem.js (no dependencies)
+│   ├── ZombieUpdateSystem.js → utils/gameUtils.js
+│   ├── EntityRenderSystem.js → utils/gameUtils.js
+│   ├── PickupSpawnSystem.js → core/constants.js, entities/Pickup.js
+│   ├── SkillSystem.js → core/gameState.js, core/constants.js
+│   ├── RenderingCache.js → core/canvas.js, core/constants.js, systems/GraphicsSystem.js
+│   ├── MultiplayerSystem.js → core/gameState.js, core/canvas.js, core/constants.js, systems/SkillSystem.js, systems/AudioSystem.js, systems/ParticleSystem.js, utils/combatUtils.js
+│   ├── ZombieSpawnSystem.js → core/gameState.js, core/canvas.js, entities/Zombie.js, entities/BossZombie.js, utils/gameUtils.js
+│   ├── PlayerSystem.js → core/gameState.js, core/canvas.js, core/constants.js, systems/SettingsManager.js, systems/GraphicsSystem.js, systems/InputSystem.js, systems/AudioSystem.js, utils/combatUtils.js, systems/ParticleSystem.js, utils/drawingUtils.js
+│   ├── GameStateManager.js → core/gameState.js, core/canvas.js, core/constants.js, systems/AudioSystem.js, utils/gameUtils.js
+│   └── MeleeSystem.js → core/gameState.js, core/constants.js, systems/AudioSystem.js, systems/ParticleSystem.js, utils/combatUtils.js, entities/Particle.js, systems/SettingsManager.js, systems/SkillSystem.js
 ├── entities/
 │   ├── Bullet.js → core/canvas.js
 │   ├── Zombie.js → core/canvas.js, core/gameState.js, systems/*
 │   ├── Particle.js → core/canvas.js
 │   ├── Pickup.js → core/canvas.js
 │   ├── Grenade.js → core/canvas.js, core/gameState.js, core/constants.js, utils/combatUtils.js
-│   └── Shell.js → core/canvas.js
+│   ├── Shell.js → core/canvas.js
+│   ├── BossZombie.js → entities/Zombie.js
+│   ├── AcidProjectile.js → core/canvas.js, core/gameState.js
+│   └── AcidPool.js → core/canvas.js, core/gameState.js
+├── companions/
+│   └── CompanionSystem.js → core/gameState.js, core/canvas.js, core/constants.js, utils/combatUtils.js
 ├── ui/
 │   ├── GameHUD.js → core/canvas.js, core/gameState.js, core/constants.js
 │   └── SettingsPanel.js → core/canvas.js, core/gameState.js, systems/SettingsManager.js, systems/AudioSystem.js
 └── utils/
     ├── combatUtils.js → core/gameState.js, core/constants.js, systems/*, entities/*
-    └── gameUtils.js → core/gameState.js
+    ├── gameUtils.js → core/gameState.js
+    └── drawingUtils.js → core/gameState.js, core/canvas.js, core/constants.js, systems/SettingsManager.js
 ```
 
 ## Benefits Achieved

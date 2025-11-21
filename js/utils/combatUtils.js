@@ -30,9 +30,14 @@ export function shootBullet(target, canvas, player) {
 
     // Check if reloading
     if (player.isReloading) {
-        if (now - player.reloadStartTime >= player.currentWeapon.reloadTime) {
+        const reloadMultiplier = player.reloadSpeedMultiplier || 1.0;
+        const adjustedReloadTime = player.currentWeapon.reloadTime * reloadMultiplier;
+        if (now - player.reloadStartTime >= adjustedReloadTime) {
             player.isReloading = false;
-            player.currentAmmo = player.currentWeapon.maxAmmo;
+            // Apply ammo multiplier (from Hoarder skill) when reloading
+            const ammoMultiplier = player.ammoMultiplier || 1.0;
+            player.maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+            player.currentAmmo = player.maxAmmo;
             // Update weapon state with reloaded ammo
             const weaponKeys = Object.keys(WEAPONS);
             const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === player.currentWeapon);
@@ -63,13 +68,20 @@ export function shootBullet(target, canvas, player) {
     const gunX = player.x + Math.cos(angle) * player.radius * 1.8;
     const gunY = player.y + Math.sin(angle) * player.radius * 1.8;
 
+    // Apply Steady Aim spread reduction (30% less spread)
+    const spreadReduction = player.bulletSpreadReduction || 1.0;
+    
+    // Apply Long Range multiplier (20% increased range)
+    const rangeMultiplier = player.bulletRangeMultiplier || 1.0;
+
     // Create bullets based on weapon type
     if (player.currentWeapon === WEAPONS.shotgun) {
         // Shotgun fires 5 spread bullets
         for (let i = 0; i < 5; i++) {
-            const spreadAngle = angle + (Math.random() - 0.5) * 0.5; // Add spread
+            const spreadAngle = angle + (Math.random() - 0.5) * 0.5 * spreadReduction; // Add spread with reduction
             const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
             bullet.damage *= damageMult;
+            bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
             bullet.player = player; // Track which player fired this bullet
             gameState.bullets.push(bullet);
         }
@@ -77,35 +89,40 @@ export function shootBullet(target, canvas, player) {
         // Flamethrower fires multiple flame particles with spread
         const flameCount = 3; // Fire 3 flame particles per shot
         for (let i = 0; i < flameCount; i++) {
-            const spreadAngle = angle + (Math.random() - 0.5) * 0.4; // Wider spread
+            const spreadAngle = angle + (Math.random() - 0.5) * 0.4 * spreadReduction; // Wider spread with reduction
             const flame = new FlameBullet(gunX, gunY, spreadAngle, player.currentWeapon);
             flame.damage *= damageMult;
+            flame.maxDistance *= rangeMultiplier; // Apply range multiplier
             flame.player = player; // Track which player fired this bullet
             gameState.bullets.push(flame);
         }
     } else if (player.currentWeapon === WEAPONS.smg) {
         // SMG fires single bullet with slight spread
-        const spreadAngle = angle + (Math.random() - 0.5) * 0.1;
+        const spreadAngle = angle + (Math.random() - 0.5) * 0.1 * spreadReduction;
         const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.sniper) {
         // Sniper fires piercing bullet
         const bullet = new PiercingBullet(gunX, gunY, angle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
         // Rocket Launcher fires rocket
         const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
         rocket.damage *= damageMult; // Direct hit damage (if any)
+        rocket.maxDistance *= rangeMultiplier; // Apply range multiplier
         rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     }
@@ -158,7 +175,10 @@ export function shootBullet(target, canvas, player) {
 
 export function reloadWeapon(player) {
     player = player || gameState.players[0];
-    if (!player.isReloading && player.currentAmmo < player.currentWeapon.maxAmmo) {
+    // Apply ammo multiplier (from Hoarder skill) for reload check
+    const ammoMultiplier = player.ammoMultiplier || 1.0;
+    const maxAmmoWithMultiplier = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+    if (!player.isReloading && player.currentAmmo < maxAmmoWithMultiplier) {
         player.isReloading = true;
         player.reloadStartTime = Date.now();
         // Play reload sound if implemented
@@ -195,7 +215,11 @@ export function switchWeapon(weapon, player) {
 
         // Switch to new weapon
         player.currentWeapon = weapon;
-        player.maxAmmo = player.currentWeapon.maxAmmo;
+        
+        // Apply ammo multiplier (from Hoarder skill) to max ammo
+        const ammoMultiplier = player.ammoMultiplier || 1.0;
+        player.maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+        
         player.lastShotTime = 0; // Reset fire rate cooldown
         player.isReloading = false; // Cancel any ongoing reload
 
@@ -206,14 +230,15 @@ export function switchWeapon(weapon, player) {
 
             // If weapon was holstered for longer than reload time, it auto-reloaded
             if (timeHolstered >= weapon.reloadTime && weaponState.lastHolsteredTime > 0) {
-                player.currentAmmo = weapon.maxAmmo;
+                // Use multiplied maxAmmo for background reload
+                player.currentAmmo = player.maxAmmo;
             } else {
-                // Restore saved ammo state
-                player.currentAmmo = weaponState.ammo;
+                // Restore saved ammo state, but cap at multiplied maxAmmo
+                player.currentAmmo = Math.min(weaponState.ammo, player.maxAmmo);
             }
         } else {
-            // Fallback: initialize with weapon's default ammo
-            player.currentAmmo = weapon.ammo;
+            // Fallback: initialize with weapon's default ammo (with multiplier applied)
+            player.currentAmmo = Math.floor(weapon.ammo * ammoMultiplier);
         }
 
         // Send action to server for multiplayer synchronization
@@ -329,9 +354,12 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 }
 
                 gameState.zombiesKilled++;
-                // Award XP for kill
+                // Award XP for kill (with multiplier if from player)
                 const zombieType1 = zombie.type || 'normal';
-                const xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
+                let xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
+                if (sourceIsPlayer && sourcePlayer) {
+                    xpAmount1 = Math.floor(xpAmount1 * sourcePlayer.scoreMultiplier);
+                }
                 skillSystem.gainXP(xpAmount1);
                 // Play kill confirmed sound
                 playKillSound();
@@ -508,6 +536,21 @@ export function handleBulletZombieCollisions() {
 
                         gameState.zombiesKilled++;
 
+                        // Apply Bloodlust heal (2 HP per kill)
+                        if (shootingPlayer.hasBloodlust) {
+                            shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
+                            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                            if (damageNumberStyle !== 'off') {
+                                gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
+                            }
+                        }
+
+                        // Apply Adrenaline speed boost (20% for 3s after kill)
+                        if (shootingPlayer.hasAdrenaline) {
+                            shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+                            shootingPlayer.adrenalineBoostActive = true;
+                        }
+
                         const now = Date.now();
                         if (now - gameState.lastKillTime < 1500) {
                             gameState.killStreak++;
@@ -564,11 +607,23 @@ export function handleBulletZombieCollisions() {
                     }
                 }
 
-                // Critical hit chance (10%)
-                const isCrit = Math.random() < 0.1;
+                // Get the player who fired the bullet
+                const shootingPlayer = bullet.player || gameState.players[0];
+                
+                // Critical hit chance (base ~3.33%, plus player crit chance)
+                const baseCritChance = 0.0333333333; // Reduced by 2/3 from 10%
+                const playerCritChance = shootingPlayer.critChance || 0;
+                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance);
+                const isCrit = Math.random() < totalCritChance;
+                
+                // Lucky Strike chance (15% for double damage)
+                const isLuckyStrike = shootingPlayer.luckyStrikeChance && Math.random() < shootingPlayer.luckyStrikeChance;
+                
                 let finalDamage = bullet.damage;
                 if (isCrit) {
                     finalDamage = bullet.damage * 2; // 2x damage on crit
+                } else if (isLuckyStrike) {
+                    finalDamage = bullet.damage * 2; // 2x damage on lucky strike
                 }
 
                 // Check if zombie dies from this hit
@@ -598,9 +653,6 @@ export function handleBulletZombieCollisions() {
                             isExploding: isExploding
                         });
                     }
-
-                    // Get the player who fired the bullet
-                    const shootingPlayer = bullet.player || gameState.players[0];
 
                     // Increment consecutive kills
                     shootingPlayer.consecutiveKills++;
@@ -639,12 +691,28 @@ export function handleBulletZombieCollisions() {
 
                     gameState.zombiesKilled++;
 
-                    // Award XP for kill
+                    // Apply Bloodlust heal (2 HP per kill)
+                    if (shootingPlayer.hasBloodlust) {
+                        shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
+                        }
+                    }
+
+                    // Apply Adrenaline speed boost (20% for 3s after kill)
+                    if (shootingPlayer.hasAdrenaline) {
+                        shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+                        shootingPlayer.adrenalineBoostActive = true;
+                    }
+
+                    // Award XP for kill (with multiplier)
                     const zombieType = zombie.type || 'normal';
-                    const xpAmount = skillSystem.getXPForZombieType(zombieType);
+                    let xpAmount = skillSystem.getXPForZombieType(zombieType);
+                    xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier);
                     skillSystem.gainXP(xpAmount);
 
-                    // Broadcast XP gain to other clients (leader only)
+                    // Broadcast XP gain to other clients (leader only) - use multiplied amount
                     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
                         gameState.multiplayer.socket.emit('game:xp', xpAmount);
                     }
@@ -748,8 +816,13 @@ export function handlePlayerZombieCollisions() {
         for (let j = 0; j < gameState.zombies.length; j++) {
             const zombie = gameState.zombies[j];
             if (checkCollision(player, zombie)) {
-                const damage = 0.5;
+                let damage = 0.5;
                 const previousHealth = player.health;
+
+                // Apply Thick Skin damage reduction
+                if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
+                    damage *= player.damageReduction;
+                }
 
                 // Apply damage to shield first, then health
                 if (player.shield > 0) {
@@ -972,6 +1045,17 @@ function triggerNuke(x, y) {
         awardScore(player, baseScore, zombie.type);
 
         gameState.zombiesKilled++;
+
+        // Apply Bloodlust heal (2 HP per kill)
+        if (player.hasBloodlust) {
+            player.health = Math.min(player.maxHealth, player.health + 2);
+        }
+
+        // Apply Adrenaline speed boost (20% for 3s after kill)
+        if (player.hasAdrenaline) {
+            player.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+            player.adrenalineBoostActive = true;
+        }
 
         // Remove
         gameState.zombies.splice(i, 1);

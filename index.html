@@ -95,11 +95,22 @@
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 1600px;
+            max-width: 1800px;
             display: grid;
-            grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr);
+            grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr) minmax(0, 1.4fr);
             gap: 32px;
             perspective: 1000px;
+        }
+
+        @media (max-width: 1600px) {
+            .page {
+                grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr);
+            }
+            .scoreboard-card {
+                grid-column: 1 / -1;
+                max-width: 600px;
+                margin: 0 auto;
+            }
         }
 
         @media (max-width: 1400px) {
@@ -455,6 +466,140 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
+        .scoreboard-card {
+            padding: 24px 24px 20px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px) saturate(120%);
+            -webkit-backdrop-filter: blur(16px) saturate(120%);
+            border-radius: 16px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s backwards;
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .scoreboard-card::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scoreboard-card::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .scoreboard-card::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .scoreboard-card::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        :root[data-theme="light"] .scoreboard-card {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .scoreboard-entry {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .scoreboard-entry:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+
+        .scoreboard-entry.rank-1 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.08));
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .scoreboard-entry.rank-2 {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.12), rgba(169, 169, 169, 0.06));
+            border-color: rgba(192, 192, 192, 0.25);
+        }
+
+        .scoreboard-entry.rank-3 {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.12), rgba(184, 115, 51, 0.06));
+            border-color: rgba(205, 127, 50, 0.25);
+        }
+
+        .scoreboard-rank {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .scoreboard-entry.rank-1 .scoreboard-rank {
+            color: #ffd700;
+        }
+
+        .scoreboard-entry.rank-2 .scoreboard-rank {
+            color: #c0c0c0;
+        }
+
+        .scoreboard-entry.rank-3 .scoreboard-rank {
+            color: #cd7f32;
+        }
+
+        .scoreboard-score {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-soft);
+            margin-bottom: 6px;
+            text-shadow: 0 0 8px rgba(255, 23, 68, 0.4);
+        }
+
+        .scoreboard-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .scoreboard-detail {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .scoreboard-detail strong {
+            color: var(--text-main);
+        }
+
+        .scoreboard-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            opacity: 0.7;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 6px;
+            margin-top: 4px;
+        }
+
+        .scoreboard-empty {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-style: italic;
+        }
+
         .side-heading {
             font-size: 12px;
             font-weight: 700;
@@ -615,9 +760,9 @@
                 <div class="title-row">
                     <h1 class="title">ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</h1>
                     <div class="badge-row">
-                        <span class="tagline">V0.5.3</span>
+                        <span class="tagline">V0.6.0</span>
                         <div class="engine-info">
-                            <span class="engine-name">ZOMBS-XFX-NGIN V0.5.3</span>
+                            <span class="engine-name">ZOMBS-XFX-NGIN V0.6.0</span>
                         </div>
                     </div>
                 </div>
@@ -632,10 +777,7 @@
                 <p class="hero-text">
                     Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 4 unique weapons including 
                     the devastating Flamethrower, throw grenades, collect health and ammo pickups, and face off against 6 zombie variants 
-                    including Ghost, Exploding, Armored, and Spitter types. **NEW in V0.5.3**: Modern glassmorphism multiplayer lobby with animated background, 
-                    comprehensive UI font scaling fixes (all fonts now scale properly 50%-150%), UI scale preset buttons, and optimized off-screen indicators. 
-                    **V0.5.2**: 15 engine micro-optimizations including Math.sqrt() elimination, forEach→for loops, Quadtree reuse, settings caching, and more 
-                    (30-50% FPS improvement). **V0.5.1**: Optimized multiplayer with zombie speed synchronization, delta compression (50-80% bandwidth reduction), 
+                    including Ghost, Exploding, Armored, and Spitter types. **NEW in V0.6.0**: Major balance overhaul with crit rate reduction (10%→3.33%), doubled zombie HP (except Boss), doubled weapon damage, and Hoarder skill bug fix. **V0.5.3**: Modern glassmorphism multiplayer lobby with animated background, comprehensive UI font scaling fixes (all fonts now scale properly 50%-150%), UI scale preset buttons, and optimized off-screen indicators. **V0.5.2**: 15 engine micro-optimizations including Math.sqrt() elimination, forEach→for loops, Quadtree reuse, settings caching, and more (30-50% FPS improvement). **V0.5.1**: Optimized multiplayer with zombie speed synchronization, delta compression (50-80% bandwidth reduction), 
                     adaptive update rates (5-20Hz), advanced interpolation (60-80% less jitter), velocity-based extrapolation, Socket.IO binary optimizations 
                     (10-20% CPU reduction), and latency measurement. Features cloud-hosted multiplayer on Hugging Face Spaces with automatic server health checks, 
                     local co-op mode, AI squad mode, kill streak combos, comprehensive power-up system (damage buff, speed boost, rapid fire, shield & nuke) with 
@@ -712,7 +854,7 @@
                     <div class="feature">
                         <div class="feature-icon">🌐</div>
                         <div>
-                            <div class="feature-label">Multiplayer Lobby (V0.5.3)</div>
+                            <div class="feature-label">Multiplayer Lobby (V0.5.3+)</div>
                             <div>Modern glassmorphism design with animated background, player cards, enhanced connection status, and cloud-hosted on Hugging Face Spaces.</div>
                         </div>
                     </div>
@@ -904,7 +1046,7 @@
                 </div>
                 <div class="stat">
                     <span>Engine</span>
-                    <strong>ZOMBS-XFX-NGIN V0.5.3</strong>
+                    <strong>ZOMBS-XFX-NGIN V0.6.0</strong>
                 </div>
                 <div class="stat">
                     <span>Architecture</span>
@@ -974,6 +1116,16 @@
                 </div>
             </div>
 
+            <div>
+                <div class="side-heading">V0.6.0</div>
+                <ul class="mini-list">
+                    <li><span>⚖️</span> <strong>Balance Overhaul</strong>: Major combat balance adjustments</li>
+                    <li><span>🎯</span> <strong>Crit Rate</strong>: Reduced from 10% to ~3.33% (2/3 reduction)</li>
+                    <li><span>💪</span> <strong>Zombie HP</strong>: All zombie HP doubled (except Boss)</li>
+                    <li><span>🔫</span> <strong>Weapon Damage</strong>: All weapon damage values doubled</li>
+                    <li><span>🐛</span> <strong>Bug Fix</strong>: Hoarder skill ammo multiplier now persists across weapon switches</li>
+                </ul>
+            </div>
             <div>
                 <div class="side-heading">V0.5.3</div>
                 <ul class="mini-list">
@@ -1082,6 +1234,16 @@
                     <li><span>○</span> <strong>Vehicles</strong>: Driveable cars for escape</li>
                     <li><span>○</span> <strong>Narrative</strong>: Story mode objectives</li>
                 </ul>
+            </div>
+        </aside>
+
+        <!-- Scoreboard Container -->
+        <aside class="scoreboard-card" id="scoreboard-container">
+            <div>
+                <div class="side-heading">🏆 Top Scores</div>
+                <div id="scoreboard-entries">
+                    <div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>
+                </div>
             </div>
         </aside>
         </main>
@@ -1323,6 +1485,115 @@
         
         // Start animation
         animate();
+
+        // Scoreboard System
+        (function() {
+            const SCOREBOARD_KEY = 'zombobs_scoreboard';
+            const scoreboardContainer = document.getElementById('scoreboard-entries');
+
+            function loadScoreboard() {
+                try {
+                    const saved = localStorage.getItem(SCOREBOARD_KEY);
+                    if (saved) {
+                        const scoreboard = JSON.parse(saved);
+                        if (Array.isArray(scoreboard)) {
+                            return scoreboard.sort((a, b) => b.score - a.score).slice(0, 10);
+                        }
+                    }
+                } catch (error) {
+                    console.log('Failed to load scoreboard:', error);
+                }
+                return [];
+            }
+
+            function formatTime(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                
+                if (hours > 0) {
+                    return `${hours}h ${minutes}m ${secs}s`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${secs}s`;
+                } else {
+                    return `${secs}s`;
+                }
+            }
+
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 1) {
+                    return 'Just now';
+                } else if (diffMins < 60) {
+                    return `${diffMins}m ago`;
+                } else if (diffHours < 24) {
+                    return `${diffHours}h ago`;
+                } else if (diffDays < 7) {
+                    return `${diffDays}d ago`;
+                } else {
+                    return date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                    });
+                }
+            }
+
+            function formatNumber(num) {
+                return num.toLocaleString('en-US');
+            }
+
+            function renderScoreboard() {
+                const scoreboard = loadScoreboard();
+                
+                if (scoreboard.length === 0) {
+                    scoreboardContainer.innerHTML = '<div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>';
+                    return;
+                }
+
+                let html = '';
+                scoreboard.forEach((entry, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                    const rankText = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
+                    
+                    html += `
+                        <div class="scoreboard-entry ${rankClass}">
+                            <div class="scoreboard-rank">${rankText}</div>
+                            <div class="scoreboard-score">${formatNumber(entry.score)}</div>
+                            <div class="scoreboard-details">
+                                <div class="scoreboard-detail">
+                                    <span>Wave:</span> <strong>${entry.wave}</strong>
+                                </div>
+                                <div class="scoreboard-detail">
+                                    <span>Kills:</span> <strong>${formatNumber(entry.kills)}</strong>
+                                </div>
+                                <div class="scoreboard-detail">
+                                    <span>Time:</span> <strong>${formatTime(entry.timeSurvived)}</strong>
+                                </div>
+                                <div class="scoreboard-detail">
+                                    <span>Multiplier:</span> <strong>${entry.maxMultiplier.toFixed(1)}x</strong>
+                                </div>
+                            </div>
+                            <div class="scoreboard-meta">
+                                ${entry.username || 'Survivor'} • ${formatDate(entry.dateTime)}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                scoreboardContainer.innerHTML = html;
+            }
+
+            // Render scoreboard on page load
+            renderScoreboard();
+        })();
     </script>
 </body>
 </html>

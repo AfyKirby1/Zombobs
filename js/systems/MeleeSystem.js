@@ -72,9 +72,10 @@ export class MeleeSystem {
 
                     gameState.score += 10;
                     gameState.zombiesKilled++;
-                    // Award XP for kill
+                    // Award XP for kill (with multiplier)
                     const zombieType4 = zombie.type || 'normal';
-                    const xpAmount4 = skillSystem.getXPForZombieType(zombieType4);
+                    let xpAmount4 = skillSystem.getXPForZombieType(zombieType4);
+                    xpAmount4 = Math.floor(xpAmount4 * player.scoreMultiplier);
                     skillSystem.gainXP(xpAmount4);
                     // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
                     if (!isExploding) {

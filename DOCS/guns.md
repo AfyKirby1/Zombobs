@@ -11,7 +11,7 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 ### 1. **Pistol** 🎯
 **Default Starting Weapon**
 
-- **Damage**: `1` point per shot
+- **Damage**: `2` points per shot (doubled from 1)
 - **Fire Rate**: `400ms` between shots (2.5 shots/second)
 - **Ammo Capacity**: `10` rounds per magazine
 - **Reload Time**: `1000ms` (1 second)
@@ -29,7 +29,7 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 ### 2. **Shotgun** 💥
 **High Damage, Spread Fire**
 
-- **Damage**: `3` points per pellet × `5` pellets = **15 total damage potential**
+- **Damage**: `6` points per pellet × `5` pellets = **30 total damage potential** (doubled from 3 per pellet)
 - **Fire Rate**: `800ms` between shots (1.25 shots/second)
 - **Ammo Capacity**: `5` shells per magazine
 - **Reload Time**: `1000ms` (1 second)
@@ -48,7 +48,7 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 ### 3. **Rifle** ⚡
 **High Rate of Fire**
 
-- **Damage**: `2` points per shot
+- **Damage**: `4` points per shot (doubled from 2)
 - **Fire Rate**: `200ms` between shots (5 shots/second)
 - **Ammo Capacity**: `30` rounds per magazine
 - **Reload Time**: `1000ms` (1 second)
@@ -68,10 +68,10 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 
 | Weapon | Damage | Fire Rate | Ammo | Reload | DPS* | Total Damage/Mag |
 |--------|--------|-----------|------|--------|------|------------------|
-| **Pistol** | 1 | 400ms | 10 | 1000ms | 2.5 | 10 |
-| **Shotgun** | 3×5 | 800ms | 5 | 1000ms | ~9.4 | 75 (ideal) |
-| **Rifle** | 2 | 200ms | 30 | 1000ms | 10 | 60 |
-| **Flamethrower** | 0.5×3 | 50ms | 100 | 2000ms | ~30 | 150 (plus burn DoT) |
+| **Pistol** | 2 | 400ms | 10 | 1000ms | 5 | 20 |
+| **Shotgun** | 6×5 | 800ms | 5 | 1000ms | ~18.8 | 150 (ideal) |
+| **Rifle** | 4 | 200ms | 30 | 1000ms | 20 | 120 |
+| **Flamethrower** | 1.0×3 | 50ms | 100 | 2000ms | ~60 | 300 (plus burn DoT) |
 
 *DPS calculated assuming all shots hit and accounting for fire rate only (not reload time)
 *Flamethrower DPS includes burn damage over time
@@ -143,7 +143,7 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 - Spread angle: `angle ± (random - 0.5) × 0.5 radians`
 - Each bullet can independently hit and damage zombies
 - Spread pattern creates a cone of fire
-- Maximum theoretical damage: 15 (if all 5 pellets hit same target)
+- Maximum theoretical damage: 30 (if all 5 pellets hit same target, doubled from 15)
 
 ---
 
@@ -309,7 +309,7 @@ A close-range melee attack system that provides a fallback option when out of am
 ### 4. **Flamethrower** 🔥
 **Short-Range, High Fire Rate**
 
-- **Damage**: `0.5` points per tick (damage over time)
+- **Damage**: `1.0` points per tick (doubled from 0.5, damage over time)
 - **Fire Rate**: `50ms` between shots (20 shots/second)
 - **Ammo Capacity**: `100` rounds per tank
 - **Reload Time**: `2000ms` (2 seconds)

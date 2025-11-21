@@ -100,6 +100,7 @@ This modular structure improves maintainability, testability, and scalability.
 - `isNight` - Boolean flag for night time
 - `acidProjectiles[]` - Active acid projectiles
 - `acidPools[]` - Active acid pool hazards
+- `gameStartTime` - Timestamp when current game session started (for scoreboard time tracking)
 
 **Dependencies**: `constants.js`
 
@@ -338,6 +339,159 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: None (localStorage only)
 
+#### SkillSystem.js
+**Purpose**: Skill upgrade system and XP management
+
+**Exports**: `SkillSystem` class, `skillSystem` singleton, `SKILLS_POOL` array, `MAX_SKILL_SLOTS`, `XP_BASE_REQUIREMENT`, `XP_SCALING_FACTOR`
+
+**Methods**:
+- `gainXP(amount)` - Add XP and check for level-up
+- `levelUp()` - Handle level-up logic (single-player and multiplayer)
+- `generateChoices()` - Generate 3 random skill choices for level-up
+- `activateSkill(skillId)` - Apply skill effect to all players
+- `getXPForZombieType(zombieType)` - Get XP value for zombie type
+
+**Skills Pool** (16 total skills):
+- **Vitality Boost** (❤️) - Increase Max HP by 25%
+- **Swift Steps** (👟) - Increase Movement Speed by 15%
+- **Eagle Eye** (🎯) - Increase Critical Hit Chance by 10%
+- **Iron Grip** (⚙️) - Increase Reload Speed by 20%
+- **Hoarder** (📦) - Increase Max Ammo capacity by 30%
+- **Regeneration** (💚) - Passive Health Regen (1 HP/sec)
+- **Thick Skin** (🛡️) - Reduce damage taken by 10%
+- **Lucky Strike** (🍀) - 15% chance for double damage
+- **Quick Hands** (⚡) - 50% faster weapon switching
+- **Scavenger** (🔍) - 25% more pickup spawn rate
+- **Adrenaline** (💉) - 20% speed boost for 3s after kill
+- **Armor Plating** (🛡️) - Gain 10 shield points
+- **Long Range** (📏) - 20% increased bullet range
+- **Fast Fingers** (👆) - 15% faster reload (stacks with Iron Grip)
+- **Bloodlust** (🩸) - Heal 2 HP per kill
+- **Steady Aim** (🎯) - 30% reduced bullet spread
+
+**Features**:
+- XP gain from zombie kills (scaled by zombie type)
+- Level-up system with 3 skill choices (expanded from 2)
+- XP scaling: Base 100 XP, scales by 1.2 per level
+- Skill upgrading: Skills can be upgraded multiple times
+- Multiplayer synchronization: Leader generates choices, broadcasts to clients
+- XP values at 1.5x rate (normal: 8, fast: 15, exploding: 23, armored: 18, ghost: 27, spitter: 23, boss: 375)
+
+**Skill Effect Integration**:
+- Combat effects (Thick Skin, Lucky Strike, Adrenaline, Bloodlust) applied in `combatUtils.js`
+- Player movement effects (Adrenaline speed boost) applied in `PlayerSystem.js`
+- Pickup spawn effects (Scavenger) applied in `PickupSpawnSystem.js`
+- Bullet effects (Long Range, Steady Aim) applied in `shootBullet()` function
+- Reload effects (Fast Fingers) stack multiplicatively with Iron Grip via `reloadSpeedMultiplier`
+
+**Dependencies**: `core/gameState.js`, `core/constants.js`
+
+#### MultiplayerSystem.js
+**Purpose**: Handles all multiplayer networking logic including Socket.IO connections, player synchronization, zombie sync, and game state sync
+
+**Exports**: `MultiplayerSystem` class
+
+**Methods**:
+- `checkServerHealth()` - Check server health status
+- `startLatencyMeasurement(socket)` - Start latency measurement for network monitoring
+- `initializeNetwork(gameHUD)` - Initialize network connection and set up all Socket.IO event handlers
+- `connectToMultiplayer()` - Connect to multiplayer (called when entering lobby)
+
+**Features**:
+- Socket.IO connection management with reconnection handling
+- Player state synchronization (position, angle, health, stamina, weapons)
+- Remote player action handling (shooting, melee, reload, grenade, weapon switching)
+- Zombie synchronization (spawn, update, hit, die events)
+- Game state synchronization (XP, level up, skills)
+- Latency measurement with exponential moving average
+- Leader/non-leader client handling
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `systems/SkillSystem.js`, `systems/AudioSystem.js`, `systems/ParticleSystem.js`, `utils/combatUtils.js`
+
+#### ZombieSpawnSystem.js
+**Purpose**: Handles zombie and boss spawning logic
+
+**Exports**: `ZombieSpawnSystem` class
+
+**Methods**:
+- `getZombieClassByType(type)` - Get zombie class by type string
+- `spawnBoss(multiplayerSocket)` - Spawn a boss zombie
+- `spawnZombies(count, multiplayerSocket)` - Spawn zombies for a wave
+
+**Features**:
+- Wave-based zombie type selection (Fast, Exploding, Ghost, Spitter, Armored)
+- Boss wave spawning (every 5 waves)
+- Staggered spawn timing with visual indicators
+- Multiplayer synchronization (leader-only spawning)
+- Spawn indicator system (1 second warning before spawn)
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `entities/Zombie.js`, `entities/BossZombie.js`, `utils/gameUtils.js`
+
+#### PlayerSystem.js
+**Purpose**: Handles player updates, rendering, and co-op lobby management
+
+**Exports**: `PlayerSystem` class
+
+**Methods**:
+- `updatePlayers(keys, mouse, performMeleeAttackCallback, cycleWeaponCallback)` - Update all players (movement, input, actions)
+- `updateCoopLobby(keys, mouse)` - Update co-op lobby (player joining/leaving)
+- `drawPlayers()` - Draw all players with visual effects
+
+**Features**:
+- Multi-input source support (mouse, keyboard, gamepad, AI, remote)
+- Player movement and sprint logic with stamina system
+- Footstep sound system
+- Player rendering with shadows, glow, muzzle flash, melee swipe
+- Co-op lobby player joining/leaving logic
+- Gamepad assignment and detection
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `systems/SettingsManager.js`, `systems/GraphicsSystem.js`, `systems/InputSystem.js`, `systems/AudioSystem.js`, `utils/combatUtils.js`, `systems/ParticleSystem.js`, `utils/drawingUtils.js`
+
+#### GameStateManager.js
+**Purpose**: Handles game lifecycle (start, restart, game over)
+
+**Exports**: `GameStateManager` class
+
+**Methods**:
+- `gameOver()` - Handle game over
+  - Calculates time survived from `gameStartTime`
+  - Determines max multiplier from all players
+  - Saves scoreboard entry if session was valid (`gameStartTime > 0`)
+  - Saves high score and multiplier stats
+- `restartGame()` - Restart game (return to main menu)
+- `startGame()` - Start game
+  - Sets `gameState.gameStartTime = Date.now()` for session tracking
+  - Initializes game state and spawns first wave
+
+**Features**:
+- High score and multiplier stats saving
+- Scoreboard entry saving on game over (only if qualifies for top 10)
+- Game session time tracking for accurate time survived calculation
+- Co-op mode state management
+- Player reset and positioning
+- Game state initialization
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `systems/AudioSystem.js`, `utils/gameUtils.js`
+
+#### MeleeSystem.js
+**Purpose**: Handles melee attack logic and range checking
+
+**Exports**: `MeleeSystem` class
+
+**Methods**:
+- `performMeleeAttack(player)` - Perform melee attack
+- `isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle)` - Check if zombie is in melee range
+
+**Features**:
+- Melee cooldown and reload checking
+- Swipe animation creation
+- Zombie hit detection with angle checking
+- Damage application and kill handling
+- Screen shake and particle effects
+- Multiplayer action synchronization
+
+**Dependencies**: `core/gameState.js`, `core/constants.js`, `systems/AudioSystem.js`, `systems/ParticleSystem.js`, `utils/combatUtils.js`, `entities/Particle.js`, `systems/SettingsManager.js`, `systems/SkillSystem.js`
+
 #### ZombieUpdateSystem.js
 **Purpose**: Handles zombie AI updates, multiplayer interpolation, and synchronization broadcasting
 
@@ -396,6 +550,9 @@ This modular structure improves maintainability, testability, and scalability.
 - Weighted powerup distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
 - Respects maximum pickup limits
 - 60% chance for powerup spawn every 30 seconds
+- **Scavenger Skill Integration**: Pickup spawn rates increased by player's `pickupSpawnRateMultiplier` (25% per level)
+  - Health/ammo pickup intervals reduced based on highest player multiplier
+  - Powerup spawn interval and chance increased based on Scavenger skill
 
 **Dependencies**: `core/constants.js` (spawn intervals, max counts), `entities/Pickup.js` (all pickup classes)
 
@@ -446,15 +603,41 @@ This modular structure improves maintainability, testability, and scalability.
 **Methods**:
 - `draw()` - Delegates to HUD, menu, or lobby render paths
 - `drawStat()` - Render individual stat panel
-- `drawMainMenu()` - Render main menu (single/multi/settings buttons, username, high score)
+- `drawMainMenu()` - Render main menu (single/multi/settings/gallery/about buttons, username, high score)
 - `drawLobby()` - Render multiplayer lobby (status text, player list, back/start buttons)
+- `drawGallery()` - Render gallery showcase screen with zombies, weapons, and pickups
+  - Displays 7 zombie types, 7 weapons, and 8 pickups in card-based layout
+  - Includes visual icon drawing functions: `drawZombieIcon()`, `drawWeaponIcon()`, `drawPickupIcon()`
+  - Supports smooth scrolling with mouse wheel
+  - Uses `drawGallerySection()` helper for consistent section rendering
+- `drawAboutScreen()` - Render about screen with game information
 - `drawGameOver()` - Render game over screen
-- `drawPauseMenu()` - Render pause menu
-- `checkMenuButtonClick()` / `updateMenuHover()` - Hit testing for both menu and lobby states
+- `drawPauseMenu()` - Render pause menu with interactive buttons (Resume, Restart, Settings, Return to Menu)
+- `drawCursor()` - Render custom cursor for menus and pause screen
+- `drawSinglePlayerHUD()` - Render single-player HUD layout
+- `drawCoopHUD()` - Render co-op HUD layout (2x2 player grid)
+- `drawPlayerStats()` - Render player health, shield, and multiplier (ammo/grenades moved to bottom right)
+- `drawSharedStats()` - Render shared game stats (Wave, Kills, Left, Score, Buffs)
+- `drawXPBar()` - Render XP progress bar with level and XP display (bottom middle, 240px wide)
+- `drawActiveSkills()` - Render active skills display (bottom left, shows collected skills with icons/levels)
+- `drawWeaponInfo()` - Render weapon/ammo and grenades info (bottom right)
+- `drawInstructions()` - Render keybind instructions at bottom (3 lines, all weapons + sprint)
+- `drawLevelUpScreen()` - Render level-up screen with 3 skill choice cards
+- `checkLevelUpClick(x, y)` - Detect clicks on skill cards in level-up screen
+- `checkMenuButtonClick()` / `updateMenuHover()` - Hit testing for both menu and lobby states, including pause menu
 - `getUIScale()` - Get current UI scale factor from settings (50%-150%)
 - `getScaledPadding()` - Get scaled padding value
 - `getScaledItemSpacing()` - Get scaled item spacing value
 - `getScaledFontSize()` - Get scaled font size (minimum 8px for readability)
+
+**HUD Layout**:
+- **Top Left**: Player stats (Health, Shield, Multiplier) and shared stats (Wave, Kills, Left, Score, Buffs)
+- **Bottom Left**: Active Skills display (vertical list of collected skills with icons, names, and levels)
+- **Bottom Middle**: XP Bar (240px wide, shows level and XP progress with green gradient)
+- **Bottom Right**: Weapon/Ammo and Grenades info (current weapon, ammo count, reload progress, grenade count)
+- **Bottom Center**: Keybind instructions (3 lines showing movement, weapons, sprint, grenade, melee)
+- All bottom UI elements positioned above instruction text with proper spacing
+- Layout adapts for both single-player and co-op modes
 
 **UI Scaling System**:
 - All UI elements scale dynamically based on `uiScale` setting (50%-150%)
@@ -560,12 +743,43 @@ This modular structure improves maintainability, testability, and scalability.
 - `triggerMuzzleFlash(x, y, angle)` - Show muzzle flash
 - `loadHighScore()` - Load from localStorage
 - `saveHighScore()` - Save to localStorage
+- `loadScoreboard()` - Load top 10 scoreboard entries from localStorage (sorted by score descending)
+- `saveScoreboardEntry(entry)` - Save scoreboard entry if it qualifies for top 10
+  - Entry structure: `{score, wave, kills, timeSurvived, maxMultiplier, username, dateTime}`
+  - Only saves if entry makes it into top 10 after sorting
+  - Returns boolean indicating if entry was saved
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`
 
 **Performance Features**:
 - **Viewport Culling**: `isInViewport()` performs efficient entity bounds checking with configurable margin
 - **Bounds Calculation**: `getViewportBounds()` provides reusable viewport bounds for culling
+
+**Scoreboard System**:
+- **Storage**: Uses localStorage key `zombobs_scoreboard`
+- **Ranking**: Entries sorted by score (descending), maintains top 10 only
+- **Entry Qualification**: New entries only saved if they qualify for top 10 after insertion and sorting
+- **Data Tracking**: Tracks score, wave, kills, time survived (seconds), max multiplier, username, ISO timestamp
+
+#### drawingUtils.js
+**Purpose**: Drawing utility functions for UI elements and visual effects
+
+**Exports**:
+- `drawMeleeSwipe(player)` - Draw melee swipe animation
+- `drawCrosshair(mouse)` - Draw crosshair at mouse position
+- `drawWaveBreak()` - Draw wave break UI overlay
+- `drawWaveNotification()` - Draw wave notification text
+- `drawFpsCounter()` - Draw FPS counter and debug stats
+
+**Features**:
+- Melee swipe animation with gradient and glow effects
+- Dynamic crosshair with multiple styles (dot, circle, cross, default)
+- Crosshair expansion based on movement and shooting
+- Wave break countdown timer display
+- Wave notification with fade-out animation
+- FPS counter with optional debug stats overlay
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `systems/SettingsManager.js`
 
 ### Main Entry Point (`js/main.js`)
 
@@ -589,7 +803,13 @@ This modular structure improves maintainability, testability, and scalability.
 - Zombie updates delegated to `ZombieUpdateSystem`
 - Entity rendering delegated to `EntityRenderSystem`
 - Pickup spawning delegated to `PickupSpawnSystem`
-- Current size: ~2,537 lines (reduced from ~3,230 lines)
+- Multiplayer networking extracted to `MultiplayerSystem`
+- Zombie spawning extracted to `ZombieSpawnSystem`
+- Player updates and rendering extracted to `PlayerSystem`
+- Game lifecycle management extracted to `GameStateManager`
+- Melee combat extracted to `MeleeSystem`
+- Drawing utilities extracted to `drawingUtils.js`
+- Current size: ~1,241 lines (reduced from ~2,536 lines, ~51% reduction)
 
 **AI Companion Integration**:
 - `addAIPlayer()` function delegates to `companionSystem.addCompanion()`
@@ -671,10 +891,10 @@ This modular structure improves maintainability, testability, and scalability.
 - **Background reload**: Weapons auto-reload when holstered for longer than reload time
 
 **Weapon Properties:**
-- **Pistol**: 1 damage, 400ms fire rate, 10 ammo, 1000ms reload
-- **Shotgun**: 3 damage per pellet (5 pellets), 800ms fire rate, 5 ammo, 1000ms reload
-- **Rifle**: 2 damage, 200ms fire rate, 30 ammo, 1000ms reload
-- **Flamethrower**: 0.5 damage per tick, 50ms fire rate, 100 ammo, 2000ms reload, 200px range, applies burn effect
+- **Pistol**: 2 damage (doubled from 1), 400ms fire rate, 10 ammo, 1000ms reload
+- **Shotgun**: 6 damage per pellet (doubled from 3, 5 pellets), 800ms fire rate, 5 ammo, 1000ms reload
+- **Rifle**: 4 damage (doubled from 2), 200ms fire rate, 30 ammo, 1000ms reload
+- **Flamethrower**: 1.0 damage per tick (doubled from 0.5), 50ms fire rate, 100 ammo, 2000ms reload, 200px range, applies burn effect
 
 **Weapon Switching:**
 - Keyboard: 1/2/3/4 keys (customizable in settings)
@@ -746,13 +966,42 @@ This modular structure improves maintainability, testability, and scalability.
   - "UNSTOPPABLE!" at 10+ kills
 - Uses `DamageNumber` class for floating text display
 
+### Skill & XP System
+**Location**: `js/systems/SkillSystem.js`, `js/ui/GameHUD.js`, `js/utils/combatUtils.js`
+- XP gain from zombie kills (1.5x rate increase for faster progression)
+- Level-up system: Players level up when XP reaches threshold
+- **3-Choice Level-Up Screen**: Shows 3 skill cards instead of 2
+  - Level-up UI displays 3 skill choices with proper spacing and click detection
+  - Works in both single-player and multiplayer modes
+- XP scaling: Base 100 XP requirement, scales by 1.2 per level
+- Skill activation: Skills applied to all players when selected
+- Skill upgrading: Skills can be upgraded multiple times (stacking effects)
+- **16 Total Skills**: 6 original + 10 new basic skills
+  - Combat skills: Thick Skin (damage reduction), Lucky Strike (double damage chance), Bloodlust (heal on kill), Adrenaline (speed boost on kill)
+  - Player skills: Quick Hands (weapon switch speed), Fast Fingers (reload speed), Swift Steps (movement speed)
+  - Utility skills: Scavenger (pickup spawn rate), Armor Plating (shield points), Long Range (bullet range), Steady Aim (reduced spread)
+  - Survival skills: Vitality Boost (max HP), Regeneration (health regen), Eagle Eye (crit chance), Hoarder (ammo capacity), Iron Grip (reload speed)
+- Multiplayer synchronization: Leader generates skill choices and broadcasts to all clients
+- Skill effects integrated throughout game systems:
+  - Combat: `handleBulletZombieCollisions()`, `handlePlayerZombieCollisions()` in `combatUtils.js`
+  - Movement: `updatePlayers()` in `PlayerSystem.js` (adrenaline boost)
+  - Pickups: All spawn functions in `PickupSpawnSystem.js` (scavenger multiplier)
+  - Bullets: `shootBullet()` in `combatUtils.js` (range and spread modifiers)
+
 ### Pause System
-**Location**: `js/core/gameState.js`, `js/main.js`
+**Location**: `js/core/gameState.js`, `js/main.js`, `js/ui/GameHUD.js`
 - `gamePaused` boolean flag
 - ESC key toggles pause state
 - Game loop skips update/render when paused
-- HUD displays pause menu overlay
-- R key restarts from pause menu
+- HUD displays pause menu overlay with interactive buttons
+- Interactive pause menu buttons:
+  - Resume - Click to resume game
+  - Restart - Click to restart game
+  - Settings - Opens settings panel (NEW, game stays paused)
+  - Return to Menu - Returns to main menu
+- Custom cursor shown when paused (system cursor hidden)
+- Button click detection and hover states via `checkMenuButtonClick()` / `updateMenuHover()`
+- R key still restarts from pause menu (keyboard shortcut maintained)
 - M key returns to main menu
 
 ## Rendering Pipeline
@@ -819,6 +1068,8 @@ All game state is managed through the `gameState` object:
 - `showMainMenu` - Main menu visibility
 - `showSettingsPanel` - Settings panel visibility
 - `showLobby` - Multiplayer lobby overlay visibility
+- `showGallery` - Gallery screen visibility
+- `showAbout` - About screen visibility
 - `multiplayer` - Socket.io metadata (`active`, `connected`, `socket`, `playerId`, `players[]`)
 - `username` - Display name sent to the lobby when connecting
 - `score` - Current score
@@ -851,6 +1102,12 @@ All game state is managed through the `gameState` object:
 - `killStreak` - Current kill streak count
 - `lastKillTime` - Timestamp of last kill (for streak tracking)
 - `fps` - FPS counter value
+- `level` - Current player level
+- `xp` - Current XP amount
+- `nextLevelXP` - XP required for next level
+- `activeSkills[]` - Array of active skills with levels
+- `levelUpChoices[]` - Array of skill choices for level-up screen
+- `showLevelUp` - Boolean flag for level-up screen visibility
 
 ## Event Flow
 
@@ -1031,3 +1288,62 @@ Performance improvements are most noticeable with:
 - Save/load system for game state persistence
 - Multiplayer game state synchronization via socket.io
 - Client-side socket.io integration for real-time multiplayer
+
+## Scoreboard System
+
+### Overview
+Local scoreboard system that tracks and displays top 10 game sessions on the HTML landing page (`index.html`). Only saves entries that qualify for top 10 ranking based on score.
+
+### Storage (`js/utils/gameUtils.js`)
+- **localStorage Key**: `zombobs_scoreboard`
+- **Format**: JSON array of scoreboard entries (max 10)
+- **Entry Structure**:
+  ```javascript
+  {
+    score: number,           // Final game score
+    wave: number,            // Wave reached
+    kills: number,           // Total zombies killed
+    timeSurvived: number,    // Time in seconds
+    maxMultiplier: number,   // Maximum multiplier achieved
+    username: string,        // Player username
+    dateTime: string         // ISO timestamp
+  }
+  ```
+
+### Functions
+- **`loadScoreboard()`**: Loads and returns top 10 entries sorted by score (descending)
+- **`saveScoreboardEntry(entry)`**: 
+  - Loads existing scoreboard
+  - Inserts new entry
+  - Sorts by score (descending)
+  - Keeps only top 10
+  - Saves to localStorage
+  - Returns boolean indicating if entry qualified
+
+### Game Integration (`js/systems/GameStateManager.js`)
+- **Session Tracking**: `gameState.gameStartTime` set in `startGame()` method
+- **Time Calculation**: `(Date.now() - gameState.gameStartTime) / 1000` in `gameOver()` method
+- **Max Multiplier**: Calculated from all players' `maxMultiplierThisSession`
+- **Auto-Save**: Scoreboard entry saved automatically on game over if session was valid
+
+### UI (`index.html`)
+- **Container**: Floating glassmorphism card matching existing side-card design
+- **Layout**: Responsive 3-column grid on large screens, stacks on mobile
+- **Styling**: 
+  - Special styling for top 3 entries (gold/silver/bronze)
+  - Custom scrollbar for long lists
+  - Hover effects on entries
+- **Rendering**: JavaScript renders entries on page load
+  - Formats time as "5m 23s" or "1h 5m 23s"
+  - Formats dates as relative ("2h ago") or absolute
+  - Formats numbers with commas
+  - Handles empty state
+
+### Data Flow
+1. Game starts → `gameStartTime` set
+2. Game ends → Time survived calculated
+3. Max multiplier determined from players
+4. Entry created with all stats
+5. `saveScoreboardEntry()` called
+6. Entry only saved if qualifies for top 10
+7. Scoreboard UI loads and displays on landing page

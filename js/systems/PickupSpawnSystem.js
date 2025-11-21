@@ -40,7 +40,11 @@ export class PickupSpawnSystem {
      * @param {number} now - Current timestamp
      */
     spawnHealthPickup(gameState, canvas, now) {
-        if (now - gameState.lastHealthPickupSpawnTime >= HEALTH_PICKUP_SPAWN_INTERVAL &&
+        // Apply Scavenger skill (25% more spawn rate = reduce interval)
+        const scavengerMultiplier = Math.max(...gameState.players.map(p => p.pickupSpawnRateMultiplier || 1.0));
+        const adjustedInterval = HEALTH_PICKUP_SPAWN_INTERVAL / scavengerMultiplier;
+        
+        if (now - gameState.lastHealthPickupSpawnTime >= adjustedInterval &&
             gameState.healthPickups.length < MAX_HEALTH_PICKUPS) {
             // Only spawn if some player is hurt
             if (gameState.players.some(p => p.health < PLAYER_MAX_HEALTH && p.health > 0)) {
@@ -57,7 +61,11 @@ export class PickupSpawnSystem {
      * @param {number} now - Current timestamp
      */
     spawnAmmoPickup(gameState, canvas, now) {
-        if (now - gameState.lastAmmoPickupSpawnTime >= AMMO_PICKUP_SPAWN_INTERVAL &&
+        // Apply Scavenger skill (25% more spawn rate = reduce interval)
+        const scavengerMultiplier = Math.max(...gameState.players.map(p => p.pickupSpawnRateMultiplier || 1.0));
+        const adjustedInterval = AMMO_PICKUP_SPAWN_INTERVAL / scavengerMultiplier;
+        
+        if (now - gameState.lastAmmoPickupSpawnTime >= adjustedInterval &&
             gameState.ammoPickups.length < MAX_AMMO_PICKUPS) {
             if (gameState.players.some(p => p.currentAmmo < p.maxAmmo * 0.5 && p.health > 0)) {
                 gameState.ammoPickups.push(new AmmoPickup(canvas.width, canvas.height));
@@ -74,8 +82,13 @@ export class PickupSpawnSystem {
      * @param {number} now - Current timestamp
      */
     spawnPowerup(gameState, canvas, now) {
-        if (now - gameState.lastPowerupSpawnTime >= 30000) { // Every 30 seconds check
-            if (Math.random() < 0.6) { // 60% chance
+        // Apply Scavenger skill (25% more spawn rate = reduce interval and increase chance)
+        const scavengerMultiplier = Math.max(...gameState.players.map(p => p.pickupSpawnRateMultiplier || 1.0));
+        const adjustedInterval = 30000 / scavengerMultiplier;
+        const adjustedChance = Math.min(1.0, 0.6 * scavengerMultiplier); // Increase chance up to 100%
+        
+        if (now - gameState.lastPowerupSpawnTime >= adjustedInterval) { // Adjusted interval
+            if (Math.random() < adjustedChance) { // Adjusted chance
                 const rand = Math.random();
 
                 // Distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)

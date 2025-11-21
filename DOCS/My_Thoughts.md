@@ -30,7 +30,7 @@ All changes maintain code readability and pass linting. Following KISS, DOTI, an
 
 ## Current State [2025-11-20]
 
-The project is currently at **V0.5.0**. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
+The project is currently at **V0.6.0**. Major balance overhaul with crit rate reduction, doubled zombie HP (except Boss), doubled weapon damage, and Hoarder skill bug fix. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
 
 ### Recent Fixes
 - **Critical Bug Fix**: Resolved `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.

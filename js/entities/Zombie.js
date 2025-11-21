@@ -19,7 +19,7 @@ export class Zombie {
         }
         this.radius = 12;
         this.speed = 1 + (gameState.wave * 0.1);
-        this.health = 2 + Math.floor(gameState.wave / 3);
+        this.health = (2 + Math.floor(gameState.wave / 3)) * 2; // Doubled HP
         this.maxHealth = this.health;
         this.type = 'base';
 

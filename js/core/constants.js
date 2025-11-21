@@ -97,13 +97,13 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "V0.5.3: UI Improvements & Scaling Fixes! 🎨 | Modern Glassmorphism Lobby 🌐 | Comprehensive Font Scaling 📏 | UI Scale Preset Buttons ⚙️ | Optimized Off-Screen Indicators ⚡ | V0.5.2: Engine Micro-Optimizations! 🚀 | Math.sqrt() Elimination (30-50% FPS boost) ⚡ | forEach→for Loops 🔄 | Quadtree Reuse 🌳 | Settings Caching 💾 | V0.5.1: Speed Sync & Network Optimizations! ⚡ | Delta Compression (50-80% bandwidth reduction) 📉 | Adaptive Updates (5-20Hz) 🔄 | Advanced Interpolation (60-80% less jitter) ✨ | V0.5.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | UI Scaling System 📏 | And More...";
+export const NEWS_UPDATES = "V0.6.0: Balance Overhaul! ⚖️ | Crit Rate Reduced (10%→3.33%) 🎯 | Zombie HP Doubled (except Boss) 💪 | Weapon Damage Doubled 🔫 | Hoarder Skill Bug Fixed 📦 | V0.5.3: UI Improvements & Scaling Fixes! 🎨 | Modern Glassmorphism Lobby 🌐 | Comprehensive Font Scaling 📏 | V0.5.2: Engine Micro-Optimizations! 🚀 | Math.sqrt() Elimination (30-50% FPS boost) ⚡ | V0.5.1: Speed Sync & Network Optimizations! ⚡ | Delta Compression (50-80% bandwidth reduction) 📉 | V0.5.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | UI Scaling System 📏 | And More...";
 
 // Weapon definitions
 export const WEAPONS = {
     pistol: {
         name: "Pistol",
-        damage: 1,
+        damage: 2, // Doubled from 1
         fireRate: 400, // ms between shots
         ammo: 10,
         maxAmmo: 10,
@@ -111,7 +111,7 @@ export const WEAPONS = {
     },
     shotgun: {
         name: "Shotgun",
-        damage: 3,
+        damage: 6, // Doubled from 3 (per pellet)
         fireRate: 800, // ms between shots
         ammo: 5,
         maxAmmo: 5,
@@ -119,7 +119,7 @@ export const WEAPONS = {
     },
     rifle: {
         name: "Rifle",
-        damage: 2,
+        damage: 4, // Doubled from 2
         fireRate: 200, // ms between shots
         ammo: 30,
         maxAmmo: 30,
@@ -127,7 +127,7 @@ export const WEAPONS = {
     },
     flamethrower: {
         name: "Flamethrower",
-        damage: 0.5, // Low per-tick damage
+        damage: 1.0, // Doubled from 0.5
         fireRate: 50, // Very fast (ms between shots)
         ammo: 100,
         maxAmmo: 100,
@@ -137,7 +137,7 @@ export const WEAPONS = {
     },
     smg: {
         name: "SMG",
-        damage: 0.8,
+        damage: 1.6, // Doubled from 0.8
         fireRate: 80, // Fast fire rate
         ammo: 40,
         maxAmmo: 40,
@@ -145,7 +145,7 @@ export const WEAPONS = {
     },
     sniper: {
         name: "Sniper",
-        damage: 15, // High damage
+        damage: 30, // Doubled from 15
         fireRate: 1500, // Slow fire rate
         ammo: 5,
         maxAmmo: 5,
@@ -161,6 +161,6 @@ export const WEAPONS = {
         reloadTime: 3000,
         type: 'rocket',
         explosionRadius: 150,
-        explosionDamage: 60
+        explosionDamage: 120 // Doubled from 60
     }
 };
