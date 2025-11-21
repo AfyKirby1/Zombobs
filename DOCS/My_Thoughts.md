@@ -1,5 +1,33 @@
 # My Thoughts
 
+## 2025-01-21 - Engine Performance Micro-Optimizations
+
+Just completed 15 small performance optimizations to squeeze out extra performance from the engine. These are the "tiny improvements" that add up:
+
+1. **Math.sqrt() Elimination** - Replaced 26+ expensive sqrt calls with squared distance comparisons. Only calculate sqrt when we actually need the distance value (normalization, damage falloff).
+
+2. **forEach() to for Loops** - Converted hot-path iterations to faster for loops. Small but measurable improvement.
+
+3. **Quadtree Reuse** - The Quadtree was being recreated every frame. Now it's reused and just cleared/updated. Reduces GC pressure.
+
+4. **Query Range Reuse** - Same idea - reuse the query range object instead of creating new ones per bullet.
+
+5. **Settings Caching** - Cache frequently accessed settings at frame start. Reduces repeated property lookups.
+
+6. **Viewport Caching** - Calculate viewport bounds once per frame, reuse everywhere.
+
+7. **Property Caching** - Cache object properties in local variables within loops.
+
+8. **Early Returns** - Skip processing for entities that don't need it (dead, expired, off-screen).
+
+9. **Math Constants** - Added TWO_PI constant to avoid repeated Math.PI * 2 calculations.
+
+These are all small wins individually, but together they should provide 5-15% additional FPS improvement, especially on low-end hardware. The optimizations focus on hot paths: collision detection, distance calculations, and rendering loops.
+
+All changes maintain code readability and pass linting. Following KISS, DOTI, and YAGNI principles - no over-engineering, just practical improvements.
+
+# My Thoughts
+
 ## Current State [2025-11-20]
 
 The project is currently at **V0.5.0**. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.

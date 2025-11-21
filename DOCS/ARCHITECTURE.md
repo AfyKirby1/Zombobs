@@ -397,6 +397,9 @@ This modular structure improves maintainability, testability, and scalability.
 
 **UI Scaling System**:
 - All UI elements scale dynamically based on `uiScale` setting (50%-150%)
+- All fonts properly scale using pattern: `Math.max(minSize, baseSize * scale)`
+- Button fonts, menu text, lobby UI, and all UI elements scale consistently
+- UI scale preset buttons in settings panel (Small 70%, Medium 100%, Large 130%)
 - Base dimensions stored separately from scaled dimensions for clean calculations
 - Scaling applied to: fonts, padding, spacing, button sizes, panel dimensions, health displays
 - Minimum font size enforced (8px) for readability at low scales
@@ -537,10 +540,12 @@ This modular structure improves maintainability, testability, and scalability.
 - Settings-aware keybind handling (keyboard and gamepad)
 
 ### Collision Detection
-**Location**: `js/utils/gameUtils.js`
-- Circle-based collision using distance formula
+**Location**: `js/utils/gameUtils.js`, `js/utils/combatUtils.js`
+- Circle-based collision using squared distance formula (optimized, no sqrt)
+- Quadtree spatial partitioning for bullet-zombie collisions (reused instance)
 - Used for: bullet-zombie, player-zombie, player-pickup interactions
 - Special handling for exploding zombies (position stored before removal)
+- **Performance**: Squared distance comparisons eliminate expensive sqrt operations
 
 ### Screen Shake System
 **Location**: `js/core/gameState.js`, `js/main.js`
@@ -884,6 +889,14 @@ All game state is managed through the `gameState` object:
 - Maximum particle limit (500) prevents performance degradation
 - ES6 modules enable better code splitting and tree-shaking
 - Constants extracted from magic numbers for better maintainability
+- **Math.sqrt() Elimination (V0.5.2)**: 26+ sqrt calls replaced with squared distance comparisons
+- **Loop Optimizations (V0.5.2)**: forEach() converted to for loops in hot paths
+- **Object Reuse (V0.5.2)**: Quadtree and query range objects reused instead of recreated
+- **Settings Caching (V0.5.2)**: Frequently accessed settings cached at frame start
+- **Viewport Caching (V0.5.2)**: Viewport bounds calculated once per frame and reused
+- **Property Caching (V0.5.2)**: Object properties cached in local variables within loops
+- **Early Returns (V0.5.2)**: Early exits for entities that don't need processing
+- **Math Constants (V0.5.2)**: TWO_PI constant added to reduce repeated calculations
 
 ### Expected Performance Gains
 
@@ -892,6 +905,15 @@ Based on implementation:
 - **WebGPU**: 20-40% improvement (dirty flags + buffer optimization)
 - **Entity Rendering**: 15-25% improvement (culling + batching)
 - **Particle System**: 25-35% improvement (optimized loops)
+- **Engine Micro-Optimizations (V0.5.2)**: 5-15% additional FPS improvement
+  - Math.sqrt() elimination (26+ locations) - squared distance comparisons
+  - forEach() to for loops in hot paths (5-10% faster iteration)
+  - Quadtree instance reuse (reduces GC pressure)
+  - Settings lookup caching (reduces repeated property access)
+  - Viewport bounds caching (calculated once per frame)
+  - Property caching in loops (faster iterations)
+  - Early return optimizations (skips unnecessary work)
+  - Math constants caching (TWO_PI)
 
 Performance improvements are most noticeable with:
 - High entity counts (50+ zombies)

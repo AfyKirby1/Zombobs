@@ -17,6 +17,11 @@ import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 
+// Reusable Quadtree instance to avoid recreation every frame
+let collisionQuadtree = null;
+// Reusable query range object to avoid allocation per bullet
+const queryRange = { x: 0, y: 0, width: 40, height: 40 };
+
 export function shootBullet(target, canvas, player) {
     // Fallback to p1 for backward compat if player not provided
     player = player || gameState.players[0];
@@ -283,12 +288,16 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
     gameState.shakeAmount = 15;
 
     // AOE damage to zombies
-    gameState.zombies.forEach((zombie, zombieIndex) => {
+    const radiusSquared = radius * radius;
+    for (let zombieIndex = gameState.zombies.length - 1; zombieIndex >= 0; zombieIndex--) {
+        const zombie = gameState.zombies[zombieIndex];
         const dx = zombie.x - x;
         const dy = zombie.y - y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distSquared = dx * dx + dy * dy;
 
-        if (distance <= radius) {
+        if (distSquared <= radiusSquared) {
+            // Calculate actual distance only when needed for damage calculation
+            const distance = Math.sqrt(distSquared);
             // Damage decreases with distance
             const damageMultiplier = 1 - (distance / radius) * 0.5; // 50% to 100% damage
             const finalDamage = Math.floor(damage * damageMultiplier);
@@ -331,18 +340,21 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), false);
             }
         }
-    });
+    }
 
     // Player damage if explosion is not from player (e.g., exploding zombie)
     if (!sourceIsPlayer) {
-        gameState.players.forEach(player => {
-            if (player.health <= 0) return;
+        const radiusSquared = radius * radius;
+        for (let i = 0; i < gameState.players.length; i++) {
+            const player = gameState.players[i];
+            if (player.health <= 0) continue;
 
             const dx = player.x - x;
             const dy = player.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distSquared = dx * dx + dy * dy;
 
-            if (distance <= radius) {
+            if (distSquared <= radiusSquared) {
+                const distance = Math.sqrt(distSquared);
                 const damageMultiplier = 1 - (distance / radius) * 0.5;
                 const playerDamage = Math.floor(damage * damageMultiplier * 0.5); // Player takes 50% of explosion damage
                 const previousHealth = player.health;
@@ -360,7 +372,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 }
                 playDamageSound();
             }
-        });
+        }
         if (gameState.shakeAmount < 12) gameState.shakeAmount = 12;
     }
 
@@ -370,26 +382,33 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
 
 // Collision handlers
 export function handleBulletZombieCollisions() {
-    // Initialize Quadtree for spatial partitioning
-    // Capacity 4 per node seems reasonable for zombies
-    const qt = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+    // Reuse Quadtree instance instead of recreating every frame
+    if (!collisionQuadtree) {
+        collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+    } else {
+        // Clear and update boundary if canvas size changed
+        collisionQuadtree.clear();
+        collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+    }
 
     // Insert all zombies into Quadtree
-    gameState.zombies.forEach(zombie => qt.insert(zombie));
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        collisionQuadtree.insert(gameState.zombies[i]);
+    }
 
-    gameState.bullets.forEach((bullet, bulletIndex) => {
-        // Define query range for the bullet (using a safe bounding box)
-        const range = {
-            x: bullet.x - 20, // Arbitrary padding around bullet
-            y: bullet.y - 20,
-            width: 40,
-            height: 40
-        };
+    for (let bulletIndex = 0; bulletIndex < gameState.bullets.length; bulletIndex++) {
+        const bullet = gameState.bullets[bulletIndex];
+        // Reuse query range object (update properties instead of creating new object)
+        queryRange.x = bullet.x - 20; // Arbitrary padding around bullet
+        queryRange.y = bullet.y - 20;
+        queryRange.width = 40;
+        queryRange.height = 40;
 
         // Query potential collisions
-        const candidates = qt.query(range);
+        const candidates = collisionQuadtree.query(queryRange);
 
-        candidates.forEach(zombie => {
+        for (let i = 0; i < candidates.length; i++) {
+            const zombie = candidates[i];
             // Verify the zombie is still alive (might have been killed by another bullet in this same frame)
             // Although candidates are references to objects in gameState.zombies, 
             // if we splice from gameState.zombies, the reference is still valid but we need to ensure
@@ -711,8 +730,8 @@ export function handleBulletZombieCollisions() {
                     bullet.markedForRemoval = true;
                 }
             }
-        });
-    });
+        }
+    }
 
     // Remove marked bullets
     // We need to filter the main array
@@ -722,10 +741,12 @@ export function handleBulletZombieCollisions() {
 }
 
 export function handlePlayerZombieCollisions() {
-    gameState.players.forEach(player => {
-        if (player.health <= 0) return;
+    for (let i = 0; i < gameState.players.length; i++) {
+        const player = gameState.players[i];
+        if (player.health <= 0) continue;
 
-        gameState.zombies.forEach(zombie => {
+        for (let j = 0; j < gameState.zombies.length; j++) {
+            const zombie = gameState.zombies[j];
             if (checkCollision(player, zombie)) {
                 const damage = 0.5;
                 const previousHealth = player.health;
@@ -755,8 +776,8 @@ export function handlePlayerZombieCollisions() {
                 }
                 playDamageSound();
             }
-        });
-    });
+        }
+    }
 }
 
 export function handlePickupCollisions() {

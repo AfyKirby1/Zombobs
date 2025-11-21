@@ -59,22 +59,28 @@ export class CompanionSystem {
             return { moveX: 0, moveY: 0 };
         }
 
-        const distToP1 = Math.sqrt((player.x - p1.x) ** 2 + (player.y - p1.y) ** 2);
+        const dxToP1 = player.x - p1.x;
+        const dyToP1 = player.y - p1.y;
+        const distToP1Squared = dxToP1 * dxToP1 + dyToP1 * dyToP1;
+        const distToP1 = Math.sqrt(distToP1Squared);
 
         // Find nearest zombie
         let nearestZombie = null;
-        let minDist = Infinity;
+        let minDistSquared = Infinity;
         
-        gameState.zombies.forEach(zombie => {
+        for (let i = 0; i < gameState.zombies.length; i++) {
+            const zombie = gameState.zombies[i];
             const dx = zombie.x - player.x;
             const dy = zombie.y - player.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            const distSquared = dx * dx + dy * dy;
             
-            if (dist < minDist) {
-                minDist = dist;
+            if (distSquared < minDistSquared) {
+                minDistSquared = distSquared;
                 nearestZombie = zombie;
             }
-        });
+        }
+        
+        const minDist = Math.sqrt(minDistSquared);
 
         let moveX = 0;
         let moveY = 0;
@@ -89,18 +95,17 @@ export class CompanionSystem {
             player.angle = Math.atan2(dy, dx);
 
             // Combat movement logic
+            const leashDistSquared = this.leashDistance * this.leashDistance;
             if (dist < this.kiteDistance) {
                 // Too close! Back away (Kite)
                 moveX = -(dx / dist);
                 moveY = -(dy / dist);
                 wantsToMove = true;
-            } else if (distToP1 > this.leashDistance) {
+            } else if (distToP1Squared > leashDistSquared) {
                 // Too far from squad, regroup towards P1 (ignoring zombie positioning slightly)
-                const dxP1 = p1.x - player.x;
-                const dyP1 = p1.y - player.y;
-                const distP1 = Math.sqrt(dxP1 * dxP1 + dyP1 * dyP1);
-                moveX = dxP1 / distP1;
-                moveY = dyP1 / distP1;
+                const distP1 = Math.sqrt(distToP1Squared);
+                moveX = dxToP1 / distP1;
+                moveY = dyToP1 / distP1;
                 wantsToMove = true;
             } else if (dist > this.engageDistance) {
                 // Close the gap slightly if safe
@@ -126,12 +131,11 @@ export class CompanionSystem {
 
         } else {
             // No enemies, stick close to P1
-            if (distToP1 > this.followDistance) {
-                const dx = p1.x - player.x;
-                const dy = p1.y - player.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                moveX = dx / dist;
-                moveY = dy / dist;
+            const followDistSquared = this.followDistance * this.followDistance;
+            if (distToP1Squared > followDistSquared) {
+                const dist = Math.sqrt(distToP1Squared);
+                moveX = dxToP1 / dist;
+                moveY = dyToP1 / dist;
                 wantsToMove = true;
                 // Face movement direction when just walking
                 player.angle = Math.atan2(moveY, moveX);

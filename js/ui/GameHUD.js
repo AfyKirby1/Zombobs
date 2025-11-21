@@ -203,6 +203,7 @@ export class GameHUD {
         const player = gameState.players[0];
         const startX = this.padding;
         let startY = this.padding;
+        const itemSpacing = this.getScaledItemSpacing();
 
         this.drawPlayerStats(player, startX, startY);
 
@@ -476,10 +477,13 @@ export class GameHUD {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.font = 'bold 48px "Creepster", cursive';
+        const scale = this.getUIScale();
+        // Title - scaled
+        const aiTitleFontSize = Math.max(36, 48 * scale);
+        this.ctx.font = `bold ${aiTitleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 20;
+        this.ctx.shadowBlur = 20 * scale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
         this.ctx.fillText('AI SQUAD', this.canvas.width / 2, 100);
         this.ctx.shadowBlur = 0;
@@ -497,13 +501,16 @@ export class GameHUD {
         this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
         this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
 
-        this.ctx.font = '20px "Roboto Mono", monospace';
+        // Squad Members title - scaled (scale already defined at start of method)
+        const squadTitleFontSize = Math.max(16, 20 * scale);
+        this.ctx.font = `${squadTitleFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = '#ffffff';
         this.ctx.fillText('Squad Members', panelX + 20, panelY + 35);
 
-        // List players
-        this.ctx.font = '16px "Roboto Mono", monospace';
+        // List players - scaled
+        const playerListFontSize = Math.max(12, 16 * scale);
+        this.ctx.font = `${playerListFontSize}px "Roboto Mono", monospace`;
         gameState.players.forEach((player, index) => {
             const y = panelY + 70 + index * 35;
             const isPlayer = index === 0;
@@ -522,8 +529,7 @@ export class GameHUD {
             }
         });
 
-        // Buttons
-        const scale = this.getUIScale();
+        // Buttons (scale already defined at start of method)
         const buttonWidth = 200 * scale;
         const buttonHeight = 50 * scale;
         const buttonY = this.canvas.height - (150 * scale);
@@ -856,15 +862,21 @@ export class GameHUD {
     drawMainMenu() {
         this.drawCreepyBackground();
 
-        this.ctx.font = 'bold 40px "Creepster", cursive';
+        const scale = this.getUIScale();
+
+        // Main title - scaled
+        const titleFontSize = Math.max(32, 40 * scale);
+        this.ctx.font = `bold ${titleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 30;
+        this.ctx.shadowBlur = 30 * scale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
         this.ctx.fillText('ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS', this.canvas.width / 2, this.canvas.height / 2 - 200);
         this.ctx.shadowBlur = 0;
 
-        this.ctx.font = '18px "Roboto Mono", monospace';
+        // Subtitle - scaled
+        const subtitleFontSize = Math.max(14, 18 * scale);
+        this.ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#9e9e9e';
         this.ctx.fillText('Survive the Horde', this.canvas.width / 2, this.canvas.height / 2 - 150);
 
@@ -872,17 +884,16 @@ export class GameHUD {
         if (!isAudioInitialized()) {
             const centerY = this.canvas.height / 2;
             const musicTipY = centerY - 80;
-            this.ctx.font = '14px "Roboto Mono", monospace';
+            const musicTipFontSize = Math.max(11, 14 * scale);
+            this.ctx.font = `${musicTipFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            this.ctx.shadowBlur = 8;
+            this.ctx.shadowBlur = 8 * scale;
             this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
             this.ctx.fillText('🎵 Click anywhere to enable audio', this.canvas.width / 2, musicTipY);
             this.ctx.shadowBlur = 0;
         }
-
-        const scale = this.getUIScale();
-        const buttonWidth = 200 * scale;
-        const buttonHeight = 40 * scale;
+        const buttonWidth = 180 * scale;  // Reduced from 200
+        const buttonHeight = 36 * scale;  // Reduced from 40
         const buttonSpacing = 15 * scale;
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
@@ -928,14 +939,17 @@ export class GameHUD {
         // Row 4: About (centered)
         this.drawMenuButton('About', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
-        this.ctx.font = '12px "Roboto Mono", monospace';
+        // High score - scaled
+        const highScoreFontSize = Math.max(10, 12 * scale);
+        this.ctx.font = `${highScoreFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
-        this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 40);
+        this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 80);  // Moved up from -40
 
-        // Display all-time best multiplier
+        // Display all-time best multiplier - scaled
         if (gameState.allTimeMaxMultiplier > 1.0) {
             this.ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
-            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 20);
+            this.ctx.font = `${highScoreFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 60);  // Moved up from -20
         }
 
         // Draw server status indicator
@@ -969,9 +983,10 @@ export class GameHUD {
             this.ctx.shadowBlur = 0;
         }
 
-        // Draw speaker icon
+        // Draw speaker icon - scaled
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '24px Arial';
+        const speakerIconSize = Math.max(18, 24 * scale);
+        this.ctx.font = `${speakerIconSize}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         const icon = gameState.menuMusicMuted ? '🔇' : '🔊';
@@ -995,7 +1010,7 @@ export class GameHUD {
         const ctx = this.ctx;
 
         // Dimensions
-        const boxWidth = 480;
+        const boxWidth = 650;  // Increased from 480
         const boxHeight = 24;
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
@@ -1049,7 +1064,7 @@ export class GameHUD {
     }
 
     drawVersionBox() {
-        const version = "V0.5.1";
+        const version = "V0.5.3";
         const padding = 15;
         const boxHeight = 24;
         
@@ -1082,20 +1097,23 @@ export class GameHUD {
     drawAboutScreen() {
         this.drawCreepyBackground();
 
+        const scale = this.getUIScale();
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
-        // Title
-        this.ctx.font = 'bold 48px "Creepster", cursive';
+        // Title - scaled
+        const aboutTitleFontSize = Math.max(36, 48 * scale);
+        this.ctx.font = `bold ${aboutTitleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 30;
+        this.ctx.shadowBlur = 30 * scale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
         this.ctx.fillText('ABOUT', centerX, centerY - 250);
         this.ctx.shadowBlur = 0;
 
-        // Game Info
-        this.ctx.font = '20px "Roboto Mono", monospace';
+        // Game Info - scaled
+        const gameInfoFontSize = Math.max(16, 20 * scale);
+        this.ctx.font = `${gameInfoFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#ffffff';
         this.ctx.textAlign = 'center';
 
@@ -1103,27 +1121,30 @@ export class GameHUD {
         this.ctx.fillText('ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS', centerX, y);
         y += 40;
 
-        this.ctx.font = '16px "Roboto Mono", monospace';
+        const versionFontSize = Math.max(12, 16 * scale);
+        this.ctx.font = `${versionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Version: V0.5.1', centerX, y);
+        this.ctx.fillText('Version: V0.5.3', centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.5.1', centerX, y);
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.5.3', centerX, y);
         y += 50;
 
-        this.ctx.font = '14px "Roboto Mono", monospace';
+        const descriptionFontSize = Math.max(11, 14 * scale);
+        this.ctx.font = `${descriptionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#cccccc';
         this.ctx.fillText('A fast-paced, top-down zombie survival game', centerX, y);
         y += 25;
         this.ctx.fillText('built with vanilla HTML5 Canvas and JavaScript.', centerX, y);
         y += 50;
 
-        this.ctx.font = '16px "Roboto Mono", monospace';
+        this.ctx.font = `${versionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#ff9800';
         this.ctx.fillText('Features:', centerX, y);
         y += 30;
 
-        this.ctx.font = '14px "Roboto Mono", monospace';
+        // Features list - scaled
+        this.ctx.font = `${descriptionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#aaaaaa';
         const features = [
             '• Wave-based survival gameplay',
@@ -1138,8 +1159,7 @@ export class GameHUD {
             y += 25;
         });
 
-        // Back button
-        const scale = this.getUIScale();
+        // Back button (scale already defined at start of method)
         const buttonWidth = 240 * scale;
         const buttonHeight = 50 * scale;
         const backY = this.canvas.height - (100 * scale);
@@ -1750,6 +1770,7 @@ export class GameHUD {
     }
 
     drawMenuButton(text, x, y, width, height, hovered, disabled) {
+        const scale = this.getUIScale();
         const bgColor = disabled ? '#333333' : (hovered ? '#ff1744' : '#1a1a1a');
         const borderColor = disabled ? '#666666' : (hovered ? '#ff5252' : '#ff1744');
         const textColor = disabled ? '#888888' : '#ffffff';
@@ -1773,7 +1794,8 @@ export class GameHUD {
         }
 
         this.ctx.fillStyle = textColor;
-        this.ctx.font = 'bold 20px "Roboto Mono", monospace';
+        const fontSize = Math.max(12, 18 * scale);  // Base 18px, minimum 12px
+        this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(text, x + width / 2, y + height / 2);
@@ -1892,23 +1914,23 @@ export class GameHUD {
         if (!this.mainMenu && !gameState.showAbout) return null;
 
         const scale = this.getUIScale();
-        const mainMenuButtonWidth = 200 * scale;
-        const mainMenuButtonHeight = 40 * scale;
+        const mainMenuButtonWidth = 180 * scale;  // Reduced from 200
+        const mainMenuButtonHeight = 36 * scale;  // Reduced from 40
         const centerY = this.canvas.height / 2;
         const buttonSpacing = 15 * scale;
 
         // Username
-        const usernameY = centerY - (130 * uiScale);
-        const usernameHitWidth = 150 * uiScale;
-        const usernameHitHeight = 20 * uiScale;
+        const usernameY = centerY - (130 * scale);
+        const usernameHitWidth = 150 * scale;
+        const usernameHitHeight = 20 * scale;
         if (mouseX >= centerX - usernameHitWidth && mouseX <= centerX + usernameHitWidth &&
             mouseY >= usernameY - usernameHitHeight && mouseY <= usernameY + usernameHitHeight) {
             return 'username';
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
-        const columnSpacing = 20 * uiScale;
-        const buttonStartY = centerY - (30 * uiScale);
+        const columnSpacing = 20 * scale;
+        const buttonStartY = centerY - (30 * scale);
         const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
 
@@ -1981,13 +2003,14 @@ export class GameHUD {
             let closestPlayer = null;
             let minDist = Infinity;
 
+            let minDistSquared = Infinity;
             gameState.players.forEach(p => {
                 if (p.health > 0) {
                     const dx = p.x - zombie.x;
                     const dy = p.y - zombie.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < minDist) {
-                        minDist = dist;
+                    const distSquared = dx * dx + dy * dy;
+                    if (distSquared < minDistSquared) {
+                        minDistSquared = distSquared;
                         closestPlayer = p;
                     }
                 }
@@ -1997,10 +2020,11 @@ export class GameHUD {
 
             const dx = zombie.x - closestPlayer.x;
             const dy = zombie.y - closestPlayer.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distSquared = dx * dx + dy * dy;
+            const indicatorDistSquared = indicatorDistance * indicatorDistance;
 
             // Only show indicator if zombie is off-screen but within threshold distance
-            if (distance > indicatorDistance) return;
+            if (distSquared > indicatorDistSquared) return;
 
             const isOnScreen = zombie.x >= 0 && zombie.x <= this.canvas.width &&
                 zombie.y >= 0 && zombie.y <= this.canvas.height;
@@ -2048,18 +2072,16 @@ export class GameHUD {
             // Use the closest intersection to the zombie
             if (intersections.length > 0) {
                 let closestIntersection = intersections[0];
-                let closestDist = Math.sqrt(
-                    Math.pow(intersections[0].x - zombie.x, 2) +
-                    Math.pow(intersections[0].y - zombie.y, 2)
-                );
+                const dx0 = intersections[0].x - zombie.x;
+                const dy0 = intersections[0].y - zombie.y;
+                let closestDistSquared = dx0 * dx0 + dy0 * dy0;
 
                 intersections.forEach(int => {
-                    const dist = Math.sqrt(
-                        Math.pow(int.x - zombie.x, 2) +
-                        Math.pow(int.y - zombie.y, 2)
-                    );
-                    if (dist < closestDist) {
-                        closestDist = dist;
+                    const dx = int.x - zombie.x;
+                    const dy = int.y - zombie.y;
+                    const distSquared = dx * dx + dy * dy;
+                    if (distSquared < closestDistSquared) {
+                        closestDistSquared = distSquared;
                         closestIntersection = int;
                     }
                 });

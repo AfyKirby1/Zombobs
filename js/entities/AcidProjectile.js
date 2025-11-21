@@ -29,9 +29,9 @@ export class AcidProjectile {
         // Check if reached target (with some tolerance)
         const dx = this.targetX - this.x;
         const dy = this.targetY - this.y;
-        const distToTarget = Math.sqrt(dx * dx + dy * dy);
+        const distToTargetSquared = dx * dx + dy * dy;
         
-        if (distToTarget < 20) {
+        if (distToTargetSquared < 20 * 20) {
             this.land();
         }
     }

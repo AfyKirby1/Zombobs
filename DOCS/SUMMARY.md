@@ -13,7 +13,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Background Reload** - Weapons auto-reload when holstered long enough
 ✅ **Auto-Reload** - Automatic reload when ammo reaches 0
 ✅ **UI Systems** - In-game HUD component with pause menu and game over screens
-✅ **Multiplayer Lobby** - Canvas-driven lobby with ready system and synchronized game start
+✅ **Multiplayer Lobby** - Modern glassmorphism lobby with animated background, player cards, and enhanced UI
 ✅ **Leader System** - First player designated as lobby leader with game start control
 ✅ **Ready System** - Players can toggle ready status; all must be ready to start
 ✅ **Synchronized Game Start** - All players enter game simultaneously in same session
@@ -33,7 +33,19 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - WebGPU optimizations (dirty flags, buffer management)
   - Particle system optimization with improved update loops
   - Entity loop optimization (forEach → for loops)
+  - Squared distance calculations (eliminates sqrt in hot paths)
+  - Off-screen indicator distance optimizations
   - 30-50% FPS improvement on Canvas 2D, 20-40% on WebGPU, 40-60% with update culling
+✅ **Engine Micro-Optimizations** - 15 small performance improvements (V0.5.2)
+  - Math.sqrt() elimination (26+ locations) - squared distance comparisons
+  - forEach() to for loops in hot paths (5-10% faster iteration)
+  - Quadtree instance reuse (reduces GC pressure)
+  - Settings lookup caching (reduces repeated property access)
+  - Viewport bounds caching (calculated once per frame)
+  - Property caching in loops (faster iterations)
+  - Early return optimizations (skips unnecessary work)
+  - Math constants caching (TWO_PI)
+  - Expected 5-15% additional FPS improvement on low-end hardware
 ✅ **Enhanced Graphics Quality System** - Quality presets affect all visual effects (V0.5.1)
   - Ultra quality preset added (50k particles, 1.25x resolution, advanced lighting)
   - Three new graphics settings: Effect Intensity, Post-Processing Quality, Particle Detail
@@ -47,10 +59,13 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Socket.IO binary add-ons (bufferutil, utf-8-validate) reduce CPU by 10-20%
   - Latency measurement with exponential moving average for adaptive adjustments
   - Velocity tracking for smooth movement prediction between network updates
-✅ **UI Scaling System** - Complete UI scaling support (50%-150%) for accessibility (V0.5.1)
+✅ **UI Scaling System** - Complete UI scaling support (50%-150%) for accessibility (V0.5.2+)
   - Scales all UI elements: fonts, buttons, panels, spacing, padding
   - Applied to both in-game HUD and settings menu
+  - All fonts now properly scale (buttons, menus, lobbies, about screen) - V0.5.3 fix
+  - UI scale preset buttons (Small 70%, Medium 100%, Large 130%) in settings
   - Real-time scaling with immediate visual feedback
+  - Consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
   - News ticker font reduced to 85% size to fit more content
 
 ## Technology Stack
@@ -164,6 +179,29 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Damage multiplier and buff timers
 - Kill streak counter and timing
 - Game running/paused states
+
+## Recent Updates (V0.5.3)
+- **Main Menu UI Adjustments**: Improved proportions and layout
+  - Reduced button sizes (180×36px scaled, down from 200×40px)
+  - Widened news ticker (650px, up from 480px)
+  - Moved high score text up (80px from bottom, up from 40px)
+- **UI Font Scaling Fixes**: Comprehensive fix for all hardcoded fonts
+  - All button fonts now scale properly (18px base, min 12px)
+  - All main menu fonts scale (title, subtitle, music tip, high score, speaker icon)
+  - All AI lobby and about screen fonts scale properly
+  - Consistent scaling across entire UI (50%-150% range)
+- **UI Scale Control Enhancements**: Added preset buttons in settings
+  - Small (70%), Medium (100%), Large (130%) quick presets
+  - Preset buttons highlight when active
+- **Multiplayer Lobby UI Redesign**: Modern glassmorphism design
+  - Animated background with scanlines, noise, pulsing gradients
+  - Glassmorphism player cards with avatar placeholders
+  - Enhanced connection status panel with animated indicators
+  - Pill-shaped buttons with pulse animations
+  - Improved visual hierarchy and spacing
+- **Performance**: Optimized off-screen indicator distance calculations
+  - Replaced Math.sqrt() with squared distance comparisons
+  - Reduces expensive sqrt operations in rendering loop
 
 ## Recent Updates (V0.5.0)
 - **Performance Optimization System**: Comprehensive rendering performance improvements

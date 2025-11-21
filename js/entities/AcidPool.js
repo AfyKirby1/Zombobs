@@ -18,14 +18,16 @@ export class AcidPool {
         // Damage players standing in pool
         const now = Date.now();
         if (now - this.lastDamageTick >= 200) {
-            gameState.players.forEach(player => {
-                if (player.health <= 0) return;
+            const radiusSquared = this.radius * this.radius;
+            for (let i = 0; i < gameState.players.length; i++) {
+                const player = gameState.players[i];
+                if (player.health <= 0) continue;
                 
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                const distSquared = dx * dx + dy * dy;
                 
-                if (dist < this.radius) {
+                if (distSquared < radiusSquared) {
                     // Player is in acid pool - take damage
                     const damage = this.damagePerTick;
                     const previousHealth = player.health;
@@ -54,7 +56,7 @@ export class AcidPool {
                         triggerDamageIndicator();
                     }
                 }
-            });
+            }
             this.lastDamageTick = now;
         }
     }

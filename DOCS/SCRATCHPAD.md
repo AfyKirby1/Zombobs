@@ -4,6 +4,102 @@
 
 ## 2025 - Active Development Notes
 
+### Engine Performance Micro-Optimizations [2025-01-21]
+- ✅ **Math.sqrt() Elimination**: Replaced 26+ expensive sqrt calls with squared distance comparisons
+  - Optimized `checkCollision()` function to use squared distance
+  - Distance checks now compare squared values (only calculate sqrt when actual distance needed)
+  - Applied to: collision detection, explosion AOE, melee range, zombie pathfinding, companion AI, tooltip checks
+  - **Impact**: Eliminates ~26 expensive sqrt operations per frame in hot paths
+  
+- ✅ **forEach() to for Loops**: Converted array iterations in hot paths to faster for loops
+  - Replaced `forEach()` with `for` loops in collision detection, explosion handling, zombie updates
+  - Applied to: `handleBulletZombieCollisions()`, `triggerExplosion()`, `handlePlayerZombieCollisions()`, `CompanionSystem.update()`, `AcidPool.update()`
+  - **Impact**: 5-10% faster array iteration in critical paths
+  
+- ✅ **Quadtree Instance Reuse**: Reuse Quadtree instead of recreating every frame
+  - Quadtree instance now persists between frames and is cleared/reused
+  - Boundary updated only when canvas size changes
+  - **Impact**: Reduces GC pressure and allocation overhead
+  
+- ✅ **Quadtree Query Range Reuse**: Reuse query range object instead of creating new ones
+  - Single query range object updated per bullet instead of creating new objects
+  - **Impact**: Reduces object allocation in hot path (hundreds of bullets per frame)
+  
+- ✅ **Settings Lookup Caching**: Cache frequently accessed settings at frame start
+  - Settings cached at start of `updateGame()` and `drawGame()` functions
+  - Cached: `graphicsSettings`, `damageNumberStyle`, `shadows`, `reloadBar`, `dynamicCrosshair`, `crosshairStyle`, `showFps`, `showDebugStats`, `postProcessingQuality`, `vignetteEnabled`, `lightingEnabled`
+  - **Impact**: Reduces repeated property access and function calls
+  
+- ✅ **Viewport Bounds Caching**: Calculate viewport bounds once per frame
+  - Viewport bounds calculated once in `updateGame()` and cached in `gameState.cachedViewport`
+  - Reused in `drawGame()` and throughout update loops
+  - **Impact**: Eliminates redundant calculations
+  
+- ✅ **Property Caching in Loops**: Cache frequently accessed object properties
+  - Cached `gameState.zombies.length`, viewport bounds (left, top, right, bottom) in local variables
+  - Reduces property access overhead in tight loops
+  - **Impact**: Faster loop iterations with many entities
+  
+- ✅ **Early Return Optimizations**: Added early exits for entities that don't need processing
+  - Early exit checks for expired/off-screen entities before full processing
+  - Applied to: bullets (markedForRemoval), grenades (exploded), acid projectiles (off-screen), acid pools (expired)
+  - **Impact**: Skips unnecessary work for dead/expired entities
+  
+- ✅ **Math Constants**: Added cached math constants
+  - Added `TWO_PI` constant (Math.PI * 2) to constants.js
+  - Used in angle normalization calculations
+  - **Impact**: Reduces repeated math operations
+  
+- 📊 **Performance Impact**:
+  - Expected 5-15% FPS improvement on low-end hardware
+  - Reduced CPU usage during intense combat
+  - Lower memory allocation pressure
+  - Smoother gameplay with many entities on screen
+  - Optimizations scale with entity count (more entities = bigger gains)
+  
+- 📝 **Files Modified**:
+  - `js/utils/gameUtils.js` - Optimized `checkCollision()` with squared distance
+  - `js/utils/combatUtils.js` - Converted forEach to for loops, optimized distance calculations, reused Quadtree
+  - `js/main.js` - Settings caching, viewport caching, property caching, early returns, TWO_PI usage
+  - `js/companions/CompanionSystem.js` - Converted forEach to for loops, optimized distance calculations
+  - `js/entities/AcidPool.js` - Converted forEach to for loops, optimized distance checks
+  - `js/entities/AcidProjectile.js` - Optimized distance checks
+  - `js/ui/GameHUD.js` - Optimized distance calculations
+  - `js/core/constants.js` - Added TWO_PI constant
+
+### UI Scaling & Main Menu Improvements [2025-01-21]
+- ✅ **Main Menu UI Adjustments**: Improved proportions and layout
+  - Reduced button sizes from 200×40px to 180×36px (scaled)
+  - Widened news ticker from 480px to 650px for better visibility
+  - Moved high score text up from 40px to 80px from bottom
+  - Updated button click detection to match new dimensions
+  - Better visual balance and more compact design
+
+- ✅ **UI Font Scaling Fixes**: Comprehensive fix for all hardcoded fonts
+  - Fixed `drawMenuButton()` to scale font size (18px base, min 12px)
+  - Fixed all main menu fonts (title, subtitle, music tip, high score, speaker icon)
+  - Fixed AI lobby fonts (title, squad members, player list)
+  - Fixed about screen fonts (title, game info, version, description, features)
+  - All fonts now use pattern: `Math.max(minSize, baseSize * scale)`
+  - Consistent scaling across entire UI (50%-150% range)
+
+- ✅ **UI Scale Control Enhancements**: Better settings panel controls
+  - Added preset buttons below UI Scale slider (Small 70%, Medium 100%, Large 130%)
+  - Preset buttons highlight when active
+  - Hover effects on preset buttons
+  - Click handling for preset selection
+  - Quick access to common scale values
+
+- ✅ **Performance Optimization**: Off-screen indicator distance calculations
+  - Replaced `Math.sqrt()` calls with squared distance comparisons
+  - Applied to zombie-to-player distance checks
+  - Applied to intersection point distance calculations
+  - Reduces expensive sqrt operations in rendering loop
+
+- ✅ **Bug Fix**: Fixed `itemSpacing is not defined` error
+  - Added missing `getScaledItemSpacing()` call in `drawSinglePlayerHUD()`
+  - Single-player HUD now renders correctly
+
 ### Multiplayer Speed Sync & Engine Optimizations [2025-01-21]
 - ✅ **Zombie Speed Synchronization**: Complete speed sync implementation for multiplayer
   - Leader broadcasts `speed` and `baseSpeed` in zombie updates

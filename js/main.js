@@ -6,7 +6,8 @@ import {
     PLAYER_BASE_SPEED, PLAYER_SPRINT_SPEED,
     PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY,
     MAX_LOCAL_PLAYERS,
-    MAX_GRENADES
+    MAX_GRENADES,
+    TWO_PI
 } from './core/constants.js';
 import { canvas, ctx, resizeCanvas } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
@@ -1013,23 +1014,29 @@ function performMeleeAttack(player) {
 function isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle) {
     const dx = zombieX - playerX;
     const dy = zombieY - playerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distSquared = dx * dx + dy * dy;
 
     // Generous close-range check (inside the "swing" arc origin or very close)
     // If zombie is practically touching the player, they get hit regardless of angle
     const closeRangeThreshold = 30 + (zombieRadius || 12);
-    if (distance < closeRangeThreshold) {
+    const closeRangeThresholdSquared = closeRangeThreshold * closeRangeThreshold;
+    if (distSquared < closeRangeThresholdSquared) {
         // Check if they are somewhat in front (180 degree arc instead of 120)
         // or just hit them if they are really close
-        if (distance < 25) return true; // Overlap check
+        if (distSquared < 25 * 25) return true; // Overlap check
     }
 
-    if (distance > MELEE_RANGE + (zombieRadius || 0)) return false;
+    const maxRange = MELEE_RANGE + (zombieRadius || 0);
+    const maxRangeSquared = maxRange * maxRange;
+    if (distSquared > maxRangeSquared) return false;
+    
+    // Calculate actual distance only when needed for angle check
+    const distance = Math.sqrt(distSquared);
 
     // Check if zombie is in front arc (140 degree arc for wider coverage)
     const angleToZombie = Math.atan2(dy, dx);
     const angleDiff = Math.abs(angleToZombie - playerAngle);
-    const normalizedAngleDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+    const normalizedAngleDiff = Math.min(angleDiff, TWO_PI - angleDiff);
 
     return normalizedAngleDiff < Math.PI * 0.4; // ~72 degrees on each side = 144 degree arc
 }
@@ -1328,7 +1335,7 @@ function drawPlayers() {
         if (player.health <= 0) return;
 
         // Shadow - only if shadows enabled
-        if (graphicsSettings.shadows !== false) {
+        if (cachedShadows) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.beginPath();
             ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
@@ -1391,7 +1398,7 @@ function drawPlayers() {
         }
 
         // Reload bar
-        if (settingsManager.getSetting('video', 'reloadBar') !== false && player.isReloading) {
+        if (cachedReloadBar && player.isReloading) {
             const now = Date.now();
             const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
 
@@ -1429,7 +1436,7 @@ function drawPlayers() {
 
         // Muzzle flash - quality scaled
         if (player.muzzleFlash.active) {
-            const flashQuality = graphicsSettings.getQualityValues('muzzleFlash');
+            const flashQuality = cachedGraphicsSettings.getQualityValues('muzzleFlash');
             const baseSize = 8 + (player.muzzleFlash.intensity * 12);
             const flashSize = baseSize * flashQuality.sizeMultiplier;
             const flashOffset = -2;
@@ -1591,7 +1598,7 @@ function drawCrosshair() {
 
     // Dynamic crosshair: expand when moving or shooting
     let crosshairSize = baseCrosshairSize;
-    const dynamicCrosshair = settingsManager.getSetting('video', 'dynamicCrosshair') !== false;
+    const dynamicCrosshair = cachedDynamicCrosshair;
 
     if (dynamicCrosshair && localPlayer) {
         const player = localPlayer;
@@ -1612,7 +1619,7 @@ function drawCrosshair() {
     }
 
     // Get crosshair style from settings
-    const crosshairStyle = settingsManager.getSetting('video', 'crosshairStyle') || 'default';
+    const crosshairStyle = cachedCrosshairStyle;
 
     // Draw based on style
     if (crosshairStyle === 'dot') {
@@ -1783,8 +1790,8 @@ function drawWaveNotification() {
 }
 
 function drawFpsCounter() {
-    const showFps = settingsManager.getSetting('gameplay', 'showFps') || false;
-    const showDebugStats = settingsManager.getSetting('video', 'showDebugStats') || false;
+    const showFps = cachedShowFps;
+    const showDebugStats = cachedShowDebugStats;
 
     if (!showFps && !showDebugStats) return;
 
@@ -1842,6 +1849,10 @@ function drawFpsCounter() {
 function updateGame() {
     if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) return;
     if (gameState.showLevelUp) return; // Pause game during level up selection
+
+    // Cache frequently accessed settings to reduce repeated lookups
+    const cachedGraphicsSettings = graphicsSettings;
+    const cachedDamageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
 
     const now = Date.now();
     const activePlayers = gameState.players.filter(p => p.health > 0);
@@ -1920,7 +1931,9 @@ function updateGame() {
     });
 
     // Get viewport bounds for update culling (calculate once per frame)
+    // Cache viewport bounds for reuse in drawGame
     const viewport = getViewportBounds(canvas);
+    gameState.cachedViewport = viewport;
 
     // Update players
     updatePlayers();
@@ -1964,37 +1977,44 @@ function updateGame() {
     }
 
     // Update bullets (only update those near viewport for better performance)
+    // Early return optimization: filter out marked bullets first
     gameState.bullets = gameState.bullets.filter(bullet => {
-        // Always update bullets as they move fast and need accurate collision
-        // But skip if already marked for removal
+        // Early exit for bullets marked for removal
         if (bullet.markedForRemoval) return false;
         bullet.update();
+        // Check again after update (update might mark it for removal)
         return !bullet.markedForRemoval;
     });
 
     // Update grenades (only update those near viewport)
+    // Early return optimization: check exploded state first
     gameState.grenades = gameState.grenades.filter(grenade => {
+        // Early exit for exploded grenades
         if (grenade.exploded) return false;
-        // Update if near viewport or already exploded (cleanup)
-        if (shouldUpdateEntity(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom) || grenade.exploded) {
+        // Update if near viewport
+        if (shouldUpdateEntity(grenade, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
             grenade.update(canvas.width, canvas.height);
         }
         return !grenade.exploded;
     });
 
     // Update acid projectiles (only update those near viewport)
+    // Early return optimization: check off-screen first
     gameState.acidProjectiles = gameState.acidProjectiles.filter(projectile => {
+        // Early exit for off-screen projectiles
         if (projectile.isOffScreen(canvas.width, canvas.height)) return false;
-        if (shouldUpdateEntity(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+        if (shouldUpdateEntity(projectile, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
             projectile.update();
         }
         return !projectile.isOffScreen(canvas.width, canvas.height);
     });
 
     // Update acid pools (only update those near viewport)
+    // Early return optimization: check expired state first
     gameState.acidPools = gameState.acidPools.filter(pool => {
+        // Early exit for expired pools
         if (pool.isExpired()) return false;
-        if (shouldUpdateEntity(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+        if (shouldUpdateEntity(pool, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
             pool.update();
         }
         return !pool.isExpired();
@@ -2005,11 +2025,16 @@ function updateGame() {
     const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
 
     // Optimized loop: use for loop instead of forEach for better performance
-    for (let i = 0; i < gameState.zombies.length; i++) {
+    const zombiesLength = gameState.zombies.length;
+    const viewportLeft = viewport.left;
+    const viewportTop = viewport.top;
+    const viewportRight = viewport.right;
+    const viewportBottom = viewport.bottom;
+    for (let i = 0; i < zombiesLength; i++) {
         const zombie = gameState.zombies[i];
         
         // Update culling: Skip updating zombies far off-screen (major FPS boost)
-        if (!shouldUpdateEntity(zombie, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+        if (!shouldUpdateEntity(zombie, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
             continue; // Skip this zombie's update - too far away
         }
         
@@ -2028,13 +2053,14 @@ function updateGame() {
                 const baseLerpFactor = Math.min(0.5, Math.max(0.1, updateInterval / (frameTime * 2)));
                 const lerpFactor = interpAlpha > 0 ? baseLerpFactor * (1 + interpAlpha) : baseLerpFactor;
                 
-                // Calculate distance to target
+                // Calculate distance to target (use squared distance for comparison)
                 const dx = zombie.targetX - zombie.x;
                 const dy = zombie.targetY - zombie.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                const distSquared = dx * dx + dy * dy;
+                const dist = Math.sqrt(distSquared);
                 
                 // Use velocity-based extrapolation if velocity is available
-                if (zombie.vx !== undefined && zombie.vy !== undefined && dist < 50 && timeSinceUpdate < updateInterval * 2) {
+                if (zombie.vx !== undefined && zombie.vy !== undefined && distSquared < 50 * 50 && timeSinceUpdate < updateInterval * 2) {
                     // Small distance and recent update - use velocity extrapolation
                     const extrapolationFactor = timeSinceUpdate / updateInterval;
                     zombie.x += zombie.vx * extrapolationFactor;
@@ -2332,13 +2358,13 @@ function drawGame() {
     // Cache settings at frame start to avoid repeated lookups
     // Use consolidated WebGPU check helper
     const webgpuActive = isWebGPUActive();
-    const postProcessingQuality = graphicsSettings.postProcessingQuality || 'medium';
+    const postProcessingQuality = cachedGraphicsSettings.postProcessingQuality || 'medium';
     
     // Post-processing quality controls vignette and lighting
     // Off = no effects, Low = vignette only, Medium = vignette + lighting, High = all + enhanced
-    const vignetteEnabled = graphicsSettings.vignette !== false && 
+    const vignetteEnabled = cachedGraphicsSettings.vignette !== false && 
                            (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high');
-    const lightingEnabled = graphicsSettings.lighting !== false && 
+    const lightingEnabled = cachedGraphicsSettings.lighting !== false && 
                            (postProcessingQuality === 'medium' || postProcessingQuality === 'high');
     const enhancedPostProcessing = postProcessingQuality === 'high';
     
@@ -2467,9 +2493,8 @@ function drawGame() {
         ctx.restore();
     });
 
-    // Get viewport bounds for culling (cached per frame, calculated once)
-    // Reuse same viewport object from updateGame if available, otherwise calculate
-    const viewport = getViewportBounds(canvas);
+    // Reuse viewport bounds from updateGame (cached per frame)
+    const viewport = gameState.cachedViewport || getViewportBounds(canvas);
     
     // Draw entities with viewport culling and small feature culling
     // Optimized: use for loops instead of forEach for better performance
@@ -2595,11 +2620,12 @@ function drawGame() {
         const tooltipDistance = 60;
 
         // Check health pickups
+        const tooltipDistSquared = tooltipDistance * tooltipDistance;
         gameState.healthPickups.forEach(pickup => {
             const dx = pickup.x - p1.x;
             const dy = pickup.y - p1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < tooltipDistance && p1.health < PLAYER_MAX_HEALTH) {
+            const distSquared = dx * dx + dy * dy;
+            if (distSquared < tooltipDistSquared && p1.health < PLAYER_MAX_HEALTH) {
                 gameHUD.drawTooltip('Walk over to pickup health', pickup.x, pickup.y - pickup.radius - 5);
             }
         });
@@ -2608,8 +2634,8 @@ function drawGame() {
         gameState.ammoPickups.forEach(pickup => {
             const dx = pickup.x - p1.x;
             const dy = pickup.y - p1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < tooltipDistance && (p1.currentAmmo < p1.maxAmmo || p1.grenadeCount < MAX_GRENADES)) {
+            const distSquared = dx * dx + dy * dy;
+            if (distSquared < tooltipDistSquared && (p1.currentAmmo < p1.maxAmmo || p1.grenadeCount < MAX_GRENADES)) {
                 gameHUD.drawTooltip('Walk over to pickup ammo', pickup.x, pickup.y - pickup.radius - 5);
             }
         });
@@ -2619,8 +2645,8 @@ function drawGame() {
         ...gameState.rapidFirePickups, ...gameState.shieldPickups].forEach(pickup => {
             const dx = pickup.x - p1.x;
             const dy = pickup.y - p1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < tooltipDistance) {
+            const distSquared = dx * dx + dy * dy;
+            if (distSquared < tooltipDistSquared) {
                 let tooltipText = 'Walk over to pickup power-up';
                 if (pickup.type === 'damage') tooltipText = 'Double Damage Power-Up';
                 else if (pickup.type === 'nuke') tooltipText = 'Tactical Nuke Power-Up';

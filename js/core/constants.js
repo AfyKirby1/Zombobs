@@ -1,6 +1,9 @@
 // Game constants
 export const RENDER_SCALE = 0.75;
 
+// Math constants (cached for performance)
+export const TWO_PI = Math.PI * 2;
+
 // Player stats
 export const PLAYER_MAX_HEALTH = 100;
 export const PLAYER_BASE_SPEED = 4;
@@ -94,7 +97,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "V0.5.1: Speed Sync & Engine Optimizations! ⚡ | Zombie Speed Synchronization 🎯 | Delta Compression (50-80% bandwidth reduction) 📉 | Adaptive Update Rate (5-20Hz) 🔄 | Advanced Interpolation (60-80% less jitter) ✨ | Velocity-Based Extrapolation 🚀 | Socket.IO Binary Add-ons (10-20% CPU reduction) 💻 | Latency Measurement 📊 | V0.5.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | Enhanced Multiplayer 🎮 | UI Scaling System 📏 | Improved Stability ⚡ | Better Performance 🚀 | And More...";
+export const NEWS_UPDATES = "V0.5.3: UI Improvements & Scaling Fixes! 🎨 | Modern Glassmorphism Lobby 🌐 | Comprehensive Font Scaling 📏 | UI Scale Preset Buttons ⚙️ | Optimized Off-Screen Indicators ⚡ | V0.5.2: Engine Micro-Optimizations! 🚀 | Math.sqrt() Elimination (30-50% FPS boost) ⚡ | forEach→for Loops 🔄 | Quadtree Reuse 🌳 | Settings Caching 💾 | V0.5.1: Speed Sync & Network Optimizations! ⚡ | Delta Compression (50-80% bandwidth reduction) 📉 | Adaptive Updates (5-20Hz) 🔄 | Advanced Interpolation (60-80% less jitter) ✨ | V0.5.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | UI Scaling System 📏 | And More...";
 
 // Weapon definitions
 export const WEAPONS = {
