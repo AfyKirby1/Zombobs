@@ -11,8 +11,8 @@
 **Status Legend (Roadmap Summary):**
 
  - Total items: 729
- - Completed items: 64 (8.8%)
- - Uncompleted items: 665
+ - Completed items: 66 (9.1%)
+ - Uncompleted items: 663
  - Phases completed: 0 / 14 (0.0%)
 
 ---
@@ -764,7 +764,7 @@
 - [ ] **Speech-to-Text (STT)** - Real-time transcription of voice chat into text messages 🔴
 - [ ] **Dyslexia-Friendly Font** - Toggle to switch all game text to a dyslexia-friendly typeface 🟢
 - [x] **Screen Shake Intensity** - Slider to reduce or disable camera shake to prevent motion sickness 🟢
-- [ ] **Reduced Gore Mode** - Option to disable blood splatters and dismemberment effects 🟡
+- [x] **Blood & Gore Level** - Slider to control the amount of blood/gore effects, from none to high 🟡
 - [ ] **UI Scaling** - Slider to scale the entire HUD interface (50% - 150%) for 4K or small screens 🟢
 - [ ] **Subtitles & Captions** - Closed captions for all dialogue and significant sound effects (e.g., [Zombie Growl]) 🟢
 
@@ -785,6 +785,7 @@
 - [ ] **Gamepad Vibration** - Slider to adjust the intensity of controller rumble effects 🟢
 - [x] **Cursor Customization** - Options to change the crosshair style, color, size, and opacity 🟢
 - [x] **Auto-Sprint Toggle** - Option to invert default movement behavior (Sprint by default, Walk on hold) 🟢
+- [x] **AI Companion Toggle** - Option to enable or disable the AI companion in the gameplay settings 🟢
 - [x] **Contextual Tooltips** - "Press [Key] to Interact" prompts that dynamically update based on current keybindings 🟢
 - [ ] **Minimap Customization** - Options for Fixed North/Rotating, Zoom level, and Opacity 🟢
 

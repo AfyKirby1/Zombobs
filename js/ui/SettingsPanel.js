@@ -496,6 +496,9 @@ export class SettingsPanel {
         const scale = this.getUIScale();
         y += 20 * scale; // Top padding
         
+        y = this.drawSectionHeader("GAME", y);
+        y = this.drawToggle("Enable AI Companion", "gameplay", "enableAICompanion", y, mouse);
+
         y = this.drawSectionHeader("CONTROLS", y);
         y = this.drawToggle("Auto Sprint", "gameplay", "autoSprint", y, mouse);
         y = this.drawToggle("Auto Reload", "gameplay", "autoReload", y, mouse);

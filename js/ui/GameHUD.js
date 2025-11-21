@@ -1733,20 +1733,22 @@ export class GameHUD {
                 const startY = this.canvas.height - 100 * scale;
                 const backY = this.canvas.height - 50 * scale;
 
-                const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
-                this.drawLobbyButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, 
-                    this.hoveredButton === 'lobby_ready', buttonsDisabled);
-
                 const canStart = allReady && players.length > 0 && !buttonsDisabled;
-                this.drawLobbyButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, 
-                    this.hoveredButton === 'lobby_start', !canStart, canStart);
-
+                
+                // Draw status text above Ready button
                 if (!canStart && !buttonsDisabled) {
                     this.ctx.font = `${Math.max(10, 11 * scale)}px "Roboto Mono", monospace`;
                     this.ctx.fillStyle = '#ff9800';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 18 * scale);
+                    this.ctx.fillText('Waiting for all players to be ready...', centerX, readyY - 25 * scale);
                 }
+
+                const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
+                this.drawLobbyButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_ready', buttonsDisabled);
+
+                this.drawLobbyButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_start', !canStart, canStart);
 
                 this.drawLobbyButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, 
                     this.hoveredButton === 'lobby_back', buttonsDisabled);

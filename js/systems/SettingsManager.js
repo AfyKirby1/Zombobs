@@ -43,6 +43,7 @@ export class SettingsManager {
                 particleDetail: 'standard' // 'minimal', 'standard', 'detailed', 'ultra' - particle rendering quality
             },
             gameplay: {
+                enableAICompanion: true,
                 autoSprint: false,
                 autoReload: true, // Disable for "hardcore" feel
                 pauseOnFocusLoss: true,

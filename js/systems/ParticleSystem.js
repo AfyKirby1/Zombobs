@@ -4,6 +4,7 @@ import { Particle } from '../entities/Particle.js';
 import { MAX_PARTICLES } from '../core/constants.js';
 import { graphicsSettings } from '../systems/GraphicsSystem.js';
 import { ObjectPool } from '../utils/ObjectPool.js';
+import { settingsManager } from './SettingsManager.js';
 
 // Particle Pool
 export const particlePool = new ObjectPool(
@@ -76,6 +77,9 @@ export function createParticles(x, y, color, count) {
 }
 
 export function createBloodSplatter(x, y, angle, isKill = false) {
+    const bloodGoreLevel = settingsManager.getSetting('video', 'bloodGoreLevel') ?? 1.0;
+    if (bloodGoreLevel === 0) return;
+
     const quality = graphicsSettings.quality;
     const limit = getParticleLimit();
     const availableSlots = Math.max(0, limit - gameState.particles.length);
@@ -101,6 +105,9 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
         hasDetailParticles = true;
     }
     
+    // Apply the blood/gore level setting
+    particleCount = Math.floor(particleCount * bloodGoreLevel);
+
     const particlesToSpawn = Math.min(particleCount, availableSlots);
     
     // Blood colors - more variation at higher quality
@@ -127,7 +134,10 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
     // Large detail particles for kills (high/ultra quality)
     if (isKill && hasDetailParticles && gameState.particles.length < limit) {
         const remainingSlots = limit - gameState.particles.length;
-        const largeParticlesToSpawn = quality === 'ultra' ? Math.min(5, remainingSlots) : Math.min(3, remainingSlots);
+        let largeParticleCount = quality === 'ultra' ? 5 : 3;
+        largeParticleCount = Math.floor(largeParticleCount * bloodGoreLevel);
+        const largeParticlesToSpawn = Math.min(largeParticleCount, remainingSlots);
+
         for (let i = 0; i < largeParticlesToSpawn; i++) {
             const p = spawnParticle(
                 x + (Math.random() - 0.5) * 15,
@@ -148,7 +158,9 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
     // Ultra quality: Pooling effect (stationary blood puddles)
     if (isKill && quality === 'ultra' && gameState.particles.length < limit) {
         const remainingSlots = limit - gameState.particles.length;
-        const poolParticles = Math.min(3, remainingSlots);
+        let poolParticleCount = 3;
+        poolParticleCount = Math.floor(poolParticleCount * bloodGoreLevel);
+        const poolParticles = Math.min(poolParticleCount, remainingSlots);
         for (let i = 0; i < poolParticles; i++) {
             const p = spawnParticle(
                 x + (Math.random() - 0.5) * 20,

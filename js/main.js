@@ -124,6 +124,15 @@ function applyWebGPUSettings() {
 
 // Listen for settings changes and update renderer/systems
 settingsManager.addChangeListener((category, key, value) => {
+    if (category === 'gameplay' && key === 'enableAICompanion') {
+        const aiPlayerExists = gameState.players.some(p => p.inputSource === 'ai');
+        if (value && !aiPlayerExists) {
+            addAIPlayer();
+        } else if (!value && aiPlayerExists) {
+            gameState.players = gameState.players.filter(p => p.inputSource !== 'ai');
+        }
+    }
+
     if (category === 'video') {
         // Handle resolution scale (affects all rendering, not just WebGPU)
         if (key === 'resolutionScale') {
@@ -523,7 +532,10 @@ function initializeNetwork() {
         socket.on('game:starting', (data) => {
             console.log('Game starting in ' + data.duration + 'ms');
             gameState.multiplayer.isGameStarting = true;
-            gameState.multiplayer.gameStartTime = data.startTime;
+            // Calculate start time - server sends startTime which is Date.now() + 3000
+            // We need to account for network latency, so use current time + duration
+            const clientNow = Date.now();
+            gameState.multiplayer.gameStartTime = clientNow + data.duration;
         });
 
         // Handle player disconnection
@@ -1042,6 +1054,8 @@ function isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, player
 }
 
 function addAIPlayer() {
+    const enableAICompanion = settingsManager.getSetting('gameplay', 'enableAICompanion');
+    if (!enableAICompanion) return;
     companionSystem.addCompanion();
 }
 
@@ -1331,6 +1345,11 @@ function updateCoopLobby() {
 }
 
 function drawPlayers() {
+    // Cache settings at function start to avoid repeated lookups
+    const cachedGraphicsSettings = graphicsSettings;
+    const cachedShadows = settingsManager.getSetting('video', 'shadows') ?? true;
+    const cachedReloadBar = settingsManager.getSetting('video', 'reloadBar') ?? true;
+    
     gameState.players.forEach(player => {
         if (player.health <= 0) return;
 
@@ -1582,6 +1601,10 @@ function drawCrosshair() {
     if (!gameState.gameRunning || gameState.gamePaused) return;
     if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) return;
 
+    // Cache settings at function start to avoid repeated lookups
+    const cachedDynamicCrosshair = settingsManager.getSetting('video', 'dynamicCrosshair') ?? true;
+    const cachedCrosshairStyle = settingsManager.getSetting('video', 'crosshairStyle') || 'default';
+
     // Find local player (mouse user)
     const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
     if (!localPlayer) return;
@@ -1618,7 +1641,7 @@ function drawCrosshair() {
         }
     }
 
-    // Get crosshair style from settings
+    // Get crosshair style from cached settings
     const crosshairStyle = cachedCrosshairStyle;
 
     // Draw based on style
@@ -1790,6 +1813,10 @@ function drawWaveNotification() {
 }
 
 function drawFpsCounter() {
+    // Cache settings at function start to avoid repeated lookups
+    const cachedShowFps = settingsManager.getSetting('gameplay', 'showFps') ?? false;
+    const cachedShowDebugStats = settingsManager.getSetting('video', 'showDebugStats') ?? false;
+    
     const showFps = cachedShowFps;
     const showDebugStats = cachedShowDebugStats;
 
@@ -2356,6 +2383,7 @@ function drawGame() {
     }
 
     // Cache settings at frame start to avoid repeated lookups
+    const cachedGraphicsSettings = graphicsSettings;
     // Use consolidated WebGPU check helper
     const webgpuActive = isWebGPUActive();
     const postProcessingQuality = cachedGraphicsSettings.postProcessingQuality || 'medium';
