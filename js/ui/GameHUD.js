@@ -2111,6 +2111,8 @@ export class GameHUD {
             this.ctx.rotate(angle);
 
             // Arrow color based on distance (closer = more red)
+            // Calculate actual distance from squared distance
+            const distance = Math.sqrt(distSquared);
             const distanceRatio = distance / indicatorDistance;
             const red = Math.floor(255 * (1 - distanceRatio));
             const green = Math.floor(100 * distanceRatio);

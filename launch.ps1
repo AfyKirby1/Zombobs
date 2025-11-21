@@ -38,23 +38,30 @@ function Check-NodeJS {
     Write-Colored "[*] Checking for Node.js..." "Yellow"
     try {
         $nodeVersion = & node --version 2>&1
-        if ($LASTEXITCODE -eq 0 -and $nodeVersion -match 'v(\d+)\.(\d+)\.(\d+)') {
-            $majorVersion = [int]$matches[1]
-            $minorVersion = [int]$matches[2]
-            Write-Colored "[+] Node.js found: $nodeVersion" "Green"
-            
-            # Check if version meets requirements (>= 18.0.0)
-            if ($majorVersion -ge 18) {
-                Write-Colored "    ✓ Version meets requirements (>= 18.0.0)" "DarkGray"
+        if ($LASTEXITCODE -eq 0) {
+            if ($nodeVersion -match 'v(\d+)\.(\d+)\.(\d+)') {
+                $majorVersion = [int]$matches[1]
+                $minorVersion = [int]$matches[2]
+                Write-Colored "[+] Node.js found: $nodeVersion" "Green"
+                
+                # Check if version meets requirements (>= 18.0.0)
+                if ($majorVersion -ge 18) {
+                    Write-Colored "    Version meets requirements (>= 18.0.0)" "DarkGray"
+                } else {
+                    Write-Colored "    Warning: Node.js 18+ recommended (current: $nodeVersion)" "Yellow"
+                }
+                return $true
             } else {
-                Write-Colored "    ⚠ Warning: Node.js 18+ recommended (current: $nodeVersion)" "Yellow"
+                Write-Colored "[+] Node.js found: $nodeVersion" "Green"
+                Write-Colored "    (Version check skipped)" "DarkGray"
+                return $true
             }
-            return $true
         } else {
             Write-Colored "[-] Node.js not found!" "Red"
             return $false
         }
-    } catch {
+    }
+    catch {
         Write-Colored "[-] Node.js not found!" "Red"
         return $false
     }
@@ -105,7 +112,8 @@ function Show-ServerInfo {
     Write-Colored "   ─────────────────────────────────────────────────────" "DarkGray"
     Write-Colored "   URL:        http://localhost:$SERVER_PORT" "Cyan"
     if ($localIP) {
-        Write-Colored "   Network:    http://$localIP`:$SERVER_PORT" "Cyan"
+        $networkUrl = "http://${localIP}:$SERVER_PORT"
+        Write-Colored "   Network:    $networkUrl" "Cyan"
         Write-Colored "              (Use this URL for other devices on your network)" "DarkGray"
     }
     Write-Colored "   Status:     Starting..." "Yellow"
@@ -210,8 +218,9 @@ function Show-ConnectionInstructions {
     Write-Colored "   TO CONNECT FROM OTHER DEVICES:" "White"
     $localIP = Get-LocalIP
     if ($localIP) {
+        $networkUrl = "http://${localIP}:$SERVER_PORT"
         Write-Colored "   1. Make sure your device is on the same network" "DarkGray"
-        Write-Colored "   2. Navigate to: http://$localIP`:$SERVER_PORT" "Cyan"
+        Write-Colored "   2. Navigate to: $networkUrl" "Cyan"
         Write-Colored "   3. Or use the network URL shown in server info above" "DarkGray"
     } else {
         Write-Colored "   (Network IP detection failed - use localhost only)" "Yellow"
@@ -258,10 +267,10 @@ function Start-Server {
     Write-Host ""
     Write-Colored "   HUGGING FACE SERVER:" "White"
     if ($hfConnected) {
-        Write-Colored "   Status: CONNECTED [✓]" "Green"
+        Write-Colored "   Status: CONNECTED [OK]" "Green"
         Write-Colored "   Note: Game can use either local or Hugging Face server" "DarkGray"
     } else {
-        Write-Colored "   Status: NOT REACHABLE [✗]" "Red"
+        Write-Colored "   Status: NOT REACHABLE [X]" "Red"
         Write-Colored "   Note: Game will use local server (recommended for development)" "DarkGray"
     }
     Write-Host ""
