@@ -70,8 +70,12 @@ const keys = {};
 const mouse = { x: 0, y: 0, isDown: false };
 
 // Initial resize
-resizeCanvas(gameState.player);
-window.addEventListener('resize', () => resizeCanvas(gameState.player));
+// Initial resize
+resizeCanvas(gameState.players.find(p => p.inputSource === 'mouse'));
+window.addEventListener('resize', () => {
+    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+    resizeCanvas(localPlayer);
+});
 
 // Initialize WebGPU Renderer
 const webgpuRenderer = new WebGPURenderer();
@@ -148,7 +152,7 @@ function checkServerHealth() {
         .catch(error => {
             console.log('Server appears offline or waking up:', error);
             gameState.multiplayer.serverStatus = 'offline';
-            
+
             // Retry check after 5 seconds if offline (to handle wake-up)
             setTimeout(checkServerHealth, 5000);
         });
@@ -160,7 +164,7 @@ function initializeNetwork() {
     // Initialize socket.io connection to Hugging Face Space
     if (typeof io !== 'undefined') {
         gameState.multiplayer.status = 'connecting';
-        
+
         // Configure Socket.io for Hugging Face Spaces
         // Hugging Face Spaces uses a reverse proxy, so we need to:
         // 1. Use both polling and websocket transports (polling first for compatibility)
@@ -178,7 +182,7 @@ function initializeNetwork() {
             forceNew: false,
             withCredentials: false // Important for CORS
         });
-        
+
         gameState.multiplayer.socket = socket;
 
         socket.on('connect', () => {
@@ -240,16 +244,16 @@ function initializeNetwork() {
             console.log('🎮 Game start signal received from server');
             console.log('[game:start] Multiplayer players:', gameState.multiplayer.players);
             console.log('[game:start] Local player ID:', gameState.multiplayer.playerId);
-            
+
             if (gameState.showLobby) {
                 // Enable co-op mode for multiplayer
                 gameState.isCoop = true;
                 console.log('[game:start] Co-op mode enabled');
-                
+
                 // Synchronize players from lobby to game state
                 const multiplayerPlayers = gameState.multiplayer.players || [];
                 console.log('[game:start] Syncing players from lobby. Count:', multiplayerPlayers.length);
-                
+
                 gameState.players = multiplayerPlayers.map((lobbyPlayer, index) => {
                     const isLocalPlayer = lobbyPlayer.id === gameState.multiplayer.playerId;
                     const player = createPlayer(
@@ -257,12 +261,12 @@ function initializeNetwork() {
                         canvas.height / 2,
                         index % 5 // Cycle through colors
                     );
-                    
+
                     // Override with lobby data
                     player.id = lobbyPlayer.id;
                     player.name = lobbyPlayer.name;
                     player.inputSource = isLocalPlayer ? 'mouse' : 'remote';
-                    
+
                     console.log('[game:start] Created player:', {
                         id: player.id,
                         name: player.name,
@@ -270,13 +274,13 @@ function initializeNetwork() {
                         inputSource: player.inputSource,
                         color: player.color.name
                     });
-                    
+
                     return player;
                 });
-                
+
                 console.log('[game:start] Player sync complete. Total players:', gameState.players.length);
                 console.log('[game:start] Player IDs:', gameState.players.map(p => ({ id: p.id, name: p.name })));
-                
+
                 initAudio();
                 startGame();
             } else {
@@ -286,32 +290,72 @@ function initializeNetwork() {
 
         // Handle remote player state updates
         socket.on('player:state:update', (data) => {
-            if (!gameState.isCoop || !gameState.gameRunning) return;
-            
-            const remotePlayer = gameState.players.find(p => p.id === data.playerId);
-            if (remotePlayer && remotePlayer.inputSource === 'remote') {
-                // Update remote player position and angle
-                if (data.x !== undefined) remotePlayer.x = data.x;
-                if (data.y !== undefined) remotePlayer.y = data.y;
-                if (data.angle !== undefined) remotePlayer.angle = data.angle;
-                if (data.health !== undefined) remotePlayer.health = data.health;
-                if (data.stamina !== undefined) remotePlayer.stamina = data.stamina;
-                if (data.currentWeapon !== undefined) {
-                    // Update weapon if needed
-                    const weaponName = data.currentWeapon;
-                    if (WEAPONS[weaponName]) {
-                        remotePlayer.currentWeapon = WEAPONS[weaponName];
-                    }
-                }
-                if (data.currentAmmo !== undefined) remotePlayer.currentAmmo = data.currentAmmo;
-                if (data.isReloading !== undefined) remotePlayer.isReloading = data.isReloading;
+            // Debug: Log received state updates (throttled to avoid spam)
+            if (!window._lastStateUpdateLog || Date.now() - window._lastStateUpdateLog > 2000) {
+                console.log('[player:state:update] Received state update', {
+                    playerId: data.playerId,
+                    isCoop: gameState.isCoop,
+                    gameRunning: gameState.gameRunning,
+                    hasX: data.x !== undefined,
+                    hasY: data.y !== undefined,
+                    hasAngle: data.angle !== undefined
+                });
+                window._lastStateUpdateLog = Date.now();
             }
+
+            // Check if we're in multiplayer mode and game is running
+            if (!gameState.isCoop) {
+                console.warn('[player:state:update] Ignored - not in coop mode');
+                return;
+            }
+            if (!gameState.gameRunning) {
+                console.warn('[player:state:update] Ignored - game not running');
+                return;
+            }
+
+            // Find the remote player by ID
+            const remotePlayer = gameState.players.find(p => p.id === data.playerId);
+
+            if (!remotePlayer) {
+                console.warn('[player:state:update] Remote player not found', {
+                    receivedPlayerId: data.playerId,
+                    availablePlayerIds: gameState.players.map(p => ({ id: p.id, name: p.name, inputSource: p.inputSource })),
+                    localPlayerId: gameState.multiplayer.playerId
+                });
+                return;
+            }
+
+            if (remotePlayer.inputSource !== 'remote') {
+                console.warn('[player:state:update] Player found but not remote', {
+                    playerId: data.playerId,
+                    playerName: remotePlayer.name,
+                    inputSource: remotePlayer.inputSource,
+                    isLocal: remotePlayer.id === gameState.multiplayer.playerId
+                });
+                return;
+            }
+
+            // Update remote player position and angle
+            if (data.x !== undefined) remotePlayer.x = data.x;
+            if (data.y !== undefined) remotePlayer.y = data.y;
+            if (data.angle !== undefined) remotePlayer.angle = data.angle;
+            if (data.health !== undefined) remotePlayer.health = data.health;
+            if (data.stamina !== undefined) remotePlayer.stamina = data.stamina;
+            if (data.currentWeapon !== undefined) {
+                // Update weapon if needed
+                const weaponName = data.currentWeapon;
+                if (WEAPONS[weaponName]) {
+                    remotePlayer.currentWeapon = WEAPONS[weaponName];
+                }
+            }
+            if (data.currentAmmo !== undefined) remotePlayer.currentAmmo = data.currentAmmo;
+            if (data.isReloading !== undefined) remotePlayer.isReloading = data.isReloading;
         });
 
         // Handle remote player actions (shooting, melee, etc.)
         socket.on('player:action:update', (data) => {
             if (!gameState.isCoop || !gameState.gameRunning) return;
-            
+
             const remotePlayer = gameState.players.find(p => p.id === data.playerId);
             if (remotePlayer && remotePlayer.inputSource === 'remote') {
                 if (data.action === 'shoot') {
@@ -341,7 +385,7 @@ function initializeNetwork() {
         // Handle player disconnection
         socket.on('player:disconnected', (data) => {
             if (!gameState.isCoop) return;
-            
+
             const disconnectedPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
             if (disconnectedPlayerIndex !== -1) {
                 console.log(`[Multiplayer] Player ${gameState.players[disconnectedPlayerIndex].name} disconnected`);
@@ -705,7 +749,7 @@ function updatePlayers() {
             }
         }
         // Mouse/Keyboard Controls (P1 only)
-        else if (index === 0 && player.inputSource === 'mouse') {
+        else if (player.inputSource === 'mouse') {
             // Mouse/Keyboard
             if (keys[controls.moveUp]) moveY -= 1;
             if (keys[controls.moveDown]) moveY += 1;
@@ -1123,8 +1167,9 @@ function drawCrosshair() {
     if (!gameState.gameRunning || gameState.gamePaused) return;
     if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) return;
 
-    // Only draw mouse crosshair if P1 is using mouse
-    // If P1 is gamepad, we might rely on projected laser (already drawn as player gun direction)
+    // Find local player (mouse user)
+    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+    if (!localPlayer) return;
 
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
 
@@ -1134,14 +1179,14 @@ function drawCrosshair() {
     const crosshairColor = '#ffffff';
     const crosshairOutlineColor = '#000000';
 
-    const crosshairColorCurrent = gameState.players[0]?.isReloading ? '#888888' : crosshairColor;
+    const crosshairColorCurrent = localPlayer.isReloading ? '#888888' : crosshairColor;
 
     // Dynamic crosshair: expand when moving or shooting
     let crosshairSize = baseCrosshairSize;
     const dynamicCrosshair = settingsManager.getSetting('video', 'dynamicCrosshair') !== false;
 
-    if (dynamicCrosshair && gameState.players[0]) {
-        const player = gameState.players[0];
+    if (dynamicCrosshair && localPlayer) {
+        const player = localPlayer;
         // Check if player is moving (approximate by checking if they moved recently)
         const isMoving = Math.abs(player.x - (player.lastX || player.x)) > 0.1 ||
             Math.abs(player.y - (player.lastY || player.y)) > 0.1;
@@ -1472,7 +1517,27 @@ function updateGame() {
     // Send local player state to server for multiplayer synchronization
     if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
         const localPlayer = gameState.players.find(p => p.id === gameState.multiplayer.playerId);
-        if (localPlayer && localPlayer.inputSource !== 'remote') {
+
+        if (!localPlayer) {
+            // Debug: Log if local player not found (throttled to avoid spam)
+            if (!window._lastLocalPlayerError || Date.now() - window._lastLocalPlayerError > 5000) {
+                console.error('[player:state] Local player not found!', {
+                    multiplayerPlayerId: gameState.multiplayer.playerId,
+                    availablePlayers: gameState.players.map(p => ({ id: p.id, name: p.name, inputSource: p.inputSource }))
+                });
+                window._lastLocalPlayerError = Date.now();
+            }
+        } else if (localPlayer.inputSource === 'remote') {
+            // Debug: Log if local player is marked as remote (shouldn't happen)
+            if (!window._lastRemoteError || Date.now() - window._lastRemoteError > 5000) {
+                console.error('[player:state] Local player marked as remote!', {
+                    playerId: localPlayer.id,
+                    playerName: localPlayer.name,
+                    inputSource: localPlayer.inputSource
+                });
+                window._lastRemoteError = Date.now();
+            }
+        } else {
             // Send state update every frame (server will throttle if needed)
             gameState.multiplayer.socket.emit('player:state', {
                 x: localPlayer.x,
@@ -1621,11 +1686,11 @@ function updateGame() {
         }
     }
 
-    // Continuous firing (P1 Mouse)
+    // Continuous firing (Local Mouse Player)
     if (mouse.isDown && gameState.gameRunning && !gameState.gamePaused) {
-        const p1 = gameState.players[0];
-        if (p1 && p1.health > 0 && p1.inputSource === 'mouse') {
-            shootBullet(mouse, canvas, p1);
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        if (localPlayer && localPlayer.health > 0) {
+            shootBullet(mouse, canvas, localPlayer);
         }
     }
 
@@ -1685,6 +1750,7 @@ function drawGame() {
     }
 
     gameHUD.mainMenu = false;
+    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
 
     // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
     if (activeInputSource === 'gamepad') {
@@ -1737,8 +1803,9 @@ function drawGame() {
     }
 
     // Lighting overlay (if enabled) - follows player position
-    if (graphicsSettings.lighting !== false && gameState.players.length > 0 && gameState.players[0].health > 0) {
-        const player = gameState.players[0];
+
+    if (graphicsSettings.lighting !== false && localPlayer && localPlayer.health > 0) {
+        const player = localPlayer;
         const lightingRadius = Math.max(canvas.width, canvas.height) * 0.8;
         const lightingGradient = ctx.createRadialGradient(
             player.x, player.y, 0,
@@ -1836,13 +1903,15 @@ function drawGame() {
     drawCrosshair();
 
     // Draw low health vignette before HUD
-    if (gameState.players.length > 0 && gameState.players[0].health > 0) {
-        gameHUD.drawLowHealthVignette(gameState.players[0]);
+
+    if (localPlayer && localPlayer.health > 0) {
+        gameHUD.drawLowHealthVignette(localPlayer);
     }
 
     // Draw contextual tooltips for pickups
-    if (gameState.gameRunning && !gameState.gamePaused && gameState.players.length > 0) {
-        const p1 = gameState.players[0];
+
+    if (gameState.gameRunning && !gameState.gamePaused && localPlayer) {
+        const p1 = localPlayer;
         const tooltipDistance = 60;
 
         // Check health pickups
@@ -2009,10 +2078,12 @@ gameEngine.update = (dt) => {
     // Check for Gamepad Actions (Mostly P1 if we allow it, or Global Menus)
     if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && gameState.gameRunning) {
 
-        const p1 = gameState.players[0];
+        // Find local player using gamepad
+        const localPlayer = gameState.players.find(p => p.inputSource === 'gamepad');
 
-        // If P1 uses gamepad
-        if (p1 && p1.inputSource !== 'mouse') {
+        // If local player uses gamepad
+        if (localPlayer) {
+            const p1 = localPlayer;
             activeInputSource = 'gamepad';
             // Use stored index if available, else 0
             const gpIndex = p1.gamepadIndex !== undefined && p1.gamepadIndex !== null ? p1.gamepadIndex : 0;
@@ -2136,21 +2207,21 @@ document.addEventListener('keydown', (e) => {
     }
 
     const controls = settingsManager.settings.controls;
-    const p1 = gameState.players[0]; // P1 uses Keyboard
+    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
 
     // Weapon switching
-    if (keys[controls.weapon1] && p1) switchWeapon(WEAPONS.pistol, p1);
-    if (keys[controls.weapon2] && p1) switchWeapon(WEAPONS.shotgun, p1);
-    if (keys[controls.weapon3] && p1) switchWeapon(WEAPONS.rifle, p1);
-    if (keys[controls.weapon4] && p1) switchWeapon(WEAPONS.flamethrower, p1);
-    if (keys[controls.weapon5] && p1) switchWeapon(WEAPONS.smg, p1);
-    if (keys[controls.weapon6] && p1) switchWeapon(WEAPONS.sniper, p1);
-    if (keys[controls.weapon7] && p1) switchWeapon(WEAPONS.rocketLauncher, p1);
+    if (keys[controls.weapon1] && localPlayer) switchWeapon(WEAPONS.pistol, localPlayer);
+    if (keys[controls.weapon2] && localPlayer) switchWeapon(WEAPONS.shotgun, localPlayer);
+    if (keys[controls.weapon3] && localPlayer) switchWeapon(WEAPONS.rifle, localPlayer);
+    if (keys[controls.weapon4] && localPlayer) switchWeapon(WEAPONS.flamethrower, localPlayer);
+    if (keys[controls.weapon5] && localPlayer) switchWeapon(WEAPONS.smg, localPlayer);
+    if (keys[controls.weapon6] && localPlayer) switchWeapon(WEAPONS.sniper, localPlayer);
+    if (keys[controls.weapon7] && localPlayer) switchWeapon(WEAPONS.rocketLauncher, localPlayer);
 
     // Actions
-    if (key === controls.grenade && p1) throwGrenade(mouse, canvas, p1);
-    if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && p1) reloadWeapon(p1);
-    if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && p1) performMeleeAttack(p1);
+    if (key === controls.grenade && localPlayer) throwGrenade(mouse, canvas, localPlayer);
+    if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && localPlayer) reloadWeapon(localPlayer);
+    if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && localPlayer) performMeleeAttack(localPlayer);
 
     if (gameState.gamePaused || !gameState.gameRunning) {
         if (key === controls.reload) restartGame();
@@ -2225,8 +2296,8 @@ canvas.addEventListener('mousedown', (e) => {
         initAudio();
         if (!gameState.menuMusicMuted) {
             if (!gameState.menuMusicMuted) {
-        playMenuMusic();
-    }
+                playMenuMusic();
+            }
         }
 
         if (clickedButton === 'single') {
@@ -2306,7 +2377,7 @@ canvas.addEventListener('mousedown', (e) => {
                 isLeader: gameState.multiplayer.isLeader,
                 currentReady: gameState.multiplayer.isReady
             });
-            
+
             if (gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
                 console.log('[Ready Button] Emitting player:ready to server');
                 gameState.multiplayer.socket.emit('player:ready');
@@ -2329,8 +2400,8 @@ canvas.addEventListener('mousedown', (e) => {
             // Remove all AI players when leaving lobby
             gameState.players = [gameState.players[0]];
             if (!gameState.menuMusicMuted) {
-        playMenuMusic();
-    }
+                playMenuMusic();
+            }
         } else if (clickedButton === 'ai_add') {
             addAIPlayer();
         } else if (clickedButton === 'ai_start') {
@@ -2350,8 +2421,8 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showCoopLobby = false;
             gameState.showMainMenu = true;
             if (!gameState.menuMusicMuted) {
-        playMenuMusic();
-    }
+                playMenuMusic();
+            }
         } else if (clickedButton === 'coop_start') {
             // Start coop game
             gameState.showCoopLobby = false;
@@ -2368,8 +2439,8 @@ canvas.addEventListener('mousedown', (e) => {
             mouse.isDown = true;
             // Handled in updateGame loop
         } else if (e.button === 2) {
-            const p1 = gameState.players[0];
-            if (p1) performMeleeAttack(p1);
+            const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+            if (localPlayer) performMeleeAttack(localPlayer);
         }
     }
 });
@@ -2394,8 +2465,8 @@ canvas.addEventListener('wheel', (e) => {
     if (gameState.showMainMenu || gameState.showLobby ||
         gameState.showCoopLobby || gameState.showAILobby) return;
 
-    const p1 = gameState.players[0];
-    if (!p1 || p1.health <= 0) return;
+    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+    if (!localPlayer || localPlayer.health <= 0) return;
 
     // Prevent default scrolling
     e.preventDefault();
@@ -2403,7 +2474,7 @@ canvas.addEventListener('wheel', (e) => {
     // Cycle weapon based on scroll direction
     // deltaY > 0 means scrolling down (next weapon), < 0 means scrolling up (previous weapon)
     const direction = Math.sign(e.deltaY);
-    cycleWeapon(direction, p1);
+    cycleWeapon(direction, localPlayer);
 });
 
 // Focus/Blur handling for auto-pause
