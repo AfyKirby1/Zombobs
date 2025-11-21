@@ -2,6 +2,45 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [Unreleased] - 2025-01-XX
+
+### 🔧 Code Refactoring & Architecture Improvements
+
+> **Major refactoring to extract large systems from main.js into dedicated modules**
+
+### Added
+- **ZombieUpdateSystem** (`js/systems/ZombieUpdateSystem.js`)
+  - Extracted zombie AI update logic (~173 lines)
+  - Handles zombie AI, multiplayer interpolation, and synchronization broadcasting
+  - Methods: `updateZombies()`, `updateZombieAI()`, `interpolateZombiePosition()`, `broadcastZombieUpdates()`
+  - Features: viewport culling, night speed multiplier, adaptive update rate, delta compression
+
+- **EntityRenderSystem** (`js/systems/EntityRenderSystem.js`)
+  - Extracted entity rendering loops (~102 lines)
+  - Handles rendering of all game entities with viewport culling
+  - Methods: `drawEntities()`, `drawEntityArray()`
+  - Features: viewport culling, visibility culling for small entities, optimized loops
+
+- **PickupSpawnSystem** (`js/systems/PickupSpawnSystem.js`)
+  - Extracted pickup spawning logic (~52 lines)
+  - Handles spawning of health, ammo, and powerup pickups
+  - Methods: `updateSpawns()`, `spawnHealthPickup()`, `spawnAmmoPickup()`, `spawnPowerup()`
+  - Features: conditional spawning, weighted powerup distribution
+
+### Changed
+- **main.js Refactoring** - Reduced from ~3,230 lines to ~2,537 lines (693 lines removed, ~21% reduction)
+  - Zombie update logic extracted to `ZombieUpdateSystem`
+  - Entity rendering loops extracted to `EntityRenderSystem`
+  - Pickup spawning logic extracted to `PickupSpawnSystem`
+  - Improved code organization and maintainability
+  - Better separation of concerns
+
+### Benefits
+- **Improved Maintainability**: Large systems now isolated in dedicated modules
+- **Better Testability**: Systems can be tested independently
+- **Consistent Architecture**: Follows existing pattern (ParticleSystem, AudioSystem, etc.)
+- **Reduced Complexity**: main.js is now more focused on coordination rather than implementation
+
 ## [0.5.3] - 2025-01-21
 
 ### 🎨 UI Improvements & Scaling Fixes

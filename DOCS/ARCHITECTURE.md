@@ -338,6 +338,67 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: None (localStorage only)
 
+#### ZombieUpdateSystem.js
+**Purpose**: Handles zombie AI updates, multiplayer interpolation, and synchronization broadcasting
+
+**Exports**: `ZombieUpdateSystem` class, `zombieUpdateSystem` singleton
+
+**Methods**:
+- `updateZombies(gameState, gameEngine, viewport, now)` - Main update method for all zombies
+- `updateZombieAI(zombie, players, nightSpeedMultiplier)` - AI logic for finding closest player and applying movement
+- `interpolateZombiePosition(zombie, gameEngine, gameState, now)` - Multiplayer interpolation for non-leader clients
+- `broadcastZombieUpdates(gameState, now)` - Leader synchronization broadcasting with delta compression
+
+**Features**:
+- Viewport culling for performance (only updates zombies near viewport)
+- Night speed multiplier (20% speed increase during night)
+- Adaptive update rate based on zombie count and network latency
+- Delta compression (only sends changed zombies)
+- Velocity-based extrapolation for smooth movement
+
+**Dependencies**: `utils/gameUtils.js` (shouldUpdateEntity)
+
+#### EntityRenderSystem.js
+**Purpose**: Handles rendering of all game entities with viewport culling and visibility optimization
+
+**Exports**: `EntityRenderSystem` class, `entityRenderSystem` singleton
+
+**Methods**:
+- `drawEntities(gameState, ctx, viewport)` - Main rendering method that draws all entities
+- `drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx)` - Generic helper for drawing entity arrays
+
+**Features**:
+- Viewport culling for all entities
+- Visibility culling for small entities (shells, bullets)
+- Optimized loops (for loops instead of forEach)
+- Handles different draw method signatures (some entities take ctx parameter, others don't)
+
+**Rendered Entities**:
+- Shells, bullets, grenades, acid projectiles, acid pools
+- All pickup types (health, ammo, damage, nuke, speed, rapidfire, shield, adrenaline)
+- Zombies
+
+**Dependencies**: `utils/gameUtils.js` (isInViewport, isVisibleOnScreen)
+
+#### PickupSpawnSystem.js
+**Purpose**: Handles spawning of health, ammo, and powerup pickups based on game conditions and timers
+
+**Exports**: `PickupSpawnSystem` class, `pickupSpawnSystem` singleton
+
+**Methods**:
+- `updateSpawns(gameState, canvas, now)` - Main method that handles all pickup spawning
+- `spawnHealthPickup(gameState, canvas, now)` - Health pickup spawning logic
+- `spawnAmmoPickup(gameState, canvas, now)` - Ammo pickup spawning logic
+- `spawnPowerup(gameState, canvas, now)` - Powerup spawning with weighted distribution
+
+**Features**:
+- Conditional spawning (health only spawns if players are hurt, ammo only if players are low on ammo)
+- Weighted powerup distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
+- Respects maximum pickup limits
+- 60% chance for powerup spawn every 30 seconds
+
+**Dependencies**: `core/constants.js` (spawn intervals, max counts), `entities/Pickup.js` (all pickup classes)
+
 **Settings Structure**:
 - `audio.masterVolume` - Master volume (0.0 to 1.0)
 - `video.vignette` - Enable/disable vignette overlay
@@ -517,11 +578,18 @@ This modular structure improves maintainability, testability, and scalability.
 - Coordinate all modules
 - Handle input (keyboard, mouse)
 - Handle melee attacks (`performMeleeAttack`)
-- Update game state (`updateGame()`)
-- Render game (`drawGame()`)
+- Update game state (`updateGame()`) - delegates to specialized systems
+- Render game (`drawGame()`) - delegates to specialized systems
 - Delegate AI companion updates to `CompanionSystem`
 
 **Dependencies**: All other modules
+
+**Refactoring Notes**:
+- Main.js has been significantly refactored to extract large systems into dedicated modules
+- Zombie updates delegated to `ZombieUpdateSystem`
+- Entity rendering delegated to `EntityRenderSystem`
+- Pickup spawning delegated to `PickupSpawnSystem`
+- Current size: ~2,537 lines (reduced from ~3,230 lines)
 
 **AI Companion Integration**:
 - `addAIPlayer()` function delegates to `companionSystem.addCompanion()`

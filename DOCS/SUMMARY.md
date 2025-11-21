@@ -19,6 +19,11 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Synchronized Game Start** - All players enter game simultaneously in same session
 ✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights
 ✅ **Modular Architecture** - ES6 modules with organized file structure
+✅ **System Refactoring** - Large systems extracted from main.js into dedicated modules
+  - ZombieUpdateSystem: Zombie AI, multiplayer sync, interpolation (~173 lines extracted)
+  - EntityRenderSystem: Entity rendering with viewport culling (~102 lines extracted)
+  - PickupSpawnSystem: Pickup spawning logic (~52 lines extracted)
+  - main.js reduced from ~3,230 to ~2,537 lines (21% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
 ✅ **Enemy Variety** - 6 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter)
@@ -109,7 +114,10 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── GraphicsSystem.js     # Graphics utilities (ground texture loading)
 │   │   ├── ParticleSystem.js     # Particle effects and blood splatter
 │   │   ├── SettingsManager.js    # Settings persistence and management
-│   │   └── InputSystem.js        # Gamepad input handling (HTML5 Gamepad API)
+│   │   ├── InputSystem.js        # Gamepad input handling (HTML5 Gamepad API)
+│   │   ├── ZombieUpdateSystem.js # Zombie AI updates and multiplayer sync
+│   │   ├── EntityRenderSystem.js # Entity rendering with viewport culling
+│   │   └── PickupSpawnSystem.js  # Pickup spawning logic
 │   ├── ui/
 │   │   ├── GameHUD.js            # In-game HUD component
 │   │   └── SettingsPanel.js      # Settings UI panel

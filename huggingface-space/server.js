@@ -3,12 +3,18 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const packageJson = require('./package.json');
+const cookieParser = require('cookie-parser');
+const crypto = require('crypto');
 
 const app = express();
 const httpServer = createServer(app);
 
 // Trust proxy (Hugging Face Spaces uses reverse proxy)
 app.set('trust proxy', true);
+
+// Middleware
+app.use(cookieParser());
+app.use(express.json());
 
 // Add Express CORS middleware for all HTTP requests (including Socket.io polling)
 app.use((req, res, next) => {
@@ -44,6 +50,43 @@ const io = new Server(httpServer, {
 
 const players = new Map();
 const recentEvents = [];
+const userSessions = new Map(); // Track user sessions with cookies
+
+// Generate unique user ID from cookie or create new one
+function getOrCreateUserId(req, res) {
+  let userId = req.cookies?.zombobs_user_id;
+  
+  if (!userId || !userSessions.has(userId)) {
+    // Create new user ID
+    userId = crypto.randomBytes(16).toString('hex');
+    res.cookie('zombobs_user_id', userId, {
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+      httpOnly: true,
+      secure: true, // HTTPS on Hugging Face
+      sameSite: 'lax'
+    });
+    
+    // Initialize user session
+    userSessions.set(userId, {
+      userId,
+      firstSeen: new Date(),
+      lastSeen: new Date(),
+      socketIds: new Set(),
+      userAgent: req.headers['user-agent'] || 'Unknown',
+      ip: req.ip || req.connection.remoteAddress || 'Unknown'
+    });
+  } else {
+    // Update last seen
+    const session = userSessions.get(userId);
+    if (session) {
+      session.lastSeen = new Date();
+      session.userAgent = req.headers['user-agent'] || session.userAgent;
+      session.ip = req.ip || req.connection.remoteAddress || session.ip;
+    }
+  }
+  
+  return userId;
+}
 
 function logEvent(message) {
   const timestamp = new Date().toLocaleTimeString();
@@ -112,12 +155,37 @@ function formatMemory(bytes) {
 
 // Root endpoint - serve a simple HTML page
 app.get('/', (req, res) => {
+  const userId = getOrCreateUserId(req, res);
   const uptime = formatUptime(process.uptime());
   const memoryMB = formatMemory(process.memoryUsage().heapUsed);
+  const totalMemoryMB = formatMemory(process.memoryUsage().heapTotal);
   const version = packageJson.version;
   const eventsHTML = recentEvents.length > 0
     ? recentEvents.map(event => `<li>${event}</li>`).join('')
     : '<li><em>No recent activity... yet.</em></li>';
+  
+  // Get player list with details
+  const playerList = Array.from(players.values());
+  const readyCount = playerList.filter(p => p.isReady).length;
+  const leader = playerList.find(p => p.isLeader);
+  
+  // Format player list HTML
+  let playersHTML = '';
+  if (playerList.length === 0) {
+    playersHTML = '<li class="no-players"><em>No survivors connected... The horde waits.</em></li>';
+  } else {
+    playersHTML = playerList.map(player => {
+      const readyClass = player.isReady ? 'ready' : 'not-ready';
+      const leaderBadge = player.isLeader ? '<span class="leader-badge">👑 LEADER</span>' : '';
+      return `
+        <li class="player-item ${readyClass}">
+          <span class="player-name">${player.name}</span>
+          ${leaderBadge}
+          <span class="player-status">${player.isReady ? '✓ READY' : '○ NOT READY'}</span>
+        </li>
+      `;
+    }).join('');
+  }
 
   res.send(`
     <!DOCTYPE html>
@@ -302,6 +370,110 @@ app.get('/', (req, res) => {
             color: #444;
             margin-top: 5px;
         }
+        
+        .players-section {
+          background: #1a1a1a;
+          border: 1px solid #333;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 20px;
+          text-align: left;
+        }
+        
+        .players-section h3 {
+          margin-top: 0;
+          color: #ffaa00;
+          font-family: 'Creepster', cursive;
+          letter-spacing: 1px;
+          font-size: 1.4em;
+          border-bottom: 1px solid #333;
+          padding-bottom: 10px;
+          margin-bottom: 15px;
+        }
+        
+        .players-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        
+        .player-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 15px;
+          margin: 8px 0;
+          background: #252525;
+          border-radius: 6px;
+          border-left: 4px solid #666;
+          transition: all 0.3s ease;
+        }
+        
+        .player-item.ready {
+          border-left-color: #00ff00;
+          background: rgba(0, 255, 0, 0.05);
+        }
+        
+        .player-item.not-ready {
+          border-left-color: #ff4444;
+          background: rgba(255, 68, 68, 0.05);
+        }
+        
+        .player-item:hover {
+          transform: translateX(5px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .player-name {
+          font-weight: bold;
+          color: #fff;
+          font-size: 1.1em;
+        }
+        
+        .leader-badge {
+          background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+          color: #000;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 0.75em;
+          font-weight: bold;
+          margin-left: 10px;
+          text-shadow: none;
+          box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .player-status {
+          font-family: 'Courier New', monospace;
+          font-size: 0.9em;
+          padding: 4px 12px;
+          border-radius: 12px;
+          font-weight: bold;
+        }
+        
+        .player-item.ready .player-status {
+          background: rgba(0, 255, 0, 0.2);
+          color: #00ff00;
+        }
+        
+        .player-item.not-ready .player-status {
+          background: rgba(255, 68, 68, 0.2);
+          color: #ff4444;
+        }
+        
+        .no-players {
+          text-align: center;
+          padding: 20px;
+          color: #666;
+          font-style: italic;
+        }
+        
+        .ready-count {
+          color: #00ff00;
+          font-weight: bold;
+        }
+        
+        .stat-card.memory { border-color: #aa00ff; }
+        .stat-card.ready { border-color: #00ffaa; }
       </style>
     </head>
     <body>
@@ -320,7 +492,11 @@ app.get('/', (req, res) => {
         <div class="stats-grid">
           <div class="stat-card online">
             <div class="stat-label">Survivors Online</div>
-            <div class="stat-value">${players.size}</div>
+            <div class="stat-value">${playerList.length}</div>
+          </div>
+          <div class="stat-card ready">
+            <div class="stat-label">Ready to Fight</div>
+            <div class="stat-value">${readyCount}/${playerList.length}</div>
           </div>
           <div class="stat-card uptime">
             <div class="stat-label">Time Since Outbreak</div>
@@ -330,10 +506,21 @@ app.get('/', (req, res) => {
             <div class="stat-label">Server Version</div>
             <div class="stat-value">v${version}</div>
           </div>
+          <div class="stat-card memory">
+            <div class="stat-label">Memory Usage</div>
+            <div class="stat-value">${memoryMB} MB</div>
+          </div>
+        </div>
+
+        <div class="players-section">
+          <h3>👥 Survivor Roster ${leader ? `- Leader: ${leader.name}` : ''}</h3>
+          <ul class="players-list">
+            ${playersHTML}
+          </ul>
         </div>
 
         <div class="activity-log">
-          <h3>Radio Chatter</h3>
+          <h3>📻 Radio Chatter</h3>
           <ul>
             ${eventsHTML}
           </ul>
@@ -342,7 +529,7 @@ app.get('/', (req, res) => {
 
       <div class="footer">
         <p>Server auto-refreshes every 10 seconds</p>
-        <p class="port-info">Port: ${PORT} • Memory: ${memoryMB} MB</p>
+        <p class="port-info">Port: ${PORT} • Memory: ${memoryMB} MB / ${totalMemoryMB} MB</p>
       </div>
     </body>
     </html>
@@ -360,6 +547,11 @@ app.get('/health', (req, res) => {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
+  // Get user ID from handshake cookies
+  const cookies = socket.handshake.headers.cookie || '';
+  const cookieMatch = cookies.match(/zombobs_user_id=([^;]+)/);
+  const userId = cookieMatch ? cookieMatch[1] : null;
+  
   const defaultName = `Survivor-${socket.id.slice(-4)}`;
   const isFirstPlayer = players.size === 0;
 
@@ -367,8 +559,16 @@ io.on('connection', (socket) => {
     id: socket.id,
     name: defaultName,
     isReady: false,
-    isLeader: isFirstPlayer
+    isLeader: isFirstPlayer,
+    userId: userId || 'unknown'
   });
+  
+  // Link socket to user session
+  if (userId && userSessions.has(userId)) {
+    const session = userSessions.get(userId);
+    session.socketIds.add(socket.id);
+    session.lastSeen = new Date();
+  }
 
   // If not first player, ensure leader is assigned
   if (!isFirstPlayer) {
@@ -578,7 +778,15 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
     const wasLeader = player?.isLeader || false;
+    const userId = player?.userId;
     players.delete(socket.id);
+    
+    // Remove socket from user session
+    if (userId && userSessions.has(userId)) {
+      const session = userSessions.get(userId);
+      session.socketIds.delete(socket.id);
+      session.lastSeen = new Date();
+    }
 
     const displayName = player?.name || defaultName;
 

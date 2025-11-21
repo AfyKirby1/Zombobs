@@ -30,7 +30,13 @@ export class GameHUD {
     }
 
     getUIScale() {
-        return settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+        const scale = settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+        // Ensure scale is always a finite positive number
+        if (!Number.isFinite(scale) || scale <= 0) {
+            console.warn('getUIScale: Invalid scale value, using default 1.0', { scale });
+            return 1.0;
+        }
+        return scale;
     }
 
     getScaledPadding() {
@@ -1232,6 +1238,17 @@ export class GameHUD {
     }
 
     drawGlassCard(x, y, width, height, borderGlow = false) {
+        // Validate all parameters are finite numbers
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
+            console.warn('drawGlassCard: Invalid parameters', { x, y, width, height });
+            return;
+        }
+        
+        // Ensure positive dimensions
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        
         // Glassmorphism effect - dark background with transparency
         const cardBg = this.ctx.createLinearGradient(x, y, x, y + height);
         cardBg.addColorStop(0, 'rgba(10, 12, 16, 0.85)');
@@ -1319,10 +1336,22 @@ export class GameHUD {
     }
 
     drawPlayerCard(x, y, player, index, isLocalPlayer) {
+        // Validate input parameters
+        if (!player || !Number.isFinite(x) || !Number.isFinite(y)) {
+            console.warn('drawPlayerCard: Invalid parameters', { x, y, player });
+            return;
+        }
+        
         const scale = this.getUIScale();
         const cardWidth = 220 * scale;  // Reduced from 280
         const cardHeight = 75 * scale;  // Reduced from 100
         const padding = 12 * scale;     // Reduced from 15
+        
+        // Validate calculated dimensions
+        if (!Number.isFinite(cardWidth) || !Number.isFinite(cardHeight) || cardWidth <= 0 || cardHeight <= 0) {
+            console.warn('drawPlayerCard: Invalid card dimensions', { cardWidth, cardHeight, scale });
+            return;
+        }
         
         // Fade-in animation
         let alpha = 1.0;
@@ -1607,6 +1636,16 @@ export class GameHUD {
     }
 
     drawLobby() {
+        // Validate canvas dimensions
+        if (!this.canvas || !Number.isFinite(this.canvas.width) || !Number.isFinite(this.canvas.height) || 
+            this.canvas.width <= 0 || this.canvas.height <= 0) {
+            console.warn('drawLobby: Invalid canvas dimensions', { 
+                width: this.canvas?.width, 
+                height: this.canvas?.height 
+            });
+            return;
+        }
+        
         // Track lobby entry time for fade-in animations
         if (this.lastLobbyState !== gameState.showLobby) {
             if (gameState.showLobby) {
@@ -1690,10 +1729,22 @@ export class GameHUD {
         const cardWidth = 220 * scale;
         const cardHeight = 75 * scale;
         
+        // Validate calculated dimensions
+        if (!Number.isFinite(cardWidth) || !Number.isFinite(cardHeight) || cardWidth <= 0 || cardHeight <= 0) {
+            console.warn('drawLobby: Invalid card dimensions', { cardWidth, cardHeight, scale });
+            return;
+        }
+        
         // Calculate total width of card area and center it
         const totalCardsWidth = Math.min(players.length, cardsPerRow) * cardWidth + (Math.min(players.length, cardsPerRow) - 1) * cardSpacing;
         const cardStartX = centerX - totalCardsWidth / 2;
         const cardStartY = topY;
+        
+        // Validate calculated positions
+        if (!Number.isFinite(cardStartX) || !Number.isFinite(cardStartY)) {
+            console.warn('drawLobby: Invalid card positions', { cardStartX, cardStartY, centerX, topY });
+            return;
+        }
 
         if (players.length === 0) {
             // Empty state
