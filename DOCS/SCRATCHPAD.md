@@ -4,6 +4,21 @@
 
 ## 2025 - Active Development Notes
 
+### Game Start Synchronization Fix [2025-01-XX]
+- 🎮 **Fixed Players Not Joining Together**: Resolved critical bug where players started in separate game sessions
+  - Root cause: `gameState.isCoop = false` in `game:start` handler forced single-player mode
+  - Solution: Changed to `gameState.isCoop = true` and added player synchronization
+  - Players from lobby are now properly synced to game state before starting
+  - Each client creates player entities for all lobby players with correct IDs and names
+  - Local player correctly identified and assigned `inputSource = 'mouse'`, others set to `'remote'`
+  - All players now join the same game session together
+  
+- 🔍 **Debug Logging**: Added comprehensive logging for game start
+  - Logs multiplayer players and local player ID on game start
+  - Logs player sync process with count and details
+  - Logs each created player with ID, name, local status, and input source
+  - Logs final player count and IDs after synchronization
+
 ### Ready Button Bug Fix [2025-01-XX]
 - 🐛 **Fixed Ready Button Not Working**: Resolved critical bug where ready button did nothing when clicked
   - Root cause: Leader restriction (`!gameState.multiplayer.isLeader`) prevented ready toggle

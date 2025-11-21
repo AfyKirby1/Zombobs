@@ -64,7 +64,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "V0.4.1: Multiplayer Sync Fixed! 🔧 | Leader System 👑 | Ready Up ✅ | Synchronized Game Start 🎮 | V0.4.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | Smart Connection 🔌 | Auto Health Checks 💚 | WebGPU Fixes ⚡ | And More...";
+export const NEWS_UPDATES = "V0.4.2: Ready Button Fixed! ✅ | Players Join Together! 🎮 | Game Start Sync 🔧 | V0.4.1: Multiplayer Sync Fixed! 🔧 | Leader System 👑 | Ready Up ✅ | Synchronized Game Start 🎮 | V0.4.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | Smart Connection 🔌 | Auto Health Checks 💚 | WebGPU Fixes ⚡ | And More...";
 
 // Weapon definitions
 export const WEAPONS = {

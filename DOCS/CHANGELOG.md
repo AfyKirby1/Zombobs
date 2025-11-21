@@ -4,11 +4,23 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [0.4.2] - 2025-01-XX
 
-### 🐛 FIXED: Ready Button Not Working
+### 🐛 FIXED: Ready Button Not Working & Game Start Synchronization
 
-> **Ready button now works for all players!**
+> **Ready button works and players now join together!**
 
-Fixed critical bug where the ready button in the multiplayer lobby did nothing when clicked. The button was visible but clicking it had no effect.
+Fixed critical bugs preventing multiplayer from working correctly. Ready button now toggles properly and all players join the same game session when the leader starts the game.
+
+### Fixed
+- **🚨 Ready Button Click Handler**: Ready button now properly toggles ready state for all players
+  - Removed leader restriction that prevented ready toggle
+  - Added socket connection validation before emitting
+  - Fixed button click detection for all player roles
+  
+- **🎮 Game Start Synchronization**: Players now join together in the same game session
+  - Fixed bug where `isCoop = false` was preventing multiplayer mode
+  - Added player synchronization from lobby to game state
+  - All players from lobby are now created as game entities
+  - Local player correctly identified and assigned input control
 
 ### Fixed
 - **🚨 Ready Button Click Handler**: Ready button now properly toggles ready state for all players
@@ -39,11 +51,21 @@ Fixed critical bug where the ready button in the multiplayer lobby did nothing w
   - Added `socket.connected` check before emitting `player:ready`
   - Enhanced `lobby:update` handler with detailed logging
   - Added debug console logs throughout ready toggle flow
+  - Fixed `game:start` handler to enable co-op mode (`isCoop = true`)
+  - Added player synchronization from `gameState.multiplayer.players` to `gameState.players`
+  - Player entities created with correct IDs, names, and input sources
+  - Added comprehensive logging for game start synchronization
 
 - **UI Updates (`js/ui/GameHUD.js`)**:
   - Updated `drawLobby()` to show ready button for leaders
   - Updated `checkMenuButtonClick()` to detect ready button for all players
   - Improved button layout with proper spacing for leaders
+
+- **Server Events (`huggingface-space/server.js`)**:
+  - Added comprehensive logging to `player:ready` handler
+  - Added error handling and player lookup validation
+  - Enhanced `broadcastLobby()` with detailed logging
+  - Added error emission back to clients for debugging
 
 ## [0.4.1] - 2025-11-20
 

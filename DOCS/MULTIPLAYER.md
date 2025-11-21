@@ -135,7 +135,13 @@ The `gameState.multiplayer` object tracks:
 4. If valid:
    - Server broadcasts `game:start` to all clients
    - All clients receive signal simultaneously
-   - All clients call `startGame()` to begin gameplay
+   - Each client:
+     - Sets `gameState.isCoop = true` to enable multiplayer mode
+     - Synchronizes players from `gameState.multiplayer.players` to `gameState.players`
+     - Creates player entities for each lobby player with correct IDs and names
+     - Sets `inputSource` to `'mouse'` for local player, `'remote'` for others
+     - Calls `startGame()` to begin gameplay
+   - All players join the same game session together
 5. If invalid:
    - Server sends `game:start:error` to requester
    - Error is logged (could show UI message)
