@@ -69,7 +69,24 @@ function assignLeader() {
 }
 
 function broadcastLobby() {
-  io.emit('lobby:update', Array.from(players.values()));
+  const playerList = Array.from(players.values());
+  console.log(`[broadcastLobby] Broadcasting lobby update to all clients`);
+  console.log(`[broadcastLobby] Player count: ${playerList.length}`);
+  console.log(`[broadcastLobby] Players:`, playerList.map(p => ({ 
+    id: p.id, 
+    name: p.name, 
+    isReady: p.isReady, 
+    isLeader: p.isLeader 
+  })));
+  
+  try {
+    io.emit('lobby:update', playerList);
+    console.log(`[broadcastLobby] Successfully emitted lobby:update event`);
+  } catch (error) {
+    console.error(`[broadcastLobby] ERROR emitting lobby:update:`, error);
+    console.error(`[broadcastLobby] Error stack:`, error.stack);
+    throw error;
+  }
 }
 
 function formatPlayerList() {
@@ -384,14 +401,54 @@ io.on('connection', (socket) => {
 
   // Handle ready toggle
   socket.on('player:ready', () => {
-    const player = players.get(socket.id);
-    if (player) {
-      player.isReady = !player.isReady;
-      console.log(
-        `[~] ${player.name} ${player.isReady ? 'READY' : 'NOT READY'} | Players online: ${players.size}`
-      );
-      logEvent(`${player.name} ${player.isReady ? 'is ready' : 'is not ready'}`);
-      broadcastLobby();
+    try {
+      console.log(`[player:ready] Event received from socket.id: ${socket.id}`);
+      console.log(`[player:ready] Current players in Map: ${players.size}`);
+      console.log(`[player:ready] Player IDs in Map:`, Array.from(players.keys()));
+      
+      const player = players.get(socket.id);
+      if (player) {
+        const oldReadyState = player.isReady;
+        console.log(`[player:ready] Player found: ${player.name}, current ready state: ${oldReadyState}`);
+        
+        player.isReady = !player.isReady;
+        const newReadyState = player.isReady;
+        
+        console.log(
+          `[~] ${player.name} ${player.isReady ? 'READY' : 'NOT READY'} | Players online: ${players.size}`
+        );
+        console.log(`[player:ready] State changed: ${oldReadyState} -> ${newReadyState}`);
+        
+        logEvent(`${player.name} ${player.isReady ? 'is ready' : 'is not ready'}`);
+        
+        try {
+          console.log(`[player:ready] Calling broadcastLobby()...`);
+          broadcastLobby();
+          console.log(`[player:ready] broadcastLobby() completed successfully`);
+        } catch (error) {
+          console.error(`[player:ready] ERROR in broadcastLobby():`, error);
+          console.error(`[player:ready] Error stack:`, error.stack);
+          throw error; // Re-throw to be caught by outer try-catch
+        }
+      } else {
+        console.error(`[player:ready] ERROR: Player not found in Map for socket.id: ${socket.id}`);
+        console.error(`[player:ready] Available socket IDs:`, Array.from(players.keys()));
+        console.error(`[player:ready] This may indicate a disconnect or connection issue`);
+        // Emit error back to client for debugging
+        socket.emit('player:ready:error', { 
+          message: 'Player not found in server Map',
+          socketId: socket.id,
+          availablePlayers: Array.from(players.keys())
+        });
+      }
+    } catch (error) {
+      console.error(`[player:ready] UNEXPECTED ERROR in handler:`, error);
+      console.error(`[player:ready] Error stack:`, error.stack);
+      // Emit error back to client
+      socket.emit('player:ready:error', { 
+        message: 'Server error processing ready toggle',
+        error: error.message
+      });
     }
   });
 

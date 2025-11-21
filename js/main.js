@@ -250,6 +250,16 @@ function initializeNetwork() {
             // Could show error message to user in UI
         });
 
+        socket.on('player:ready:error', (error) => {
+            console.error('[Ready Button] Server error:', error.message);
+            if (error.error) {
+                console.error('[Ready Button] Error details:', error.error);
+            }
+            if (error.availablePlayers) {
+                console.error('[Ready Button] Available players on server:', error.availablePlayers);
+            }
+        });
+
         socket.on('connect_error', (err) => {
             console.error('Multiplayer connection error:', err.message);
             console.error('Connection details:', {
