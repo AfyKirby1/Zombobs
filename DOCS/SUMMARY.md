@@ -13,7 +13,10 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Background Reload** - Weapons auto-reload when holstered long enough
 ✅ **Auto-Reload** - Automatic reload when ammo reaches 0
 ✅ **UI Systems** - In-game HUD component with pause menu and game over screens
-✅ **Multiplayer Lobby** - Canvas-driven lobby tied to socket.io backend (PowerShell launcher)
+✅ **Multiplayer Lobby** - Canvas-driven lobby with ready system and synchronized game start
+✅ **Leader System** - First player designated as lobby leader with game start control
+✅ **Ready System** - Players can toggle ready status; all must be ready to start
+✅ **Synchronized Game Start** - All players enter game simultaneously in same session
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
@@ -134,7 +137,34 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
-## Recent Updates (V0.3.1)
+## Recent Updates (V0.4.1)
+- **Multiplayer Lobby Synchronization**:
+  - Implemented ready system - players toggle ready status before game starts
+  - Leader-based game start - first player is leader, can start when all ready
+  - Synchronized game start - server validates and broadcasts start to all clients simultaneously
+  - Enhanced lobby UI - shows leader indicator (👑) and ready status (✅/❌) for each player
+  - Fixed critical issue where players were starting in separate game sessions
+- **Server Enhancements**:
+  - Added `isReady` and `isLeader` properties to player objects
+  - Automatic leader reassignment when leader disconnects
+  - Game start validation (checks leader status and all-ready state)
+  - Enhanced lobby update broadcasts with ready/leader information
+- **Client Improvements**:
+  - Context-aware lobby buttons (Leader sees "Start Game", others see "Ready")
+  - Local state tracking for leader/ready status
+  - Proper event handling for synchronized game start
+- **Documentation**:
+  - Created `DOCS/MULTIPLAYER.md` - Comprehensive multiplayer architecture guide
+  - Documents packet flow, synchronization guarantees, and error handling
+
+## Recent Updates (V0.4.0)
+- **Hugging Face Spaces Deployment**:
+  - Production-ready server configuration for cloud hosting
+  - Automatic server health checking and wake-up system
+  - Improved Socket.io connection handling with reverse proxy support
+  - Server status indicator on main menu
+
+## Previous Updates (V0.3.1)
 - **Bug Fixes**: Fixed critical bullet update crash by ensuring correct removal check. Fixed grenade limit constant bug.
 - **WebGPU Rendering Foundation**:
   - Dedicated WebGPURenderer with Canvas 2D fallback

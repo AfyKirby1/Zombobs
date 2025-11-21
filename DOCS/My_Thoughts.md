@@ -2,7 +2,7 @@
 
 ## Current State [2025-11-20]
 
-The project is currently at **V0.3.1**. We've addressed two critical runtime errors recently: one involving `bullet.isOffScreen` and another regarding `MAX_GRENADES` not being defined.
+The project is currently at **V0.4.1**. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
 
 ### Recent Fixes
 - **Critical Bug Fix**: Resolved `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.
@@ -41,12 +41,25 @@ The project is currently at **V0.3.1**. We've addressed two critical runtime err
 10. **Engine Naming**: Officially named the game engine "ZOMBS-XFX-NGIN V0.3.0 ALPHA" with dedicated info box on landing page
 11. **HUD Polish**: Added UI indicators for all power-ups (Speed, Rapid Fire, Shield), ensuring players know exactly how long buffs last.
 
+### Latest Achievement (V0.4.1)
+- **Multiplayer Synchronization Fix**: Resolved critical issue where players were starting games in separate sessions
+  - Implemented ready system: Players can toggle ready status before game starts
+  - Leader system: First player is designated leader, can start game when all are ready
+  - Synchronized start: Server validates leader status and all-ready state before broadcasting start to all clients
+  - Enhanced UI: Lobby now shows leader indicator (👑) and ready status (✅/❌) for each player
+  - Context-aware buttons: Leader sees "Start Game", non-leaders see "Ready"/"Unready"
+  - Server-side validation: Ensures game only starts when valid (leader + all ready)
+  - Automatic leader reassignment: If leader disconnects, new leader is automatically assigned
+  - Comprehensive documentation: Created `DOCS/MULTIPLAYER.md` documenting the architecture
+
 ### Immediate Focus
+- **Multiplayer Testing**: Verify synchronized game start works reliably with multiple clients
+- **Error Handling**: Ensure graceful handling of edge cases (leader disconnect during start, etc.)
+- **Network Stability**: Monitor connection stability and implement reconnection handling if needed
 - **Local Co-op Polish**: Ensure controller assignment remains robust in edge cases (disconnects)
 - **Asset Integration**: Successfully integrated texture-based ground rendering
 - **Design System**: Established clear design guidelines for future UI work
 - **Documentation Quality**: Maintained comprehensive documentation as project grows
-- **Bug Hunting**: Keep an eye out for other potential interface mismatches between entities (like `isOffScreen` vs `markedForRemoval`).
 
 ### Thoughts on Architecture
 The transition to a multi-player `gameState` was smoother than expected thanks to the modular design. By keeping `gameState.player` as a compatibility getter for `gameState.players[0]`, we avoided rewriting hundreds of lines of single-player logic. The input system's ability to "lock" gamepads to specific players works well for preventing input conflicts.

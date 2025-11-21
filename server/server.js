@@ -18,6 +18,23 @@ const io = new Server(httpServer, {
 
 const players = new Map();
 
+function assignLeader() {
+  // Assign leader to first player in Map
+  if (players.size === 0) return;
+  
+  // Clear all leader flags
+  players.forEach((player) => {
+    player.isLeader = false;
+  });
+  
+  // Assign to first player
+  const firstPlayerId = Array.from(players.keys())[0];
+  const firstPlayer = players.get(firstPlayerId);
+  if (firstPlayer) {
+    firstPlayer.isLeader = true;
+  }
+}
+
 function broadcastLobby() {
   io.emit('lobby:update', Array.from(players.values()));
 }
@@ -53,12 +70,25 @@ app.get('/health', (req, res) => {
 // Socket.io connection handling
 io.on('connection', (socket) => {
   const defaultName = `Player-${socket.id.slice(-4)}`;
-  players.set(socket.id, { id: socket.id, name: defaultName });
+  const isFirstPlayer = players.size === 0;
+  
+  players.set(socket.id, { 
+    id: socket.id, 
+    name: defaultName,
+    isReady: false,
+    isLeader: isFirstPlayer
+  });
+
+  // If not first player, ensure leader is assigned
+  if (!isFirstPlayer) {
+    assignLeader();
+  }
 
   console.log(`\n${'='.repeat(60)}`);
   console.log(`✅ CLIENT CONNECTED!`);
   console.log(`   Player: ${defaultName}`);
   console.log(`   Socket ID: ${socket.id}`);
+  console.log(`   Is Leader: ${isFirstPlayer}`);
   console.log(`   Total Players Online: ${players.size}`);
   console.log(`   Active Players: ${formatPlayerList()}`);
   console.log(`${'='.repeat(60)}\n`);
@@ -68,7 +98,7 @@ io.on('connection', (socket) => {
   socket.on('player:register', (payload = {}) => {
     const rawName = typeof payload.name === 'string' ? payload.name : defaultName;
     const name = rawName.trim().substring(0, 24) || defaultName;
-    const current = players.get(socket.id) || { id: socket.id };
+    const current = players.get(socket.id) || { id: socket.id, isReady: false, isLeader: false };
     players.set(socket.id, { ...current, name });
     console.log(
       `[~] ${socket.id} set name to "${name}" | Players online: ${players.size}`
@@ -76,15 +106,61 @@ io.on('connection', (socket) => {
     broadcastLobby();
   });
 
+  // Handle ready toggle
+  socket.on('player:ready', () => {
+    const player = players.get(socket.id);
+    if (player) {
+      player.isReady = !player.isReady;
+      console.log(
+        `[~] ${player.name} ${player.isReady ? 'READY' : 'NOT READY'} | Players online: ${players.size}`
+      );
+      broadcastLobby();
+    }
+  });
+
+  // Handle game start request (leader only)
+  socket.on('game:start', () => {
+    const player = players.get(socket.id);
+    if (!player) return;
+    
+    // Check if requester is leader
+    if (!player.isLeader) {
+      console.log(`[!] Non-leader ${player.name} attempted to start game`);
+      socket.emit('game:start:error', { message: 'Only the lobby leader can start the game' });
+      return;
+    }
+    
+    // Check if all players are ready
+    const allReady = Array.from(players.values()).every(p => p.isReady);
+    if (!allReady) {
+      console.log(`[!] Leader ${player.name} attempted to start game but not all players ready`);
+      socket.emit('game:start:error', { message: 'All players must be ready to start' });
+      return;
+    }
+    
+    // All checks passed - broadcast game start to all clients
+    console.log(`[+] Game starting! All players ready.`);
+    io.emit('game:start');
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
+    const wasLeader = player?.isLeader || false;
     players.delete(socket.id);
     const displayName = player?.name || defaultName;
+    
+    // If leader disconnected, assign new leader
+    if (wasLeader && players.size > 0) {
+      assignLeader();
+      console.log(`[~] New leader assigned after ${displayName} disconnected`);
+    }
+    
     console.log(`\n${'='.repeat(60)}`);
     console.log(`❌ CLIENT DISCONNECTED`);
     console.log(`   Player: ${displayName}`);
     console.log(`   Socket ID: ${socket.id}`);
+    console.log(`   Was Leader: ${wasLeader}`);
     console.log(`   Remaining Players: ${players.size}`);
     console.log(`   Active Players: ${formatPlayerList()}`);
     console.log(`${'='.repeat(60)}\n`);

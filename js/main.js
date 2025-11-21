@@ -191,6 +191,8 @@ function initializeNetwork() {
             gameState.multiplayer.connected = true;
             gameState.multiplayer.status = 'connected';
             gameState.multiplayer.playerId = socket.id;
+            gameState.multiplayer.isReady = false;
+            gameState.multiplayer.isLeader = false;
             socket.emit('player:register', {
                 name: gameState.username || `Survivor-${socket.id.slice(-4)}`
             });
@@ -202,10 +204,32 @@ function initializeNetwork() {
             gameState.multiplayer.status = 'disconnected';
             gameState.multiplayer.playerId = null;
             gameState.multiplayer.players = [];
+            gameState.multiplayer.isLeader = false;
+            gameState.multiplayer.isReady = false;
         });
 
         socket.on('lobby:update', (players) => {
             gameState.multiplayer.players = Array.isArray(players) ? players : [];
+            // Update local leader/ready status from server data
+            const localPlayer = players.find(p => p.id === gameState.multiplayer.playerId);
+            if (localPlayer) {
+                gameState.multiplayer.isLeader = localPlayer.isLeader || false;
+                gameState.multiplayer.isReady = localPlayer.isReady || false;
+            }
+        });
+
+        socket.on('game:start', () => {
+            console.log('🎮 Game start signal received from server');
+            if (gameState.showLobby) {
+                gameState.isCoop = false;
+                initAudio();
+                startGame();
+            }
+        });
+
+        socket.on('game:start:error', (error) => {
+            console.warn('Game start error:', error.message);
+            // Could show error message to user in UI
         });
 
         socket.on('connect_error', (err) => {
@@ -2102,12 +2126,18 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.showLobby = false;
             gameState.showMainMenu = true;
             if (!gameState.menuMusicMuted) {
-        playMenuMusic();
-    }
+                playMenuMusic();
+            }
         } else if (clickedButton === 'lobby_start') {
-            gameState.isCoop = false;
-            initAudio();
-            startGame();
+            // Leader starts game - emit to server
+            if (gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
+                gameState.multiplayer.socket.emit('game:start');
+            }
+        } else if (clickedButton === 'lobby_ready') {
+            // Toggle ready state
+            if (gameState.multiplayer.socket && !gameState.multiplayer.isLeader) {
+                gameState.multiplayer.socket.emit('player:ready');
+            }
         }
         return;
     }

@@ -1041,7 +1041,7 @@ export class GameHUD {
         }
 
         const panelWidth = 360;
-        const panelHeight = 200;
+        const panelHeight = Math.max(200, 60 + players.length * 40);
         const panelX = centerX - panelWidth / 2;
         const panelY = centerY + 30;
 
@@ -1064,8 +1064,29 @@ export class GameHUD {
             players.forEach((player, index) => {
                 const name = player?.name || `Player ${index + 1}`;
                 const idSuffix = player?.id ? player.id.slice(-4) : '----';
-                this.ctx.fillStyle = player?.id === gameState.multiplayer.playerId ? '#76ff03' : '#ffffff';
-                this.ctx.fillText(`${index + 1}. ${name} (#${idSuffix})`, panelX + 20, panelY + 60 + index * 30);
+                const isLocalPlayer = player?.id === gameState.multiplayer.playerId;
+                const isLeader = player?.isLeader || false;
+                const isReady = player?.isReady || false;
+                
+                // Player name with leader indicator
+                let playerText = `${index + 1}. ${name}`;
+                if (isLeader) {
+                    playerText += ' 👑';
+                }
+                playerText += ` (#${idSuffix})`;
+                
+                // Ready status
+                const readyText = isReady ? '✅ Ready' : '❌ Not Ready';
+                
+                // Color: green for local player, white for others
+                this.ctx.fillStyle = isLocalPlayer ? '#76ff03' : '#ffffff';
+                this.ctx.font = '16px "Roboto Mono", monospace';
+                this.ctx.fillText(playerText, panelX + 20, panelY + 60 + index * 40);
+                
+                // Ready status
+                this.ctx.fillStyle = isReady ? '#76ff03' : '#ff9800';
+                this.ctx.font = '14px "Roboto Mono", monospace';
+                this.ctx.fillText(readyText, panelX + 20, panelY + 80 + index * 40);
             });
         }
 
@@ -1076,8 +1097,27 @@ export class GameHUD {
         this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
 
         if (gameState.multiplayer.connected) {
-            const startY = this.canvas.height - 170;
-            this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_start', false);
+            const isLeader = gameState.multiplayer.isLeader;
+            const allReady = players.length > 0 && players.every(p => p.isReady);
+            
+            if (isLeader) {
+                // Leader sees "Start Game" button
+                const startY = this.canvas.height - 170;
+                const canStart = allReady && players.length > 0;
+                this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_start', !canStart);
+                
+                if (!canStart) {
+                    this.ctx.font = '12px "Roboto Mono", monospace';
+                    this.ctx.fillStyle = '#ff9800';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 20);
+                }
+            } else {
+                // Non-leader sees "Ready" / "Unready" toggle button
+                const readyY = this.canvas.height - 170;
+                const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
+                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', false);
+            }
         }
     }
 
@@ -1166,10 +1206,15 @@ export class GameHUD {
             }
 
             if (gameState.multiplayer.connected) {
-                const startY = this.canvas.height - 170;
+                const actionY = this.canvas.height - 170;
                 if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
-                    mouseY >= startY && mouseY <= startY + buttonHeight) {
-                    return 'lobby_start';
+                    mouseY >= actionY && mouseY <= actionY + buttonHeight) {
+                    // Return appropriate button based on role
+                    if (gameState.multiplayer.isLeader) {
+                        return 'lobby_start';
+                    } else {
+                        return 'lobby_ready';
+                    }
                 }
             }
             return null;

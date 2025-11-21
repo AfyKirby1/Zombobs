@@ -4,6 +4,50 @@
 
 ## 2025 - Active Development Notes
 
+### Multiplayer Lobby Synchronization [2025-11-20]
+- ✅ **Ready System Implementation**: Added player ready toggle functionality
+  - Non-leader players can toggle ready/not ready status
+  - Ready status displayed in lobby next to player names
+  - Server tracks ready state per player
+  - Client state synced from server via `lobby:update` events
+  
+- ✅ **Leader System**: Implemented lobby leader designation
+  - First player connected becomes leader automatically
+  - Leader indicator (👑) shown in lobby UI
+  - Leader has exclusive "Start Game" button (disabled until all ready)
+  - Automatic leader reassignment when current leader disconnects
+  
+- ✅ **Synchronized Game Start**: Fixed critical issue where players started in separate sessions
+  - Leader emits `game:start` request to server
+  - Server validates: 1) Requester is leader, 2) All players are ready
+  - Server broadcasts `game:start` to all clients simultaneously
+  - All clients receive signal and start game together in same session
+  - Error handling: Server sends `game:start:error` if validation fails
+  
+- ✅ **Enhanced Lobby UI**: Improved player list display and button logic
+  - Shows leader crown (👑) next to leader's name
+  - Shows ready status (✅ Ready / ❌ Not Ready) for each player
+  - Green highlight for local player
+  - Dynamic panel height based on player count
+  - Context-aware button rendering (Leader vs Non-Leader)
+  
+- ✅ **Server State Management**: Enhanced player tracking
+  - Player objects now include `isReady` and `isLeader` properties
+  - `assignLeader()` function manages leader assignment on connect/disconnect
+  - Enhanced disconnect handler with automatic leader reassignment
+  - Server is source of truth for all lobby state
+  
+- ✅ **Client State Tracking**: Added local state synchronization
+  - `gameState.multiplayer.isLeader` - Tracks if local player is leader
+  - `gameState.multiplayer.isReady` - Tracks local player ready status
+  - State automatically synced from server on every `lobby:update` event
+  - UI updates reactively based on state changes
+  
+- ✅ **Documentation**: Created comprehensive multiplayer architecture guide
+  - New file: `DOCS/MULTIPLAYER.md`
+  - Documents server/client architecture, packet flow, synchronization guarantees
+  - Includes error handling patterns and future enhancement notes
+
 ### Critical Bug Fixes [2025-11-20]
 - ✅ **Grenade Limit Bug**: Fixed `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.
   - Added missing import from `constants.js`.

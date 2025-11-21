@@ -104,7 +104,9 @@ export const gameState = {
         socket: null,
         playerId: null,
         players: [],
-        latency: 0
+        latency: 0,
+        isLeader: false,
+        isReady: false
     },
     username: 'Survivor',
     menuMusicMuted: false,

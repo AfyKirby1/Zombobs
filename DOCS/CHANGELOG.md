@@ -2,6 +2,81 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.4.1] - 2025-11-20
+
+### 🔧 MULTIPLAYER LOBBY SYNCHRONIZATION
+
+> **Synchronized game start. Ready up, survivors!**
+
+Fixed critical multiplayer lobby synchronization issue where players were starting games in separate sessions. Implemented robust ready system and leader-based game start coordination.
+
+### Added
+- **✅ Ready System** - Players can now toggle ready status before game starts
+  - Non-leader players see "Ready"/"Unready" button
+  - Ready status displayed next to each player name in lobby
+  - All players must be ready before leader can start game
+  
+- **👑 Lobby Leader System** - First player is designated lobby leader
+  - Leader sees "Start Game" button (disabled until all ready)
+  - Leader is automatically reassigned if current leader disconnects
+  - Leader indicator (👑) displayed next to leader's name
+  
+- **🎮 Synchronized Game Start** - All players enter game simultaneously
+  - Leader emits `game:start` request to server
+  - Server validates leader status and all-ready state
+  - Server broadcasts `game:start` to all clients simultaneously
+  - Ensures all players enter the same game session together
+  
+- **📋 Enhanced Lobby UI** - Improved player list display
+  - Shows leader indicator (👑) for lobby leader
+  - Shows ready status (✅/❌) for each player
+  - Green highlight for local player
+  - Dynamic panel height based on player count
+
+### Changed
+- **🌐 Server State Management** - Enhanced player object structure
+  - Added `isReady` and `isLeader` properties to player objects
+  - Server tracks ready state per player
+  - Server manages leader assignment and reassignment
+
+- **📱 Client State Tracking** - Added multiplayer status properties
+  - `gameState.multiplayer.isLeader` - Tracks if local player is leader
+  - `gameState.multiplayer.isReady` - Tracks local player ready status
+  - State synced from server via `lobby:update` events
+
+- **🎯 Lobby Button Logic** - Context-aware button display
+  - Leader sees "Start Game" button (enabled only when all ready)
+  - Non-leaders see "Ready"/"Unready" toggle button
+  - Button click handling routes to appropriate action
+
+### Fixed
+- **🚨 Critical Sync Issue**: Players now start games in the same session
+- **🔄 Leader Disconnect**: New leader automatically assigned when leader leaves
+- **⚡ Game Start Validation**: Server ensures all ready before allowing start
+- **🌐 State Synchronization**: Client state properly synced from server
+
+### Technical
+- **Server Events (`server/server.js` & `huggingface-space/server.js`)**:
+  - `player:ready` - Toggles player ready status
+  - `game:start` - Validates and broadcasts synchronized game start
+  - `assignLeader()` - Manages leader assignment on connect/disconnect
+  - Enhanced disconnect handler with leader reassignment
+
+- **Client Events (`js/main.js`)**:
+  - `lobby:update` - Syncs ready/leader status from server
+  - `game:start` - Receives synchronized start signal from server
+  - `game:start:error` - Handles validation errors
+  - Enhanced click handlers for ready/start actions
+
+- **UI Updates (`js/ui/GameHUD.js`)**:
+  - Enhanced `drawLobby()` with leader/ready indicators
+  - Updated `checkMenuButtonClick()` for context-aware button detection
+  - Dynamic button rendering based on player role
+
+- **Documentation**:
+  - Created `DOCS/MULTIPLAYER.md` - Comprehensive multiplayer architecture documentation
+  - Documents packet flow, synchronization guarantees, and error handling
+
 ## [0.4.0] - 2025-11-20
 
 ### 🎉 THE MULTIPLAYER UPDATE
