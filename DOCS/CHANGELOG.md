@@ -6,7 +6,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ### 🎨 UI Improvements & Scaling Fixes
 
-> **Main menu adjustments and comprehensive UI font scaling fixes**
+> **Main menu adjustments, comprehensive UI font scaling fixes, and settings panel layout improvements**
 
 ### Changed
 - **Main Menu UI Adjustments** - Improved proportions and layout
@@ -41,6 +41,15 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Hover effects on preset buttons
   - Quick access to common scale values
 
+- **Settings Panel Layout Improvements** - Fixed header intersection and improved scaling fluidity
+  - **Header Title Scaling**: "SETTINGS" title now scales with UI scale (32px base, min 24px)
+  - **Divider Scaling**: Divider position and padding scale with UI scale
+  - **Tab Positioning**: Increased spacing between header and tabs to prevent intersection at larger scales
+  - **Dynamic Viewport Calculation**: Viewport height now calculated based on scaled header/tab/footer heights
+  - **Font Scaling**: All fonts in settings panel now scale (section headers, dropdown labels, keybind labels)
+  - **Consistent Spacing**: All spacing values (padding, margins, row heights) scale proportionally
+  - **Impact**: No more header bar intersection at larger UI scales (up to 150%), fluid scaling across all elements
+
 ### Fixed
 - **Bug Fix**: Fixed `itemSpacing is not defined` error in `drawSinglePlayerHUD()`
   - Added missing `getScaledItemSpacing()` call
@@ -56,13 +65,19 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ### Technical Details
 - **Files Modified**:
   - `js/ui/GameHUD.js` - Font scaling fixes, main menu adjustments, lobby redesign, bug fix
-  - `js/ui/SettingsPanel.js` - UI scale preset buttons
+  - `js/ui/SettingsPanel.js` - UI scale preset buttons, header/tab scaling fixes, improved layout calculations
 
 - **UI Scaling Pattern**:
   ```javascript
   const scale = this.getUIScale();
   const fontSize = Math.max(minSize, baseSize * scale);
   this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
+  ```
+
+- **Settings Panel Header Calculation**:
+  ```javascript
+  const headerHeight = (35 * scale) + (30 * scale) + (15 * scale); // Title + divider spacing + extra spacing
+  const tabY = this.panelY + headerHeight + (15 * scale); // Dynamic tab positioning
   ```
 
 ## [0.5.2] - 2025-01-21

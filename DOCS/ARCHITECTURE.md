@@ -400,6 +400,9 @@ This modular structure improves maintainability, testability, and scalability.
 - All fonts properly scale using pattern: `Math.max(minSize, baseSize * scale)`
 - Button fonts, menu text, lobby UI, and all UI elements scale consistently
 - UI scale preset buttons in settings panel (Small 70%, Medium 100%, Large 130%)
+- Settings panel header/tab layout uses dynamic calculations to prevent intersection
+- Header height: `(35 * scale) + (30 * scale) + (15 * scale)` for title + divider + spacing
+- Viewport height calculated dynamically based on scaled header/tab/footer heights
 - Base dimensions stored separately from scaled dimensions for clean calculations
 - Scaling applied to: fonts, padding, spacing, button sizes, panel dimensions, health displays
 - Minimum font size enforced (8px) for readability at low scales

@@ -63,9 +63,11 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Scales all UI elements: fonts, buttons, panels, spacing, padding
   - Applied to both in-game HUD and settings menu
   - All fonts now properly scale (buttons, menus, lobbies, about screen) - V0.5.3 fix
+  - Settings panel header/tab layout scales fluidly - V0.5.3 fix
   - UI scale preset buttons (Small 70%, Medium 100%, Large 130%) in settings
   - Real-time scaling with immediate visual feedback
   - Consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
+  - Dynamic viewport calculations based on scaled element heights
   - News ticker font reduced to 85% size to fit more content
 
 ## Technology Stack
@@ -193,6 +195,11 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - **UI Scale Control Enhancements**: Added preset buttons in settings
   - Small (70%), Medium (100%), Large (130%) quick presets
   - Preset buttons highlight when active
+- **Settings Panel Layout Improvements**: Fixed header intersection and improved scaling
+  - Header title and divider now scale with UI scale
+  - Increased spacing between header and tabs to prevent intersection
+  - All fonts and spacing in settings panel scale proportionally
+  - Dynamic viewport calculations for proper layout at all scales
 - **Multiplayer Lobby UI Redesign**: Modern glassmorphism design
   - Animated background with scanlines, noise, pulsing gradients
   - Glassmorphism player cards with avatar placeholders

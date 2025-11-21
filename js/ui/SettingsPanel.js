@@ -103,13 +103,18 @@ export class SettingsPanel {
         if (!this.visible) return;
 
         // Update scaled dimensions dynamically
+        const scale = this.getUIScale();
         this.panelWidth = this.getScaledPanelWidth();
-        this.panelHeight = Math.min(this.getScaledPanelHeight(), this.canvas.height - (60 * this.getUIScale()));
+        this.panelHeight = Math.min(this.getScaledPanelHeight(), this.canvas.height - (60 * scale));
         this.padding = this.getScaledPadding();
         this.tabHeight = this.getScaledTabHeight();
         this.panelX = (this.canvas.width - this.panelWidth) / 2;
         this.panelY = (this.canvas.height - this.panelHeight) / 2;
-        this.viewportHeight = this.panelHeight - (150 * this.getUIScale()); // Header/Tabs/Footer space
+        // Calculate header and tab heights dynamically based on scale
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale); // Title + divider spacing + extra spacing
+        const tabAreaHeight = this.tabHeight + (5 * scale); // Tab height + bottom border spacing
+        const footerHeight = 50 * scale; // Footer button area
+        this.viewportHeight = this.panelHeight - headerHeight - tabAreaHeight - footerHeight;
 
         // Smooth Scroll
         this.scrollY += (this.targetScrollY - this.scrollY) * 0.2;
@@ -130,8 +135,8 @@ export class SettingsPanel {
         this.drawHeader();
         this.drawTabs(mouse);
         
-        // Content Area with Clipping
-        const contentStartY = this.panelY + 80 + this.tabHeight;
+        // Content Area with Clipping - use same calculation as drawTabs
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.rect(this.panelX, contentStartY, this.panelWidth, this.viewportHeight);
@@ -192,31 +197,40 @@ export class SettingsPanel {
     }
 
     drawHeader() {
+        const scale = this.getUIScale();
+        const titleFontSize = Math.max(24, 32 * scale); // Scale title font, min 24px
+        const titleY = this.panelY + (35 * scale); // Scale title position
+        const dividerY = this.panelY + (65 * scale); // Scale divider position
+        const dividerPadding = 20 * scale; // Scale divider padding
+        
         this.ctx.save();
-        this.ctx.font = 'bold 32px "Creepster", cursive';
+        this.ctx.font = `bold ${titleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
-        // Glow effect
-        this.ctx.shadowBlur = 20;
+        // Glow effect (scale with UI scale)
+        this.ctx.shadowBlur = 20 * scale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
         
-        const gradient = this.ctx.createLinearGradient(this.panelX, this.panelY + 35, this.panelX + this.panelWidth, this.panelY + 35);
+        const gradient = this.ctx.createLinearGradient(this.panelX, titleY, this.panelX + this.panelWidth, titleY);
         gradient.addColorStop(0, COLORS.accentSoft);
         gradient.addColorStop(1, COLORS.accent);
         this.ctx.fillStyle = gradient;
         
-        this.ctx.fillText("SETTINGS", this.panelX + this.panelWidth / 2, this.panelY + 35);
+        this.ctx.fillText("SETTINGS", this.panelX + this.panelWidth / 2, titleY);
         this.ctx.restore();
 
         // Divider
         this.ctx.fillStyle = COLORS.glassBorder;
-        this.ctx.fillRect(this.panelX + 20, this.panelY + 65, this.panelWidth - 40, 1);
+        this.ctx.fillRect(this.panelX + dividerPadding, dividerY, this.panelWidth - (dividerPadding * 2), 1);
     }
 
     drawTabs(mouse) {
         const scale = this.getUIScale();
-        const tabY = this.panelY + (80 * scale);
+        // Increased spacing from header to prevent intersection at larger scales
+        // Base spacing: 80px, but we need more room for scaled title + divider
+        const headerHeight = (35 * scale) + (30 * scale); // Title Y + spacing to divider
+        const tabY = this.panelY + headerHeight + (15 * scale); // Extra 15px scaled spacing
         const tabWidth = this.panelWidth / this.tabs.length;
         
         this.tabs.forEach((tab, index) => {
@@ -500,15 +514,21 @@ export class SettingsPanel {
     }
 
     drawSectionHeader(title, y) {
+        const scale = this.getUIScale();
+        const fontSize = Math.max(10, 12 * scale);
+        const spacing = 15 * scale;
+        const lineY = y + (25 * scale);
+        const returnOffset = 40 * scale;
+        
         this.ctx.fillStyle = COLORS.textMuted;
-        this.ctx.font = 'bold 12px "Roboto Mono", monospace';
+        this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'left';
-        this.ctx.fillText(title, this.panelX + this.padding, y + 15);
+        this.ctx.fillText(title, this.panelX + this.padding, y + spacing);
         
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        this.ctx.fillRect(this.panelX + this.padding, y + 25, this.panelWidth - this.padding * 2, 1);
+        this.ctx.fillRect(this.panelX + this.padding, lineY, this.panelWidth - this.padding * 2, 1);
         
-        return y + 40;
+        return y + returnOffset;
     }
 
     drawSlider(label, category, key, min, max, y, mouse, decimalPlaces = 2) {
@@ -519,7 +539,8 @@ export class SettingsPanel {
         const sliderWidth = 180 * scale; // Reduced from 200
         const sliderX = this.panelX + this.panelWidth - this.padding - sliderWidth - (50 * scale); // Space for value text
         const sliderY = y + (13 * scale); // Vertical center offset
-        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
 
         // Label
         this.ctx.textAlign = 'left';
@@ -595,7 +616,8 @@ export class SettingsPanel {
         const toggleHeight = 22 * scale; // Reduced from 24
         const toggleX = this.panelX + this.panelWidth - this.padding - toggleWidth - (10 * scale);
         const toggleY = y + (7 * scale);
-        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
 
         // Label
         this.ctx.textAlign = 'left';
@@ -660,7 +682,8 @@ export class SettingsPanel {
         const dropdownHeight = 28 * scale; // Reduced from 30
         const dropdownX = this.panelX + this.panelWidth - this.padding - dropdownWidth - (10 * scale);
         const dropdownY = y + (4 * scale);
-        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
 
         // Label
         this.ctx.textAlign = 'left';
@@ -720,7 +743,8 @@ export class SettingsPanel {
         const scale = this.getUIScale();
         const itemHeight = 30 * scale;
         const menuHeight = options.length * itemHeight;
-        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
         const viewportBottom = contentStartY + this.viewportHeight;
         
         // Check if dropdown would overflow bottom of viewport
@@ -767,10 +791,11 @@ export class SettingsPanel {
             (this.settingsManager.settings.gamepad || {});
 
         // Toggle Button (Keyboard / Controller)
-        const toggleWidth = 280; // Reduced from 300
-        const toggleHeight = 34; // Reduced from 36
+        const keybindScale = this.getUIScale();
+        const toggleWidth = 280 * keybindScale; // Scale toggle width
+        const toggleHeight = 34 * keybindScale; // Scale toggle height
         const toggleX = this.panelX + (this.panelWidth - toggleWidth) / 2;
-        const toggleY = y + 5;
+        const toggleY = y + (5 * keybindScale);
         
         // Background
         this.ctx.fillStyle = COLORS.glassBg;
@@ -796,7 +821,8 @@ export class SettingsPanel {
         this.ctx.shadowBlur = 0;
         
         // Text
-        this.ctx.font = 'bold 13px "Roboto Mono", monospace';
+        const toggleFontSize = Math.max(10, 13 * keybindScale);
+        this.ctx.font = `bold ${toggleFontSize}px "Roboto Mono", monospace`;
         this.ctx.textBaseline = 'middle';
         this.ctx.textAlign = 'center';
         
@@ -856,14 +882,16 @@ export class SettingsPanel {
                 boundKey = this.getGamepadButtonName(controls[key]);
             }
 
-            const rowHeight = 35; // Reduced from 40
-            const contentStartY = this.panelY + 80 + this.tabHeight;
+            const scale = this.getUIScale();
+            const rowHeight = 35 * scale; // Scale row height
+            const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+            const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
             
-            const labelX = this.panelX + this.padding + 10;
-            const btnWidth = 90; // Reduced from 100
-            const btnHeight = 28; // Reduced from 30
-            const btnX = this.panelX + this.panelWidth - this.padding - btnWidth - 10;
-            const btnY = y + 4;
+            const labelX = this.panelX + this.padding + (10 * scale);
+            const btnWidth = 90 * scale; // Scale button width
+            const btnHeight = 28 * scale; // Scale button height
+            const btnX = this.panelX + this.panelWidth - this.padding - btnWidth - (10 * scale);
+            const btnY = y + (4 * scale);
 
             // Label
             this.ctx.textAlign = 'left';
@@ -891,8 +919,9 @@ export class SettingsPanel {
             // Key Text
             this.ctx.fillStyle = isRebinding ? '#fff' : COLORS.textMain;
             this.ctx.textAlign = 'center';
-            this.ctx.font = '12px "Roboto Mono", monospace';
-            this.ctx.fillText(isRebinding ? '...' : boundKey.toUpperCase(), btnX + btnWidth / 2, btnY + 18);
+            const keyFontSize = Math.max(8, Math.round(12 * keybindScale));
+            this.ctx.font = `${keyFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillText(isRebinding ? '...' : boundKey.toUpperCase(), btnX + btnWidth / 2, btnY + (18 * keybindScale));
 
             this.controls.push({
                 type: 'keybind',
@@ -970,7 +999,9 @@ export class SettingsPanel {
             // Skip controls if they are clipped (not visible in viewport)
             // Exception: Scrollbar, Footer, Tab, and ControlModeToggle are always clickable
             if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar' && ctrl.type !== 'controlModeToggle' && ctrl.type !== 'tab') {
-                const contentStartY = this.panelY + 80 + this.tabHeight;
+                const scale = this.getUIScale();
+                const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+                const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
                 if (ctrl.y < contentStartY || ctrl.y + ctrl.height > contentStartY + this.viewportHeight) {
                     continue;
                 }
@@ -1039,7 +1070,9 @@ export class SettingsPanel {
         }
 
         if (this.draggingScrollBar) {
-            const trackY = this.panelY + 80;
+            const scale = this.getUIScale();
+            const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+            const trackY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
             const trackHeight = this.viewportHeight;
             const relativeY = Math.max(0, Math.min(trackHeight, y - trackY));
             const percent = relativeY / trackHeight;

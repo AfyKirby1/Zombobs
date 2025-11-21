@@ -90,6 +90,17 @@
   - Click handling for preset selection
   - Quick access to common scale values
 
+- ✅ **Settings Panel Layout Improvements**: Fixed header intersection and improved scaling fluidity
+  - **Header Title Scaling**: "SETTINGS" title now scales with UI scale (32px base, min 24px)
+  - **Divider Scaling**: Divider position and padding scale with UI scale
+  - **Tab Positioning**: Increased spacing between header and tabs to prevent intersection
+    - Base spacing: `80px * scale` → `(35 * scale) + (30 * scale) + (15 * scale)`
+    - Added 15px scaled spacing to prevent intersection at larger scales
+  - **Dynamic Viewport Calculation**: Viewport height calculated based on scaled header/tab/footer heights
+  - **Font Scaling**: All fonts in settings panel now scale (section headers, dropdown labels, keybind labels)
+  - **Consistent Spacing**: All spacing values (padding, margins, row heights) scale proportionally
+  - **Impact**: No more header bar intersection at larger UI scales (up to 150%), fluid scaling across all elements
+
 - ✅ **Performance Optimization**: Off-screen indicator distance calculations
   - Replaced `Math.sqrt()` calls with squared distance comparisons
   - Applied to zombie-to-player distance checks
