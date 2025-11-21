@@ -176,11 +176,29 @@ The `gameState.multiplayer` object tracks:
 - Disconnection: Server reassigns leader if needed, broadcasts update
 - Invalid operations: Server validates permissions before processing
 
+## In-Game Synchronization
+
+### Player State Updates
+- **Client → Server**: Local player sends position, angle, health, stamina, weapon, and ammo state every frame via `player:state` event
+- **Server → Client**: Server broadcasts player state updates to all other clients via `player:state:update` event
+- **Client**: Remote players receive state updates and apply them to their local player objects
+
+### Player Actions
+- **Client → Server**: Local player sends actions (shoot, melee, reload, grenade, switchWeapon) via `player:action` event
+- **Server → Client**: Server broadcasts actions to all other clients via `player:action:update` event
+- **Client**: Remote players receive actions and execute them locally (e.g., create bullets, perform melee, etc.)
+
+### Remote Player Handling
+- Remote players have `inputSource: 'remote'` and skip local input handling
+- Remote players are updated via socket events only
+- Remote player actions are executed locally but triggered by network events
+
 ## Future Enhancements
 
 - Room/Game session management (multiple concurrent games)
 - Player limit enforcement
 - Spectator mode
 - Reconnection handling (resume ready state)
-- In-game synchronization (player positions, actions)
+- Lag compensation and interpolation for smoother movement
+- Client-side prediction for local player
 

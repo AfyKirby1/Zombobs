@@ -284,6 +284,71 @@ function initializeNetwork() {
             }
         });
 
+        // Handle remote player state updates
+        socket.on('player:state:update', (data) => {
+            if (!gameState.isCoop || !gameState.gameRunning) return;
+            
+            const remotePlayer = gameState.players.find(p => p.id === data.playerId);
+            if (remotePlayer && remotePlayer.inputSource === 'remote') {
+                // Update remote player position and angle
+                if (data.x !== undefined) remotePlayer.x = data.x;
+                if (data.y !== undefined) remotePlayer.y = data.y;
+                if (data.angle !== undefined) remotePlayer.angle = data.angle;
+                if (data.health !== undefined) remotePlayer.health = data.health;
+                if (data.stamina !== undefined) remotePlayer.stamina = data.stamina;
+                if (data.currentWeapon !== undefined) {
+                    // Update weapon if needed
+                    const weaponName = data.currentWeapon;
+                    if (WEAPONS[weaponName]) {
+                        remotePlayer.currentWeapon = WEAPONS[weaponName];
+                    }
+                }
+                if (data.currentAmmo !== undefined) remotePlayer.currentAmmo = data.currentAmmo;
+                if (data.isReloading !== undefined) remotePlayer.isReloading = data.isReloading;
+            }
+        });
+
+        // Handle remote player actions (shooting, melee, etc.)
+        socket.on('player:action:update', (data) => {
+            if (!gameState.isCoop || !gameState.gameRunning) return;
+            
+            const remotePlayer = gameState.players.find(p => p.id === data.playerId);
+            if (remotePlayer && remotePlayer.inputSource === 'remote') {
+                if (data.action === 'shoot') {
+                    const target = {
+                        x: remotePlayer.x + Math.cos(remotePlayer.angle) * 200,
+                        y: remotePlayer.y + Math.sin(remotePlayer.angle) * 200
+                    };
+                    shootBullet(target, canvas, remotePlayer);
+                } else if (data.action === 'melee') {
+                    performMeleeAttack(remotePlayer);
+                } else if (data.action === 'reload') {
+                    reloadWeapon(remotePlayer);
+                } else if (data.action === 'grenade') {
+                    const target = {
+                        x: remotePlayer.x + Math.cos(remotePlayer.angle) * 200,
+                        y: remotePlayer.y + Math.sin(remotePlayer.angle) * 200
+                    };
+                    throwGrenade(target, canvas, remotePlayer);
+                } else if (data.action === 'switchWeapon') {
+                    if (data.weaponName && WEAPONS[data.weaponName]) {
+                        switchWeapon(WEAPONS[data.weaponName], remotePlayer);
+                    }
+                }
+            }
+        });
+
+        // Handle player disconnection
+        socket.on('player:disconnected', (data) => {
+            if (!gameState.isCoop) return;
+            
+            const disconnectedPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
+            if (disconnectedPlayerIndex !== -1) {
+                console.log(`[Multiplayer] Player ${gameState.players[disconnectedPlayerIndex].name} disconnected`);
+                gameState.players.splice(disconnectedPlayerIndex, 1);
+            }
+        });
+
         socket.on('game:start:error', (error) => {
             console.warn('Game start error:', error.message);
             // Could show error message to user in UI
@@ -552,6 +617,16 @@ function performMeleeAttack(player) {
     } else {
         gameState.shakeAmount = 2; // Light shake even on miss
     }
+
+    // Send action to server for multiplayer synchronization
+    if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+        const isLocalPlayer = player.id === gameState.multiplayer.playerId;
+        if (isLocalPlayer) {
+            gameState.multiplayer.socket.emit('player:action', {
+                action: 'melee'
+            });
+        }
+    }
 }
 
 function isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle) {
@@ -591,6 +666,11 @@ function updatePlayers() {
 
     gameState.players.forEach((player, index) => {
         if (player.health <= 0) return;
+
+        // Skip input handling for remote players - they're controlled by other clients
+        if (player.inputSource === 'remote') {
+            return; // Remote players are updated via socket events
+        }
 
         let moveX = 0;
         let moveY = 0;
@@ -1388,6 +1468,24 @@ function updateGame() {
 
     // Update players
     updatePlayers();
+
+    // Send local player state to server for multiplayer synchronization
+    if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+        const localPlayer = gameState.players.find(p => p.id === gameState.multiplayer.playerId);
+        if (localPlayer && localPlayer.inputSource !== 'remote') {
+            // Send state update every frame (server will throttle if needed)
+            gameState.multiplayer.socket.emit('player:state', {
+                x: localPlayer.x,
+                y: localPlayer.y,
+                angle: localPlayer.angle,
+                health: localPlayer.health,
+                stamina: localPlayer.stamina,
+                currentWeapon: localPlayer.currentWeapon.name,
+                currentAmmo: localPlayer.currentAmmo,
+                isReloading: localPlayer.isReloading
+            });
+        }
+    }
 
     // Update bullets
     gameState.bullets = gameState.bullets.filter(bullet => {

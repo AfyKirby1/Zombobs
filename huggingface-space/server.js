@@ -478,6 +478,30 @@ io.on('connection', (socket) => {
     io.emit('game:start');
   });
 
+  // Handle player state updates (position, angle, actions)
+  socket.on('player:state', (state) => {
+    const player = players.get(socket.id);
+    if (!player) return;
+    
+    // Broadcast player state to all other clients
+    socket.broadcast.emit('player:state:update', {
+      playerId: socket.id,
+      ...state
+    });
+  });
+
+  // Handle player action (shooting, melee, etc.)
+  socket.on('player:action', (action) => {
+    const player = players.get(socket.id);
+    if (!player) return;
+    
+    // Broadcast action to all other clients
+    socket.broadcast.emit('player:action:update', {
+      playerId: socket.id,
+      ...action
+    });
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
@@ -500,6 +524,9 @@ io.on('connection', (socket) => {
     console.log(`    Active players: ${formatPlayerList()}`);
     logEvent(`${displayName} was lost to the horde`);
     broadcastLobby();
+    
+    // Notify other clients that this player disconnected
+    socket.broadcast.emit('player:disconnected', { playerId: socket.id });
   });
 });
 

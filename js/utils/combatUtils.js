@@ -136,6 +136,16 @@ export function shootBullet(target, canvas, player) {
 
     // Play gunshot sound
     playGunshotSound();
+
+    // Send action to server for multiplayer synchronization
+    if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+        const isLocalPlayer = player.id === gameState.multiplayer.playerId;
+        if (isLocalPlayer) {
+            gameState.multiplayer.socket.emit('player:action', {
+                action: 'shoot'
+            });
+        }
+    }
 }
 
 export function reloadWeapon(player) {
@@ -144,6 +154,16 @@ export function reloadWeapon(player) {
         player.isReloading = true;
         player.reloadStartTime = Date.now();
         // Play reload sound if implemented
+
+        // Send action to server for multiplayer synchronization
+        if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+            const isLocalPlayer = player.id === gameState.multiplayer.playerId;
+            if (isLocalPlayer) {
+                gameState.multiplayer.socket.emit('player:action', {
+                    action: 'reload'
+                });
+            }
+        }
     }
 }
 
@@ -187,6 +207,19 @@ export function switchWeapon(weapon, player) {
             // Fallback: initialize with weapon's default ammo
             player.currentAmmo = weapon.ammo;
         }
+
+        // Send action to server for multiplayer synchronization
+        if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+            const isLocalPlayer = player.id === gameState.multiplayer.playerId;
+            if (isLocalPlayer) {
+                const weaponKeys = Object.keys(WEAPONS);
+                const newWeaponKey = weaponKeys.find(key => WEAPONS[key] === weapon);
+                gameState.multiplayer.socket.emit('player:action', {
+                    action: 'switchWeapon',
+                    weaponName: newWeaponKey
+                });
+            }
+        }
     }
 }
 
@@ -219,6 +252,16 @@ export function throwGrenade(target, canvas, player) {
 
     // Small screen shake on throw
     gameState.shakeAmount = 2;
+
+    // Send action to server for multiplayer synchronization
+    if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+        const isLocalPlayer = player.id === gameState.multiplayer.playerId;
+        if (isLocalPlayer) {
+            gameState.multiplayer.socket.emit('player:action', {
+                action: 'grenade'
+            });
+        }
+    }
 }
 
 export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null) {
