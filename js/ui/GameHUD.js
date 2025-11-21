@@ -1,7 +1,7 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { BossHealthBar } from './BossHealthBar.js';
-import { LOW_AMMO_FRACTION } from '../core/constants.js';
+import { LOW_AMMO_FRACTION, NEWS_UPDATES } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
 import { saveMultiplierStats } from '../utils/gameUtils.js';
@@ -932,8 +932,64 @@ export class GameHUD {
         const icon = gameState.menuMusicMuted ? '🔇' : '🔊';
         this.ctx.fillText(icon, muteButtonX + muteButtonSize / 2, muteButtonY + muteButtonSize / 2);
 
+        // Draw news ticker above footer
+        this.drawNewsTicker();
+
         // Draw technology branding in bottom-left
         this.drawTechnologyBranding();
+    }
+
+    drawNewsTicker() {
+        const canvas = this.canvas;
+        const ctx = this.ctx;
+        
+        // Dimensions
+        const boxWidth = 600;
+        const boxHeight = 30;
+        const centerX = canvas.width / 2;
+        const boxX = centerX - (boxWidth / 2);
+        const boxY = canvas.height - 100; // Position above footer area
+        
+        // Measure text width for scrolling calculation
+        ctx.font = '14px "Roboto Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const textWidth = ctx.measureText(NEWS_UPDATES).width;
+        
+        // Calculate scroll offset (stateless animation using Date.now)
+        // Scroll speed: divide by 10 for pixel-per-10ms movement
+        const scrollSpeed = 10;
+        const scrollOffset = (Date.now() / scrollSpeed) % (textWidth + boxWidth);
+        const textX = boxX - scrollOffset;
+        
+        // Draw background box
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        
+        // Draw border with amber glow
+        ctx.strokeStyle = 'rgba(255, 193, 7, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+        
+        // Clip to box area to prevent text overflow
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(boxX, boxY, boxWidth, boxHeight);
+        ctx.clip();
+        
+        // Draw scrolling text (amber/gold color)
+        ctx.fillStyle = '#ffc107';
+        ctx.font = '14px "Roboto Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        
+        // Draw text twice for seamless loop (when first copy scrolls out, second appears)
+        const textY = boxY + boxHeight / 2;
+        ctx.fillText(NEWS_UPDATES, textX, textY);
+        ctx.fillText(NEWS_UPDATES, textX + textWidth + boxWidth, textY);
+        
+        // Restore clipping
+        ctx.restore();
     }
 
     drawAboutScreen() {
@@ -1092,17 +1148,21 @@ export class GameHUD {
 
         const buttonWidth = 200;
         const buttonHeight = 50;
-        const backY = this.canvas.height - 100;
-
-        this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
-
+        const buttonSpacing = 60;
+        
         if (gameState.multiplayer.connected) {
             const isLeader = gameState.multiplayer.isLeader;
             const allReady = players.length > 0 && players.every(p => p.isReady);
             
             if (isLeader) {
-                // Leader sees "Start Game" button
-                const startY = this.canvas.height - 170;
+                // Leader sees Ready button, Start Game button, then Back button
+                const readyY = this.canvas.height - 170;
+                const startY = this.canvas.height - 100;
+                const backY = this.canvas.height - 40;
+                
+                const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
+                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', false);
+                
                 const canStart = allReady && players.length > 0;
                 this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_start', !canStart);
                 
@@ -1112,12 +1172,21 @@ export class GameHUD {
                     this.ctx.textAlign = 'center';
                     this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 20);
                 }
+                
+                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
             } else {
-                // Non-leader sees "Ready" / "Unready" toggle button
+                // Non-leader sees Ready button, then Back button
                 const readyY = this.canvas.height - 170;
+                const backY = this.canvas.height - 100;
+                
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
                 this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', false);
+                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
             }
+        } else {
+            // Not connected - just show Back button
+            const backY = this.canvas.height - 100;
+            this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
         }
     }
 
@@ -1199,22 +1268,44 @@ export class GameHUD {
 
         // Check Multiplayer Lobby
         if (gameState.showLobby) {
-            const backY = this.canvas.height - 100;
-            if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
-                mouseY >= backY && mouseY <= backY + buttonHeight) {
-                return 'lobby_back';
-            }
-
             if (gameState.multiplayer.connected) {
-                const actionY = this.canvas.height - 170;
+                const isLeader = gameState.multiplayer.isLeader;
+                const readyY = this.canvas.height - 170;
+                
+                // Check ready button (all players can click this)
                 if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
-                    mouseY >= actionY && mouseY <= actionY + buttonHeight) {
-                    // Return appropriate button based on role
-                    if (gameState.multiplayer.isLeader) {
+                    mouseY >= readyY && mouseY <= readyY + buttonHeight) {
+                    return 'lobby_ready';
+                }
+                
+                if (isLeader) {
+                    // Leader: Check Start Game button, then Back button
+                    const startY = this.canvas.height - 100;
+                    const backY = this.canvas.height - 40;
+                    
+                    if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                        mouseY >= startY && mouseY <= startY + buttonHeight) {
                         return 'lobby_start';
-                    } else {
-                        return 'lobby_ready';
                     }
+                    
+                    if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                        mouseY >= backY && mouseY <= backY + buttonHeight) {
+                        return 'lobby_back';
+                    }
+                } else {
+                    // Non-leader: Check Back button
+                    const backY = this.canvas.height - 100;
+                    if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                        mouseY >= backY && mouseY <= backY + buttonHeight) {
+                        return 'lobby_back';
+                    }
+                }
+            } else {
+                // Not connected - just Back button
+                const backY = this.canvas.height - 100;
+                if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                    mouseY >= backY && mouseY <= backY + buttonHeight) {
+                    return 'lobby_back';
                 }
             }
             return null;

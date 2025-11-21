@@ -209,12 +209,30 @@ function initializeNetwork() {
         });
 
         socket.on('lobby:update', (players) => {
+            console.log('[Lobby Update] Received from server', {
+                playerCount: players?.length || 0,
+                localPlayerId: gameState.multiplayer.playerId
+            });
             gameState.multiplayer.players = Array.isArray(players) ? players : [];
             // Update local leader/ready status from server data
             const localPlayer = players.find(p => p.id === gameState.multiplayer.playerId);
             if (localPlayer) {
+                const oldReady = gameState.multiplayer.isReady;
+                const oldLeader = gameState.multiplayer.isLeader;
                 gameState.multiplayer.isLeader = localPlayer.isLeader || false;
                 gameState.multiplayer.isReady = localPlayer.isReady || false;
+                console.log('[Lobby Update] Local player state updated', {
+                    name: localPlayer.name,
+                    isLeader: gameState.multiplayer.isLeader,
+                    isReady: gameState.multiplayer.isReady,
+                    readyChanged: oldReady !== gameState.multiplayer.isReady,
+                    leaderChanged: oldLeader !== gameState.multiplayer.isLeader
+                });
+            } else {
+                console.warn('[Lobby Update] Local player not found in update', {
+                    localPlayerId: gameState.multiplayer.playerId,
+                    playersInUpdate: players.map(p => ({ id: p.id, name: p.name }))
+                });
             }
         });
 
@@ -2135,8 +2153,21 @@ canvas.addEventListener('mousedown', (e) => {
             }
         } else if (clickedButton === 'lobby_ready') {
             // Toggle ready state
-            if (gameState.multiplayer.socket && !gameState.multiplayer.isLeader) {
+            console.log('[Ready Button] Click detected', {
+                hasSocket: !!gameState.multiplayer.socket,
+                socketConnected: gameState.multiplayer.socket?.connected,
+                isLeader: gameState.multiplayer.isLeader,
+                currentReady: gameState.multiplayer.isReady
+            });
+            
+            if (gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
+                console.log('[Ready Button] Emitting player:ready to server');
                 gameState.multiplayer.socket.emit('player:ready');
+            } else {
+                console.warn('[Ready Button] Cannot emit - socket missing or not connected', {
+                    socket: gameState.multiplayer.socket,
+                    connected: gameState.multiplayer.socket?.connected
+                });
             }
         }
         return;
