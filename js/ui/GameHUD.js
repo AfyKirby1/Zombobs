@@ -957,8 +957,8 @@ export class GameHUD {
         const textWidth = ctx.measureText(NEWS_UPDATES).width;
         
         // Calculate scroll offset (stateless animation using Date.now)
-        // Scroll speed: divide by 10 for pixel-per-10ms movement
-        const scrollSpeed = 10;
+        // Scroll speed: divide by 30 for pixel-per-30ms movement (3x slower)
+        const scrollSpeed = 30;
         const scrollOffset = (Date.now() / scrollSpeed) % (textWidth + boxWidth);
         const textX = boxX - scrollOffset;
         

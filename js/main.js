@@ -238,10 +238,49 @@ function initializeNetwork() {
 
         socket.on('game:start', () => {
             console.log('🎮 Game start signal received from server');
+            console.log('[game:start] Multiplayer players:', gameState.multiplayer.players);
+            console.log('[game:start] Local player ID:', gameState.multiplayer.playerId);
+            
             if (gameState.showLobby) {
-                gameState.isCoop = false;
+                // Enable co-op mode for multiplayer
+                gameState.isCoop = true;
+                console.log('[game:start] Co-op mode enabled');
+                
+                // Synchronize players from lobby to game state
+                const multiplayerPlayers = gameState.multiplayer.players || [];
+                console.log('[game:start] Syncing players from lobby. Count:', multiplayerPlayers.length);
+                
+                gameState.players = multiplayerPlayers.map((lobbyPlayer, index) => {
+                    const isLocalPlayer = lobbyPlayer.id === gameState.multiplayer.playerId;
+                    const player = createPlayer(
+                        canvas.width / 2 + (index * 50), // Spawn with offset
+                        canvas.height / 2,
+                        index % 5 // Cycle through colors
+                    );
+                    
+                    // Override with lobby data
+                    player.id = lobbyPlayer.id;
+                    player.name = lobbyPlayer.name;
+                    player.inputSource = isLocalPlayer ? 'mouse' : 'remote';
+                    
+                    console.log('[game:start] Created player:', {
+                        id: player.id,
+                        name: player.name,
+                        isLocal: isLocalPlayer,
+                        inputSource: player.inputSource,
+                        color: player.color.name
+                    });
+                    
+                    return player;
+                });
+                
+                console.log('[game:start] Player sync complete. Total players:', gameState.players.length);
+                console.log('[game:start] Player IDs:', gameState.players.map(p => ({ id: p.id, name: p.name })));
+                
                 initAudio();
                 startGame();
+            } else {
+                console.warn('[game:start] Received game:start but not in lobby (showLobby = false)');
             }
         });
 
