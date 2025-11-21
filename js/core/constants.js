@@ -42,6 +42,30 @@ export const GRENADE_FUSE_TIME = 1500; // 1.5 seconds before explosion
 // Particle limit
 export const MAX_PARTICLES = 500;
 
+// Rendering constants
+export const RENDERING = {
+    // Alpha values
+    GROUND_PATTERN_ALPHA: 0.6,
+    VIGNETTE_ALPHA: 0.6,
+    DAMAGE_INDICATOR_ALPHA: 0.3,
+    SHADOW_ALPHA: 0.4,
+    
+    // Timing constants (ms)
+    ZOMBIE_PULSE_PERIOD: 250,
+    ZOMBIE_EYE_PULSE_PERIOD: 167,
+    FAST_ZOMBIE_PULSE_PERIOD: 150,
+    EXPLODING_ZOMBIE_PULSE_PERIOD: 150,
+    GHOST_ZOMBIE_PULSE_PERIOD: 300,
+    BURN_TICK_INTERVAL: 200,
+    
+    // Viewport culling margin (pixels beyond viewport to still render)
+    CULL_MARGIN: 100,
+    
+    // Gradient cache invalidation thresholds
+    CANVAS_SIZE_CHANGE_THRESHOLD: 10, // pixels
+    PLAYER_POSITION_CHANGE_THRESHOLD: 50, // pixels
+};
+
 // Crosshair configuration
 export const CROSSHAIR_SIZE = 12;
 export const CROSSHAIR_LINE_WIDTH = 2;

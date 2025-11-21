@@ -1,6 +1,6 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
-import { MAX_PARTICLES } from '../core/constants.js';
+import { MAX_PARTICLES, RENDERING } from '../core/constants.js';
 import { playDamageSound, playKillSound, playExplosionSound } from '../systems/AudioSystem.js';
 import { triggerDamageIndicator } from '../utils/gameUtils.js';
 import { createExplosion, createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
@@ -51,8 +51,8 @@ export class Zombie {
         // Handle burning damage
         if (this.burnTimer > 0) {
             const now = Date.now();
-            // Apply burn damage every 200ms
-            if (!this.lastBurnTick || now - this.lastBurnTick >= 200) {
+            // Apply burn damage every BURN_TICK_INTERVAL ms
+            if (!this.lastBurnTick || now - this.lastBurnTick >= RENDERING.BURN_TICK_INTERVAL) {
                 this.health -= this.burnDamage;
                 this.lastBurnTick = now;
 
@@ -82,14 +82,14 @@ export class Zombie {
     draw() {
         // Shadow (larger and more ominous) - only if shadows enabled
         if (graphicsSettings.shadows !== false) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillStyle = `rgba(0, 0, 0, ${RENDERING.SHADOW_ALPHA})`;
             ctx.beginPath();
             ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
             ctx.fill();
         }
 
         // Toxic aura (pulsing outer glow)
-        const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
+        const pulse = Math.sin(Date.now() / RENDERING.ZOMBIE_PULSE_PERIOD) * 0.4 + 0.6;
         const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
         auraGradient.addColorStop(0, `rgba(0, 255, 0, ${0.4 * pulse})`);
         auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${0.2 * pulse})`);
@@ -616,7 +616,7 @@ export class SpitterZombie extends Zombie {
         // Handle burning damage (inherited from base class)
         if (this.burnTimer > 0) {
             const now = Date.now();
-            if (!this.lastBurnTick || now - this.lastBurnTick >= 200) {
+            if (!this.lastBurnTick || now - this.lastBurnTick >= RENDERING.BURN_TICK_INTERVAL) {
                 this.health -= this.burnDamage;
                 this.lastBurnTick = now;
 

@@ -33,6 +33,19 @@ export class WebGPURenderer {
         this.particleRenderBindGroup = null;
         this.particleComputeBindGroupLayout = null;
         this.particleRenderBindGroupLayout = null;
+        
+        // Dirty flags for uniform updates
+        this.uniformsDirty = true;
+        this.cachedTime = 0;
+        this.cachedResolutionX = 0;
+        this.cachedResolutionY = 0;
+        this.cachedBloomIntensity = -1;
+        this.cachedDistortionEnabled = null;
+        this.cachedLightingQuality = -1;
+        
+        // Particle buffer management
+        this.particleBufferSize = 0;
+        this.particleStagingBuffer = null;
     }
 
     async init() {
@@ -368,17 +381,35 @@ export class WebGPURenderer {
         try {
             // Update time
             this.time += dt / 1000; // Convert to seconds
-
-            // Update uniforms
-            const uniformData = new Float32Array([
-                this.time,
-                gpuCanvas.width,
-                gpuCanvas.height,
-                this.bloomIntensity,
-                this.distortionEnabled ? 1 : 0,
-                this.lightingQuality,
-            ]);
-            this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+            
+            // Check if uniforms need updating (dirty flag system)
+            const resolutionChanged = gpuCanvas.width !== this.cachedResolutionX ||
+                                    gpuCanvas.height !== this.cachedResolutionY;
+            const bloomChanged = this.bloomIntensity !== this.cachedBloomIntensity;
+            const distortionChanged = this.distortionEnabled !== this.cachedDistortionEnabled;
+            const lightingChanged = this.lightingQuality !== this.cachedLightingQuality;
+            
+            // Always update time, but only update buffer if something changed
+            if (this.uniformsDirty || resolutionChanged || bloomChanged || distortionChanged || lightingChanged) {
+                const uniformData = new Float32Array([
+                    this.time,
+                    gpuCanvas.width,
+                    gpuCanvas.height,
+                    this.bloomIntensity,
+                    this.distortionEnabled ? 1 : 0,
+                    this.lightingQuality,
+                ]);
+                this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+                
+                // Update cached values
+                this.cachedTime = this.time;
+                this.cachedResolutionX = gpuCanvas.width;
+                this.cachedResolutionY = gpuCanvas.height;
+                this.cachedBloomIntensity = this.bloomIntensity;
+                this.cachedDistortionEnabled = this.distortionEnabled;
+                this.cachedLightingQuality = this.lightingQuality;
+                this.uniformsDirty = false;
+            }
 
             const encoder = this.device.createCommandEncoder();
 
@@ -419,8 +450,20 @@ export class WebGPURenderer {
             this.device.queue.submit([encoder.finish()]);
         } catch (error) {
             console.error('Error rendering WebGPU frame:', error);
+            // Graceful fallback: disable WebGPU and fall back to Canvas 2D
+            if (!this.fallbackMode) {
+                console.warn('WebGPU render error detected, falling back to Canvas 2D');
+                this.fallbackMode = true;
+            }
             // Don't throw, just log the error to prevent breaking the game loop
         }
+    }
+    
+    /**
+     * Helper function to check WebGPU availability (consolidates checks)
+     */
+    static isWebGPUAvailable() {
+        return typeof navigator !== 'undefined' && navigator.gpu !== undefined;
     }
 
     isAvailable() {
@@ -432,17 +475,31 @@ export class WebGPURenderer {
     }
 
     setBloomIntensity(intensity) {
-        this.bloomIntensity = Math.max(0, Math.min(1, intensity));
+        const newIntensity = Math.max(0, Math.min(1, intensity));
+        if (this.bloomIntensity !== newIntensity) {
+            this.bloomIntensity = newIntensity;
+            this.uniformsDirty = true;
+        }
     }
 
     setDistortionEffects(enabled) {
-        this.distortionEnabled = !!enabled;
+        const newEnabled = !!enabled;
+        if (this.distortionEnabled !== newEnabled) {
+            this.distortionEnabled = newEnabled;
+            this.uniformsDirty = true;
+        }
     }
 
     setLightingQuality(level) {
-        if (level === 'off') this.lightingQuality = 0;
-        else if (level === 'simple') this.lightingQuality = 1;
-        else this.lightingQuality = 2;
+        let newQuality = 1;
+        if (level === 'off') newQuality = 0;
+        else if (level === 'simple') newQuality = 1;
+        else newQuality = 2;
+        
+        if (this.lightingQuality !== newQuality) {
+            this.lightingQuality = newQuality;
+            this.uniformsDirty = true;
+        }
     }
 
     setParticleCount(level) {
@@ -453,50 +510,79 @@ export class WebGPURenderer {
         if (count === this.particleCount) return;
         this.particleCount = count;
         if (!this.device) return;
-        if (this.particleBuffer) {
-            this.particleBuffer.destroy?.();
-            this.particleBuffer = null;
-        }
-        if (count > 0) {
-            const stride = 16;
-            this.particleBuffer = this.device.createBuffer({
-                size: count * stride,
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            });
-            const initData = new Float32Array(count * 4);
-            const w = gpuCanvas.width;
-            const h = gpuCanvas.height;
-            for (let i = 0; i < count; i++) {
-                initData[i * 4 + 0] = Math.random() * w;
-                initData[i * 4 + 1] = Math.random() * h;
-                initData[i * 4 + 2] = (Math.random() - 0.5) * 0.5;
-                initData[i * 4 + 3] = (Math.random() - 0.5) * 0.5;
+        
+        const stride = 16; // 4 floats * 4 bytes each
+        const requiredSize = count * stride;
+        
+        // Only recreate buffer if size changed significantly or doesn't exist
+        if (!this.particleBuffer || this.particleBufferSize < requiredSize) {
+            // Destroy old buffer if exists
+            if (this.particleBuffer) {
+                this.particleBuffer.destroy?.();
+                this.particleBuffer = null;
             }
-            this.device.queue.writeBuffer(this.particleBuffer, 0, initData.buffer);
             
-            // Create separate bind groups for compute (read-write) and render (read-only)
-            if (this.particleComputeBindGroupLayout && this.particleRenderBindGroupLayout) {
-                this.particleComputeBindGroup = this.device.createBindGroup({
-                    layout: this.particleComputeBindGroupLayout,
-                    entries: [
-                        { binding: 0, resource: { buffer: this.uniformBuffer } },
-                        { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-write for compute
-                    ],
+            if (count > 0) {
+                // Create buffer with required size
+                this.particleBuffer = this.device.createBuffer({
+                    size: requiredSize,
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
+                this.particleBufferSize = requiredSize;
                 
-                this.particleRenderBindGroup = this.device.createBindGroup({
-                    layout: this.particleRenderBindGroupLayout,
-                    entries: [
-                        { binding: 0, resource: { buffer: this.uniformBuffer } },
-                        { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-only for vertex shader
-                    ],
-                });
+                // Initialize particle data
+                const initData = new Float32Array(count * 4);
+                const w = gpuCanvas.width || 1920;
+                const h = gpuCanvas.height || 1080;
+                for (let i = 0; i < count; i++) {
+                    initData[i * 4 + 0] = Math.random() * w;
+                    initData[i * 4 + 1] = Math.random() * h;
+                    initData[i * 4 + 2] = (Math.random() - 0.5) * 0.5;
+                    initData[i * 4 + 3] = (Math.random() - 0.5) * 0.5;
+                }
+                this.device.queue.writeBuffer(this.particleBuffer, 0, initData.buffer);
+                
+                // Recreate bind groups with new buffer
+                this._createParticleBindGroups();
+            } else {
+                // No particles - cleanup
+                this.particleBufferSize = 0;
+                this.particleComputeBindGroup = null;
+                this.particleRenderBindGroup = null;
             }
+        } else if (count > 0) {
+            // Buffer exists and is large enough, just recreate bind groups if needed
+            this._createParticleBindGroups();
         } else {
             // No particles - cleanup bind groups
             this.particleComputeBindGroup = null;
             this.particleRenderBindGroup = null;
         }
+    }
+    
+    /**
+     * Helper method to create particle bind groups (reused when buffer changes)
+     */
+    _createParticleBindGroups() {
+        if (!this.particleBuffer || !this.particleComputeBindGroupLayout || !this.particleRenderBindGroupLayout) {
+            return;
+        }
+        
+        this.particleComputeBindGroup = this.device.createBindGroup({
+            layout: this.particleComputeBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.uniformBuffer } },
+                { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-write for compute
+            ],
+        });
+        
+        this.particleRenderBindGroup = this.device.createBindGroup({
+            layout: this.particleRenderBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.uniformBuffer } },
+                { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-only for vertex shader
+            ],
+        });
     }
 }
 

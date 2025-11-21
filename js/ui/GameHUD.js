@@ -837,13 +837,13 @@ export class GameHUD {
         this.ctx.fillText('🎵 Click anywhere to enable audio', this.canvas.width / 2, musicTipY);
         this.ctx.shadowBlur = 0;
 
-        const buttonWidth = 240;
-        const buttonHeight = 50;
-        const buttonSpacing = 18;
+        const buttonWidth = 200;
+        const buttonHeight = 40;
+        const buttonSpacing = 15;
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
-        const usernameY = this.canvas.height / 2 - 100;
+        const usernameY = centerY - 130;
         const usernameHovered = this.hoveredButton === 'username';
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillStyle = usernameHovered ? '#ff9800' : '#cccccc';
@@ -857,8 +857,8 @@ export class GameHUD {
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
-        const columnSpacing = 30;
-        const buttonStartY = centerY + 40;
+        const columnSpacing = 20;
+        const buttonStartY = centerY - 30;
         const leftColumnX = centerX - buttonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
 
@@ -935,6 +935,9 @@ export class GameHUD {
         // Draw news ticker above footer
         this.drawNewsTicker();
 
+        // Draw version box
+        this.drawVersionBox();
+
         // Draw technology branding in bottom-left
         this.drawTechnologyBranding();
     }
@@ -944,11 +947,16 @@ export class GameHUD {
         const ctx = this.ctx;
 
         // Dimensions
-        const boxWidth = 600;
-        const boxHeight = 30;
+        const boxWidth = 480;
+        const boxHeight = 24;
         const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
         const boxX = centerX - (boxWidth / 2);
-        const boxY = canvas.height - 100; // Position above footer area
+        
+        // Position below UI buttons
+        // Last row center is roughly centerY + 135 (see drawMainMenu)
+        // Bottom of buttons is roughly centerY + 155
+        const boxY = centerY + 180;
 
         // Measure text width for scrolling calculation
         ctx.font = '14px "Roboto Mono", monospace';
@@ -990,6 +998,42 @@ export class GameHUD {
 
         // Restore clipping
         ctx.restore();
+    }
+
+    drawVersionBox() {
+        const version = "V0.5.0";
+        const padding = 15;
+        const boxHeight = 24;
+        
+        // Estimate branding height to place above it
+        // Branding has 3 lines * 14px + padding*2 (16) = 58px.
+        const brandingHeight = 58; 
+        const spacing = 10;
+        
+        const x = padding;
+        const y = this.canvas.height - padding - brandingHeight - spacing - boxHeight;
+
+        this.ctx.save();
+        this.ctx.font = 'bold 12px "Roboto Mono", monospace';
+        const textWidth = this.ctx.measureText(version).width;
+        const boxWidth = textWidth + 24;
+
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(x, y, boxWidth, boxHeight);
+        
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+        // Text
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(version, x + boxWidth / 2, y + boxHeight / 2);
+        
+        this.ctx.restore();
     }
 
     drawAboutScreen() {
@@ -1343,53 +1387,54 @@ export class GameHUD {
 
         if (!this.mainMenu && !gameState.showAbout) return null;
 
-        const mainMenuButtonWidth = 240;
+        const mainMenuButtonWidth = 200;
+        const mainMenuButtonHeight = 40;
         const centerY = this.canvas.height / 2;
-        const buttonSpacing = 18;
+        const buttonSpacing = 15;
 
         // Username
-        const usernameY = this.canvas.height / 2 - 100;
+        const usernameY = centerY - 130;
         if (mouseX >= centerX - 150 && mouseX <= centerX + 150 &&
             mouseY >= usernameY - 20 && mouseY <= usernameY + 20) {
             return 'username';
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
-        const columnSpacing = 30;
-        const buttonStartY = centerY + 40;
+        const columnSpacing = 20;
+        const buttonStartY = centerY - 30;
         const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
 
         // Row positions
         const row1Y = buttonStartY;
-        const row2Y = buttonStartY + (buttonHeight + buttonSpacing);
-        const row3Y = buttonStartY + (buttonHeight + buttonSpacing) * 2;
-        const row4Y = buttonStartY + (buttonHeight + buttonSpacing) * 3;
+        const row2Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing);
+        const row3Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 2;
+        const row4Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 3;
 
         // Check left column
         if (mouseX >= leftColumnX && mouseX <= leftColumnX + mainMenuButtonWidth) {
-            if (mouseY >= row1Y - buttonHeight / 2 && mouseY <= row1Y + buttonHeight / 2) return 'single';
-            if (mouseY >= row2Y - buttonHeight / 2 && mouseY <= row2Y + buttonHeight / 2) return 'local_coop';
-            if (mouseY >= row3Y - buttonHeight / 2 && mouseY <= row3Y + buttonHeight / 2) return 'settings';
+            if (mouseY >= row1Y - mainMenuButtonHeight / 2 && mouseY <= row1Y + mainMenuButtonHeight / 2) return 'single';
+            if (mouseY >= row2Y - mainMenuButtonHeight / 2 && mouseY <= row2Y + mainMenuButtonHeight / 2) return 'local_coop';
+            if (mouseY >= row3Y - mainMenuButtonHeight / 2 && mouseY <= row3Y + mainMenuButtonHeight / 2) return 'settings';
         }
 
         // Check right column
         if (mouseX >= rightColumnX && mouseX <= rightColumnX + mainMenuButtonWidth) {
-            if (mouseY >= row1Y - buttonHeight / 2 && mouseY <= row1Y + buttonHeight / 2) return 'campaign';
-            if (mouseY >= row2Y - buttonHeight / 2 && mouseY <= row2Y + buttonHeight / 2) return 'play_ai';
-            if (mouseY >= row3Y - buttonHeight / 2 && mouseY <= row3Y + buttonHeight / 2) return 'multiplayer';
+            if (mouseY >= row1Y - mainMenuButtonHeight / 2 && mouseY <= row1Y + mainMenuButtonHeight / 2) return 'campaign';
+            if (mouseY >= row2Y - mainMenuButtonHeight / 2 && mouseY <= row2Y + mainMenuButtonHeight / 2) return 'play_ai';
+            if (mouseY >= row3Y - mainMenuButtonHeight / 2 && mouseY <= row3Y + mainMenuButtonHeight / 2) return 'multiplayer';
         }
 
         // Check About button (centered in row 4)
         if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2) {
-            if (mouseY >= row4Y - buttonHeight / 2 && mouseY <= row4Y + buttonHeight / 2) return 'about';
+            if (mouseY >= row4Y - mainMenuButtonHeight / 2 && mouseY <= row4Y + mainMenuButtonHeight / 2) return 'about';
         }
 
         // Check About screen back button
         if (gameState.showAbout) {
             const backY = this.canvas.height - 100;
             if (mouseX >= centerX - mainMenuButtonWidth / 2 && mouseX <= centerX + mainMenuButtonWidth / 2 &&
-                mouseY >= backY - buttonHeight / 2 && mouseY <= backY + buttonHeight / 2) {
+                mouseY >= backY - mainMenuButtonHeight / 2 && mouseY <= backY + mainMenuButtonHeight / 2) {
                 return 'about_back';
             }
         }

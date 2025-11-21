@@ -13,6 +13,9 @@ import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
 import { initGroundPattern, graphicsSettings } from './systems/GraphicsSystem.js';
+import { renderingCache } from './systems/RenderingCache.js';
+import { isInViewport, getViewportBounds } from './utils/gameUtils.js';
+import { RENDERING } from './core/constants.js';
 import { GameHUD } from './ui/GameHUD.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
 import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie } from './entities/Zombie.js';
@@ -91,9 +94,18 @@ webgpuRenderer.init().then(initialized => {
     }
 });
 
+/**
+ * Helper function to check if WebGPU is available and enabled
+ * Consolidates all WebGPU availability checks
+ */
+function isWebGPUActive() {
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    return webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+}
+
 // Function to apply WebGPU settings from SettingsManager
 function applyWebGPUSettings() {
-    if (!webgpuRenderer || !webgpuRenderer.isAvailable()) return;
+    if (!isWebGPUActive()) return;
 
     const bloomIntensity = settingsManager.getSetting('video', 'bloomIntensity') ?? 0.5;
     webgpuRenderer.setBloomIntensity(bloomIntensity);
@@ -108,25 +120,19 @@ function applyWebGPUSettings() {
 // Listen for settings changes and update WebGPU renderer
 settingsManager.addChangeListener((category, key, value) => {
     if (category === 'video') {
+        if (!isWebGPUActive()) return;
+        
         if (key === 'bloomIntensity') {
-            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
-                webgpuRenderer.setBloomIntensity(value);
-            }
+            webgpuRenderer.setBloomIntensity(value);
         }
         if (key === 'distortionEffects') {
-            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
-                webgpuRenderer.setDistortionEffects(value);
-            }
+            webgpuRenderer.setDistortionEffects(value);
         }
         if (key === 'lightingQuality') {
-            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
-                webgpuRenderer.setLightingQuality(value);
-            }
+            webgpuRenderer.setLightingQuality(value);
         }
         if (key === 'particleCount') {
-            if (webgpuRenderer && webgpuRenderer.isAvailable()) {
-                webgpuRenderer.setParticleCount(value);
-            }
+            webgpuRenderer.setParticleCount(value);
         }
     }
 });
@@ -1987,10 +1993,24 @@ function drawGame() {
         canvas.style.cursor = 'none';
     }
 
+    // Cache settings at frame start to avoid repeated lookups
+    // Use consolidated WebGPU check helper
+    const webgpuActive = isWebGPUActive();
+    const vignetteEnabled = graphicsSettings.vignette !== false;
+    const lightingEnabled = graphicsSettings.lighting !== false;
+    const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
+    
+    // Update rendering cache settings
+    renderingCache.updateSettings(vignetteEnabled, lightingEnabled);
+    
+    // Invalidate cache if needed
+    if (renderingCache.needsInvalidation(localPlayer)) {
+        renderingCache.invalidate(localPlayer);
+    }
+
     ctx.save();
     // Apply screen shake
     if (gameState.shakeAmount > 0.1) {
-        const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
         const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         ctx.translate(shakeX, shakeY);
@@ -2000,51 +2020,36 @@ function drawGame() {
     }
 
     // Background - transparent if WebGPU is handling it, otherwise use Canvas 2D fallback
-    const maxDimension = Math.max(canvas.width, canvas.height);
-    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
-    const webgpuActive = webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable();
-
     if (!webgpuActive) {
-        const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, maxDimension / 1.5);
-        bgGradient.addColorStop(0, '#1a1a1a');
-        bgGradient.addColorStop(1, '#0d0d0d');
+        const bgGradient = renderingCache.getBackgroundGradient();
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
 
-    const groundPattern = initGroundPattern();
+    // Ground pattern (cached)
+    const groundPattern = renderingCache.getGroundPattern();
     if (groundPattern) {
-        ctx.globalAlpha = 0.6;
+        ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
         ctx.fillStyle = groundPattern;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1.0;
     }
 
-    // Vignette overlay (if enabled)
-    if (graphicsSettings.vignette !== false) {
-        const vignette = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, maxDimension / 3, canvas.width / 2, canvas.height / 2, maxDimension);
-        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        vignette.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+    // Vignette overlay (if enabled) - cached gradient
+    if (vignetteEnabled) {
+        const vignette = renderingCache.getVignetteGradient();
         ctx.fillStyle = vignette;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Lighting overlay (if enabled) - follows player position
-
-    if (graphicsSettings.lighting !== false && localPlayer && localPlayer.health > 0) {
-        const player = localPlayer;
-        const lightingRadius = Math.max(canvas.width, canvas.height) * 0.8;
-        const lightingGradient = ctx.createRadialGradient(
-            player.x, player.y, 0,
-            player.x, player.y, lightingRadius
-        );
-        lightingGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-        lightingGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
-        lightingGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.02)');
-        lightingGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = lightingGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Lighting overlay (if enabled) - follows player position, cached gradient
+    if (lightingEnabled && localPlayer && localPlayer.health > 0) {
+        const lightingGradient = renderingCache.getLightingGradient(localPlayer);
+        if (lightingGradient) {
+            ctx.fillStyle = lightingGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
     }
 
     // Day/Night Cycle Overlay
@@ -2072,7 +2077,7 @@ function drawGame() {
     }
 
     if (gameState.damageIndicator.active) {
-        ctx.fillStyle = `rgba(255, 0, 0, ${gameState.damageIndicator.intensity * 0.3})`;
+        ctx.fillStyle = `rgba(255, 0, 0, ${gameState.damageIndicator.intensity * RENDERING.DAMAGE_INDICATOR_ALPHA})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -2108,20 +2113,95 @@ function drawGame() {
         ctx.restore();
     });
 
-    gameState.shells.forEach(shell => shell.draw(ctx));
-    gameState.bullets.forEach(bullet => bullet.draw());
-    gameState.grenades.forEach(grenade => grenade.draw());
-    gameState.acidProjectiles.forEach(projectile => projectile.draw());
-    gameState.acidPools.forEach(pool => pool.draw());
-    gameState.healthPickups.forEach(pickup => pickup.draw());
-    gameState.ammoPickups.forEach(pickup => pickup.draw());
-    gameState.damagePickups.forEach(pickup => pickup.draw());
-    gameState.nukePickups.forEach(pickup => pickup.draw());
-    gameState.speedPickups.forEach(pickup => pickup.draw());
-    gameState.rapidFirePickups.forEach(pickup => pickup.draw());
-    gameState.shieldPickups.forEach(pickup => pickup.draw());
-    gameState.adrenalinePickups.forEach(pickup => pickup.draw());
-    gameState.zombies.forEach(zombie => zombie.draw());
+    // Get viewport bounds for culling (only calculate once per frame)
+    const viewport = getViewportBounds(canvas);
+    
+    // Draw entities with viewport culling
+    gameState.shells.forEach(shell => {
+        if (isInViewport(shell, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            shell.draw(ctx);
+        }
+    });
+    
+    gameState.bullets.forEach(bullet => {
+        if (isInViewport(bullet, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            bullet.draw();
+        }
+    });
+    
+    gameState.grenades.forEach(grenade => {
+        if (isInViewport(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            grenade.draw();
+        }
+    });
+    
+    gameState.acidProjectiles.forEach(projectile => {
+        if (isInViewport(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            projectile.draw();
+        }
+    });
+    
+    gameState.acidPools.forEach(pool => {
+        if (isInViewport(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pool.draw();
+        }
+    });
+    
+    // Batch pickup rendering with culling
+    gameState.healthPickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.ammoPickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.damagePickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.nukePickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.speedPickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.rapidFirePickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.shieldPickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    gameState.adrenalinePickups.forEach(pickup => {
+        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pickup.draw();
+        }
+    });
+    
+    // Zombies with culling (most important for performance)
+    gameState.zombies.forEach(zombie => {
+        if (isInViewport(zombie, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            zombie.draw();
+        }
+    });
 
     drawPlayers();
 
@@ -2371,8 +2451,7 @@ gameEngine.draw = () => {
     }
 
     // Render WebGPU layer (background/compute) if enabled
-    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
-    if (webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable()) {
+    if (isWebGPUActive()) {
         const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
         webgpuRenderer.render(dt);
     }

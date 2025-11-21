@@ -115,7 +115,10 @@ export function createExplosion(x, y) {
 }
 
 export function updateParticles() {
-    for (let i = gameState.particles.length - 1; i >= 0; i--) {
+    // Use filter pattern instead of reverse loop + splice for better performance
+    const aliveParticles = [];
+    
+    for (let i = 0; i < gameState.particles.length; i++) {
         const p = gameState.particles[i];
         
         if (p.update) {
@@ -127,15 +130,18 @@ export function updateParticles() {
             p.life--;
         }
 
-        if (p.life <= 0) {
-            // Remove from active array
-            gameState.particles.splice(i, 1);
+        if (p.life > 0) {
+            aliveParticles.push(p);
+        } else {
             // Return to pool if it's a Particle instance
             if (p instanceof Particle) {
                 particlePool.release(p);
             }
         }
     }
+    
+    // Replace array instead of splicing
+    gameState.particles = aliveParticles;
 }
 
 export function drawParticles() {

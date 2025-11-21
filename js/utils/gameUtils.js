@@ -1,10 +1,44 @@
 import { gameState } from '../core/gameState.js';
+import { RENDERING } from '../core/constants.js';
 
 export function checkCollision(obj1, obj2) {
     const dx = obj1.x - obj2.x;
     const dy = obj1.y - obj2.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < obj1.radius + obj2.radius;
+}
+
+/**
+ * Check if an entity is within the viewport (with margin for culling)
+ * @param {Object} entity - Entity with x, y, radius properties
+ * @param {number} viewportLeft - Left edge of viewport
+ * @param {number} viewportTop - Top edge of viewport
+ * @param {number} viewportRight - Right edge of viewport
+ * @param {number} viewportBottom - Bottom edge of viewport
+ * @returns {boolean} True if entity should be rendered
+ */
+export function isInViewport(entity, viewportLeft, viewportTop, viewportRight, viewportBottom) {
+    const margin = RENDERING.CULL_MARGIN;
+    const radius = entity.radius || 0;
+    
+    return entity.x + radius >= viewportLeft - margin &&
+           entity.x - radius <= viewportRight + margin &&
+           entity.y + radius >= viewportTop - margin &&
+           entity.y - radius <= viewportBottom + margin;
+}
+
+/**
+ * Get viewport bounds for current canvas
+ * @param {HTMLCanvasElement} canvas - Canvas element
+ * @returns {Object} Viewport bounds {left, top, right, bottom}
+ */
+export function getViewportBounds(canvas) {
+    return {
+        left: 0,
+        top: 0,
+        right: canvas.width,
+        bottom: canvas.height
+    };
 }
 
 export function triggerDamageIndicator() {
