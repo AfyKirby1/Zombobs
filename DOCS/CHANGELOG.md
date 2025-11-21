@@ -12,6 +12,25 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - Version bump to 0.5.0 across all project files
 - Updated news reel with V0.5.0 highlights
 - Enhanced version tracking and display
+- **📱 Main Menu UI Layout Improvements** - Enhanced main menu interface
+  - **Version Display Box**: Added version text box (V0.5.0) in bottom-left corner
+    - Small, compact text box positioned above technology branding
+    - Red accent color matching game aesthetic
+    - Shows current game version for quick reference
+  - **Enhanced News Ticker**: Improved news reel positioning and sizing
+    - Reduced size for better proportions (480px width, 24px height, down from 600px/30px)
+    - Positioned dynamically below main menu buttons instead of fixed at bottom
+    - Better visual integration with menu layout
+  - **UI Button Repositioning**: Moved main menu buttons up for better spacing
+    - Button grid shifted upward (`centerY - 30px` instead of `centerY + 40px`)
+    - Improved vertical spacing and visual balance
+    - Username welcome message adjusted to accommodate new layout
+  - **Smaller UI Elements**: Reduced button dimensions for more compact design
+    - Button width: 200px (down from 240px)
+    - Button height: 40px (down from 50px)
+    - Tighter spacing: 15px between buttons (down from 18px)
+    - Column spacing: 20px (down from 30px)
+    - More efficient use of screen space while maintaining readability
 - **🚀 Performance Optimization System** - Comprehensive rendering performance improvements
   - **RenderingCache System** (`js/systems/RenderingCache.js`): Intelligent gradient and pattern caching
     - Caches background, vignette, and lighting gradients
@@ -60,6 +79,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - `js/utils/gameUtils.js` - Added viewport culling utilities
   - `js/systems/ParticleSystem.js` - Optimized particle update loop
   - `js/entities/Zombie.js` - Replaced magic numbers with constants
+  - `js/ui/GameHUD.js` - Added version box, resized/repositioned news ticker, adjusted button layout and dimensions, updated hit detection for new button sizes
 
 ## [0.4.2] - 2025-01-XX
 

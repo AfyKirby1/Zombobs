@@ -10,9 +10,9 @@
 
 **Status Legend (Roadmap Summary):**
 
- - Total items: 723
- - Completed items: 54 (7.5%)
- - Uncompleted items: 669
+ - Total items: 729
+ - Completed items: 64 (8.8%)
+ - Uncompleted items: 665
  - Phases completed: 0 / 14 (0.0%)
 
 ---
@@ -35,7 +35,6 @@
 - [x] **Wave Start Notification** - Brief text overlay showing "Wave X Starting!" when new wave begins 🟢
 - [x] **Aiming Crosshair** - Simple reticle/crosshair at mouse cursor position for better aiming reference 🟢
 - [x] **Off-screen Zombie Indicator** - Arrows or icons at the edge of the screen pointing towards off-screen zombies that are close to the player 🟡
- - [x] **Player Health Regeneration** - Slow health regeneration when out of combat (no zombie damage for 5 seconds) (duplicate of Phase 1 "Health Regeneration") 🟡
 - [ ] **Weapon Accuracy Indicator** - Visual feedback showing current weapon accuracy level during burst-fire sequences 🟡
 - [ ] **Minimap/Compass** - A simple UI element to show player position relative to the base 🟡
 - [ ] **Prone/Crouch System** - Multiple stance options affecting visibility and accuracy for tactical positioning 🟡
@@ -188,6 +187,10 @@
 ## Phase 5: Global Infection (Multiplayer) 🌐
 
 - [x] **Local Co-op Multiplayer** - Allow a second player to join the game on the same screen 🟡
+- [x] **Multiplayer Lobby UI** - Canvas-driven lobby with live player list, connection status, and game controls 🟡
+- [x] **Ready System** - Players can toggle ready status before game starts; all must be ready to begin 🟢
+- [x] **Leader System** - First player designated as lobby leader with game start control; automatic reassignment on disconnect 🟡
+- [x] **Synchronized Game Start** - Server validates and broadcasts game start to all clients simultaneously, ensuring all players join the same session 🟡
 - [ ] **Online Multiplayer** - Full networked gameplay (lobby system ready) 🔴
 - [ ] **Cross-Platform Sync** - Synchronize game state across different platforms 🔴
 - [ ] **Guilds & Clans** - Form groups with other survivors 🔴
@@ -303,6 +306,7 @@
 - [ ] **Dynamic Events** - Random encounters and emergencies 🟡
 - [ ] **Seasonal Events** - Limited-time themes, enemies, or rewards 🟡
 - [x] **Wave Break System** - Brief pause between waves to catch your breath and reload 🟢
+- [x] **News Ticker** - Scrolling announcement bar on main menu displaying version highlights 🟢
 - [x] **Sound Effects** - Gunshots, damage sounds, and walking footsteps (Web Audio API generated) 🟡
 - [x] **Screen Shake** - Camera shake on shooting and taking damage for impact 🟢
 - [x] **Blood Splatter** - Particle effects when zombies are hit/killed 🟡
@@ -313,7 +317,7 @@
 - [x] **Shell Ejection** - Visual effect of bullet casings being ejected from the gun 🟢
 - [x] **Floating Damage Numbers** - Show damage dealt as numbers that float up from zombies when hit 🟢
 - [ ] **Score Multiplier** - Combo system for consecutive kills without taking damage 🟡
-- [ ] **Kill Streak Counter** - Track consecutive kills and display streak count with bonus score multiplier 🟡
+- [x] **Kill Streak Counter** - Track consecutive kills and display streak count with bonus score multiplier 🟡
 - [ ] **Ammo Scarcity Scaling** - Gradually reduce ammo drop chance with higher waves for tension 🟡
 - [ ] **Bounty System** - A specific, marked "bounty" zombie appears each wave. Killing it grants a significant currency bonus 🟡
 - [x] **Hit Markers & Impact SFX** - Quick visual marker and subtle sound on successful hits 🟢
@@ -326,7 +330,7 @@
 - [ ] **Narrative Story Mode** - A separate mode with handcrafted levels and specific objectives 🔴
 - [ ] **Advanced Weather Effects** - Implement dynamic weather like rain (reduces visibility) or fog that cycles periodically 🟡
 - [ ] **Advanced Sound Design** - Add more detailed audio cues, like distinct footstep sounds and more varied zombie vocalizations 🟡
-- [ ] **Survivor Companion** - AI-controlled ally that assists in combat 🔴
+- [x] **Survivor Companion** - AI-controlled ally that assists in combat 🔴
 - [ ] **AI Companion Roles/Classes** - Different AI companion specializations: Medic (heals, revives faster), Heavy Gunner/Tank (tanky, high damage), Scout (fast, marks enemies), Engineer (repairs base, sets traps). Choose 1-3 companions before starting, each with unique abilities and visual distinction (colors/icons per class) 🔴
 
 ---

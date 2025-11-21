@@ -5,6 +5,7 @@ import { LOW_AMMO_FRACTION, NEWS_UPDATES } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
 import { saveMultiplierStats } from '../utils/gameUtils.js';
+import { isAudioInitialized } from '../systems/AudioSystem.js';
 
 export class GameHUD {
     constructor(canvas) {
@@ -828,14 +829,17 @@ export class GameHUD {
         this.ctx.fillStyle = '#9e9e9e';
         this.ctx.fillText('Survive the Horde', this.canvas.width / 2, this.canvas.height / 2 - 150);
 
-        // Music Tip - More visible
-        const musicTipY = this.canvas.height / 2 - 125;
-        this.ctx.font = '14px "Roboto Mono", monospace';
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        this.ctx.shadowBlur = 8;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
-        this.ctx.fillText('🎵 Click anywhere to enable audio', this.canvas.width / 2, musicTipY);
-        this.ctx.shadowBlur = 0;
+        // Music Tip - Only show if audio hasn't been initialized yet
+        if (!isAudioInitialized()) {
+            const centerY = this.canvas.height / 2;
+            const musicTipY = centerY - 80;
+            this.ctx.font = '14px "Roboto Mono", monospace';
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+            this.ctx.fillText('🎵 Click anywhere to enable audio', this.canvas.width / 2, musicTipY);
+            this.ctx.shadowBlur = 0;
+        }
 
         const buttonWidth = 200;
         const buttonHeight = 40;
@@ -1005,13 +1009,8 @@ export class GameHUD {
         const padding = 15;
         const boxHeight = 24;
         
-        // Estimate branding height to place above it
-        // Branding has 3 lines * 14px + padding*2 (16) = 58px.
-        const brandingHeight = 58; 
-        const spacing = 10;
-        
         const x = padding;
-        const y = this.canvas.height - padding - brandingHeight - spacing - boxHeight;
+        const y = padding;
 
         this.ctx.save();
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
@@ -1106,12 +1105,12 @@ export class GameHUD {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.font = 'bold 48px "Creepster", cursive';
+        this.ctx.font = 'bold 40px "Creepster", cursive';
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
         this.ctx.shadowBlur = 20;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillText('MULTIPLAYER LOBBY', this.canvas.width / 2, 100);
+        this.ctx.fillText('MULTIPLAYER LOBBY', this.canvas.width / 2, 70);
         this.ctx.shadowBlur = 0;
 
         const centerX = this.canvas.width / 2;
@@ -1148,7 +1147,8 @@ export class GameHUD {
 
         if (!gameState.multiplayer.connected) {
             this.ctx.fillStyle = '#ff9800';
-            this.ctx.fillText('Connecting to server...', centerX, centerY - 50);
+            this.ctx.font = '18px "Roboto Mono", monospace';
+            this.ctx.fillText('Connecting to server...', centerX, centerY - 100);
             const t = Date.now() / 1000;
             this.ctx.strokeStyle = '#ff9800';
             this.ctx.lineWidth = 4;
@@ -1156,18 +1156,19 @@ export class GameHUD {
             this.ctx.arc(centerX, centerY, 20, t * Math.PI, t * Math.PI + Math.PI * 1.5);
             this.ctx.stroke();
         } else {
+            this.ctx.font = '18px "Roboto Mono", monospace';
             this.ctx.fillStyle = '#76ff03';
-            this.ctx.fillText('Connected!', centerX, centerY - 70);
-            this.ctx.font = '16px "Roboto Mono", monospace';
+            this.ctx.fillText('Connected!', centerX, centerY - 100);
+            this.ctx.font = '14px "Roboto Mono", monospace';
             this.ctx.fillStyle = '#aaaaaa';
-            this.ctx.fillText(`Player ID: ${gameState.multiplayer.playerId || 'Unknown'}`, centerX, centerY - 35);
-            this.ctx.fillText(`Players Online: ${players.length}`, centerX, centerY - 5);
+            this.ctx.fillText(`Player ID: ${gameState.multiplayer.playerId || 'Unknown'}`, centerX, centerY - 60);
+            this.ctx.fillText(`Players Online: ${players.length}`, centerX, centerY - 30);
         }
 
-        const panelWidth = 360;
-        const panelHeight = Math.max(200, 60 + players.length * 40);
+        const panelWidth = 320;
+        const panelHeight = Math.max(200, 50 + players.length * 35);
         const panelX = centerX - panelWidth / 2;
-        const panelY = centerY + 30;
+        const panelY = centerY - 10;
 
         this.ctx.fillStyle = 'rgba(15, 15, 20, 0.9)';
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
@@ -1175,15 +1176,15 @@ export class GameHUD {
         this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
         this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
 
-        this.ctx.font = '16px "Roboto Mono", monospace';
+        this.ctx.font = '14px "Roboto Mono", monospace';
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillText('Players in Lobby', panelX + 20, panelY + 30);
+        this.ctx.fillText('Players in Lobby', panelX + 20, panelY + 25);
 
         if (players.length === 0) {
             this.ctx.fillStyle = '#888888';
             this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillText('Waiting for players...', panelX + 20, panelY + 60);
+            this.ctx.fillText('Waiting for players...', panelX + 20, panelY + 50);
         } else {
             players.forEach((player, index) => {
                 const name = player?.name || `Player ${index + 1}`;
@@ -1204,19 +1205,19 @@ export class GameHUD {
 
                 // Color: green for local player, white for others
                 this.ctx.fillStyle = isLocalPlayer ? '#76ff03' : '#ffffff';
-                this.ctx.font = '16px "Roboto Mono", monospace';
-                this.ctx.fillText(playerText, panelX + 20, panelY + 60 + index * 40);
+                this.ctx.font = '14px "Roboto Mono", monospace';
+                this.ctx.fillText(playerText, panelX + 20, panelY + 50 + index * 35);
 
                 // Ready status
                 this.ctx.fillStyle = isReady ? '#76ff03' : '#ff9800';
-                this.ctx.font = '14px "Roboto Mono", monospace';
-                this.ctx.fillText(readyText, panelX + 20, panelY + 80 + index * 40);
+                this.ctx.font = '12px "Roboto Mono", monospace';
+                this.ctx.fillText(readyText, panelX + 20, panelY + 65 + index * 35);
             });
         }
 
-        const buttonWidth = 200;
-        const buttonHeight = 50;
-        const buttonSpacing = 60;
+        const buttonWidth = 180;
+        const buttonHeight = 42;
+        const buttonSpacing = 50;
 
         // Disable buttons if game is starting
         const buttonsDisabled = gameState.multiplayer.isGameStarting;
@@ -1227,9 +1228,9 @@ export class GameHUD {
 
             if (isLeader) {
                 // Leader sees Ready button, Start Game button, then Back button
-                const readyY = this.canvas.height - 170;
-                const startY = this.canvas.height - 100;
-                const backY = this.canvas.height - 40;
+                const readyY = this.canvas.height - 200;
+                const startY = this.canvas.height - 130;
+                const backY = this.canvas.height - 70;
 
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
                 this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', buttonsDisabled);
@@ -1238,17 +1239,17 @@ export class GameHUD {
                 this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_start', !canStart);
 
                 if (!canStart && !buttonsDisabled) {
-                    this.ctx.font = '12px "Roboto Mono", monospace';
+                    this.ctx.font = '11px "Roboto Mono", monospace';
                     this.ctx.fillStyle = '#ff9800';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 20);
+                    this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 18);
                 }
 
                 this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', buttonsDisabled);
             } else {
                 // Non-leader sees Ready button, then Back button
-                const readyY = this.canvas.height - 170;
-                const backY = this.canvas.height - 100;
+                const readyY = this.canvas.height - 200;
+                const backY = this.canvas.height - 130;
 
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
                 this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', buttonsDisabled);
@@ -1256,7 +1257,7 @@ export class GameHUD {
             }
         } else {
             // Not connected - just show Back button
-            const backY = this.canvas.height - 100;
+            const backY = this.canvas.height - 130;
             this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
         }
     }

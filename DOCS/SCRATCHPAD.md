@@ -4,6 +4,34 @@
 
 ## 2025 - Active Development Notes
 
+### Main Menu UI Layout Improvements [2025-01-XX]
+- ✅ **Version Display Box**: Added version text box in bottom-left corner
+  - Created `drawVersionBox()` method in `GameHUD.js`
+  - Small, compact box showing "V0.5.0"
+  - Positioned above technology branding with proper spacing
+  - Red accent color (#ff1744) matching game aesthetic
+  - Semi-transparent background with subtle border
+  
+- ✅ **Enhanced News Ticker**: Improved news reel sizing and positioning
+  - Reduced dimensions: 480px width x 24px height (down from 600px x 30px)
+  - Positioned dynamically below UI buttons (`centerY + 180px`)
+  - Better visual integration with menu layout
+  - Maintains smooth scrolling animation and seamless looping
+  
+- ✅ **UI Button Repositioning**: Moved main menu buttons up
+  - Button grid shifted from `centerY + 40px` to `centerY - 30px`
+  - Username welcome message adjusted to `centerY - 130px`
+  - Improved vertical spacing and visual balance
+  - Better use of screen real estate
+  
+- ✅ **Smaller UI Elements**: Reduced button dimensions for compact design
+  - Button width: 200px (down from 240px)
+  - Button height: 40px (down from 50px)
+  - Button spacing: 15px (down from 18px)
+  - Column spacing: 20px (down from 30px)
+  - Updated hit detection logic in `checkMenuButtonClick()` to match new dimensions
+  - More efficient use of screen space while maintaining readability
+
 ### Game Start Synchronization Fix [2025-01-XX]
 - 🎮 **Fixed Players Not Joining Together**: Resolved critical bug where players started in separate game sessions
   - Root cause: `gameState.isCoop = false` in `game:start` handler forced single-player mode

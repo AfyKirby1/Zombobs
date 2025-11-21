@@ -45,6 +45,10 @@ export function initAudio() {
     return audioContext;
 }
 
+export function isAudioInitialized() {
+    return audioContext !== null;
+}
+
 export function getMasterGainNode() {
     return masterGainNode;
 }
