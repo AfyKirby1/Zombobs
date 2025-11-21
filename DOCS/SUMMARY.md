@@ -17,6 +17,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Leader System** - First player designated as lobby leader with game start control
 ✅ **Ready System** - Players can toggle ready status; all must be ready to start
 ✅ **Synchronized Game Start** - All players enter game simultaneously in same session
+✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
@@ -144,6 +145,11 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Synchronized game start - server validates and broadcasts start to all clients simultaneously
   - Enhanced lobby UI - shows leader indicator (👑) and ready status (✅/❌) for each player
   - Fixed critical issue where players were starting in separate game sessions
+- **Main Menu News Ticker**:
+  - Added scrolling announcement bar displaying version highlights
+  - Continuous right-to-left animation with seamless looping
+  - Amber/gold text styling matches game aesthetic
+  - Highlights features from V0.4.0 and V0.4.1 updates
 - **Server Enhancements**:
   - Added `isReady` and `isLeader` properties to player objects
   - Automatic leader reassignment when leader disconnects

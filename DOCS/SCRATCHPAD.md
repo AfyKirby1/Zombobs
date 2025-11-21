@@ -4,6 +4,37 @@
 
 ## 2025 - Active Development Notes
 
+### Ready Button Bug Fix [2025-01-XX]
+- 🐛 **Fixed Ready Button Not Working**: Resolved critical bug where ready button did nothing when clicked
+  - Root cause: Leader restriction (`!gameState.multiplayer.isLeader`) prevented ready toggle
+  - Solution: Removed leader restriction, all players (including leaders) can now toggle ready
+  - Added socket connection validation (`socket.connected`) before emitting
+  - Enhanced debug logging throughout ready toggle flow for troubleshooting
+  
+- ✅ **Leader Ready Toggle**: Leaders can now toggle their ready state
+  - Leaders see both "Ready/Unready" and "Start Game" buttons
+  - Ready button positioned at top, Start Game in middle, Back at bottom
+  - Leader ready state included in "all ready" validation
+  - Start Game button only enables when ALL players (including leader) are ready
+  
+- 🔍 **Debug Logging**: Added comprehensive logging
+  - Ready button clicks logged with connection status
+  - Lobby update events logged with state change tracking
+  - Socket connection status validated and logged
+  - Warnings when socket missing or disconnected
+
+### Main Menu News Ticker [2025-11-20]
+- ✅ **News Ticker Implementation**: Added scrolling announcement bar to main menu
+  - Added `NEWS_UPDATES` constant to `js/core/constants.js` with V0.4.0 and V0.4.1 highlights
+  - Implemented `drawNewsTicker()` method in `GameHUD.js`
+  - Stateless scrolling animation using `Date.now()` (no state storage needed)
+  - Proper clipping with `ctx.save()`, `ctx.clip()`, `ctx.restore()` to contain text
+  - Seamless looping by drawing text twice (primary + offset copy)
+  - Styling: Amber/gold text (#ffc107), dark semi-transparent background, amber border glow
+  - Positioned bottom-center above footer area
+  - Integrated into `drawMainMenu()` before technology branding
+  - Uses dummy-proof patterns: stateless animation, clipping, centering
+
 ### Multiplayer Lobby Synchronization [2025-11-20]
 - ✅ **Ready System Implementation**: Added player ready toggle functionality
   - Non-leader players can toggle ready/not ready status

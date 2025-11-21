@@ -2,6 +2,49 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [0.4.2] - 2025-01-XX
+
+### 🐛 FIXED: Ready Button Not Working
+
+> **Ready button now works for all players!**
+
+Fixed critical bug where the ready button in the multiplayer lobby did nothing when clicked. The button was visible but clicking it had no effect.
+
+### Fixed
+- **🚨 Ready Button Click Handler**: Ready button now properly toggles ready state for all players
+  - Removed leader restriction that prevented ready toggle
+  - Added socket connection validation before emitting
+  - Fixed button click detection for all player roles
+  
+- **👑 Leader Ready Toggle**: Leaders can now toggle their ready state
+  - Leaders see both "Ready/Unready" and "Start Game" buttons
+  - Leader ready state is included in "all ready" check
+  - Start Game button only enables when ALL players (including leader) are ready
+
+### Changed
+- **🎯 Lobby UI Layout**: Updated button positioning for leaders
+  - Ready button: Top position (all players)
+  - Start Game button: Middle position (leaders only)
+  - Back button: Bottom position
+  
+- **🔍 Debug Logging**: Added comprehensive logging for troubleshooting
+  - Ready button click events logged with connection status
+  - Lobby update events logged with state changes
+  - Socket connection status tracked and logged
+  - Warnings when socket is missing or disconnected
+
+### Technical
+- **Client Events (`js/main.js`)**:
+  - Removed `!gameState.multiplayer.isLeader` restriction from ready emit handler
+  - Added `socket.connected` check before emitting `player:ready`
+  - Enhanced `lobby:update` handler with detailed logging
+  - Added debug console logs throughout ready toggle flow
+
+- **UI Updates (`js/ui/GameHUD.js`)**:
+  - Updated `drawLobby()` to show ready button for leaders
+  - Updated `checkMenuButtonClick()` to detect ready button for all players
+  - Improved button layout with proper spacing for leaders
+
 ## [0.4.1] - 2025-11-20
 
 ### 🔧 MULTIPLAYER LOBBY SYNCHRONIZATION
@@ -23,6 +66,12 @@ Fixed critical multiplayer lobby synchronization issue where players were starti
   
 - **🎮 Synchronized Game Start** - All players enter game simultaneously
   - Leader emits `game:start` request to server
+  
+- **📰 News Ticker** - Scrolling announcement bar on main menu
+  - Displays version highlights from V0.4.0 and V0.4.1
+  - Continuous right-to-left scrolling animation
+  - Amber/gold text on dark semi-transparent background
+  - Positioned above footer area, seamlessly loops
   - Server validates leader status and all-ready state
   - Server broadcasts `game:start` to all clients simultaneously
   - Ensures all players enter the same game session together
@@ -76,6 +125,9 @@ Fixed critical multiplayer lobby synchronization issue where players were starti
 - **Documentation**:
   - Created `DOCS/MULTIPLAYER.md` - Comprehensive multiplayer architecture documentation
   - Documents packet flow, synchronization guarantees, and error handling
+  
+- **Constants (`js/core/constants.js`)**:
+  - Added `NEWS_UPDATES` constant for main menu news ticker content
 
 ## [0.4.0] - 2025-11-20
 

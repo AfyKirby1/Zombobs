@@ -89,19 +89,22 @@ The `gameState.multiplayer` object tracks:
   - 👑 icon for leader
   - ✅ Ready or ❌ Not Ready status
   - Green highlight for local player
-- Shows appropriate action button:
-  - **Leader**: "Start Game" button (disabled if not all ready)
-  - **Non-Leader**: "Ready" / "Unready" toggle button
+- Shows appropriate action buttons:
+  - **All Players**: "Ready" / "Unready" toggle button (top position)
+  - **Leader Only**: "Start Game" button (middle position, disabled if not all ready)
+  - **All Players**: "Back" button (bottom position)
 
 **Button Click Handling (`checkMenuButtonClick`)**
 - Detects clicks on lobby buttons
 - Returns `'lobby_start'` for leader's start button
-- Returns `'lobby_ready'` for non-leader's ready button
+- Returns `'lobby_ready'` for ready button (all players)
 - Returns `'lobby_back'` for back button
 
 **Click Action Handler (`main.js` mousedown event)**
 - `'lobby_start'`: Emits `game:start` to server (leader only)
-- `'lobby_ready'`: Emits `player:ready` to server (non-leader only)
+- `'lobby_ready'`: Emits `player:ready` to server (all players, including leaders)
+  - Validates socket exists and is connected before emitting
+  - Includes debug logging for troubleshooting
 - `'lobby_back'`: Returns to main menu
 
 ## Packet Flow
@@ -115,8 +118,9 @@ The `gameState.multiplayer` object tracks:
 
 ### Player Toggles Ready
 
-1. Non-leader clicks "Ready" button
-2. Client emits `player:ready` to server
+1. Player (leader or non-leader) clicks "Ready" button
+2. Client validates socket connection
+3. Client emits `player:ready` to server
 3. Server toggles player's `isReady` flag
 4. Server broadcasts `lobby:update` to all clients
 5. All clients update UI to show new ready status

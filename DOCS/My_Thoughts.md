@@ -52,6 +52,13 @@ The project is currently at **V0.4.1**. We've successfully implemented a robust 
   - Automatic leader reassignment: If leader disconnects, new leader is automatically assigned
   - Comprehensive documentation: Created `DOCS/MULTIPLAYER.md` documenting the architecture
 
+- **Main Menu News Ticker**: Added dynamic scrolling announcement bar
+  - Displays version highlights from V0.4.0 and V0.4.1
+  - Stateless animation using `Date.now()` for consistent behavior
+  - Seamless looping with double-text rendering pattern
+  - Amber/gold styling matches game's tech aesthetic
+  - Positioned above footer area for visibility without intrusion
+
 ### Immediate Focus
 - **Multiplayer Testing**: Verify synchronized game start works reliably with multiple clients
 - **Error Handling**: Ensure graceful handling of edge cases (leader disconnect during start, etc.)
