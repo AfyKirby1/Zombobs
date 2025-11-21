@@ -82,5 +82,15 @@ export class GameEngine {
             this.targetFPS = 0;
         }
     }
+    
+    /**
+     * Get interpolation alpha for smooth rendering between fixed timestep updates
+     * Returns a value between 0 and 1 indicating how far between updates we are
+     * @returns {number} Interpolation alpha (0 = at last update, 1 = at next update)
+     */
+    getInterpolationAlpha() {
+        if (this.timeStep <= 0) return 0;
+        return Math.min(1, this.accumulatedTime / this.timeStep);
+    }
 }
 

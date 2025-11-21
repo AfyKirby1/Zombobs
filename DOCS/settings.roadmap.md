@@ -53,7 +53,7 @@ A beginner-friendly settings panel that allows players to customize their gaming
 
 | Setting | Type | Range/Options | Default | Status |
 |---------|------|---------------|---------|--------|
-| **Quality Preset** | Dropdown | Low/Medium/High/Custom | High | ✅ Implemented |
+| **Quality Preset** | Dropdown | Low/Medium/High/Ultra/Custom | High | ✅ Implemented (Ultra added V0.5.1) |
 | **Particle Count** | Slider | 50-500 | 200 | ✅ Implemented (Custom preset only) |
 | **Screen Shake Intensity** | Slider | 0-100% | 100% | ✅ Implemented |
 | **Crosshair Style** | Dropdown | Default/Dot/Cross/Circle | Default | ✅ Implemented |
@@ -69,9 +69,14 @@ A beginner-friendly settings panel that allows players to customize their gaming
 | **Reload Bar** | Toggle | On/Off | On | ✅ Implemented |
 | **Show Debug Stats** | Toggle | On/Off | Off | ✅ Implemented |
 | **FPS Limit** | Dropdown | OFF/30/60/120 | OFF | ✅ Implemented |
+| **Effect Intensity** | Slider | 0-200% | 100% | ✅ Implemented (V0.5.1) |
+| **Post-Processing Quality** | Dropdown | Off/Low/Medium/High | Medium | ✅ Implemented (V0.5.1) |
+| **Particle Detail** | Dropdown | Minimal/Standard/Detailed/Ultra | Standard | ✅ Implemented (V0.5.1) |
 
 **Implementation Notes**:
 - ✅ Quality presets automatically configure particle count and visual effects
+- ✅ Ultra preset added with maximum quality settings (V0.5.1)
+  - 50k WebGPU particles, 1.25x resolution scale, advanced lighting, 0.7 bloom intensity
 - ✅ Custom preset allows granular control over individual settings
 - ✅ Screen shake slider: 0% = no shake, 100% = default intensity
 - ✅ FPS limit applies immediately when changed
@@ -80,6 +85,10 @@ A beginner-friendly settings panel that allows players to customize their gaming
 - ✅ Lighting toggle controls radial gradient lighting overlay that follows player
 - ✅ Resolution scale slider adjusts canvas internal resolution (50%-200%, affects performance/quality)
 - ✅ Floating text toggle controls health/ammo pickup collection messages
+- ✅ Effect Intensity: Multiplier for all quality-based effects (glows, auras, flashes) (V0.5.1)
+- ✅ Post-Processing Quality: Controls vignette, lighting, and bloom effects (V0.5.1)
+- ✅ Particle Detail: Controls particle rendering quality (gradients, glow, multi-layer) (V0.5.1)
+- ✅ Quality presets now scale all visual effects: zombie glows, auras, muzzle flashes, explosions, blood splatter, damage numbers (V0.5.1)
 - ✅ All settings persist to localStorage
 
 **Storage Key**: `zombobs_settings` (unified storage)

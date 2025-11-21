@@ -131,6 +131,12 @@ settingsManager.addChangeListener((category, key, value) => {
             resizeCanvas(localPlayer);
         }
         
+        // Handle UI Scale (affects all UI elements)
+        if (key === 'uiScale') {
+            // UI scaling applies immediately on next render, no action needed
+            // GameHUD and SettingsPanel will recalculate scaled values on next draw
+        }
+        
         // Handle VSync and FPS limit (affects all rendering)
         if (key === 'vsync') {
             gameEngine.setVSync(value);
@@ -188,6 +194,59 @@ function checkServerHealth() {
         });
 }
 
+// Latency measurement function
+function startLatencyMeasurement(socket) {
+    // Use Socket.IO's built-in ping/pong mechanism for latency measurement
+    // Socket.IO sends ping/pong automatically, we just need to measure the round-trip time
+    let pingInterval = null;
+    
+    // Listen for ping events (server sends ping)
+    socket.io.on('ping', () => {
+        gameState.lastPingTime = Date.now();
+    });
+    
+    // Listen for pong events (server responds)
+    socket.io.on('pong', () => {
+        if (gameState.lastPingTime) {
+            const latency = Date.now() - gameState.lastPingTime;
+            // Use exponential moving average for smoother latency tracking
+            gameState.networkLatency = gameState.networkLatency 
+                ? gameState.networkLatency * 0.8 + latency * 0.2
+                : latency;
+            gameState.multiplayer.latency = gameState.networkLatency;
+        }
+    });
+    
+    // Also measure custom ping/pong if server supports it
+    pingInterval = setInterval(() => {
+        if (!socket.connected) {
+            if (pingInterval) clearInterval(pingInterval);
+            return;
+        }
+        
+        const pingStart = Date.now();
+        socket.emit('ping', Date.now(), (response) => {
+            if (response) {
+                const pingEnd = Date.now();
+                const latency = pingEnd - pingStart;
+                // Use exponential moving average for smoother latency tracking
+                gameState.networkLatency = gameState.networkLatency 
+                    ? gameState.networkLatency * 0.8 + latency * 0.2
+                    : latency;
+                gameState.multiplayer.latency = gameState.networkLatency;
+            }
+        });
+    }, 5000); // Measure every 5 seconds
+    
+    // Clean up on disconnect
+    socket.on('disconnect', () => {
+        if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
+        }
+    });
+}
+
 function initializeNetwork() {
     if (gameState.multiplayer.socket) return; // Already initialized
 
@@ -230,6 +289,9 @@ function initializeNetwork() {
             socket.emit('player:register', {
                 name: gameState.username || `Survivor-${socket.id.slice(-4)}`
             });
+            
+            // Start latency measurement (ping/pong)
+            startLatencyMeasurement(socket);
         });
 
         socket.on('disconnect', () => {
@@ -508,24 +570,61 @@ function initializeNetwork() {
         socket.on('zombie:update', (zombiesData) => {
             if (gameState.multiplayer.isLeader) return; // Leader has authoritative state
 
+            const now = Date.now();
+            const updateInterval = Math.max(50, now - gameState.lastZombieUpdateBroadcast || 100);
+            const frameTime = gameEngine.timeStep || 16.67;
+            
+            // Calculate adaptive lerp factor based on update frequency
+            // Formula: lerpFactor = Math.min(0.5, updateInterval / frameTime)
+            // Higher update interval = faster lerp to catch up
+            const lerpFactor = Math.min(0.5, Math.max(0.1, updateInterval / (frameTime * 2)));
+            
             // Update zombie positions from leader
             zombiesData.forEach(data => {
                 const zombie = gameState.zombies.find(z => z.id === data.id);
                 if (zombie) {
+                    // Store previous position for velocity calculation
+                    const oldX = zombie.x;
+                    const oldY = zombie.y;
+                    
+                    // Apply synced speed if provided
+                    if (data.speed !== undefined) {
+                        zombie.speed = data.speed;
+                    }
+                    if (data.baseSpeed !== undefined) {
+                        zombie.baseSpeed = data.baseSpeed;
+                    }
+                    
+                    // Calculate velocity from position delta
+                    if (zombie.targetX !== undefined && zombie.targetY !== undefined) {
+                        const timeSinceLastUpdate = (now - zombie.lastUpdateTime) || updateInterval;
+                        if (timeSinceLastUpdate > 0) {
+                            zombie.vx = (data.x - zombie.targetX) / timeSinceLastUpdate;
+                            zombie.vy = (data.y - zombie.targetY) / timeSinceLastUpdate;
+                        }
+                    }
+                    
                     // Set target for interpolation
                     zombie.targetX = data.x;
                     zombie.targetY = data.y;
                     zombie.health = data.health;
+                    zombie.lastUpdateTime = now;
 
                     // If distance is too large (teleport/spawn), snap immediately
                     const dx = data.x - zombie.x;
                     const dy = data.y - zombie.y;
-                    if (dx * dx + dy * dy > 10000) {
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq > 10000) {
+                        // Large distance - snap immediately
                         zombie.x = data.x;
                         zombie.y = data.y;
+                        zombie.targetX = data.x;
+                        zombie.targetY = data.y;
                     }
                 }
             });
+            
+            gameState.lastZombieUpdateBroadcast = now;
         });
 
         socket.on('zombie:hit', (data) => {
@@ -545,6 +644,9 @@ function initializeNetwork() {
             const zombieIndex = gameState.zombies.findIndex(z => z.id === data.zombieId);
             if (zombieIndex !== -1) {
                 const zombie = gameState.zombies[zombieIndex];
+                
+                // Clean up state tracking for dead zombie (multiplayer sync)
+                gameState.lastZombieState.delete(zombie.id);
 
                 // Visual effects
                 createBloodSplatter(zombie.x, zombie.y, data.angle || 0, true);
@@ -846,6 +948,9 @@ function performMeleeAttack(player) {
 
             // Check if zombie dies
             if (zombie.takeDamage(MELEE_DAMAGE)) {
+                // Clean up state tracking for dead zombie (multiplayer sync)
+                gameState.lastZombieState.delete(zombie.id);
+                
                 // Remove zombie from array first
                 gameState.zombies.splice(zombieIndex, 1);
 
@@ -1322,23 +1427,94 @@ function drawPlayers() {
             ctx.shadowBlur = 0;
         }
 
-        // Muzzle flash
+        // Muzzle flash - quality scaled
         if (player.muzzleFlash.active) {
-            const flashSize = 8 + (player.muzzleFlash.intensity * 12);
+            const flashQuality = graphicsSettings.getQualityValues('muzzleFlash');
+            const baseSize = 8 + (player.muzzleFlash.intensity * 12);
+            const flashSize = baseSize * flashQuality.sizeMultiplier;
             const flashOffset = -2;
             const flashX = player.muzzleFlash.x + Math.cos(player.muzzleFlash.angle) * flashOffset;
             const flashY = player.muzzleFlash.y + Math.sin(player.muzzleFlash.angle) * flashOffset;
 
+            if (flashQuality.gradientLayers >= 3) {
+                // Ultra quality: Multi-layer flash with glow
+                ctx.shadowBlur = flashSize * 0.5;
+                ctx.shadowColor = 'rgba(255, 255, 200, 0.8)';
+                
+                // Outer glow layer
+                const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.5);
+                outerGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.3})`);
+                outerGradient.addColorStop(0.5, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.2})`);
+                outerGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                ctx.fillStyle = outerGradient;
+                ctx.beginPath();
+                ctx.arc(flashX, flashY, flashSize * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Middle layer
+                const middleGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.2);
+                middleGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.6})`);
+                middleGradient.addColorStop(0.4, `rgba(255, 255, 150, ${player.muzzleFlash.intensity * 0.5})`);
+                middleGradient.addColorStop(0.8, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
+                middleGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                ctx.fillStyle = middleGradient;
+                ctx.beginPath();
+                ctx.arc(flashX, flashY, flashSize * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (flashQuality.gradientLayers >= 2) {
+                // High quality: Two-layer flash
+                ctx.shadowBlur = flashSize * 0.3;
+                ctx.shadowColor = 'rgba(255, 255, 200, 0.6)';
+                
+                // Outer layer
+                const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.3);
+                outerGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.4})`);
+                outerGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
+                outerGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                ctx.fillStyle = outerGradient;
+                ctx.beginPath();
+                ctx.arc(flashX, flashY, flashSize * 1.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Main flash (all quality levels)
             const flashGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize);
-            flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.9})`);
-            flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.7})`);
-            flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.4})`);
-            flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            if (flashQuality.gradientLayers >= 3) {
+                flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.95})`);
+                flashGradient.addColorStop(0.2, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.85})`);
+                flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.7})`);
+                flashGradient.addColorStop(0.8, `rgba(255, 150, 0, ${player.muzzleFlash.intensity * 0.4})`);
+                flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            } else if (flashQuality.gradientLayers >= 2) {
+                flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.9})`);
+                flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.7})`);
+                flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.4})`);
+                flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            } else {
+                // Low/Medium: Simple gradient
+                flashGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.8})`);
+                flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.5})`);
+                flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            }
 
             ctx.fillStyle = flashGradient;
             ctx.beginPath();
             ctx.arc(flashX, flashY, flashSize, 0, Math.PI * 2);
             ctx.fill();
+            
+            // Reset shadow
+            ctx.shadowBlur = 0;
+            
+            // Ultra quality: Add particle trail
+            if (flashQuality.hasTrail && Math.random() < 0.3) {
+                spawnParticle(flashX, flashY, '#ffff00', {
+                    radius: 2,
+                    vx: Math.cos(player.muzzleFlash.angle) * 3,
+                    vy: Math.sin(player.muzzleFlash.angle) * 3,
+                    life: 5,
+                    maxLife: 5
+                });
+            }
         }
 
         // Melee Swipe
@@ -1839,11 +2015,41 @@ function updateGame() {
         
         // Only the Leader or Singleplayer should run Zombie AI logic
         if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
-            // Interpolation for smooth movement between server updates
+            // Advanced interpolation for smooth movement between server updates
             if (zombie.targetX !== undefined && zombie.targetY !== undefined) {
-                // Simple LERP: Move 20% towards target per frame
-                zombie.x += (zombie.targetX - zombie.x) * 0.2;
-                zombie.y += (zombie.targetY - zombie.y) * 0.2;
+                const now = Date.now();
+                const timeSinceUpdate = now - (zombie.lastUpdateTime || 0);
+                const updateInterval = gameState.zombieUpdateInterval || 100;
+                const frameTime = gameEngine.timeStep || 16.67;
+                
+                // Calculate adaptive lerp factor
+                // Use gameEngine interpolation alpha for frame-perfect interpolation
+                const interpAlpha = gameEngine.getInterpolationAlpha ? gameEngine.getInterpolationAlpha() : 0;
+                const baseLerpFactor = Math.min(0.5, Math.max(0.1, updateInterval / (frameTime * 2)));
+                const lerpFactor = interpAlpha > 0 ? baseLerpFactor * (1 + interpAlpha) : baseLerpFactor;
+                
+                // Calculate distance to target
+                const dx = zombie.targetX - zombie.x;
+                const dy = zombie.targetY - zombie.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Use velocity-based extrapolation if velocity is available
+                if (zombie.vx !== undefined && zombie.vy !== undefined && dist < 50 && timeSinceUpdate < updateInterval * 2) {
+                    // Small distance and recent update - use velocity extrapolation
+                    const extrapolationFactor = timeSinceUpdate / updateInterval;
+                    zombie.x += zombie.vx * extrapolationFactor;
+                    zombie.y += zombie.vy * extrapolationFactor;
+                } else {
+                    // Use adaptive lerp
+                    zombie.x += dx * lerpFactor;
+                    zombie.y += dy * lerpFactor;
+                }
+                
+                // Snap if very close (prevents jitter)
+                if (dist < 0.5) {
+                    zombie.x = zombie.targetX;
+                    zombie.y = zombie.targetY;
+                }
             }
             continue;
         }
@@ -1877,15 +2083,88 @@ function updateGame() {
 
     // Broadcast zombie positions to other clients (leader only, throttled)
     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-        // Throttle updates to every 100ms (10 times per second)
-        if (!gameState.lastZombieUpdateBroadcast || now - gameState.lastZombieUpdateBroadcast >= 100) {
-            const zombieData = gameState.zombies.map(z => ({
-                id: z.id,
-                x: z.x,
-                y: z.y,
-                health: z.health
-            }));
-            gameState.multiplayer.socket.emit('zombie:update', zombieData);
+        // Adaptive update rate based on zombie count and activity
+        const zombieCount = gameState.zombies.length;
+        const baseInterval = 100; // Base 10Hz
+        // Adjust interval: faster with more zombies (50ms), slower with few (200ms)
+        const adaptiveInterval = Math.max(50, Math.min(200, baseInterval - (zombieCount * 0.5)));
+        
+        // Also adjust based on network latency if available
+        const latencyAdjustment = gameState.networkLatency > 100 ? 20 : 0;
+        const updateInterval = adaptiveInterval + latencyAdjustment;
+        
+        if (!gameState.lastZombieUpdateBroadcast || now - gameState.lastZombieUpdateBroadcast >= updateInterval) {
+            gameState.zombieUpdateInterval = updateInterval; // Store for client-side interpolation
+            
+            // Delta compression: only send changed zombies
+            const changedZombies = [];
+            const threshold = 1.0; // Position change threshold (pixels)
+            
+            for (let i = 0; i < gameState.zombies.length; i++) {
+                const z = gameState.zombies[i];
+                const lastState = gameState.lastZombieState.get(z.id);
+                
+                // Check if zombie has changed significantly
+                const positionChanged = !lastState || 
+                    Math.abs(lastState.x - z.x) > threshold || 
+                    Math.abs(lastState.y - z.y) > threshold;
+                const healthChanged = !lastState || lastState.health !== z.health;
+                const speedChanged = !lastState || 
+                    Math.abs((lastState.speed || 0) - (z.speed || 0)) > 0.01;
+                
+                if (positionChanged || healthChanged || speedChanged || !lastState) {
+                    // Include speed and baseSpeed for synchronization
+                    const zombieData = {
+                        id: z.id,
+                        x: z.x,
+                        y: z.y,
+                        health: z.health,
+                        speed: z.speed,
+                        baseSpeed: z.baseSpeed || z.speed
+                    };
+                    changedZombies.push(zombieData);
+                    
+                    // Update last known state
+                    gameState.lastZombieState.set(z.id, {
+                        x: z.x,
+                        y: z.y,
+                        health: z.health,
+                        speed: z.speed
+                    });
+                }
+            }
+            
+            // Only send if there are changes (or send full state first time)
+            if (changedZombies.length > 0 || gameState.lastZombieState.size === 0) {
+                // If more than 80% of zombies changed, send all for efficiency
+                if (gameState.zombies.length > 0 && changedZombies.length / gameState.zombies.length > 0.8) {
+                    // Send full state (more efficient than many small packets)
+                    const zombieData = gameState.zombies.map(z => ({
+                        id: z.id,
+                        x: z.x,
+                        y: z.y,
+                        health: z.health,
+                        speed: z.speed,
+                        baseSpeed: z.baseSpeed || z.speed
+                    }));
+                    gameState.multiplayer.socket.emit('zombie:update', zombieData);
+                    
+                    // Update all states
+                    gameState.lastZombieState.clear();
+                    zombieData.forEach(zd => {
+                        gameState.lastZombieState.set(zd.id, {
+                            x: zd.x,
+                            y: zd.y,
+                            health: zd.health,
+                            speed: zd.speed
+                        });
+                    });
+                } else {
+                    // Send only changed zombies (delta compression)
+                    gameState.multiplayer.socket.emit('zombie:update', changedZombies);
+                }
+            }
+            
             gameState.lastZombieUpdateBroadcast = now;
         }
     }
@@ -2053,8 +2332,16 @@ function drawGame() {
     // Cache settings at frame start to avoid repeated lookups
     // Use consolidated WebGPU check helper
     const webgpuActive = isWebGPUActive();
-    const vignetteEnabled = graphicsSettings.vignette !== false;
-    const lightingEnabled = graphicsSettings.lighting !== false;
+    const postProcessingQuality = graphicsSettings.postProcessingQuality || 'medium';
+    
+    // Post-processing quality controls vignette and lighting
+    // Off = no effects, Low = vignette only, Medium = vignette + lighting, High = all + enhanced
+    const vignetteEnabled = graphicsSettings.vignette !== false && 
+                           (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high');
+    const lightingEnabled = graphicsSettings.lighting !== false && 
+                           (postProcessingQuality === 'medium' || postProcessingQuality === 'high');
+    const enhancedPostProcessing = postProcessingQuality === 'high';
+    
     const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
     
     // Update rendering cache settings
@@ -2106,6 +2393,16 @@ function drawGame() {
         if (lightingGradient) {
             ctx.fillStyle = lightingGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Enhanced post-processing: Additional bloom-like glow effect
+            if (enhancedPostProcessing) {
+                ctx.globalCompositeOperation = 'screen';
+                ctx.globalAlpha = 0.15;
+                ctx.fillStyle = lightingGradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+                ctx.globalCompositeOperation = 'source-over';
+            }
         }
     }
 

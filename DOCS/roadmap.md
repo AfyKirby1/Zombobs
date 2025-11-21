@@ -40,6 +40,12 @@
 - [ ] **Prone/Crouch System** - Multiple stance options affecting visibility and accuracy for tactical positioning 🟡
 - [ ] **Looting Minigame** - Quick QTE for bonus loot quality when scavenging supplies 🟢
 - [ ] **Barricading System** - Board up windows and doors to slow zombie entry and create defensive choke points 🟡
+- [ ] **Blood Trail System** - Zombies leave persistent blood trails that can be used for tracking or stealth gameplay (leverages GPU particle system) 🟡
+- [ ] **Footstep Tracking** - Player leaves visible footprints that zombies can follow, adding stealth tension (GPU-computed particle trail) 🟡
+- [ ] **Heat Signature Visualization** - Thermal vision mode showing zombie heat signatures through walls using GPU ray-casting (tactical ability) 🔴
+- [ ] **Sound Propagation Visualization** - Visual representation of noise propagation to help players understand zombie attraction mechanics 🟡
+- [ ] **Dynamic Cover System** - Physics-based cover objects that can be destroyed but provide strategic protection (connects to GPU physics) 🟡
+- [ ] **Environmental Awareness Indicators** - Visual cues showing which direction zombies are coming from based on sound/heat (GPU-computed) 🟡
 
 ---
 
@@ -84,6 +90,15 @@
 - [ ] **GPU-Accelerated Ballistics** - Compute shader-based projectile physics for thousands of bullets simultaneously 🔴
 - [ ] **Weapon Recoil Simulation** - GPU-computed recoil patterns with procedural weapon sway 🟡
 - [ ] **Muzzle Flash Lighting** - Dynamic light emission from weapon fire affecting nearby surfaces 🟡
+- [ ] **Projectile Physics Integration** - Bullets use GPU-computed ballistics affecting trajectory based on distance, wind, and gravity (enhances long-range combat) 🔴
+- [ ] **Smart Ricochet System** - Bullets ricochet off surfaces with predictable angles, allowing trick shots and environmental combat (GPU ray-casting) 🟡
+- [ ] **Bullet Time Mode** - Slow-motion ability powered by temporal upscaling that reduces game speed while maintaining visual quality 🟡
+- [ ] **Weapon Overheat Visualization** - GPU-computed heat distortion effects on weapon models when firing continuously, affecting accuracy 🟡
+- [ ] **Ammo Trajectory Preview** - Visual arc showing bullet path before firing, accounting for drop and physics (helps with long-range shots) 🟡
+- [ ] **Dynamic Weapon Sway** - Procedural weapon bob and sway using GPU-computed animation curves based on movement and stamina 🟡
+- [ ] **Explosive Chain Reactions** - Explosions can trigger environmental objects (barrels, vehicles) creating cascading destruction (GPU physics) 🔴
+- [ ] **Weapon Durability System** - Weapons degrade with use, affecting accuracy and fire rate, visualized through GPU shader effects 🟡
+- [ ] **Smart Weapon Switching** - AI suggests optimal weapon based on enemy type and distance using compute shader analysis 🔴
 
 ---
 
@@ -121,6 +136,15 @@
 - [ ] **Stealth Kills** - Silent melee takedowns from behind for bonus damage and no alert 🟡
 - [ ] **Weather-Based Buffs/Debuffs** - Rain reduces accuracy, fog reduces zombie detection range dynamically 🟡
 - [ ] **Hunger & Thirst Mechanics** - Survival stats requiring food/water management for sustained combat effectiveness 🟡
+- [ ] **Zombie Pheromone Trails** - Zombies leave invisible "scent" trails that other zombies can follow, creating dynamic horde formation (GPU-computed flow fields) 🔴
+- [ ] **Zombie Communication System** - Zombies alert nearby hordes when player is spotted, creating chain reactions of aggression (GPU-based influence maps) 🔴
+- [ ] **Adaptive Zombie Learning** - Zombies "remember" player tactics and adjust behavior using GPU-computed memory system (e.g., flank if player camps) 🔴
+- [ ] **Zombie Swarm Intelligence** - Groups of zombies coordinate attacks using GPU-computed flocking behaviors for more challenging horde encounters 🔴
+- [ ] **Day/Night Zombie Behavior Shift** - Zombies use different pathfinding strategies during day vs night (safer routes during day, direct assault at night) 🟡
+- [ ] **Environmental Zombie Reactions** - Zombies react to explosions, fires, and loud noises, drawn to sound sources (GPU audio spatialization) 🟡
+- [ ] **Zombie Group Formations** - Zombies form tactical formations (surround, flank, frontal assault) based on player position (GPU pathfinding) 🔴
+- [ ] **Dynamic Spawn Points** - Zombie spawn locations adapt based on player position and map coverage, preventing camping (GPU influence maps) 🔴
+- [ ] **Zombie Infestation Zones** - Areas of the map become "infested" over time, spawning more zombies until cleared (visualized with GPU particles) 🟡
 
 ### Advanced AI & Pathfinding 🧠
 
@@ -150,6 +174,11 @@
 - [ ] **Neural Network Behavior** - ML-based zombie decision making that adapts to player tactics 🔴
 - [ ] **Spatial Hashing on GPU** - Ultra-fast neighbor queries for AI and physics using GPU hash grids 🔴
 - [ ] **Asynchronous Pathfinding** - Multi-frame pathfinding spread across compute passes for zero frame drops 🔴
+- [ ] **GPU-Powered Threat Assessment** - Real-time analysis of zombie threat levels using compute shaders to prioritize targets and positioning 🔴
+- [ ] **Heat Map Visualization** - Visual overlay showing zombie activity zones, spawn points, and movement patterns for strategic planning 🟡
+- [ ] **Predictive AI Director** - System anticipates player actions using GPU-computed probability maps to create challenging but fair encounters 🔴
+- [ ] **Zombie Behavior Trees on GPU** - Thousands of AI agents with complex decision logic running in parallel compute shaders for massive hordes 🔴
+- [ ] **Dynamic Difficulty via GPU Metrics** - System monitors player performance using GPU timestamp queries to adjust spawn rates in real-time 🟡
 
 ---
 
@@ -181,6 +210,15 @@
 - [ ] **Teleporter Pads** - Build instant travel points between distant base sections 🔴
 - [ ] **Safe Zone Building** - Construct and upgrade a persistent home base 🔴
 - [ ] **Shield Generator** - Base structure providing temporary player overshield 🔴
+- [ ] **Dynamic Wall Health Visualization** - GPU-computed visual effects showing wall damage, stress points, and structural integrity 🟡
+- [ ] **Base Construction Physics** - Building placement uses GPU collision detection to ensure structures are stable and can support weight 🔴
+- [ ] **Automated Repair Systems** - Base structures auto-repair over time, with visual progress shown through GPU particle effects 🟡
+- [ ] **Structural Stress System** - Walls accumulate damage from zombie attacks, showing cracks and weakening using GPU shader effects 🟡
+- [ ] **Base Power Grid** - Electrical systems powering defenses, with visual GPU particle effects showing power flow and failures 🔴
+- [ ] **Resource Flow Visualization** - GPU-computed visual representation of material transport between base structures 🟡
+- [ ] **Destructible Base Foundations** - Zombies can dig under or break through weaker sections, requiring strategic reinforcement (GPU physics) 🔴
+- [ ] **Modular Base Design** - Building blocks snap together using GPU-computed placement validation for optimal base construction 🟡
+- [ ] **Base Efficiency Calculator** - Real-time analysis of base layout efficiency using GPU compute shaders (coverage, bottlenecks, etc.) 🔴
 
 ---
 
@@ -205,6 +243,15 @@
 - [ ] **Shared Resource Pool & Item Sharing** - Players and AI companions draw from a shared ammo pool (configurable). Players can share ammo/health with teammates, drop items for others to pick up, and use medkits on teammates. UI shows shared resource bar with total ammo/medkits 🟡
 - [ ] **Tactical Ping/Marker System** - Players can mark zombies, locations, or resources with visual indicators and audio cues for better coordination in co-op. Contextual commands like "Revive [Player Name]" when teammate is down 🟢
 - [ ] **Character Customization** - Skins, outfits, and avatar personalization 🟡
+- [ ] **Shared Resource Visualization** - GPU-computed visual effects showing resource sharing between players in co-op (health/ammo transfer effects) 🟡
+- [ ] **Team Formation System** - Players can form tactical formations with visual indicators powered by GPU compute shaders 🟡
+- [ ] **Synchronized Environmental Events** - Weather, explosions, and destruction sync across all clients using GPU-computed deterministic physics 🔴
+- [ ] **Player Skill Matching via GPU Analysis** - System analyzes player performance using GPU timestamp queries for better matchmaking 🟡
+- [ ] **Cooperative Base Building** - Multiple players can build simultaneously with real-time sync using GPU-validated construction placement 🔴
+- [ ] **Shared Vision System** - Players can share "vision" of enemies spotted by teammates, with visual indicators using GPU ray-casting 🟡
+- [ ] **Cross-Player Pathfinding** - AI companions/pets use GPU pathfinding that considers multiple player positions for optimal positioning 🔴
+- [ ] **Team Combo System** - Coordinated attacks between players create visual combo effects using GPU particle systems 🟡
+- [ ] **Lag Compensation Visualization** - Visual indicator showing network latency effects using GPU timestamp queries to help players understand sync 🟢
 
 ### Network Optimization & Synchronization 🌐
 
@@ -238,6 +285,10 @@
 - [ ] **Visual Scrap Counter** - Display current scrap balance in HUD during gameplay 🟢
 - [ ] **Post-Game Scrap Summary** - Show scrap earned breakdown after each run ends 🟢
 - [ ] **Scrap Multiplier Upgrades** - Permanent upgrades that increase scrap earnings per kill 🟡
+- [ ] **Performance-Based Rewards** - Bonus XP/Scrap for achieving high GPU frame rates or maintaining 60 FPS during intense combat 🟡
+- [ ] **GPU Efficiency Bonuses** - Rewards for using efficient tactics that reduce GPU load, encouraging optimized gameplay 🟡
+- [ ] **Difficulty Scaling Rewards** - Higher rewards for playing at difficulty levels that maximize GPU utilization (challenge-based optimization) 🟡
+- [ ] **Technical Mastery Achievements** - Unlocks for players who master game mechanics that leverage advanced GPU features 🟡
 
 ### Permanent Upgrade Shop
 
@@ -273,6 +324,11 @@
 - [ ] **XP Multiplier** - Increase XP gain rate (+15% per level, 3 levels max) 🟡
 - [ ] **Power-Up Duration** - Increase duration of temporary power-ups (+20% per level, 3 levels max) 🟡
 - [ ] **Starting Power-Up** - Start each run with a random power-up active 🟡
+- [ ] **GPU Rendering Quality Upgrades** - Permanent unlocks for higher quality post-processing, particle counts, and visual effects 🔴
+- [ ] **Compute Shader Upgrades** - Unlock advanced AI behaviors, physics, and rendering techniques through progression 🔴
+- [ ] **Performance Optimization Upgrades** - Permanent improvements to game performance that unlock more complex features 🟡
+- [ ] **Visual Quality Presets** - Unlock higher quality rendering presets (Medium, High, Ultra) through progression 🟡
+- [ ] **Advanced Physics Unlocks** - Unlock sophisticated physics interactions (soft body, cloth, fluids) through player progression 🔴
 
 ### Prestige/Mastery System
 
@@ -484,6 +540,12 @@
 - [ ] **Blood Pooling System** - Blood puddles expand and persist on ground surfaces, creating visceral environment 🟢
 - [ ] **Shader-Based Outlines** - Highlight important objects/enemies with customizable glowing outlines 🟡
 - [ ] **Dynamic Wind Grass Shader** - Grass sways in wind direction with realistic wave-like movement patterns 🟡
+- [ ] **Visual Feedback System** - GPU-computed visual indicators for all game events (damage, healing, buffs, debuffs) using particle effects 🟡
+- [ ] **Dynamic Difficulty Visualization** - Visual effects showing difficulty scaling in real-time (zombie glow intensifies, environment darkens) 🟢
+- [ ] **Combat Intensity Meter** - GPU-computed visual meter showing current combat intensity that affects spawn rates and rewards 🟡
+- [ ] **Performance Impact Indicators** - Visual warning system when GPU load is high, helping players understand performance trade-offs 🟢
+- [ ] **WebGPU Feature Detection UI** - Visual indicator showing which advanced WebGPU features are active (bloom, compute shaders, etc.) 🟢
+- [ ] **Adaptive Visual Quality** - Game automatically adjusts visual quality based on GPU performance to maintain target frame rate 🟡
 
 ### Atmospheric Effects 🌫️
 
@@ -522,6 +584,10 @@
 - [ ] **Binoculars / Scouting** - Tool to observe distant enemy types and numbers before engaging 🟢
 - [ ] **Photo Mode** - Pause the action to take cinematic screenshots with camera controls and filters 🟢
  - [ ] **Replay System** - Watch back and analyze previous play sessions (user-facing playback) 🔴
+- [ ] **GPU-Accelerated Replay Recording** - Efficient replay system using GPU timestamp queries and deterministic physics for frame-perfect recordings 🔴
+- [ ] **Tactical Analysis Mode** - Review gameplay sessions with GPU-computed heat maps, path visualizations, and performance metrics 🟡
+- [ ] **Performance Replay** - Watch replays with GPU performance overlay showing frame times, draw calls, and compute usage 🔴
+- [ ] **Strategic Planning Mode** - Pause game and use GPU-computed analysis tools to plan base layout and zombie defense strategies 🟡
 
 ### Advanced Physics & Tech 🧪
 
@@ -531,6 +597,12 @@
  - [ ] **Ricochets** - Bullets can bounce off metal surfaces, creating sparks and potential collateral damage (environment reactions) 🟡
 - [ ] **Mud & Dirt Accumulation** - Mud and gore build up on character models and weapons over time 🟢
 - [ ] **Procedural Skybox** - Real-time cloud generation and accurate star maps based on in-game time/season 🟡
+- [ ] **Physics-Based Sound Generation** - Generate impact sounds based on collision physics (material, velocity, angle) using GPU-computed parameters 🟡
+- [ ] **Environmental Audio Propagation** - GPU-computed sound occlusion and propagation through environment affects zombie attraction and player awareness 🟡
+- [ ] **Procedural Footstep System** - GPU-computed footstep sounds based on surface material, movement speed, and terrain type 🟡
+- [ ] **Dynamic Music Generation** - Music intensity adapts to combat intensity calculated by GPU compute shaders (particle count, enemy proximity) 🟡
+- [ ] **Spatial Audio for Stealth** - 3D positional audio system helps players understand zombie positions and plan stealth approaches 🔴
+- [ ] **Audio-Visual Synchronization** - Sound effects and visual effects are synchronized using GPU timestamp queries for perfect timing 🟡
 
 ### Character & Interaction Polish 🎭
 
@@ -618,6 +690,39 @@
  - [ ] **GPU Timestamp Queries** - Precise performance profiling of GPU work 🟡
  - [ ] **Subgroup Operations** - Leverage wave/warp intrinsics for faster compute 🔴
  - [ ] **Shader Specialization Constants** - Compile-time shader variants for optimization 🟡
+ - [ ] **Timestamp Calibration** - Filtering timestamp queries over multiple frames to remove noise from OS scheduling 🟡
+ - [ ] **Pipeline Caching (Serialization)** - Serializing getBindGroupLayout definitions to speed up startup times 🟡
+ - [ ] **Staging Buffer Ring** - Rotating through multiple mapped buffers for CPU->GPU uploads to prevent pipeline stalls 🔴
+ - [ ] **Uniform Buffer Compression** - Packing multiple, small dynamic uniform buffers into a single, large buffer to reduce driver overhead 🟡
+ - [ ] **Multi-Queue Synchronization (Emulated)** - Using CPU fences and event queues to ensure Compute work and Render work can be overlapped (Async Compute) 🔴
+ - [ ] **GPU-Powered Huffman Decoding** - Decompressing complex game asset files (e.g., compressed textures or mesh data) using parallel Huffman or Lempel-Ziv decompression kernels 🔴
+ - [ ] **Hardware-Agnostic Debugging** - Creating an extensive set of runtime checks within the WGSL code itself (e.g., buffer bounds, NaN checks) that only compile in debug builds 🟡
+
+### WGSL Low-Level Optimizations 🔬
+
+- [ ] **Atomic Float Add Emulation** - Emulating atomic floating point addition using atomicCompareExchangeWeak loops (critical for software rasterization) 🔴
+- [ ] **Subgroup Reductions (subgroupAdd, subgroupMin)** - Using built-in subgroup operations for fast, scratchpad-free sum/min/max across an entire workgroup 🔴
+- [ ] **Subgroup Shuffles** - Using subgroupShuffle to exchange data between threads without using Shared Memory (L1 cache speedup) 🔴
+- [ ] **Workgroup Memory Barriers Tuning** - Fine-tuning barrier usage to prevent "thundering herd" stalls in compute shaders 🔴
+- [ ] **Bit Packing** - Storing boolean flags or small integers in the unused bits of float mantissas to reduce memory usage 🟡
+- [ ] **Texture Swizzling (Z-Order Curves)** - Manually implementing Z-order curves (Morton Codes) to optimize texture cache hits in compute shaders 🔴
+- [ ] **Indirect Dispatch Chaining** - Having one compute shader generate the dispatch arguments for a subsequent compute shader, creating a fully autonomous GPU pipeline 🔴
+- [ ] **WGSL Pre-processor Macros (Manual)** - Using JavaScript to manually inject conditional compilation logic into WGSL strings to generate optimal, branch-free shaders for specific use cases 🟡
+- [ ] **Input Attachment Emulation** - Using textureLoad in the fragment shader to read back the G-Buffer from the current render pass, minimizing memory bandwidth (mobile GPU optimization) 🔴
+- [ ] **Fast Approximate Math** - Substituting functions like rsqrt() (Reciprocal Square Root) with fast, less precise approximations in non-critical paths for speed 🟡
+- [ ] **Branch Divergence Minimization** - Structuring if/else blocks to ensure threads within the same subgroup (wave) follow the same execution path as long as possible 🔴
+- [ ] **WGSL Pointer Arithmetic Emulation** - Using integer offsets into Storage Buffers to create complex data structures (linked lists, trees) typically associated with pointer usage 🔴
+- [ ] **Shader Specialization Constants (Emulated)** - Using runtime-defined global uniforms to allow the browser's shader compiler (Tint) to aggressively optimize code branches at pipeline creation time 🟡
+- [ ] **Manual Shared Memory Management** - Explicitly managing data flow into and out of var<workgroup> memory in compute shaders to control L1 cache usage 🔴
+
+### Mobile & Thermal Performance 📱
+
+- [ ] **Frame Budgeting via Timestamp Queries** - Measuring GPU duration of previous frame and dynamically reducing physics sub-steps or ray tracing bounces if > 12ms to prevent thermal throttling 🟡
+- [ ] **F16 (Half-Precision) Optimization** - Using 16-bit floats everywhere possible on mobile GPUs (Adreno/Mali) to consume 50% less bandwidth and register pressure 🔴
+- [ ] **WebGPU Compatibility Mode Detection** - Feature detection for compatibility mode limitations (no texture_2d_array in some cases, smaller workgroup limits, limited storage buffer sizes) 🟡
+- [ ] **Thermal Throttling Prevention** - Adaptive quality scaling based on GPU temperature estimates to maintain stable frame rates on mobile devices 🔴
+- [ ] **Mobile Texture Compression (ASTC/ETC2)** - Automatic feature detection and transcoding for optimal mobile texture formats to reduce VRAM usage 🟡
+- [ ] **Interleaved Attribute Buffers** - Structuring vertex buffers as [Pos, Norm, UV, Pos, Norm, UV...] to improve cache locality on mobile GPUs 🟡
 
 ### Backend & Multiplayer Infrastructure 🖥️
 
@@ -699,6 +804,7 @@
  
  - [ ] **GPU Rigid Body Physics** - Move Box2D-style physics entirely to Compute Shaders, supporting 10,000+ colliding bodies (debris, corpses) 🔴
  - [ ] **SPH Fluid Blood System** - Smoothed Particle Hydrodynamics for blood that flows, pools, and drips realistically, interacting with terrain 🔴
+ - [ ] **Material Point Method (MPM)** - Advanced physics simulation handling grid-based (Eulerian) and particle-based (Lagrangian) approaches for robust snow, sand, and cloth that interacts seamlessly 🔴
  - [ ] **Pixel-Perfect Destructibility** - GPU-based terrain modification allowing zombies to tear through any wall pixel-by-pixel 🔴
  - [ ] **Soft-Body Zombie Flesh** - Zombies deform when hit; limbs dangle and bounce using mass-spring systems calculated in parallel 🔴
  - [ ] **Verlet Rope/Chain Physics** - GPU-simulated intestines, chains, and wires that react to explosions and collisions 🔴
@@ -707,6 +813,8 @@
  - [ ] **Position-Based Dynamics (PBD)** - Stable cloth, ropes, soft bodies using constraint-based approach 🔴
  - [ ] **XPBD (Extended PBD)** - Even more stable physics, supports stiff materials and complex constraints 🔴
  - [ ] **Constraint Solver on GPU** - Joints, springs, motors all computed in parallel for massive physics worlds 🔴
+ - [ ] **Gauss-Seidel Solver** - Iterative constraint solving on GPU using graph coloring to avoid race conditions 🔴
+ - [ ] **Jacobi Solver** - Parallel constraint solving (less stable but faster on GPU) for physics simulations 🔴
  - [ ] **Continuous Collision Detection** - No tunneling even at extreme speeds using swept collision tests 🔴
  - [ ] **Convex Hull Collisions** - Complex shapes collide accurately using GPU-computed support functions 🔴
  - [ ] **Fracture & Destruction** - Walls shatter into realistic chunks using Voronoi fracture algorithms 🔴
@@ -720,6 +828,9 @@
  - [ ] **Lava Lamp Physics** - Metaballs for gooey zombie guts and viscous fluids 🟡
  - [ ] **Marching Cubes** - Convert particle fluids to smooth mesh surfaces for rendering 🔴
  - [ ] **Dual Contouring** - Better surface extraction than marching cubes with sharp features 🔴
+ - [ ] **Contact Manifold Generation** - Parallel algorithms (e.g., using atomicMin) to efficiently determine collision points and penetration depths for many-body interactions 🔴
+ - [ ] **BVH Construction (LBVH)** - Linear Bounding Volume Hierarchies built on GPU for efficient ray tracing and collision detection 🔴
+ - [ ] **Sparse Data Structures** - Using Octrees or KD-Trees in Storage Buffers for efficient neighbor search and spatial queries (e.g., in Physics or Ray Tracing) 🔴
  
  ### Next-Gen Rendering (2D Ray Tracing & Lighting) 🔦
  
@@ -756,17 +867,31 @@
  
  #### Advanced Rendering Techniques
  - [ ] **Deferred Rendering Pipeline** - Handle hundreds of dynamic lights efficiently with G-buffer 🔴
+ - [ ] **Deferred Forward Hybrid** - Using Deferred Shading for primary lights and Forward Shading for transparent/complex materials (Tencent Mobile strategy) 🔴
  - [ ] **Forward+ (Tiled Forward)** - Hybrid approach for transparency + many lights 🔴
  - [ ] **Clustered Rendering** - 3D grid of light assignments for massive scenes 🔴
+ - [ ] **Cluster Culling (Light)** - Assigning thousands of point lights to 3D frustum clusters in a Compute Shader 🔴
+ - [ ] **Tile-Based Light Culling** - Optimizing light loops by assigning lights to 16x16 screen tiles 🔴
  - [ ] **Virtual Shadow Maps** - Infinite shadow resolution where needed using adaptive allocation 🔴
  - [ ] **Mesh Shaders** - Next-gen geometry pipeline when browser support arrives 🔴
  - [ ] **Variable Rate Shading** - Render peripheral vision at lower quality for performance 🔴
+ - [ ] **Coarse Pixel Shading** - Using dpdx/dpdy to detect low-frequency regions and skip heavy shading instructions 🔴
  - [ ] **Foveated Rendering** - For VR: ultra-sharp center, blurry edges matching eye fovea 🔴
+ - [ ] **Foveated Rendering (Fixed)** - Rendering edges of the screen at lower resolution using multiple viewports or software coarsening 🔴
  - [ ] **Reprojection/ASW** - Fake high framerates by warping previous frames using motion vectors 🔴
  - [ ] **Stochastic Rendering** - Use random sampling for effects like transparency and AO 🔴
  - [ ] **Blue Noise Sampling** - High-quality noise patterns for dithering and sampling 🟡
  - [ ] **Temporal Upsampling** - Render at lower res, upscale with temporal data 🔴
  - [ ] **Checkerboard Rendering** - Render half pixels per frame, reconstruct full image 🔴
+ - [ ] **Super-Resolution (FSR 1.0)** - Spatial upscaling shader implementation to render at 720p and display at 1440p 🔴
+ - [ ] **FSR 2.0 Implementation** - Temporal upscaling with motion vectors for higher quality than FSR 1.0 🔴
+ - [ ] **PBR Next-Gen IBL** - Pre-filtering environment maps (irradiance and radiance) using Compute Shaders (e.g., Cubemap filtering for specular and diffuse components) 🔴
+ - [ ] **Split-Sum Approximation** - The industry standard optimization for PBR Image-Based Lighting to handle specular reflection efficiently 🔴
+ - [ ] **Micro-Facet Theory** - Shading models like GGX and Beckmann implemented in the fragment shader for realistic roughness 🔴
+ - [ ] **Atmospheric Perspective** - Density and color of atmosphere calculated based on distance, integrated directly into the view ray (Huawei rendering strategy) 🟡
+ - [ ] **GPU Skinning Compression** - Packing bone matrices into textures and fetching them via UV coordinates to save buffer memory 🔴
+ - [ ] **Software Vertex Fetch** - Reading vertex attributes from Storage Buffers using global_invocation_id to bypass traditional vertex buffers (part of the Vertex Pulling approach) 🔴
+ - [ ] **Vertex Pulling** - Fetching vertex data manually in the Vertex Shader from a giant storage buffer to bypass Input Assembly overhead 🔴
  
  ### Massive Scale (The "Horde" Update) 🧟‍♂️
  
@@ -776,15 +901,35 @@
  - [ ] **GPU Flow Field Pathfinding** - Calculate pathfinding for the entire map in parallel for thousands of agents instantly 🔴
  - [ ] **Instanced Mesh Particles** - Debris are actual 3D/2D meshes with physics, not just billboards 🟡
  - [ ] **Procedural Map Generation on GPU** - Generate infinite city blocks in milliseconds using compute noise shaders 🔴
+ - [ ] **Meshlet Rendering (Culling)** - Emulating "Mesh Shaders" by using a Compute Shader to process clusters of geometry ("meshlets"). The compute shader performs occlusion and frustum culling per-cluster, then writes visible index data to an indirectBuffer 🔴
+ - [ ] **Hierarchical Z-Buffer (Hi-Z)** - Creating depth pyramids in compute for efficient occlusion culling 🔴
+ - [ ] **Visibility Buffers** - Rendering triangle IDs to a G-Buffer instead of full material data (reduces overdraw) 🔴
+ - [ ] **Octahedral Normal Encoding** - Packing 3-float normals into a single u32 to reduce G-Buffer bandwidth by 66% 🔴
+ - [ ] **Reverse Z-Buffer** - Mapping Near-Z to 1.0 and Far-Z to 0.0 with floating point depth to drastically improve precision at great distances 🔴
+ - [ ] **Logarithmic Depth** - Adjusting gl_Position.z in vertex shaders to support massive scale differences (e.g., Space Sims) 🔴
+ - [ ] **Render Bundles** - Reusing recorded render commands for static geometry to reduce CPU overhead per frame 🔴
  
- ### Visual Polish & Post-Processing ✨
+ ### Software Ray Tracing (Compute) 🔦
+
+- [ ] **Software Ray Tracing via BVH Traversal** - Using Compute Shaders to traverse Bounding Volume Hierarchies (BVH) stored in storage buffers since WebGPU doesn't yet have native Ray Tracing extension 🔴
+- [ ] **Wavefront Path Tracing** - Rays sorted by material type to minimize divergent branching within workgroups, achieving real-time performance for complex lighting previously impossible in WebGL 🔴
+- [ ] **Early Ray Termination** - Terminating ray traversal early when opacity is reached or maximum distance is exceeded (vital for volumetric rendering) 🔴
+- [ ] **Adaptive Sampling** - Dynamically adjusting ray sample count based on scene complexity for efficient terabyte-scale volumetric data rendering 🔴
+
+### Visual Polish & Post-Processing ✨
  
  - [ ] **Temporal Anti-Aliasing (TAA)** - Smooth edges and reduce shimmering on moving pixel art using motion vectors 🟡
  - [ ] **Motion Blur (Per-Object)** - Velocity buffer-based blur for fast zombies and projectiles (no full-screen smear) 🟡
+ - [ ] **Sub-Pixel Motion Vectors** - Writing velocity buffers with fractional pixel accuracy to improve the stability of TAA and Motion Blur reconstruction 🔴
+ - [ ] **GPU-Based View Frustum Jittering** - Dynamically offsetting the view projection matrix every frame to feed the TAA/upscaling system with slightly different samples (prevents crawling artifacts) 🔴
  - [ ] **Depth of Field (Bokeh)** - Cinematic focus effects based on player aim or cutscenes 🟢
  - [ ] **Chromatic Aberration & Lens Distortion** - High-quality, physically based lens artifacts 🟢
  - [ ] **LUT Color Grading** - Professional-grade color correction applied in a single optimized pass 🟢
  - [x] **Bloom & Glare** - Physically based bloom that accumulates light energy naturally 🟢
+ - [ ] **High-Frequency Noise Removal (MLAA)** - Using a post-processing pass to detect and remove high-frequency noise patterns (often artifacts of TAA or upscaling) via smart filtering 🟡
+ - [ ] **Interlaced Rendering** - Updating even/odd scanlines on alternating frames to halve fragment shading cost 🔴
+ - [ ] **Depth Pre-Pass** - Rendering only depth first to exploit Early-Z rejection in the heavy shading pass 🔴
+ - [ ] **Conservative Rasterization (Emulated)** - Expanding triangle AABBs in geometry processing to catch sub-pixel fragments (vital for Voxelization) 🔴
  - [ ] **Screen-Space Global Illumination (SSGI)** - Cheap GI approximation using screen-space data 🔴
  - [ ] **Screen-Space Directional Occlusion (SSDO)** - Better than SSAO with directional awareness 🔴
  - [ ] **Horizon-Based Ambient Occlusion (HBAO+)** - High-quality AO with minimal artifacts 🔴
@@ -849,6 +994,8 @@
  ### Advanced Compute Techniques 🧮
  
  - [ ] **Compute Shader Pipelines** - Multi-stage compute pipelines for complex simulations 🔴
+ - [ ] **Indirect Argument Generation** - A Compute Shader generating the dispatch arguments for another Compute Shader, creating a fully autonomous GPU workload 🔴
+ - [ ] **Wave-Warping** - Using wave_active_all_equal or similar subgroup operations to ensure all threads in a wave sample the same LOD (Level of Detail) or execute the same branching path 🔴
  - [ ] **GPU Sort Algorithms** - Radix sort, bitonic sort for particle/transparency sorting 🔴
  - [ ] **Parallel Reduction** - Sum, min, max operations across millions of elements 🔴
  - [ ] **Prefix Sum (Scan)** - GPU-based scan for stream compaction and allocation 🔴
@@ -856,13 +1003,40 @@
  - [ ] **GPU Culling Pipeline** - Multi-stage culling: frustum → occlusion → LOD selection 🔴
  - [ ] **Indirect Command Generation** - GPU generates its own draw/dispatch commands 🔴
  - [ ] **GPU-Driven LOD Selection** - Automatic detail level based on screen coverage 🔴
+ - [ ] **Dynamic Tessellation Factor** - Calculating the required tessellation factor based on distance and screen space curvature in a Compute Shader (instead of a fixed value) 🔴
  - [ ] **Texture Atlasing on GPU** - Dynamic texture atlas packing and updates 🔴
+ - [ ] **Texture Compression Transcoding** - Using WebAssembly workers to transcode .basisu files to BC7/ASTC/ETC2 at runtime 🟡
+ - [ ] **Bindless Texturing (Emulated)** - Using massive texture arrays or texture_2d_array to avoid binding switching overhead 🔴
+ - [ ] **Max Bindings Hack** - Declare binding(0) var textures : array<texture_2d<f32>, 16>; in WGSL (limit varies by device) to emulate bindless 🔴
+ - [ ] **Atlas Management (Compute)** - Using a Compute Shader to "blit" small textures into a massive 8K/16K atlas at runtime, creating a virtual memory system for textures 🔴
  - [ ] **GPU Skinning & Animation** - Vertex skinning and blend shapes on GPU 🟡
+ - [ ] **Morph Target Animation** - GPU-based blend shape interpolation 🟡
  - [ ] **Compute-Based Culling** - Frustum, occlusion, and backface culling in compute shaders 🔴
- 
- ---
- 
- ## Phase 9: Experimental & Future Tech 🔬
+ - [ ] **Exposure Adaptation** - Computing average scene luminance via compute reduction for automatic exposure adjustment 🔴
+ - [ ] **Gameplay-Aware Rendering** - Rendering pipeline adapts based on gameplay events (reduce quality during explosions, increase during stealth) 🟡
+ - [ ] **Smart LOD System** - GPU-driven LOD selection that considers both distance and gameplay importance (bosses always high detail) 🔴
+ - [ ] **Context-Sensitive Post-Processing** - Post-processing effects intensify during key moments (boss fights, near-death) using GPU compute analysis 🟡
+ - [ ] **Dynamic Particle Budget Allocation** - GPU-computed system that prioritizes particle effects based on gameplay importance (explosions > ambient) 🔴
+ - [ ] **Strategic Visual Indicators** - GPU-computed visual cues for tactical information (zombie grouping, weak points, escape routes) 🟡
+ - [ ] **Performance-Adaptive Gameplay** - Gameplay mechanics adapt to maintain performance (fewer particles but same gameplay impact during intense moments) 🔴
+ - [ ] **Cross-System Optimization** - Physics, AI, and rendering share GPU resources efficiently, allocating compute based on game state priority 🔴
+
+### WebGPU-Gameplay Integration 🎮
+
+- [ ] **GPU-Powered Stealth Detection** - Zombie detection uses GPU ray-casting for line-of-sight calculations affecting stealth gameplay 🔴
+- [ ] **Compute-Driven Weather Effects** - Weather affects gameplay mechanics (rain reduces visibility, fog limits range) calculated by GPU shaders 🟡
+- [ ] **Dynamic Lighting as Gameplay** - Light sources affect zombie behavior (flashlights attract, darkness hides) using GPU-computed influence maps 🔴
+- [ ] **Physics-Based Environmental Interaction** - Destructible environment affects gameplay (barriers block zombies, debris creates cover) with GPU physics 🔴
+- [ ] **GPU-Calculated Damage Visualization** - Damage effects use GPU shaders to show impact zones, critical hits, and armor penetration 🟡
+- [ ] **Smart Pickup System** - GPU-computed priority system suggests optimal pickup order based on inventory, health, and combat state 🟡
+- [ ] **Tactical Overlay System** - GPU-computed tactical information overlay showing threat levels, escape routes, and optimal positioning 🟡
+- [ ] **Performance-Aware Difficulty Scaling** - Difficulty adjusts based on GPU performance to ensure smooth gameplay on all hardware 🟡
+- [ ] **GPU-Optimized Wave Generation** - Wave spawning uses GPU compute to optimize zombie distribution and maintain performance targets 🔴
+- [ ] **Cross-Phase System Integration** - All major systems (physics, AI, rendering) work together using shared GPU resources for maximum efficiency 🔴
+
+---
+
+## Phase 9: Experimental & Future Tech 🔬
  
  ### Cutting Edge Technologies
  
@@ -887,6 +1061,23 @@
  - [ ] **Variable Rate Shading (VRS)** - Adaptive shading density for performance 🔴
  - [ ] **DirectStorage for Web** - Fast asset streaming bypassing CPU 🔴
  - [ ] **GPU Work Graphs** - Dynamic work generation and scheduling 🔴
+ - [ ] **WebGPU vs WebNN Integration** - Hybrid approach using WebGPU for LLMs and WebNN for standard neural network ops to optimize battery life 🔴
+ - [ ] **Cooperative Matrix Multiply** - Leveraging specific subgroup operations (subgroupAdd, subgroupShuffle) to perform massive matrix multiplications efficiently for LLM inference 🔴
+ - [ ] **LLM Local Inference (WebLLM)** - Running 7B+ parameter LLMs (like Llama-3 or Mistral variants) at readable token speeds (20+ t/s) purely in the browser via WebGPU subgroups 🔴
+ - [ ] **KV Cache Management** - Using ring buffers in storage memory to manage LLM context windows efficiently 🔴
+ - [ ] **Quantization (Int8/Int4)** - Unpacking compressed weights on the fly in shaders to save VRAM for neural network inference 🔴
+ - [ ] **Speculative Decoding** - Running a small "draft" model to guess tokens, verified by the large model (WebLLM) 🔴
+ - [ ] **Flash Attention (Emulated)** - Tiled matrix multiplication to reduce memory bandwidth in Transformer attention layers 🔴
+ - [ ] **LoRA Switching** - Dynamically applying Low-Rank Adapter offsets to weights for multi-character chat bots 🔴
+ - [ ] **3D Gaussian Splatting Optimization** - Hybrid 3DGS model anchored on a mesh for rendering refraction and iridescence in transparent minerals 🔴
+ - [ ] **Ocean Volume Rendering** - WebGPU ray-casting for interactive visualization of ocean scalar data (salinity, temperature) with Early Ray Termination and Adaptive Sampling 🔴
+ - [ ] **Protein Visualization** - Rendering 41M+ atom structures from LLNL datasets in real-time using WebGPU compute shaders 🔴
+ - [ ] **Weight Pruning** - Structurally removing unnecessary connections in neural networks and implementing sparsified kernels for reduced computation (Tsinghua University research) 🔴
+ - [ ] **Mobile-Optimized Depthwise Separable Convolutions** - Highly tuned WGSL kernels for efficient 2D image processing tasks (NetEase Mobile strategy) 🔴
+ - [ ] **Fused Kernels** - Combining multiple small operations (e.g., ReLU activation and addition) into a single, larger Compute Shader to reduce memory access and latency 🔴
+ - [ ] **Asynchronous Pre-fetching** - Using Web Workers to decode and upload the next layer of weights to the GPU while the current layer is being processed 🔴
+ - [ ] **Mixed-Precision Inference** - Using f16 for weights and f32 for accumulation to balance speed and accuracy (Standard for LLMs) 🔴
+ - [ ] **Vectorized Dot Products** - Hand-written WGSL assembly-like loops using vec4<f32> to maximize register usage and vector ALU throughput for MatMul 🔴
  
  ---
  

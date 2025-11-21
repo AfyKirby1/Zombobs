@@ -1,4 +1,5 @@
 import { ctx } from '../core/canvas.js';
+import { graphicsSettings } from '../systems/GraphicsSystem.js';
 
 export class Particle {
     constructor(x, y, color) {
@@ -101,10 +102,12 @@ export class DamageNumber {
         if (this.life <= 0) return;
         ctx.save();
         const alpha = Math.max(0, this.life / this.maxLife);
+        const damageQuality = graphicsSettings.getQualityValues('damageNumber');
+        const baseFontSize = this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16;
+        const fontSize = baseFontSize * damageQuality.fontSize;
         
         if (this.isCrit) {
             // Critical hit styling: larger, yellow/red gradient, more prominent
-            const fontSize = this.value === "CRIT!" ? 20 : 22;
             ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
             ctx.textAlign = 'center';
             
@@ -115,8 +118,22 @@ export class DamageNumber {
             gradient.addColorStop(1, `rgba(255, 100, 0, ${alpha})`);
             ctx.fillStyle = gradient;
             
-            ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-            ctx.shadowBlur = 8;
+            // Quality-based glow and outline
+            if (damageQuality.hasGlow) {
+                ctx.shadowColor = `rgba(255, 0, 0, ${0.8 * damageQuality.glowIntensity})`;
+                ctx.shadowBlur = 8 * damageQuality.glowIntensity;
+            } else {
+                ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+                ctx.shadowBlur = 8;
+            }
+            
+            // Outline for high/ultra quality
+            if (damageQuality.hasOutline) {
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
+                ctx.lineWidth = damageQuality.outlineWidth;
+                ctx.strokeText(this.value, this.x, this.y);
+            }
+            
             ctx.fillText(this.value, this.x, this.y);
         } else {
             // Use custom color if provided, otherwise default to yellow
@@ -129,10 +146,25 @@ export class DamageNumber {
             } else {
                 ctx.fillStyle = `rgba(255, 255, 100, ${alpha})`; // Yellow color for normal damage
             }
-            ctx.font = 'bold 16px "Roboto Mono", monospace';
+            ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
             ctx.textAlign = 'center';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-            ctx.shadowBlur = 4;
+            
+            // Quality-based shadow/glow
+            if (damageQuality.hasGlow) {
+                ctx.shadowColor = `rgba(0, 0, 0, ${0.7 * damageQuality.glowIntensity})`;
+                ctx.shadowBlur = 4 * damageQuality.glowIntensity;
+            } else {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 4;
+            }
+            
+            // Outline for high/ultra quality
+            if (damageQuality.hasOutline) {
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
+                ctx.lineWidth = damageQuality.outlineWidth;
+                ctx.strokeText(this.value, this.x, this.y);
+            }
+            
             ctx.fillText(this.value, this.x, this.y);
         }
         

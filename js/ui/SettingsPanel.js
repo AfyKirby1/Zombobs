@@ -43,15 +43,40 @@ export class SettingsPanel {
         this.activeDropdown = null; // { category, key, options, x, y, width }
         this.rebindingAction = null;
         
-        // Layout (Compact)
+        // Layout (Compact) - Base values for scaling
+        this.basePanelWidth = 800;
+        this.basePanelHeight = 650;
+        this.basePadding = 20;
+        this.baseTabHeight = 50;
+        
         this.panelX = 0;
         this.panelY = 0;
-        this.panelWidth = 800;
-        this.panelHeight = 650;
-        this.padding = 20; // Reduced from 30
-        this.tabHeight = 50;
+        this.panelWidth = this.getScaledPanelWidth();
+        this.panelHeight = this.getScaledPanelHeight();
+        this.padding = this.getScaledPadding();
+        this.tabHeight = this.getScaledTabHeight();
         
         this.controls = []; // List of interactive elements for hit testing
+    }
+
+    getUIScale() {
+        return this.settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+    }
+
+    getScaledPanelWidth() {
+        return this.basePanelWidth * this.getUIScale();
+    }
+
+    getScaledPanelHeight() {
+        return this.basePanelHeight * this.getUIScale();
+    }
+
+    getScaledPadding() {
+        return this.basePadding * this.getUIScale();
+    }
+
+    getScaledTabHeight() {
+        return this.baseTabHeight * this.getUIScale();
     }
 
     open() {
@@ -77,11 +102,14 @@ export class SettingsPanel {
     draw(mouse) {
         if (!this.visible) return;
 
-        // Update dimensions
-        this.panelHeight = Math.min(700, this.canvas.height - 60);
+        // Update scaled dimensions dynamically
+        this.panelWidth = this.getScaledPanelWidth();
+        this.panelHeight = Math.min(this.getScaledPanelHeight(), this.canvas.height - (60 * this.getUIScale()));
+        this.padding = this.getScaledPadding();
+        this.tabHeight = this.getScaledTabHeight();
         this.panelX = (this.canvas.width - this.panelWidth) / 2;
         this.panelY = (this.canvas.height - this.panelHeight) / 2;
-        this.viewportHeight = this.panelHeight - 150; // Header/Tabs/Footer space
+        this.viewportHeight = this.panelHeight - (150 * this.getUIScale()); // Header/Tabs/Footer space
 
         // Smooth Scroll
         this.scrollY += (this.targetScrollY - this.scrollY) * 0.2;
@@ -187,7 +215,8 @@ export class SettingsPanel {
     }
 
     drawTabs(mouse) {
-        const tabY = this.panelY + 80;
+        const scale = this.getUIScale();
+        const tabY = this.panelY + (80 * scale);
         const tabWidth = this.panelWidth / this.tabs.length;
         
         this.tabs.forEach((tab, index) => {
@@ -206,7 +235,7 @@ export class SettingsPanel {
                 
                 // Active tab border (top accent)
                 this.ctx.fillStyle = COLORS.accent;
-                this.ctx.fillRect(tabX, tabY, tabWidth, 3);
+                this.ctx.fillRect(tabX, tabY, tabWidth, 3 * scale);
             } else if (isHovered) {
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
                 this.ctx.fillRect(tabX, tabY, tabWidth, this.tabHeight);
@@ -215,11 +244,12 @@ export class SettingsPanel {
             // Tab divider
             if (index > 0) {
                 this.ctx.fillStyle = COLORS.glassBorder;
-                this.ctx.fillRect(tabX, tabY + 10, 1, this.tabHeight - 20);
+                this.ctx.fillRect(tabX, tabY + (10 * scale), 1, this.tabHeight - (20 * scale));
             }
             
             // Tab label
-            this.ctx.font = isActive ? 'bold 14px "Roboto Mono", monospace' : '14px "Roboto Mono", monospace';
+            const tabFontSize = Math.max(8, Math.round(14 * scale));
+            this.ctx.font = isActive ? `bold ${tabFontSize}px "Roboto Mono", monospace` : `${tabFontSize}px "Roboto Mono", monospace`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = isActive ? COLORS.textMain : COLORS.textMuted;
@@ -246,10 +276,11 @@ export class SettingsPanel {
     }
 
     drawFooter(mouse) {
-        const btnWidth = 120;
-        const btnHeight = 40;
+        const scale = this.getUIScale();
+        const btnWidth = 120 * scale;
+        const btnHeight = 40 * scale;
         const btnX = this.panelX + (this.panelWidth - btnWidth) / 2;
-        const btnY = this.panelY + this.panelHeight - 50;
+        const btnY = this.panelY + this.panelHeight - (50 * scale);
         
         const isHovered = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
                          mouse.y >= btnY && mouse.y <= btnY + btnHeight;
@@ -275,7 +306,8 @@ export class SettingsPanel {
         this.ctx.fillStyle = COLORS.textMain;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.font = 'bold 16px "Roboto Mono", monospace';
+        const btnFontSize = Math.max(8, Math.round(16 * scale));
+        this.ctx.font = `bold ${btnFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillText("BACK", btnX + btnWidth / 2, btnY + btnHeight / 2);
         
         this.controls.push({
@@ -323,7 +355,8 @@ export class SettingsPanel {
     }
 
     drawVideoSettings(y, mouse) {
-        y += 20; // Top padding
+        const scale = this.getUIScale();
+        y += 20 * scale; // Top padding
         
         // WebGPU Settings
         y = this.drawSectionHeader("WEBGPU", y);
@@ -353,12 +386,85 @@ export class SettingsPanel {
         y = this.drawToggle("Show Debug Stats", "video", "showDebugStats", y, mouse);
         y = this.drawDropdown("FPS Limit", "video", "fpsLimit", [0, 30, 60, 120], y, mouse);
         y = this.drawToggle("VSync", "video", "vsync", y, mouse);
+        // UI Scale with enhanced display
+        const uiScaleValue = this.settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+        y = this.drawSlider("UI Scale", "video", "uiScale", 0.5, 1.5, y, mouse);
+        
+        // Add preset buttons below slider
+        const presetScale = this.getUIScale();
+        const presetY = y + 5 * presetScale;
+        const presetButtonWidth = 60 * presetScale;
+        const presetButtonHeight = 25 * presetScale;
+        const presetSpacing = 10 * presetScale;
+        const presetStartX = this.panelX + this.padding + 200 * presetScale;
+        
+        const presets = [
+            { label: 'Small', value: 0.7 },
+            { label: 'Medium', value: 1.0 },
+            { label: 'Large', value: 1.3 }
+        ];
+        
+        presets.forEach((preset, index) => {
+            const presetX = presetStartX + index * (presetButtonWidth + presetSpacing);
+            const isActive = Math.abs(uiScaleValue - preset.value) < 0.05;
+            const isHovered = mouse && mouse.x >= presetX && mouse.x <= presetX + presetButtonWidth &&
+                              mouse.y >= presetY && mouse.y <= presetY + presetButtonHeight;
+            
+            // Button background
+            if (isActive) {
+                const gradient = this.ctx.createLinearGradient(presetX, presetY, presetX, presetY + presetButtonHeight);
+                gradient.addColorStop(0, COLORS.accentSoft);
+                gradient.addColorStop(1, COLORS.accent);
+                this.ctx.fillStyle = gradient;
+            } else {
+                this.ctx.fillStyle = isHovered ? 'rgba(255, 23, 68, 0.3)' : 'rgba(255, 23, 68, 0.15)';
+            }
+            this.ctx.fillRect(presetX, presetY, presetButtonWidth, presetButtonHeight);
+            
+            // Button border
+            this.ctx.strokeStyle = isActive ? COLORS.accent : (isHovered ? COLORS.accentSoft : 'rgba(255, 255, 255, 0.12)');
+            this.ctx.lineWidth = isActive ? 2 : 1;
+            this.ctx.strokeRect(presetX, presetY, presetButtonWidth, presetButtonHeight);
+            
+            if (isActive || isHovered) {
+                this.ctx.shadowBlur = 8;
+                this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+                this.ctx.strokeRect(presetX, presetY, presetButtonWidth, presetButtonHeight);
+                this.ctx.shadowBlur = 0;
+            }
+            
+            // Button text
+            this.ctx.fillStyle = isActive ? '#ffffff' : COLORS.textMain;
+            this.ctx.font = `bold ${Math.max(10, 11 * presetScale)}px "Roboto Mono", monospace`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(preset.label, presetX + presetButtonWidth / 2, presetY + presetButtonHeight / 2);
+            
+            // Store for click detection
+            this.controls.push({
+                type: 'uiScalePreset',
+                x: presetX,
+                y: presetY,
+                width: presetButtonWidth,
+                height: presetButtonHeight,
+                value: preset.value
+            });
+        });
+        
+        y += presetButtonHeight + 10 * presetScale;
+        
+        // New graphics quality settings
+        y = this.drawSectionHeader("QUALITY", y);
+        y = this.drawSlider("Effect Intensity", "video", "effectIntensity", 0, 2, y, mouse);
+        y = this.drawDropdown("Post-Processing", "video", "postProcessingQuality", ['off', 'low', 'medium', 'high'], y, mouse);
+        y = this.drawDropdown("Particle Detail", "video", "particleDetail", ['minimal', 'standard', 'detailed', 'ultra'], y, mouse);
         
         return y;
     }
 
     drawAudioSettings(y, mouse) {
-        y += 20; // Top padding
+        const scale = this.getUIScale();
+        y += 20 * scale; // Top padding
         
         y = this.drawSectionHeader("VOLUME", y);
         y = this.drawSlider("Master Volume", "audio", "masterVolume", 0, 1, y, mouse);
@@ -372,7 +478,8 @@ export class SettingsPanel {
     }
 
     drawGameplaySettings(y, mouse) {
-        y += 20; // Top padding
+        const scale = this.getUIScale();
+        y += 20 * scale; // Top padding
         
         y = this.drawSectionHeader("CONTROLS", y);
         y = this.drawToggle("Auto Sprint", "gameplay", "autoSprint", y, mouse);
@@ -386,7 +493,8 @@ export class SettingsPanel {
     }
 
     drawControlsSettings(y, mouse) {
-        y += 20; // Top padding
+        const scale = this.getUIScale();
+        y += 20 * scale; // Top padding
         y = this.drawKeybinds(y, mouse);
         return y;
     }
@@ -404,23 +512,26 @@ export class SettingsPanel {
     }
 
     drawSlider(label, category, key, min, max, y, mouse, decimalPlaces = 2) {
-        const rowHeight = 35; // Reduced from 40
+        const scale = this.getUIScale();
+        const rowHeight = 35 * scale; // Reduced from 40
         const value = this.settingsManager.getSetting(category, key) ?? min;
-        const labelX = this.panelX + this.padding + 10;
-        const sliderWidth = 180; // Reduced from 200
-        const sliderX = this.panelX + this.panelWidth - this.padding - sliderWidth - 50; // Space for value text
-        const sliderY = y + 13; // Vertical center offset
-        const contentStartY = this.panelY + 80 + this.tabHeight;
+        const labelX = this.panelX + this.padding + (10 * scale);
+        const sliderWidth = 180 * scale; // Reduced from 200
+        const sliderX = this.panelX + this.panelWidth - this.padding - sliderWidth - (50 * scale); // Space for value text
+        const sliderY = y + (13 * scale); // Vertical center offset
+        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
 
         // Label
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.font = '13px "Roboto Mono", monospace';
-        this.ctx.fillText(label, labelX, y + 18);
+        const fontSize = Math.max(8, Math.round(13 * scale));
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(label, labelX, y + (18 * scale));
 
         // Slider Track
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        this.ctx.fillRect(sliderX, sliderY - 2, sliderWidth, 4);
+        const trackHeight = 4 * scale;
+        this.ctx.fillRect(sliderX, sliderY - (2 * scale), sliderWidth, trackHeight);
 
         // Slider Fill
         const normalized = (value - min) / (max - min);
@@ -430,20 +541,22 @@ export class SettingsPanel {
         fillGradient.addColorStop(0, COLORS.accentSoft);
         fillGradient.addColorStop(1, COLORS.accent);
         this.ctx.fillStyle = fillGradient;
-        this.ctx.fillRect(sliderX, sliderY - 2, fillWidth, 4);
+        this.ctx.fillRect(sliderX, sliderY - (2 * scale), fillWidth, trackHeight);
 
         // Handle
         const handleX = sliderX + fillWidth;
-        const isHovered = mouse.x >= sliderX - 5 && mouse.x <= sliderX + sliderWidth + 5 &&
-                          mouse.y >= sliderY - 10 && mouse.y <= sliderY + 10 &&
+        const hoverMargin = 5 * scale;
+        const isHovered = mouse.x >= sliderX - hoverMargin && mouse.x <= sliderX + sliderWidth + hoverMargin &&
+                          mouse.y >= sliderY - (10 * scale) && mouse.y <= sliderY + (10 * scale) &&
                           mouse.y >= contentStartY && mouse.y <= contentStartY + this.viewportHeight; // Clip check
+        const handleRadius = isHovered ? 7 * scale : 5 * scale;
 
         this.ctx.beginPath();
-        this.ctx.arc(handleX, sliderY, isHovered ? 7 : 5, 0, Math.PI * 2);
+        this.ctx.arc(handleX, sliderY, handleRadius, 0, Math.PI * 2);
         this.ctx.fillStyle = COLORS.textMain;
         this.ctx.fill();
         if (isHovered || (this.draggingSliderId && this.draggingSliderId.key === key)) {
-            this.ctx.shadowBlur = 8;
+            this.ctx.shadowBlur = 8 * scale;
             this.ctx.shadowColor = COLORS.accent;
             this.ctx.strokeStyle = COLORS.accent;
             this.ctx.stroke();
@@ -453,40 +566,43 @@ export class SettingsPanel {
         // Value Text
         this.ctx.textAlign = 'right';
         this.ctx.fillStyle = COLORS.textMuted;
-        this.ctx.font = '12px "Roboto Mono", monospace';
+        const valueFontSize = Math.max(8, Math.round(12 * scale));
+        this.ctx.font = `${valueFontSize}px "Roboto Mono", monospace`;
         let displayValue = value;
         if (max <= 1) displayValue = Math.round(value * 100) + '%';
         else if (key === 'fpsLimit') displayValue = value === 0 ? 'OFF' : value.toString();
-        else if (key === 'resolutionScale' || key === 'damageNumberScale') displayValue = Math.round(value * 100) + '%';
+        else if (key === 'resolutionScale' || key === 'damageNumberScale' || key === 'uiScale' || key === 'effectIntensity') displayValue = Math.round(value * 100) + '%';
         else displayValue = Math.round(value);
         
-        this.ctx.fillText(displayValue, this.panelX + this.panelWidth - this.padding - 10, y + 18);
+        this.ctx.fillText(displayValue, this.panelX + this.panelWidth - this.padding - (10 * scale), y + (18 * scale));
 
         this.controls.push({
             type: 'slider',
             category, key, min, max,
-            x: sliderX, y: sliderY - 10, width: sliderWidth, height: 20
+            x: sliderX, y: sliderY - (10 * scale), width: sliderWidth, height: 20 * scale
         });
 
         return y + rowHeight;
     }
 
     drawToggle(label, category, key, y, mouse) {
-        const rowHeight = 35; // Reduced from 40
+        const scale = this.getUIScale();
+        const rowHeight = 35 * scale; // Reduced from 40
         const isOn = this.settingsManager.getSetting(category, key) ?? false;
         
-        const labelX = this.panelX + this.padding + 10;
-        const toggleWidth = 40; // Reduced from 44
-        const toggleHeight = 22; // Reduced from 24
-        const toggleX = this.panelX + this.panelWidth - this.padding - toggleWidth - 10;
-        const toggleY = y + 7;
-        const contentStartY = this.panelY + 80 + this.tabHeight;
+        const labelX = this.panelX + this.padding + (10 * scale);
+        const toggleWidth = 40 * scale; // Reduced from 44
+        const toggleHeight = 22 * scale; // Reduced from 24
+        const toggleX = this.panelX + this.panelWidth - this.padding - toggleWidth - (10 * scale);
+        const toggleY = y + (7 * scale);
+        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
 
         // Label
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.font = '13px "Roboto Mono", monospace';
-        this.ctx.fillText(label, labelX, y + 20);
+        const fontSize = Math.max(8, Math.round(13 * scale));
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(label, labelX, y + (20 * scale));
 
         const isHovered = mouse.x >= toggleX && mouse.x <= toggleX + toggleWidth &&
                           mouse.y >= toggleY && mouse.y <= toggleY + toggleHeight &&
@@ -496,7 +612,7 @@ export class SettingsPanel {
         this.ctx.fillStyle = isOn ? COLORS.accent : 'rgba(255, 255, 255, 0.1)';
         if (isHovered && !isOn) this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         
-        const radius = 12;
+        const radius = 12 * scale;
         this.ctx.beginPath();
         this.ctx.moveTo(toggleX + radius, toggleY);
         this.ctx.lineTo(toggleX + toggleWidth - radius, toggleY);
@@ -511,17 +627,18 @@ export class SettingsPanel {
         this.ctx.fill();
 
         if (isOn) {
-            this.ctx.shadowBlur = 8;
+            this.ctx.shadowBlur = 8 * scale;
             this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
         }
 
         // Toggle Handle
-        const handleX = isOn ? toggleX + toggleWidth - 20 : toggleX + 4;
+        const handleRadius = 8 * scale;
+        const handleX = isOn ? toggleX + toggleWidth - (20 * scale) : toggleX + (4 * scale);
         this.ctx.fillStyle = '#ffffff';
         this.ctx.beginPath();
-        this.ctx.arc(handleX + 8, toggleY + 12, 8, 0, Math.PI * 2);
+        this.ctx.arc(handleX + handleRadius, toggleY + (12 * scale), handleRadius, 0, Math.PI * 2);
         this.ctx.fill();
 
         this.controls.push({
@@ -534,15 +651,16 @@ export class SettingsPanel {
     }
 
     drawDropdown(label, category, key, options, y, mouse) {
-        const rowHeight = 35; // Reduced from 40
+        const scale = this.getUIScale();
+        const rowHeight = 35 * scale; // Reduced from 40
         const currentValue = this.settingsManager.getSetting(category, key);
         
-        const labelX = this.panelX + this.padding + 10;
-        const dropdownWidth = 140; // Reduced from 150
-        const dropdownHeight = 28; // Reduced from 30
-        const dropdownX = this.panelX + this.panelWidth - this.padding - dropdownWidth - 10;
-        const dropdownY = y + 4;
-        const contentStartY = this.panelY + 80 + this.tabHeight;
+        const labelX = this.panelX + this.padding + (10 * scale);
+        const dropdownWidth = 140 * scale; // Reduced from 150
+        const dropdownHeight = 28 * scale; // Reduced from 30
+        const dropdownX = this.panelX + this.panelWidth - this.padding - dropdownWidth - (10 * scale);
+        const dropdownY = y + (4 * scale);
+        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
 
         // Label
         this.ctx.textAlign = 'left';
@@ -563,7 +681,8 @@ export class SettingsPanel {
         // Text
         this.ctx.fillStyle = COLORS.textMain;
         this.ctx.textAlign = 'left';
-        this.ctx.font = '12px "Roboto Mono", monospace';
+        const textFontSize = Math.max(8, Math.round(12 * scale));
+        this.ctx.font = `${textFontSize}px "Roboto Mono", monospace`;
         let displayValue = currentValue;
         if (key === 'fpsLimit') displayValue = currentValue === 0 ? 'OFF' : currentValue.toString();
         else if (key === 'particleCount') {
@@ -577,14 +696,14 @@ export class SettingsPanel {
         } else {
             displayValue = String(currentValue).toUpperCase();
         }
-        this.ctx.fillText(displayValue, dropdownX + 10, dropdownY + 18);
+        this.ctx.fillText(displayValue, dropdownX + (10 * scale), dropdownY + (18 * scale));
 
         // Arrow
         this.ctx.fillStyle = COLORS.textMuted;
         this.ctx.beginPath();
-        this.ctx.moveTo(dropdownX + dropdownWidth - 18, dropdownY + 11);
-        this.ctx.lineTo(dropdownX + dropdownWidth - 13, dropdownY + 11);
-        this.ctx.lineTo(dropdownX + dropdownWidth - 15.5, dropdownY + 16);
+        this.ctx.moveTo(dropdownX + dropdownWidth - (18 * scale), dropdownY + (11 * scale));
+        this.ctx.lineTo(dropdownX + dropdownWidth - (13 * scale), dropdownY + (11 * scale));
+        this.ctx.lineTo(dropdownX + dropdownWidth - (15.5 * scale), dropdownY + (16 * scale));
         this.ctx.fill();
 
         this.controls.push({
@@ -598,16 +717,18 @@ export class SettingsPanel {
 
     drawDropdownMenu(dropdown, mouse) {
         const { x, y, width, options } = dropdown;
-        const itemHeight = 30;
+        const scale = this.getUIScale();
+        const itemHeight = 30 * scale;
         const menuHeight = options.length * itemHeight;
-        const contentStartY = this.panelY + 80 + this.tabHeight;
+        const contentStartY = this.panelY + (80 * scale) + this.tabHeight;
         const viewportBottom = contentStartY + this.viewportHeight;
         
         // Check if dropdown would overflow bottom of viewport
-        const spaceBelow = viewportBottom - (y + 30);
-        const spaceAbove = (y + 30) - contentStartY;
+        const dropdownOffset = 30 * scale;
+        const spaceBelow = viewportBottom - (y + dropdownOffset);
+        const spaceAbove = (y + dropdownOffset) - contentStartY;
         const drawUpward = spaceBelow < menuHeight && spaceAbove >= menuHeight;
-        const menuStartY = drawUpward ? y - menuHeight : y + 30;
+        const menuStartY = drawUpward ? y - menuHeight : y + dropdownOffset;
         
         // Store direction in dropdown for click detection
         dropdown.drawUpward = drawUpward;
@@ -631,10 +752,12 @@ export class SettingsPanel {
 
             this.ctx.fillStyle = isItemHovered ? '#fff' : COLORS.textMuted;
             this.ctx.textAlign = 'left';
+            const itemFontSize = Math.max(8, Math.round(12 * scale));
+            this.ctx.font = `${itemFontSize}px "Roboto Mono", monospace`;
             let displayOpt = opt;
             if (typeof opt === 'number' && opt === 0) displayOpt = 'OFF';
             else if (typeof opt === 'number') displayOpt = opt.toString();
-            this.ctx.fillText(String(displayOpt).toUpperCase(), x + 10, itemY + 20);
+            this.ctx.fillText(String(displayOpt).toUpperCase(), x + (10 * scale), itemY + (20 * scale));
         });
     }
 
@@ -873,6 +996,10 @@ export class SettingsPanel {
                 else if (ctrl.type === 'toggle') {
                     const current = this.settingsManager.getSetting(ctrl.category, ctrl.key);
                     this.settingsManager.setSetting(ctrl.category, ctrl.key, !current);
+                    return true;
+                }
+                else if (ctrl.type === 'uiScalePreset') {
+                    this.settingsManager.setSetting('video', 'uiScale', ctrl.value);
                     return true;
                 }
                 else if (ctrl.type === 'dropdown') {

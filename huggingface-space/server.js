@@ -530,6 +530,13 @@ io.on('connection', (socket) => {
     socket.broadcast.volatile.emit('zombie:update', data);
   });
 
+  // Handle ping for latency measurement
+  socket.on('ping', (timestamp, callback) => {
+    if (typeof callback === 'function') {
+      callback(Date.now());
+    }
+  });
+
   // Handle zombie hit/damage
   socket.on('zombie:hit', (data) => {
     socket.broadcast.emit('zombie:hit', data);

@@ -30,11 +30,17 @@ export class SettingsManager {
                 crosshairStyle: 'default', // default, dot, cross, circle
                 crosshairColor: '#00ff00', // Hex color code
                 screenShakeMultiplier: 1.0, // 0.0 to 2.0 (expanded from screenShakeIntensity)
+                bloodGoreLevel: 1.0, // 0.0 to 1.0
                 damageNumberStyle: 'floating', // floating, stacking, off
                 damageNumberScale: 1.0, // 0.5 to 2.0
                 fpsLimit: 0, // 0 = unlimited, 30, 60, 120
                 vsync: true, // Enable VSync (browser handles frame timing)
-                showDebugStats: false
+                uiScale: 1.0, // UI scaling factor (0.5 = 50%, 1.0 = 100%, 1.5 = 150%)
+                showDebugStats: false,
+                // New graphics quality settings
+                effectIntensity: 1.0, // 0.0 to 2.0 (0% to 200%) - multiplier for all visual effects
+                postProcessingQuality: 'medium', // 'off', 'low', 'medium', 'high' - post-processing effects
+                particleDetail: 'standard' // 'minimal', 'standard', 'detailed', 'ultra' - particle rendering quality
             },
             gameplay: {
                 autoSprint: false,

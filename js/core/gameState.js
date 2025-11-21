@@ -203,6 +203,12 @@ export const gameState = {
     lastAmmoPickupSpawnTime: 0,
     lastPowerupSpawnTime: 0,
     lastZombieUpdateBroadcast: 0, // For multiplayer zombie sync throttling
+    
+    // Multiplayer sync state
+    lastZombieState: new Map(), // For delta compression - tracks last sent state per zombie
+    zombieUpdateInterval: 100, // Adaptive update interval (ms)
+    networkLatency: 0, // Measured network latency (ms)
+    lastPingTime: 0, // For latency measurement
 
     // Day/Night Cycle
     gameTime: 0, // 0 to 1, represents position in cycle

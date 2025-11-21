@@ -12,9 +12,12 @@ export class GameHUD {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.bossHealthBar = new BossHealthBar(canvas);
-        this.padding = 15;
-        this.itemSpacing = 12;
-        this.fontSize = 16;
+        this.basePadding = 15;
+        this.baseItemSpacing = 12;
+        this.baseFontSize = 16;
+        this.padding = this.getScaledPadding();
+        this.itemSpacing = this.getScaledItemSpacing();
+        this.fontSize = this.getScaledFontSize();
         this.font = `700 ${this.fontSize}px 'Roboto Mono', monospace`;
         this.gameOver = false;
         this.paused = false;
@@ -22,10 +25,31 @@ export class GameHUD {
         this.mainMenu = false;
         this.hoveredButton = null;
         this.hoveredSkillIndex = null;
+        this.lobbyEnterTime = null; // Track when lobby was entered for fade-in animations
+        this.lastLobbyState = false; // Track previous lobby state to reset animation
+    }
+
+    getUIScale() {
+        return settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+    }
+
+    getScaledPadding() {
+        return this.basePadding * this.getUIScale();
+    }
+
+    getScaledItemSpacing() {
+        return this.baseItemSpacing * this.getUIScale();
+    }
+
+    getScaledFontSize() {
+        return Math.max(8, Math.round(this.baseFontSize * this.getUIScale())); // Min 8px for readability
     }
 
     drawStat(label, value, icon, color, x, y, width) {
-        const height = 50;
+        const scale = this.getUIScale();
+        const height = 50 * scale;
+        const padding = 10 * scale;
+        const fontSize = this.getScaledFontSize();
         // Background with glow
         const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
         bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.85)');
@@ -35,25 +59,25 @@ export class GameHUD {
         this.ctx.fillRect(x, y, width, height);
 
         this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2 * scale;
         this.ctx.strokeRect(x, y, width, height);
 
-        this.ctx.shadowBlur = 10;
+        this.ctx.shadowBlur = 10 * scale;
         this.ctx.shadowColor = color;
         this.ctx.strokeRect(x, y, width, height);
         this.ctx.shadowBlur = 0;
 
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = this.font;
+        this.ctx.font = `700 ${fontSize}px 'Roboto Mono', monospace`;
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
 
         const text = `${icon} ${label}:`;
-        this.ctx.fillText(text, x + 10, y + 15);
+        this.ctx.fillText(text, x + padding, y + height * 0.3);
 
         this.ctx.fillStyle = color;
-        this.ctx.font = `700 ${this.fontSize + 2}px 'Roboto Mono', monospace`;
-        this.ctx.fillText(value, x + 10, y + 35);
+        this.ctx.font = `700 ${fontSize + Math.round(2 * scale)}px 'Roboto Mono', monospace`;
+        this.ctx.fillText(value, x + padding, y + height * 0.7);
     }
 
     drawHealthDisplay(player, x, y, width) {
@@ -184,7 +208,8 @@ export class GameHUD {
 
         // Draw shared stats below player stats for single player
         // 3 stats (Health, Ammo, Grenades) * (50 height + 12 spacing) + spacing
-        startY += (50 + this.itemSpacing) * 3 + this.itemSpacing;
+        const statHeight = 50 * this.getUIScale();
+        startY += (statHeight + itemSpacing) * 3 + itemSpacing;
         this.drawSharedStats(startX, startY);
 
         this.drawInstructions();
@@ -193,14 +218,18 @@ export class GameHUD {
     drawCoopHUD() {
         // 2x2 grid layout for up to 4 players
         // Top-left: P1, Top-right: P2, Bottom-left: P3, Bottom-right: P4
-        const width = 160;
-        const statsHeight = (50 + this.itemSpacing) * 3; // 3 stats per player (health, ammo, grenades)
+        const scale = this.getUIScale();
+        const padding = this.getScaledPadding();
+        const itemSpacing = this.getScaledItemSpacing();
+        const statHeight = 50 * scale;
+        const width = 160 * scale;
+        const statsHeight = (statHeight + itemSpacing) * 3; // 3 stats per player (health, ammo, grenades)
 
         // Calculate positions for 2x2 grid
-        const leftX = this.padding;
-        const rightX = this.canvas.width - width - this.padding;
-        const topY = this.padding;
-        const bottomY = this.canvas.height - statsHeight - this.padding;
+        const leftX = padding;
+        const rightX = this.canvas.width - width - padding;
+        const topY = padding;
+        const bottomY = this.canvas.height - statsHeight - padding;
 
         // Draw players in grid positions
         if (gameState.players.length >= 1) {
@@ -217,24 +246,26 @@ export class GameHUD {
         }
 
         // Shared stats in Top Center
-        const centerX = this.canvas.width / 2 - 80;
-        this.drawSharedStats(centerX, this.padding);
+        const centerX = this.canvas.width / 2 - (80 * scale);
+        this.drawSharedStats(centerX, padding);
     }
 
     drawPlayerStats(player, x, y, labelPrefix = "") {
-        const width = 160;
-        const height = 50;
+        const scale = this.getUIScale();
+        const itemSpacing = this.getScaledItemSpacing();
+        const width = 160 * scale;
+        const height = 50 * scale;
         let currentY = y;
 
         // Health - NEW DESIGN
         this.drawHealthDisplay(player, x, currentY, width);
-        currentY += height + this.itemSpacing;
+        currentY += height + itemSpacing;
 
         // Shield
         if (player.shield > 0) {
             const shieldValue = Math.ceil(player.shield);
             this.drawStat('Shield', shieldValue, '🛡️', '#29b6f6', x, currentY, width);
-            currentY += height + this.itemSpacing;
+            currentY += height + itemSpacing;
         }
 
         // Ammo
@@ -257,10 +288,10 @@ export class GameHUD {
             // Draw reload progress bar
             const now = Date.now();
             const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
-            const progressBarWidth = width - 20;
-            const progressBarHeight = 6;
-            const progressBarX = x + 10;
-            const progressBarY = currentY + 35;
+            const progressBarWidth = width - (20 * scale);
+            const progressBarHeight = 6 * scale;
+            const progressBarX = x + (10 * scale);
+            const progressBarY = currentY + (35 * scale);
 
             // Background
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -285,30 +316,33 @@ export class GameHUD {
             this.ctx.font = this.font;
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(`${weaponLabel}:`, x + 10, currentY + 15);
+            const fontSize = this.getScaledFontSize();
+            this.ctx.fillText(`${weaponLabel}:`, x + (10 * scale), currentY + (15 * scale));
             this.ctx.fillStyle = ammoColor;
-            this.ctx.font = `700 ${this.fontSize + 2}px 'Roboto Mono', monospace`;
-            this.ctx.fillText(ammoText, x + 10, currentY + 35);
+            this.ctx.font = `700 ${fontSize + Math.round(2 * scale)}px 'Roboto Mono', monospace`;
+            this.ctx.fillText(ammoText, x + (10 * scale), currentY + (35 * scale));
         } else {
             const ammoText = `${player.currentAmmo}/${player.maxAmmo}`;
             this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
         }
 
         // Grenades (Optional to show per player, maybe skip to save space in coop or show small)
-        currentY += height + this.itemSpacing;
+        currentY += height + itemSpacing;
         const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
         this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
 
         // Multiplier indicator (if active)
         if (player.scoreMultiplier > 1.0) {
-            currentY += height + this.itemSpacing;
+            currentY += height + itemSpacing;
             this.drawMultiplierIndicator(player, x, currentY);
         }
     }
 
     drawSharedStats(x, y) {
-        const width = 160;
-        const height = 50;
+        const scale = this.getUIScale();
+        const itemSpacing = this.getScaledItemSpacing();
+        const width = 160 * scale;
+        const height = 50 * scale;
         let currentY = y;
 
         // Wave
@@ -318,11 +352,11 @@ export class GameHUD {
         }
 
         this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', x, currentY, width);
-        currentY += height + this.itemSpacing;
+        currentY += height + itemSpacing;
 
         // Kills
         this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', x, currentY, width);
-        currentY += height + this.itemSpacing;
+        currentY += height + itemSpacing;
 
         // Remaining
         const remainingZombies = gameState.zombies.length;
@@ -332,33 +366,33 @@ export class GameHUD {
         this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, x, currentY, width);
 
         if (!gameState.isCoop) {
-            currentY += height + this.itemSpacing;
+            currentY += height + itemSpacing;
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', x, currentY, width);
 
             // Draw multiplier indicator for player 1 (single player)
             const player = gameState.players[0];
             if (player.scoreMultiplier > 1.0) {
-                currentY += height + this.itemSpacing;
+                currentY += height + itemSpacing;
                 this.drawMultiplierIndicator(player, x, currentY);
-                currentY += 50; // Add space for multiplier indicator
+                currentY += 50 * scale; // Add space for multiplier indicator
             }
         }
 
         // Buffs
         if (gameState.damageBuffEndTime > Date.now()) {
-            currentY += height + this.itemSpacing;
+            currentY += height + itemSpacing;
             const timeLeft = Math.ceil((gameState.damageBuffEndTime - Date.now()) / 1000);
             this.drawStat('Damage', 'x2 ' + timeLeft + 's', '⚡', '#e040fb', x, currentY, width);
         }
 
         if (gameState.speedBoostEndTime > Date.now()) {
-            currentY += height + this.itemSpacing;
+            currentY += height + itemSpacing;
             const timeLeft = Math.ceil((gameState.speedBoostEndTime - Date.now()) / 1000);
             this.drawStat('Speed', '>> ' + timeLeft + 's', '👟', '#00bcd4', x, currentY, width);
         }
 
         if (gameState.rapidFireEndTime > Date.now()) {
-            currentY += height + this.itemSpacing;
+            currentY += height + itemSpacing;
             const timeLeft = Math.ceil((gameState.rapidFireEndTime - Date.now()) / 1000);
             this.drawStat('Rapid', '>>> ' + timeLeft + 's', '🔥', '#ff9800', x, currentY, width);
         }
@@ -375,15 +409,19 @@ export class GameHUD {
         const line2 = 'G for grenade • V or Right-Click for melee';
 
         this.ctx.save();
-        this.ctx.font = '14px "Roboto Mono", monospace';
+        const scale = this.getUIScale();
+        const fontSize = Math.max(8, Math.round(14 * scale));
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
 
         const textWidth = Math.max(this.ctx.measureText(line1).width, this.ctx.measureText(line2).width);
-        const lineY = this.canvas.height - 45;
+        const lineY = this.canvas.height - (45 * scale);
 
         // Semi-transparent background for readability
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        this.ctx.fillRect(this.canvas.width / 2 - textWidth / 2 - 20, lineY - 25, textWidth + 40, 60);
+        const bgPadding = 20 * scale;
+        const bgHeight = 60 * scale;
+        this.ctx.fillRect(this.canvas.width / 2 - textWidth / 2 - bgPadding, lineY - (25 * scale), textWidth + bgPadding * 2, bgHeight);
 
         // Divider line
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
@@ -485,10 +523,11 @@ export class GameHUD {
         });
 
         // Buttons
-        const buttonWidth = 200;
-        const buttonHeight = 50;
-        const buttonY = this.canvas.height - 150;
-        const addBotY = buttonY - 70;
+        const scale = this.getUIScale();
+        const buttonWidth = 200 * scale;
+        const buttonHeight = 50 * scale;
+        const buttonY = this.canvas.height - (150 * scale);
+        const addBotY = buttonY - (70 * scale);
         const startY = buttonY;
 
         const addBotHovered = this.hoveredButton === 'ai_add';
@@ -841,28 +880,30 @@ export class GameHUD {
             this.ctx.shadowBlur = 0;
         }
 
-        const buttonWidth = 200;
-        const buttonHeight = 40;
-        const buttonSpacing = 15;
+        const scale = this.getUIScale();
+        const buttonWidth = 200 * scale;
+        const buttonHeight = 40 * scale;
+        const buttonSpacing = 15 * scale;
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
-        const usernameY = centerY - 130;
+        const usernameY = centerY - (130 * scale);
         const usernameHovered = this.hoveredButton === 'username';
-        this.ctx.font = '16px "Roboto Mono", monospace';
+        const fontSize = this.getScaledFontSize();
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = usernameHovered ? '#ff9800' : '#cccccc';
         this.ctx.textAlign = 'center';
         this.ctx.fillText(`Welcome, ${gameState.username}`, centerX, usernameY);
 
         if (usernameHovered) {
-            this.ctx.font = '12px "Roboto Mono", monospace';
+            this.ctx.font = `${Math.max(8, Math.round(12 * scale))}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#ff9800';
-            this.ctx.fillText('Click to change name', centerX, usernameY + 20);
+            this.ctx.fillText('Click to change name', centerX, usernameY + (20 * scale));
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
-        const columnSpacing = 20;
-        const buttonStartY = centerY - 30;
+        const columnSpacing = 20 * scale;
+        const buttonStartY = centerY - (30 * scale);
         const leftColumnX = centerX - buttonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
 
@@ -947,6 +988,9 @@ export class GameHUD {
     }
 
     drawNewsTicker() {
+        const scale = this.getUIScale();
+        // Use smaller font size for news ticker to fit more content
+        const newsFontSize = Math.max(10, Math.round(11 * scale * 0.85)); // 15% smaller than regular font
         const canvas = this.canvas;
         const ctx = this.ctx;
 
@@ -962,8 +1006,8 @@ export class GameHUD {
         // Bottom of buttons is roughly centerY + 155
         const boxY = centerY + 180;
 
-        // Measure text width for scrolling calculation
-        ctx.font = '14px "Roboto Mono", monospace';
+        // Measure text width for scrolling calculation (using smaller font)
+        ctx.font = `${newsFontSize}px "Roboto Mono", monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         const textWidth = ctx.measureText(NEWS_UPDATES).width;
@@ -989,9 +1033,9 @@ export class GameHUD {
         ctx.rect(boxX, boxY, boxWidth, boxHeight);
         ctx.clip();
 
-        // Draw scrolling text (amber/gold color)
+        // Draw scrolling text (amber/gold color) with smaller font
         ctx.fillStyle = '#ffc107';
-        ctx.font = '14px "Roboto Mono", monospace';
+        ctx.font = `${newsFontSize}px "Roboto Mono", monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
@@ -1005,7 +1049,7 @@ export class GameHUD {
     }
 
     drawVersionBox() {
-        const version = "V0.5.0";
+        const version = "V0.5.1";
         const padding = 15;
         const boxHeight = 24;
         
@@ -1061,10 +1105,10 @@ export class GameHUD {
 
         this.ctx.font = '16px "Roboto Mono", monospace';
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Version: V0.5.0', centerX, y);
+        this.ctx.fillText('Version: V0.5.1', centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.5.0', centerX, y);
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.5.1', centerX, y);
         y += 50;
 
         this.ctx.font = '14px "Roboto Mono", monospace';
@@ -1095,131 +1139,568 @@ export class GameHUD {
         });
 
         // Back button
-        const buttonWidth = 240;
-        const buttonHeight = 50;
-        const backY = this.canvas.height - 100;
+        const scale = this.getUIScale();
+        const buttonWidth = 240 * scale;
+        const buttonHeight = 50 * scale;
+        const backY = this.canvas.height - (100 * scale);
         this.drawMenuButton('Back', centerX - buttonWidth / 2, backY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about_back', false);
     }
 
-    drawLobby() {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    drawLobbyBackground() {
+        const time = Date.now();
+        
+        // Base gradient background
+        const bgGradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        bgGradient.addColorStop(0, '#02040a');
+        bgGradient.addColorStop(1, '#051b1f');
+        this.ctx.fillStyle = bgGradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.font = 'bold 40px "Creepster", cursive';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 20;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillText('MULTIPLAYER LOBBY', this.canvas.width / 2, 70);
+        // Pulsing red gradient center (subtle)
+        const pulseSpeed = 0.0015;
+        const pulseSize = 0.4 + Math.sin(time * pulseSpeed) * 0.08;
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        const pulseGradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, this.canvas.height * pulseSize);
+        pulseGradient.addColorStop(0, 'rgba(255, 23, 68, 0.15)');
+        pulseGradient.addColorStop(0.5, 'rgba(255, 23, 68, 0.08)');
+        pulseGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        this.ctx.fillStyle = pulseGradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Animated grid pattern (subtle)
+        this.ctx.strokeStyle = 'rgba(255, 23, 68, 0.05)';
+        this.ctx.lineWidth = 1;
+        const gridSize = 50;
+        const offset = (time * 0.05) % gridSize;
+        
+        this.ctx.beginPath();
+        for (let x = -offset; x < this.canvas.width + gridSize; x += gridSize) {
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+        }
+        for (let y = -offset; y < this.canvas.height + gridSize; y += gridSize) {
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+        }
+        this.ctx.stroke();
+
+        // Scanlines
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        for (let i = 0; i < this.canvas.height; i += 4) {
+            this.ctx.fillRect(0, i, this.canvas.width, 1);
+        }
+
+        // Subtle noise overlay
+        const noiseAmount = 500;
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+        for (let i = 0; i < noiseAmount; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            const size = Math.random() * 1.5 + 0.5;
+            this.ctx.fillRect(x, y, size, size);
+        }
+
+        // Vignette
+        const vignette = this.ctx.createRadialGradient(centerX, centerY, this.canvas.height * 0.4, centerX, centerY, this.canvas.height * 0.7);
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+        this.ctx.fillStyle = vignette;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    drawGlassCard(x, y, width, height, borderGlow = false) {
+        // Glassmorphism effect - dark background with transparency
+        const cardBg = this.ctx.createLinearGradient(x, y, x, y + height);
+        cardBg.addColorStop(0, 'rgba(10, 12, 16, 0.85)');
+        cardBg.addColorStop(1, 'rgba(10, 12, 16, 0.75)');
+        
+        this.ctx.fillStyle = cardBg;
+        this.ctx.fillRect(x, y, width, height);
+
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x, y, width, height);
+
+        // Optional glow effect
+        if (borderGlow) {
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.4)';
+            this.ctx.strokeRect(x, y, width, height);
+            this.ctx.shadowBlur = 0;
+        }
+    }
+
+    drawStatusIndicator(x, y, type, isActive, size = 20) {
+        const time = Date.now();
+        const pulse = isActive ? 0.5 + Math.sin(time * 0.01) * 0.3 : 1.0;
+        
+        this.ctx.save();
+        this.ctx.translate(x, y);
+
+        if (type === 'ready') {
+            // Animated checkmark
+            this.ctx.strokeStyle = isActive ? '#76ff03' : '#9e9e9e';
+            this.ctx.lineWidth = 3;
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            
+            if (isActive) {
+                this.ctx.shadowBlur = 10 * pulse;
+                this.ctx.shadowColor = 'rgba(118, 255, 3, 0.8)';
+            }
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(-size * 0.4, 0);
+            this.ctx.lineTo(-size * 0.1, size * 0.3);
+            this.ctx.lineTo(size * 0.4, -size * 0.3);
+            this.ctx.stroke();
+            
+        } else if (type === 'notReady') {
+            // Animated X
+            this.ctx.strokeStyle = isActive ? '#ff9800' : '#9e9e9e';
+            this.ctx.lineWidth = 3;
+            this.ctx.lineCap = 'round';
+            
+            if (isActive) {
+                this.ctx.shadowBlur = 8;
+                this.ctx.shadowColor = 'rgba(255, 152, 0, 0.6)';
+            }
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(-size * 0.3, -size * 0.3);
+            this.ctx.lineTo(size * 0.3, size * 0.3);
+            this.ctx.moveTo(size * 0.3, -size * 0.3);
+            this.ctx.lineTo(-size * 0.3, size * 0.3);
+            this.ctx.stroke();
+            
+        } else if (type === 'leader') {
+            // Crown icon
+            this.ctx.fillStyle = '#ffc107';
+            this.ctx.shadowBlur = 15 * pulse;
+            this.ctx.shadowColor = 'rgba(255, 193, 7, 0.8)';
+            
+            this.ctx.beginPath();
+            // Crown base
+            this.ctx.moveTo(-size * 0.5, size * 0.2);
+            this.ctx.lineTo(-size * 0.3, -size * 0.2);
+            this.ctx.lineTo(0, size * 0.1);
+            this.ctx.lineTo(size * 0.3, -size * 0.2);
+            this.ctx.lineTo(size * 0.5, size * 0.2);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+
+        this.ctx.restore();
         this.ctx.shadowBlur = 0;
+    }
+
+    drawPlayerCard(x, y, player, index, isLocalPlayer) {
+        const scale = this.getUIScale();
+        const cardWidth = 220 * scale;  // Reduced from 280
+        const cardHeight = 75 * scale;  // Reduced from 100
+        const padding = 12 * scale;     // Reduced from 15
+        
+        // Fade-in animation
+        let alpha = 1.0;
+        if (this.lobbyEnterTime) {
+            const fadeDuration = 300; // 300ms fade-in
+            const elapsed = Date.now() - this.lobbyEnterTime;
+            const delay = index * 100; // Stagger cards by 100ms each
+            if (elapsed < delay + fadeDuration) {
+                alpha = Math.min(1.0, Math.max(0, (elapsed - delay) / fadeDuration));
+            }
+        }
+        
+        this.ctx.save();
+        this.ctx.globalAlpha = alpha;
+        
+        // Card background with glassmorphism
+        this.drawGlassCard(x, y, cardWidth, cardHeight, isLocalPlayer);
+
+        // Local player highlight (green glow border)
+        if (isLocalPlayer) {
+            this.ctx.strokeStyle = '#76ff03';
+            this.ctx.lineWidth = 2;
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'rgba(118, 255, 3, 0.6)';
+            this.ctx.strokeRect(x, y, cardWidth, cardHeight);
+            this.ctx.shadowBlur = 0;
+        }
+
+        // Avatar placeholder (circular, colored by index)
+        const avatarSize = 40 * scale;  // Reduced from 50
+        const avatarX = x + padding;
+        const avatarY = y + padding;
+        const avatarColors = ['#ff1744', '#ff5252', '#76ff03', '#ffc107', '#2196f3', '#9c27b0'];
+        const avatarColor = avatarColors[index % avatarColors.length];
+
+        // Avatar circle
+        this.ctx.fillStyle = avatarColor;
+        this.ctx.beginPath();
+        this.ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Avatar border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+
+        // Player initial in avatar
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `bold ${Math.max(12, 16 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        const initial = (player?.name || 'P')[0].toUpperCase();
+        this.ctx.fillText(initial, avatarX + avatarSize / 2, avatarY + avatarSize / 2);
+
+        // Player name
+        const nameX = avatarX + avatarSize + padding;
+        const nameY = avatarY + 12 * scale;
+        this.ctx.fillStyle = isLocalPlayer ? '#76ff03' : '#f5f5f5';
+        this.ctx.font = `bold ${Math.max(12, 14 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        const playerName = player?.name || `Player ${index + 1}`;
+        this.ctx.fillText(playerName, nameX, nameY);
+
+        // Leader indicator
+        if (player?.isLeader) {
+            const leaderX = nameX + this.ctx.measureText(playerName).width + 6 * scale;
+            this.drawStatusIndicator(leaderX, nameY + 6 * scale, 'leader', true, 14 * scale);
+        }
+
+        // Player ID badge
+        const idSuffix = player?.id ? player.id.slice(-4) : '----';
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.fillText(`#${idSuffix}`, nameX, nameY + 18 * scale);
+
+        // Ready status indicator
+        const isReady = player?.isReady || false;
+        const statusX = x + cardWidth - padding - 20 * scale;
+        const statusY = y + cardHeight / 2;
+        this.drawStatusIndicator(statusX, statusY, isReady ? 'ready' : 'notReady', true, 16 * scale);
+
+        // Ready status text
+        this.ctx.fillStyle = isReady ? '#76ff03' : '#ff9800';
+        this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'right';
+        this.ctx.textBaseline = 'middle';
+        const statusText = isReady ? 'READY' : 'NOT READY';
+        this.ctx.fillText(statusText, x + cardWidth - padding, statusY + 18 * scale);
+        
+        this.ctx.restore();
+    }
+
+    drawConnectionStatusPanel(x, y) {
+        const scale = this.getUIScale();
+        const panelWidth = 200 * scale;  // Reduced from 250
+        const panelHeight = 95 * scale;  // Reduced from 120
+        
+        // Fade-in animation
+        let alpha = 1.0;
+        if (this.lobbyEnterTime) {
+            const fadeDuration = 400;
+            const elapsed = Date.now() - this.lobbyEnterTime;
+            if (elapsed < fadeDuration) {
+                alpha = Math.min(1.0, elapsed / fadeDuration);
+            }
+        }
+        
+        this.ctx.save();
+        this.ctx.globalAlpha = alpha;
+        
+        this.drawGlassCard(x, y, panelWidth, panelHeight);
+
+        const padding = 12 * scale;  // Reduced from 15
+        const time = Date.now();
+
+        // Title
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.font = `bold ${Math.max(11, 12 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('CONNECTION STATUS', x + padding, y + padding);
+
+        const isConnected = gameState.multiplayer.connected;
+        const statusY = y + padding + 20 * scale;
+
+        // Connection indicator (animated pulsing dot)
+        const dotSize = 6 * scale;  // Reduced from 8
+        const dotX = x + padding;
+        const dotY = statusY + 6 * scale;
+        const pulse = 0.7 + Math.sin(time * 0.01) * 0.3;
+
+        if (isConnected) {
+            this.ctx.fillStyle = '#76ff03';
+            this.ctx.shadowBlur = 8 * scale * pulse;
+            this.ctx.shadowColor = 'rgba(118, 255, 3, 0.8)';
+        } else {
+            this.ctx.fillStyle = '#ff9800';
+            this.ctx.shadowBlur = 6 * scale;
+            this.ctx.shadowColor = 'rgba(255, 152, 0, 0.6)';
+        }
+
+        this.ctx.beginPath();
+        this.ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+
+        // Status text
+        this.ctx.fillStyle = isConnected ? '#76ff03' : '#ff9800';
+        this.ctx.font = `${Math.max(11, 12 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.fillText(isConnected ? 'Connected' : 'Connecting...', dotX + dotSize * 2 + 6 * scale, statusY);
+
+        // Player ID
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
+        const playerId = gameState.multiplayer.playerId || 'Unknown';
+        const idSuffix = playerId.length > 8 ? playerId.slice(-8) : playerId;
+        this.ctx.fillText(`ID: ${idSuffix}`, x + padding, statusY + 20 * scale);
+
+        // Server status
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
+        const serverStatus = gameState.multiplayer.serverStatus || 'Unknown';
+        this.ctx.fillText(`Server: ${serverStatus}`, x + padding, statusY + 32 * scale);
+        
+        this.ctx.restore();
+    }
+
+    drawLobbyInfoPanel(x, y, playerCount) {
+        const scale = this.getUIScale();
+        const panelWidth = 200 * scale;  // Reduced from 250
+        const panelHeight = 80 * scale;  // Reduced from 100
+        
+        // Fade-in animation
+        let alpha = 1.0;
+        if (this.lobbyEnterTime) {
+            const fadeDuration = 400;
+            const elapsed = Date.now() - this.lobbyEnterTime;
+            if (elapsed < fadeDuration) {
+                alpha = Math.min(1.0, elapsed / fadeDuration);
+            }
+        }
+        
+        this.ctx.save();
+        this.ctx.globalAlpha = alpha;
+        
+        this.drawGlassCard(x, y, panelWidth, panelHeight);
+
+        const padding = 12 * scale;  // Reduced from 15
+
+        // Title
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.font = `bold ${Math.max(11, 12 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('LOBBY INFO', x + padding, y + padding);
+
+        // Player count
+        const countY = y + padding + 20 * scale;
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.font = `bold ${Math.max(24, 28 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.fillText(playerCount.toString(), x + padding, countY);
+
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.font = `${Math.max(10, 11 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.fillText('Players Online', x + padding, countY + 28 * scale);
+        
+        this.ctx.restore();
+    }
+
+    drawLobbyButton(text, x, y, width, height, hovered, disabled, isSpecial = false) {
+        const time = Date.now();
+        const pulse = 0.5 + Math.sin(time * 0.008) * 0.3;
+
+        // Pill shape with rounded corners
+        const radius = height / 2;
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + radius, y);
+        this.ctx.lineTo(x + width - radius, y);
+        this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.ctx.lineTo(x + width, y + height - radius);
+        this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.ctx.lineTo(x + radius, y + height);
+        this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.ctx.lineTo(x, y + radius);
+        this.ctx.quadraticCurveTo(x, y, x + radius, y);
+        this.ctx.closePath();
+
+        if (disabled) {
+            // Disabled state
+            const disabledGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+            disabledGradient.addColorStop(0, 'rgba(51, 51, 51, 0.6)');
+            disabledGradient.addColorStop(1, 'rgba(26, 26, 26, 0.6)');
+            this.ctx.fillStyle = disabledGradient;
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#666666';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        } else if (hovered || isSpecial) {
+            // Hovered or special state (all ready) - gradient with glow
+            const gradient = this.ctx.createLinearGradient(x, y, x, y + height);
+            gradient.addColorStop(0, '#ff5252');
+            gradient.addColorStop(1, '#ff1744');
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+
+            // Glow effect
+            if (isSpecial) {
+                this.ctx.shadowBlur = 20 * pulse;
+                this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
+            } else {
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+            }
+            this.ctx.strokeStyle = '#ff1744';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+        } else {
+            // Default state
+            const defaultGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+            defaultGradient.addColorStop(0, 'rgba(255, 23, 68, 0.2)');
+            defaultGradient.addColorStop(1, 'rgba(255, 23, 68, 0.15)');
+            this.ctx.fillStyle = defaultGradient;
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#ff1744';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        }
+
+        this.ctx.restore();
+
+        // Text
+        const scale = this.getUIScale();
+        this.ctx.fillStyle = disabled ? '#888888' : '#ffffff';
+        this.ctx.font = `bold ${Math.max(12, 14 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(text, x + width / 2, y + height / 2);
+    }
+
+    drawLobby() {
+        // Track lobby entry time for fade-in animations
+        if (this.lastLobbyState !== gameState.showLobby) {
+            if (gameState.showLobby) {
+                this.lobbyEnterTime = Date.now();
+            } else {
+                this.lobbyEnterTime = null;
+            }
+            this.lastLobbyState = gameState.showLobby;
+        }
+        
+        // Draw animated background
+        this.drawLobbyBackground();
 
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
+
+        // Title with enhanced effects
+        const uiScale = this.getUIScale();
+        this.ctx.font = `bold ${Math.max(36, 40 * uiScale)}px "Creepster", cursive`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.shadowBlur = 25 * uiScale;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.9)';
+        this.ctx.fillText('MULTIPLAYER LOBBY', centerX, 60 * uiScale);
+        this.ctx.shadowBlur = 0;
 
         // --- COUNTDOWN OVERLAY ---
         if (gameState.multiplayer.isGameStarting) {
             const timeLeft = Math.max(0, Math.ceil((gameState.multiplayer.gameStartTime - Date.now()) / 1000));
 
-            // Draw dimming overlay
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            // Enhanced dimming overlay with red tint
+            const overlayGradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, this.canvas.height);
+            overlayGradient.addColorStop(0, 'rgba(255, 23, 68, 0.3)');
+            overlayGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.8)');
+            overlayGradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+            this.ctx.fillStyle = overlayGradient;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-            // Draw Countdown Number
-            this.ctx.font = 'bold 120px "Roboto Mono", monospace';
+            // Enhanced countdown number with stronger effects
+            const pulse = 0.8 + Math.sin(Date.now() * 0.02) * 0.2;
+            this.ctx.font = 'bold 140px "Roboto Mono", monospace';
             this.ctx.fillStyle = '#ff1744';
-            this.ctx.shadowBlur = 50;
+            this.ctx.shadowBlur = 60 * pulse;
             this.ctx.shadowColor = '#ff0000';
             this.ctx.fillText(timeLeft > 0 ? timeLeft : 'GO!', centerX, centerY);
             this.ctx.shadowBlur = 0;
 
-            this.ctx.font = '30px "Roboto Mono", monospace';
+            // Enhanced "DEPLOYING" text
+            this.ctx.font = 'bold 36px "Roboto Mono", monospace';
             this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillText('DEPLOYING...', centerX, centerY + 80);
+            this.ctx.shadowBlur = 20;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
+            this.ctx.fillText('DEPLOYING...', centerX, centerY + 100);
+            this.ctx.shadowBlur = 0;
 
-            // Don't draw the rest of the UI interactive elements, or draw them disabled
-            // For visual continuity, we'll draw the player list but disable buttons below
+            // Don't draw interactive elements during countdown
+            return;
         }
 
         const players = Array.isArray(gameState.multiplayer.players) ? gameState.multiplayer.players : [];
+        const scale = uiScale;
 
-        this.ctx.font = '20px "Roboto Mono", monospace';
-        this.ctx.textAlign = 'center';
+        // Layout: Three-column design
+        // Left: Connection status panel
+        // Center: Player cards
+        // Right: Lobby info panel
 
-        if (!gameState.multiplayer.connected) {
-            this.ctx.fillStyle = '#ff9800';
-            this.ctx.font = '18px "Roboto Mono", monospace';
-            this.ctx.fillText('Connecting to server...', centerX, centerY - 100);
-            const t = Date.now() / 1000;
-            this.ctx.strokeStyle = '#ff9800';
-            this.ctx.lineWidth = 4;
-            this.ctx.beginPath();
-            this.ctx.arc(centerX, centerY, 20, t * Math.PI, t * Math.PI + Math.PI * 1.5);
-            this.ctx.stroke();
-        } else {
-            this.ctx.font = '18px "Roboto Mono", monospace';
-            this.ctx.fillStyle = '#76ff03';
-            this.ctx.fillText('Connected!', centerX, centerY - 100);
-            this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillStyle = '#aaaaaa';
-            this.ctx.fillText(`Player ID: ${gameState.multiplayer.playerId || 'Unknown'}`, centerX, centerY - 60);
-            this.ctx.fillText(`Players Online: ${players.length}`, centerX, centerY - 30);
-        }
+        const leftPanelX = 30 * scale;
+        const rightPanelX = this.canvas.width - (230 * scale);
+        const topY = 110 * scale;
 
-        const panelWidth = 320;
-        const panelHeight = Math.max(200, 50 + players.length * 35);
-        const panelX = centerX - panelWidth / 2;
-        const panelY = centerY - 10;
+        // Left panel: Connection status
+        this.drawConnectionStatusPanel(leftPanelX, topY);
 
-        this.ctx.fillStyle = 'rgba(15, 15, 20, 0.9)';
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        this.ctx.lineWidth = 2;
-        this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-        this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        // Right panel: Lobby info
+        this.drawLobbyInfoPanel(rightPanelX, topY, players.length);
 
-        this.ctx.font = '14px "Roboto Mono", monospace';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillText('Players in Lobby', panelX + 20, panelY + 25);
+        // Center: Player cards (responsive layout)
+        const cardSpacing = 15 * scale;
+        const cardsPerRow = Math.min(2, Math.floor((this.canvas.width - 500 * scale) / (240 * scale))); // Responsive: 2 cards max
+        const cardWidth = 220 * scale;
+        const cardHeight = 75 * scale;
+        
+        // Calculate total width of card area and center it
+        const totalCardsWidth = Math.min(players.length, cardsPerRow) * cardWidth + (Math.min(players.length, cardsPerRow) - 1) * cardSpacing;
+        const cardStartX = centerX - totalCardsWidth / 2;
+        const cardStartY = topY;
 
         if (players.length === 0) {
-            this.ctx.fillStyle = '#888888';
-            this.ctx.font = '14px "Roboto Mono", monospace';
-            this.ctx.fillText('Waiting for players...', panelX + 20, panelY + 50);
+            // Empty state
+            const emptyWidth = cardWidth * 2 + cardSpacing;
+            const emptyX = centerX - emptyWidth / 2;
+            this.drawGlassCard(emptyX, cardStartY, emptyWidth, cardHeight);
+            this.ctx.fillStyle = '#9e9e9e';
+            this.ctx.font = `${Math.max(12, 14 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('Waiting for players to join...', centerX, cardStartY + cardHeight / 2);
         } else {
+            // Draw player cards in grid
             players.forEach((player, index) => {
-                const name = player?.name || `Player ${index + 1}`;
-                const idSuffix = player?.id ? player.id.slice(-4) : '----';
+                const row = Math.floor(index / cardsPerRow);
+                const col = index % cardsPerRow;
+                const cardX = cardStartX + col * (cardWidth + cardSpacing);
+                const cardY = cardStartY + row * (cardHeight + cardSpacing);
                 const isLocalPlayer = player?.id === gameState.multiplayer.playerId;
-                const isLeader = player?.isLeader || false;
-                const isReady = player?.isReady || false;
-
-                // Player name with leader indicator
-                let playerText = `${index + 1}. ${name}`;
-                if (isLeader) {
-                    playerText += ' 👑';
-                }
-                playerText += ` (#${idSuffix})`;
-
-                // Ready status
-                const readyText = isReady ? '✅ Ready' : '❌ Not Ready';
-
-                // Color: green for local player, white for others
-                this.ctx.fillStyle = isLocalPlayer ? '#76ff03' : '#ffffff';
-                this.ctx.font = '14px "Roboto Mono", monospace';
-                this.ctx.fillText(playerText, panelX + 20, panelY + 50 + index * 35);
-
-                // Ready status
-                this.ctx.fillStyle = isReady ? '#76ff03' : '#ff9800';
-                this.ctx.font = '12px "Roboto Mono", monospace';
-                this.ctx.fillText(readyText, panelX + 20, panelY + 65 + index * 35);
+                
+                this.drawPlayerCard(cardX, cardY, player, index, isLocalPlayer);
             });
         }
 
-        const buttonWidth = 180;
-        const buttonHeight = 42;
-        const buttonSpacing = 50;
-
-        // Disable buttons if game is starting
+        // Bottom: Action buttons
+        const buttonWidth = 180 * scale;  // Reduced from 200
+        const buttonHeight = 40 * scale;  // Reduced from 45
         const buttonsDisabled = gameState.multiplayer.isGameStarting;
 
         if (gameState.multiplayer.connected) {
@@ -1227,38 +1708,44 @@ export class GameHUD {
             const allReady = players.length > 0 && players.every(p => p.isReady);
 
             if (isLeader) {
-                // Leader sees Ready button, Start Game button, then Back button
-                const readyY = this.canvas.height - 200;
-                const startY = this.canvas.height - 130;
-                const backY = this.canvas.height - 70;
+                // Leader: Ready, Start Game, Back
+                const readyY = this.canvas.height - 150 * scale;
+                const startY = this.canvas.height - 100 * scale;
+                const backY = this.canvas.height - 50 * scale;
 
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
-                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', buttonsDisabled);
+                this.drawLobbyButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_ready', buttonsDisabled);
 
                 const canStart = allReady && players.length > 0 && !buttonsDisabled;
-                this.drawMenuButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_start', !canStart);
+                this.drawLobbyButton('Start Game', centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_start', !canStart, canStart);
 
                 if (!canStart && !buttonsDisabled) {
-                    this.ctx.font = '11px "Roboto Mono", monospace';
+                    this.ctx.font = `${Math.max(10, 11 * scale)}px "Roboto Mono", monospace`;
                     this.ctx.fillStyle = '#ff9800';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 18);
+                    this.ctx.fillText('Waiting for all players to be ready...', centerX, startY - 18 * scale);
                 }
 
-                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', buttonsDisabled);
-            } else {
-                // Non-leader sees Ready button, then Back button
-                const readyY = this.canvas.height - 200;
-                const backY = this.canvas.height - 130;
+                this.drawLobbyButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_back', buttonsDisabled);
+                } else {
+                    // Non-leader: Ready, Back
+                    const readyY = this.canvas.height - 120 * lobbyScale;
+                    const backY = this.canvas.height - 70 * lobbyScale;
 
                 const readyText = gameState.multiplayer.isReady ? 'Unready' : 'Ready';
-                this.drawMenuButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_ready', buttonsDisabled);
-                this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', buttonsDisabled);
+                this.drawLobbyButton(readyText, centerX - buttonWidth / 2, readyY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_ready', buttonsDisabled);
+                this.drawLobbyButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, 
+                    this.hoveredButton === 'lobby_back', buttonsDisabled);
             }
-        } else {
-            // Not connected - just show Back button
-            const backY = this.canvas.height - 130;
-            this.drawMenuButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, this.hoveredButton === 'lobby_back', false);
+            } else {
+                // Not connected - just Back button
+                const backY = this.canvas.height - 100 * lobbyScale;
+            this.drawLobbyButton('Back', centerX - buttonWidth / 2, backY, buttonWidth, buttonHeight, 
+                this.hoveredButton === 'lobby_back', false);
         }
     }
 
@@ -1294,14 +1781,15 @@ export class GameHUD {
 
     checkMenuButtonClick(mouseX, mouseY) {
         const centerX = this.canvas.width / 2;
-        const buttonWidth = 200;
-        const buttonHeight = 50;
+        const uiScale = this.getUIScale();
+        const buttonWidth = 200 * uiScale;
+        const buttonHeight = 50 * uiScale;
 
         // Check AI Lobby
         if (gameState.showAILobby) {
-            const addBotY = this.canvas.height - 220;
-            const startY = this.canvas.height - 150;
-            const backY = this.canvas.height - 80;
+            const addBotY = this.canvas.height - (220 * uiScale);
+            const startY = this.canvas.height - (150 * uiScale);
+            const backY = this.canvas.height - (80 * uiScale);
 
             // Add Bot
             if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
@@ -1343,33 +1831,48 @@ export class GameHUD {
             // Prevent clicks if game is starting
             if (gameState.multiplayer.isGameStarting) return null;
 
+            const lobbyScale = this.getUIScale();
+            const buttonWidth = 180 * lobbyScale;
+            const buttonHeight = 40 * lobbyScale;
+
             if (gameState.multiplayer.connected) {
                 const isLeader = gameState.multiplayer.isLeader;
-                const readyY = this.canvas.height - 170;
-
-                // Check ready button (all players can click this)
-                if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
-                    mouseY >= readyY && mouseY <= readyY + buttonHeight) {
-                    return 'lobby_ready';
-                }
 
                 if (isLeader) {
-                    // Leader: Check Start Game button, then Back button
-                    const startY = this.canvas.height - 100;
-                    const backY = this.canvas.height - 40;
+                    // Leader: Ready, Start Game, Back
+                    const readyY = this.canvas.height - 150 * lobbyScale;
+                    const startY = this.canvas.height - 100 * lobbyScale;
+                    const backY = this.canvas.height - 50 * lobbyScale;
 
+                    // Check ready button
+                    if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                        mouseY >= readyY && mouseY <= readyY + buttonHeight) {
+                        return 'lobby_ready';
+                    }
+
+                    // Check start game button
                     if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                         mouseY >= startY && mouseY <= startY + buttonHeight) {
                         return 'lobby_start';
                     }
 
+                    // Check back button
                     if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                         mouseY >= backY && mouseY <= backY + buttonHeight) {
                         return 'lobby_back';
                     }
                 } else {
-                    // Non-leader: Check Back button
-                    const backY = this.canvas.height - 100;
+                    // Non-leader: Ready, Back
+                    const readyY = this.canvas.height - 120 * lobbyScale;
+                    const backY = this.canvas.height - 70 * lobbyScale;
+
+                    // Check ready button
+                    if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                        mouseY >= readyY && mouseY <= readyY + buttonHeight) {
+                        return 'lobby_ready';
+                    }
+
+                    // Check back button
                     if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                         mouseY >= backY && mouseY <= backY + buttonHeight) {
                         return 'lobby_back';
@@ -1377,7 +1880,7 @@ export class GameHUD {
                 }
             } else {
                 // Not connected - just Back button
-                const backY = this.canvas.height - 100;
+                const backY = this.canvas.height - 100 * lobbyScale;
                 if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
                     mouseY >= backY && mouseY <= backY + buttonHeight) {
                     return 'lobby_back';
@@ -1388,21 +1891,24 @@ export class GameHUD {
 
         if (!this.mainMenu && !gameState.showAbout) return null;
 
-        const mainMenuButtonWidth = 200;
-        const mainMenuButtonHeight = 40;
+        const scale = this.getUIScale();
+        const mainMenuButtonWidth = 200 * scale;
+        const mainMenuButtonHeight = 40 * scale;
         const centerY = this.canvas.height / 2;
-        const buttonSpacing = 15;
+        const buttonSpacing = 15 * scale;
 
         // Username
-        const usernameY = centerY - 130;
-        if (mouseX >= centerX - 150 && mouseX <= centerX + 150 &&
-            mouseY >= usernameY - 20 && mouseY <= usernameY + 20) {
+        const usernameY = centerY - (130 * uiScale);
+        const usernameHitWidth = 150 * uiScale;
+        const usernameHitHeight = 20 * uiScale;
+        if (mouseX >= centerX - usernameHitWidth && mouseX <= centerX + usernameHitWidth &&
+            mouseY >= usernameY - usernameHitHeight && mouseY <= usernameY + usernameHitHeight) {
             return 'username';
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
-        const columnSpacing = 20;
-        const buttonStartY = centerY - 30;
+        const columnSpacing = 20 * uiScale;
+        const buttonStartY = centerY - (30 * uiScale);
         const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
 

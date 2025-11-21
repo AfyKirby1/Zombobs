@@ -31,6 +31,17 @@ export class Zombie {
         // Health bar display
         this.lastDamageTime = 0; // Timestamp when last damaged
 
+        // Velocity tracking for interpolation (multiplayer sync)
+        this.vx = 0;
+        this.vy = 0;
+        this.lastX = this.x;
+        this.lastY = this.y;
+
+        // Interpolation targets (for non-leader clients)
+        this.targetX = undefined;
+        this.targetY = undefined;
+        this.lastUpdateTime = 0;
+
         // Unique ID for multiplayer synchronization
         this.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
@@ -71,12 +82,25 @@ export class Zombie {
             }
         }
 
+        // Track velocity for interpolation
+        this.lastX = this.x;
+        this.lastY = this.y;
+
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-        this.x += (dx / dist) * this.speed;
-        this.y += (dy / dist) * this.speed;
+        // Calculate velocity before movement
+        const moveX = (dx / dist) * this.speed;
+        const moveY = (dy / dist) * this.speed;
+        
+        // Update position
+        this.x += moveX;
+        this.y += moveY;
+
+        // Update velocity for interpolation (used in multiplayer)
+        this.vx = moveX;
+        this.vy = moveY;
     }
 
     draw() {
@@ -88,16 +112,35 @@ export class Zombie {
             ctx.fill();
         }
 
-        // Toxic aura (pulsing outer glow)
-        const pulse = Math.sin(Date.now() / RENDERING.ZOMBIE_PULSE_PERIOD) * 0.4 + 0.6;
-        const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
-        auraGradient.addColorStop(0, `rgba(0, 255, 0, ${0.4 * pulse})`);
-        auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${0.2 * pulse})`);
-        auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
-        ctx.fillStyle = auraGradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
-        ctx.fill();
+        // Toxic aura (pulsing outer glow) - quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin(Date.now() / RENDERING.ZOMBIE_PULSE_PERIOD) * 0.4 + 0.6;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.4 * auraQuality.opacity;
+            
+            if (auraQuality.hasMultiLayer) {
+                // Multi-layer aura for high/ultra quality
+                const outerAura = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
+                outerAura.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.3, `rgba(50, 255, 50, ${baseOpacity * 0.6 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.6, `rgba(100, 255, 100, ${baseOpacity * 0.3 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(0, 255, 0, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
+            auraGradient.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${baseOpacity * 0.5 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Zombie torso (singular piece of body) - drawn BEFORE head for proper layering
         const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);
@@ -148,26 +191,43 @@ export class Zombie {
         ctx.ellipse(this.x + 5, this.y - 3, 4, 5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Glowing zombie eyes (animated intensity)
+        // Glowing zombie eyes (animated intensity) - quality scaled
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
         const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
-        ctx.shadowBlur = 10 * eyePulse;
+        ctx.shadowBlur = eyeQuality.shadowBlur * eyePulse;
         ctx.shadowColor = '#ff0000';
 
-        // Eye glow gradient
-        const eyeGradient = ctx.createRadialGradient(this.x - 5, this.y - 3, 0, this.x - 5, this.y - 3, 3);
-        eyeGradient.addColorStop(0, '#ff6666');
-        eyeGradient.addColorStop(0.5, '#ff0000');
-        eyeGradient.addColorStop(1, '#990000');
-        ctx.fillStyle = eyeGradient;
+        // Eye glow gradient with quality-based stops
+        const createEyeGradient = (x, y) => {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 3);
+            if (eyeQuality.gradientStops >= 5) {
+                // Ultra quality: 5 stops
+                gradient.addColorStop(0, `rgba(255, 200, 200, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.25, `rgba(255, 150, 150, ${eyeQuality.alpha * 0.9})`);
+                gradient.addColorStop(0.5, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.75, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else if (eyeQuality.gradientStops >= 4) {
+                // High quality: 4 stops
+                gradient.addColorStop(0, `rgba(255, 150, 150, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.33, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.66, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else {
+                // Low/Medium quality: 3 stops
+                gradient.addColorStop(0, `rgba(255, 102, 102, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.5, `rgba(255, 0, 0, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.6})`);
+            }
+            return gradient;
+        };
+
+        ctx.fillStyle = createEyeGradient(this.x - 5, this.y - 3);
         ctx.beginPath();
         ctx.arc(this.x - 5, this.y - 3, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        const eyeGradient2 = ctx.createRadialGradient(this.x + 5, this.y - 3, 0, this.x + 5, this.y - 3, 3);
-        eyeGradient2.addColorStop(0, '#ff6666');
-        eyeGradient2.addColorStop(0.5, '#ff0000');
-        eyeGradient2.addColorStop(1, '#990000');
-        ctx.fillStyle = eyeGradient2;
+        ctx.fillStyle = createEyeGradient(this.x + 5, this.y - 3);
         ctx.beginPath();
         ctx.arc(this.x + 5, this.y - 3, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -349,16 +409,34 @@ export class FastZombie extends Zombie {
         ctx.ellipse(this.x + 2, this.y + this.radius + 2, this.radius * 1.0, this.radius * 0.3, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Reddish/orange aura (faster pulse)
-        const pulse = Math.sin(Date.now() / 150) * 0.4 + 0.6;
-        const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.4, this.x, this.y, this.radius * 1.8);
-        auraGradient.addColorStop(0, `rgba(255, 100, 0, ${0.5 * pulse})`);
-        auraGradient.addColorStop(0.5, `rgba(255, 150, 50, ${0.3 * pulse})`);
-        auraGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-        ctx.fillStyle = auraGradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius * 1.8, 0, Math.PI * 2);
-        ctx.fill();
+        // Reddish/orange aura (faster pulse) - quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin(Date.now() / 150) * 0.4 + 0.6;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.5 * auraQuality.opacity;
+            
+            if (auraQuality.hasMultiLayer) {
+                const outerAura = ctx.createRadialGradient(this.x, this.y, this.radius * 0.4, this.x, this.y, this.radius * 2.2);
+                outerAura.addColorStop(0, `rgba(255, 100, 0, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.4, `rgba(255, 150, 50, ${baseOpacity * 0.7 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.7, `rgba(255, 200, 100, ${baseOpacity * 0.4 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 2.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.4, this.x, this.y, this.radius * 1.8);
+            auraGradient.addColorStop(0, `rgba(255, 100, 0, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(255, 150, 50, ${baseOpacity * 0.6 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Body with reddish tint
         const bodyGradient = ctx.createRadialGradient(this.x - 3, this.y - 3, 0, this.x, this.y, this.radius);
@@ -386,9 +464,10 @@ export class FastZombie extends Zombie {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Glowing red eyes (brighter for fast zombie)
+        // Glowing red eyes (brighter for fast zombie) - quality scaled
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
         const eyePulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
-        ctx.shadowBlur = 12 * eyePulse;
+        ctx.shadowBlur = eyeQuality.shadowBlur * 1.2 * eyePulse; // 20% brighter for fast zombie
         ctx.shadowColor = '#ff0000';
 
         const eyeGradient = ctx.createRadialGradient(this.x - 4, this.y - 2, 0, this.x - 4, this.y - 2, 2.5);
@@ -448,20 +527,37 @@ export class ExplodingZombie extends Zombie {
         ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pulsing orange/yellow glow (faster when low health or close to player)
-        const distToPlayer = Math.sqrt((gameState.player.x - this.x) ** 2 + (gameState.player.y - this.y) ** 2);
-        const healthRatio = this.health / (2 + Math.floor(gameState.wave / 3));
-        const pulseSpeed = healthRatio < 0.5 || distToPlayer < 100 ? 100 : 200;
-        const pulse = Math.sin(Date.now() / pulseSpeed) * 0.5 + 0.5;
-
-        const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
-        auraGradient.addColorStop(0, `rgba(255, 150, 0, ${0.6 * pulse})`);
-        auraGradient.addColorStop(0.5, `rgba(255, 200, 50, ${0.4 * pulse})`);
-        auraGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
-        ctx.fillStyle = auraGradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
-        ctx.fill();
+        // Pulsing orange/yellow glow (faster when low health or close to player) - quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const distToPlayer = Math.sqrt((gameState.player.x - this.x) ** 2 + (gameState.player.y - this.y) ** 2);
+            const healthRatio = this.health / (2 + Math.floor(gameState.wave / 3));
+            const pulseSpeed = healthRatio < 0.5 || distToPlayer < 100 ? 100 : 200;
+            const pulse = Math.sin(Date.now() / pulseSpeed) * 0.5 + 0.5;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.6 * auraQuality.opacity;
+            
+            if (auraQuality.hasMultiLayer) {
+                const outerAura = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 3);
+                outerAura.addColorStop(0, `rgba(255, 150, 0, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.3, `rgba(255, 200, 50, ${baseOpacity * 0.7 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.6, `rgba(255, 220, 100, ${baseOpacity * 0.4 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
+            auraGradient.addColorStop(0, `rgba(255, 150, 0, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(255, 200, 50, ${baseOpacity * 0.7 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Body with orange/yellow tint
         const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);
@@ -489,9 +585,10 @@ export class ExplodingZombie extends Zombie {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Glowing orange eyes
+        // Glowing orange eyes - quality scaled
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
         const eyePulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
-        ctx.shadowBlur = 10 * eyePulse;
+        ctx.shadowBlur = eyeQuality.shadowBlur * eyePulse;
         ctx.shadowColor = '#ff6600';
 
         const eyeGradient = ctx.createRadialGradient(this.x - 5, this.y - 3, 0, this.x - 5, this.y - 3, 3);
@@ -550,15 +647,32 @@ export class GhostZombie extends Zombie {
         // Wobble effect
         const wobbleX = Math.sin((Date.now() + this.wobbleOffset) / 200) * 2;
 
-        // Pale blue aura
-        const pulse = Math.sin(Date.now() / 300) * 0.4 + 0.6;
-        const auraGradient = ctx.createRadialGradient(this.x + wobbleX, this.y, this.radius * 0.5, this.x + wobbleX, this.y, this.radius * 2);
-        auraGradient.addColorStop(0, `rgba(150, 200, 255, ${0.6 * pulse})`);
-        auraGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = auraGradient;
-        ctx.beginPath();
-        ctx.arc(this.x + wobbleX, this.y, this.radius * 2, 0, Math.PI * 2);
-        ctx.fill();
+        // Pale blue aura - quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin(Date.now() / 300) * 0.4 + 0.6;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.6 * auraQuality.opacity;
+            
+            if (auraQuality.hasMultiLayer) {
+                const outerAura = ctx.createRadialGradient(this.x + wobbleX, this.y, this.radius * 0.5, this.x + wobbleX, this.y, this.radius * 2.5);
+                outerAura.addColorStop(0, `rgba(150, 200, 255, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.5, `rgba(180, 220, 255, ${baseOpacity * 0.6 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x + wobbleX, this.y, this.radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const auraGradient = ctx.createRadialGradient(this.x + wobbleX, this.y, this.radius * 0.5, this.x + wobbleX, this.y, this.radius * 2);
+            auraGradient.addColorStop(0, `rgba(150, 200, 255, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x + wobbleX, this.y, this.radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Body (Pale blue/white)
         const bodyGradient = ctx.createRadialGradient(this.x + wobbleX - 2, this.y - 2, 0, this.x + wobbleX, this.y, this.radius);
@@ -674,16 +788,34 @@ export class SpitterZombie extends Zombie {
         ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Toxic green aura
-        const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
-        const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
-        auraGradient.addColorStop(0, `rgba(0, 255, 0, ${0.5 * pulse})`);
-        auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${0.3 * pulse})`);
-        auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
-        ctx.fillStyle = auraGradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
-        ctx.fill();
+        // Toxic green aura - quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.5 * auraQuality.opacity;
+            
+            if (auraQuality.hasMultiLayer) {
+                const outerAura = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
+                outerAura.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.4, `rgba(50, 255, 50, ${baseOpacity * 0.7 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.7, `rgba(100, 255, 100, ${baseOpacity * 0.4 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(0, 255, 0, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
+            auraGradient.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${baseOpacity * 0.6 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Body (Toxic green)
         const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);

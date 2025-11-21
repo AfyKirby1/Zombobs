@@ -294,6 +294,9 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
             const finalDamage = Math.floor(damage * damageMultiplier);
 
             if (zombie.takeDamage(finalDamage)) {
+                // Clean up state tracking for dead zombie (multiplayer sync)
+                gameState.lastZombieState.delete(zombie.id);
+                
                 gameState.zombies.splice(zombieIndex, 1);
 
                 // Check if boss was killed
@@ -551,6 +554,9 @@ export function handleBulletZombieCollisions() {
 
                 // Check if zombie dies from this hit
                 if (zombie.takeDamage(finalDamage)) {
+                    // Clean up state tracking for dead zombie (multiplayer sync)
+                    gameState.lastZombieState.delete(zombie.id);
+                    
                     // Remove zombie from array first
                     gameState.zombies.splice(zombieIndex, 1);
 

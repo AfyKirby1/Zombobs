@@ -235,13 +235,29 @@ This modular structure improves maintainability, testability, and scalability.
 **Dependencies**: `systems/SettingsManager.js`
 
 #### GraphicsSystem.js
-**Purpose**: Graphics utilities and texture loading
+**Purpose**: Graphics utilities, texture loading, and quality scaling system
 
 **Exports**:
 - `initGroundPattern()` - Load and cache ground texture pattern (renamed from `initGrassPattern`)
-- `graphicsSettings` - Getter object for video settings (quality, maxParticles, vignette, shadows, lighting)
+- `graphicsSettings` - Getter object for video settings (quality, maxParticles, vignette, shadows, lighting, effectIntensity, postProcessingQuality, particleDetail)
+- `getQualityMultipliers()` - Returns quality-based multipliers (glow, size, detail, opacity) based on preset
+- `getQualityValues(effectType)` - Returns quality-specific values for visual effects (eyeGlow, muzzleFlash, explosion, aura, damageNumber)
 
 **Dependencies**: `core/canvas.js`, `systems/SettingsManager.js`
+
+**Quality Scaling System**:
+- **Quality Presets**: Low, Medium, High, Ultra, Custom
+  - Low: Minimal effects (0.3-0.5x multipliers), basic visuals, performance-focused
+  - Medium: Balanced effects (0.7-0.75x multipliers), some detail
+  - High: Rich effects (1.0x multipliers), good detail
+  - Ultra: Maximum effects (1.2-1.5x multipliers), cinematic quality
+- **Effect Intensity**: Multiplier (0.0-2.0) applied to all quality-based effects
+- **Quality Values**: Effect-specific quality scaling
+  - Eye Glows: Shadow blur (4px Low → 18px Ultra), gradient stops (3-5)
+  - Muzzle Flash: Size multiplier (0.5x Low → 1.2x Ultra), gradient layers (1-3), trails
+  - Explosions: Particle counts, large flash, shockwave rings, trails
+  - Auras: Opacity (20% Low → 80% Ultra), pulse complexity, multi-layer
+  - Damage Numbers: Font size, outline quality, glow intensity
 
 **Notes**:
 - Loads ground texture from `sample_assets/tiles/bloody_dark_floor.png`
@@ -250,6 +266,7 @@ This modular structure improves maintainability, testability, and scalability.
 - Ground pattern opacity set to 0.6 for better visibility
 - Provides reactive getters for video settings that check SettingsManager
 - Used throughout rendering pipeline for conditional effect rendering
+- Centralized quality scaling logic ensures consistent quality differentiation
 
 #### RenderingCache.js
 **Purpose**: Intelligent caching system for expensive rendering operations
@@ -276,23 +293,36 @@ This modular structure improves maintainability, testability, and scalability.
 - Settings-aware caching to avoid redundant recreation
 
 #### ParticleSystem.js
-**Purpose**: Particle effects and blood splatter
+**Purpose**: Particle effects and blood splatter with quality scaling
 
 **Exports**:
 - `addParticle(particle)` - Add particle to system
-- `createParticles(x, y, color, count)` - Create particle burst
-- `createBloodSplatter(x, y, angle, isKill)` - Create blood effect
-- `createExplosion(x, y)` - Create explosion visual
+- `createParticles(x, y, color, count)` - Create particle burst (quality-aware)
+- `createBloodSplatter(x, y, angle, isKill)` - Create blood effect (quality-scaled)
+- `createExplosion(x, y)` - Create explosion visual (quality-scaled)
 - `updateParticles()` - Update all particles (optimized with filter pattern)
-- `drawParticles()` - Render all particles
-- `spawnParticle(x, y, color, props)` - Spawn particle using object pool
+- `drawParticles()` - Render all particles (quality-aware rendering)
+- `spawnParticle(x, y, color, props)` - Spawn particle using object pool (respects limits)
 
-**Dependencies**: `core/gameState.js`, `entities/Particle.js`, `core/constants.js`, `utils/ObjectPool.js`
+**Dependencies**: `core/gameState.js`, `entities/Particle.js`, `core/constants.js`, `utils/ObjectPool.js`, `systems/GraphicsSystem.js`
+
+**Quality Features**:
+- **Quality-Based Limits**: Particle count enforced based on quality preset (50/100/200/500)
+- **Quality-Aware Spawning**: Early returns prevent spawning at limit
+- **Quality-Scaled Effects**: Explosions and blood splatter scale particle counts by quality
+  - Explosions: 15-40 fire particles, 8-20 smoke particles, shockwave rings at Ultra
+  - Blood Splatter: 60-150% particle counts, color variation, pooling effects at Ultra
+- **Particle Detail**: Rendering quality controlled by particleDetail setting
+  - Minimal: Simple solid circles
+  - Standard: Current particle system
+  - Detailed: Gradients and light glow
+  - Ultra: Multi-layer gradients, glow, enhanced effects
 
 **Performance Features**:
 - **Object Pooling**: Uses `ObjectPool` for efficient particle reuse
 - **Optimized Update Loop**: Replaced reverse loop + splice with efficient filter pattern
 - **Memory Management**: Particles returned to pool when expired
+- **Quality-Based Culling**: Reduces particle counts at lower quality settings
 
 #### SettingsManager.js
 **Purpose**: Settings persistence and management
@@ -314,7 +344,13 @@ This modular structure improves maintainability, testability, and scalability.
 - `video.shadows` - Enable/disable shadows under entities
 - `video.lighting` - Enable/disable lighting overlay
 - `video.resolutionScale` - Canvas resolution scale (0.5 to 2.0)
+- `video.uiScale` - UI scaling factor (0.5 to 1.5, default 1.0 = 100%)
 - `video.floatingText` - Enable/disable floating pickup text
+- `video.fpsLimit` - FPS limit (0 = unlimited, 30, 60, 120)
+- `video.vsync` - Enable/disable VSync (browser handles frame timing)
+- `video.effectIntensity` - Visual effects multiplier (0.0 to 2.0)
+- `video.postProcessingQuality` - Post-processing quality (off, low, medium, high)
+- `video.particleDetail` - Particle rendering quality (minimal, standard, detailed, ultra)
 - `controls.*` - Keyboard keybinds (moveUp, moveDown, etc.)
 - `gamepad.*` - Controller button mappings (fire, reload, etc.)
 
@@ -354,8 +390,19 @@ This modular structure improves maintainability, testability, and scalability.
 - `drawGameOver()` - Render game over screen
 - `drawPauseMenu()` - Render pause menu
 - `checkMenuButtonClick()` / `updateMenuHover()` - Hit testing for both menu and lobby states
+- `getUIScale()` - Get current UI scale factor from settings (50%-150%)
+- `getScaledPadding()` - Get scaled padding value
+- `getScaledItemSpacing()` - Get scaled item spacing value
+- `getScaledFontSize()` - Get scaled font size (minimum 8px for readability)
 
-**Dependencies**: `core/canvas.js`, `core/gameState.js`, `core/constants.js`
+**UI Scaling System**:
+- All UI elements scale dynamically based on `uiScale` setting (50%-150%)
+- Base dimensions stored separately from scaled dimensions for clean calculations
+- Scaling applied to: fonts, padding, spacing, button sizes, panel dimensions, health displays
+- Minimum font size enforced (8px) for readability at low scales
+- Real-time scaling - changes apply immediately on next render
+
+**Dependencies**: `core/canvas.js`, `core/gameState.js`, `core/constants.js`, `systems/SettingsManager.js`
 
 #### SettingsPanel.js
 **Purpose**: Settings UI panel
@@ -367,6 +414,18 @@ This modular structure improves maintainability, testability, and scalability.
 - `handleClick(x, y)` - Handle mouse clicks
 - `handleMouseMove(x, y)` - Handle mouse movement
 - `updateSlider(x)` - Update volume slider
+- `getUIScale()` - Get current UI scale factor from settings (50%-150%)
+- `getScaledPanelWidth()` - Get scaled panel width
+- `getScaledPanelHeight()` - Get scaled panel height
+- `getScaledPadding()` - Get scaled padding value
+- `getScaledTabHeight()` - Get scaled tab height
+
+**UI Scaling System**:
+- All settings UI elements scale dynamically based on `uiScale` setting (50%-150%)
+- Base dimensions stored separately from scaled dimensions for clean calculations
+- Scaling applied to: panel dimensions, tabs, headers, footers, sliders, toggles, dropdowns
+- Row heights, font sizes, and interactive element sizes all scale proportionally
+- Real-time scaling - changes apply immediately on next render
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `systems/SettingsManager.js`, `systems/AudioSystem.js`
 
@@ -767,6 +826,15 @@ All game state is managed through the `gameState` object:
   - Uses `CULL_MARGIN` (100px) to render entities slightly off-screen for smooth entry
   - Significantly reduces draw calls with many entities
   - Viewport bounds calculated once per frame and reused
+- **Update Culling** (Biggest FPS Win): Skip updating entities far off-screen
+  - `shouldUpdateEntity()` utility function with larger margin (300px vs 100px render margin)
+  - Entities far off-screen still update for AI/pathfinding if they might come into view soon
+  - Applied to zombies, grenades, acid projectiles, acid pools, shells
+  - Major CPU savings when many zombies are off-screen
+- **Small Feature Culling**: Skip rendering entities smaller than 1px on screen
+  - `isVisibleOnScreen()` utility function checks entity size
+  - Applied to shells and bullets for reduced draw calls
+  - Prevents rendering tiny entities that aren't visible
 
 #### Canvas 2D Optimizations
 - **Gradient Reuse**: Gradients created once and reused across frames
@@ -797,6 +865,15 @@ All game state is managed through the `gameState` object:
 
 - **Efficient Update Loop**: Replaced reverse loop + splice with filter pattern
   - Better performance for array modifications
+- **Quality-Based Particle Limits**: Particle count enforced based on quality preset
+  - Low: 50 particles, Medium: 100 particles, High: 200 particles, Ultra: 500 particles
+  - Early returns prevent spawning particles when at limit
+  - Quality-aware particle counts for explosions and blood splatter
+- **Particle Detail Setting**: Controls particle rendering quality
+  - Minimal: Simple solid circles
+  - Standard: Current particle system
+  - Detailed: Gradients and light glow
+  - Ultra: Multi-layer gradients, glow, and enhanced effects
   - Maintains object pool integration
   - Cleaner code without manual index management
 
