@@ -17,7 +17,7 @@ export class SettingsManager {
                 distortionEffects: true,
 
                 // General Video Settings
-                qualityPreset: 'high', // low, medium, high, custom
+                qualityPreset: 'high', // low, medium, high, ultra, custom
                 resolutionScale: 1.0,
                 vignette: true,
                 shadows: true,
@@ -33,6 +33,7 @@ export class SettingsManager {
                 damageNumberStyle: 'floating', // floating, stacking, off
                 damageNumberScale: 1.0, // 0.5 to 2.0
                 fpsLimit: 0, // 0 = unlimited, 30, 60, 120
+                vsync: true, // Enable VSync (browser handles frame timing)
                 showDebugStats: false
             },
             gameplay: {
@@ -152,10 +153,20 @@ export class SettingsManager {
             this.settings.video.qualityPreset = 'custom';
         }
 
+        // When VSync is enabled, disable FPS limiting (let browser handle timing)
+        if (category === 'video' && key === 'vsync' && value === true) {
+            this.settings.video.fpsLimit = 0;
+        }
+
         this.saveSettings();
 
         // Notify callbacks
         this.callbacks.forEach(callback => callback(category, key, value));
+        
+        // If VSync was enabled, also notify about fpsLimit change
+        if (category === 'video' && key === 'vsync' && value === true) {
+            this.callbacks.forEach(callback => callback('video', 'fpsLimit', 0));
+        }
     }
 
     addChangeListener(callback) {
@@ -199,6 +210,16 @@ export class SettingsManager {
             this.settings.video.webgpuEnabled = true;
             this.settings.video.bloomIntensity = 0.5;
             this.settings.video.lightingQuality = 'simple';
+            this.settings.video.distortionEffects = true;
+        } else if (preset === 'ultra') {
+            this.settings.video.particleCount = 'ultra';
+            this.settings.video.resolutionScale = 1.25;
+            this.settings.video.vignette = true;
+            this.settings.video.shadows = true;
+            this.settings.video.lighting = true;
+            this.settings.video.webgpuEnabled = true;
+            this.settings.video.bloomIntensity = 0.7;
+            this.settings.video.lightingQuality = 'advanced';
             this.settings.video.distortionEffects = true;
         }
         this.settings.video.qualityPreset = preset;

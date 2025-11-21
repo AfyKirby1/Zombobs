@@ -335,7 +335,7 @@ export class SettingsPanel {
         
         // General Video Settings
         y = this.drawSectionHeader("GENERAL", y);
-        y = this.drawDropdown("Quality Preset", "video", "qualityPreset", ['low', 'medium', 'high', 'custom'], y, mouse);
+        y = this.drawDropdown("Quality Preset", "video", "qualityPreset", ['low', 'medium', 'high', 'ultra', 'custom'], y, mouse);
         if (this.settingsManager.getSetting('video', 'qualityPreset') === 'custom') {
             y = this.drawSlider("Resolution Scale", "video", "resolutionScale", 0.5, 2.0, y, mouse);
             y = this.drawToggle("Vignette", "video", "vignette", y, mouse);
@@ -352,6 +352,7 @@ export class SettingsPanel {
         y = this.drawToggle("Reload Bar", "video", "reloadBar", y, mouse);
         y = this.drawToggle("Show Debug Stats", "video", "showDebugStats", y, mouse);
         y = this.drawDropdown("FPS Limit", "video", "fpsLimit", [0, 30, 60, 120], y, mouse);
+        y = this.drawToggle("VSync", "video", "vsync", y, mouse);
         
         return y;
     }
@@ -599,15 +600,27 @@ export class SettingsPanel {
         const { x, y, width, options } = dropdown;
         const itemHeight = 30;
         const menuHeight = options.length * itemHeight;
+        const contentStartY = this.panelY + 80 + this.tabHeight;
+        const viewportBottom = contentStartY + this.viewportHeight;
+        
+        // Check if dropdown would overflow bottom of viewport
+        const spaceBelow = viewportBottom - (y + 30);
+        const spaceAbove = (y + 30) - contentStartY;
+        const drawUpward = spaceBelow < menuHeight && spaceAbove >= menuHeight;
+        const menuStartY = drawUpward ? y - menuHeight : y + 30;
+        
+        // Store direction in dropdown for click detection
+        dropdown.drawUpward = drawUpward;
+        dropdown.menuStartY = menuStartY;
         
         // Background
         this.ctx.fillStyle = '#1a1a1a';
-        this.ctx.fillRect(x, y + 30, width, menuHeight);
+        this.ctx.fillRect(x, menuStartY, width, menuHeight);
         this.ctx.strokeStyle = COLORS.accent;
-        this.ctx.strokeRect(x, y + 30, width, menuHeight);
+        this.ctx.strokeRect(x, menuStartY, width, menuHeight);
 
         options.forEach((opt, index) => {
-            const itemY = y + 30 + index * itemHeight;
+            const itemY = menuStartY + index * itemHeight;
             const isItemHovered = mouse.x >= x && mouse.x <= x + width &&
                                   mouse.y >= itemY && mouse.y <= itemY + itemHeight;
 
@@ -787,13 +800,14 @@ export class SettingsPanel {
 
         // Handle active dropdown selection
         if (this.activeDropdown) {
-            const { x: dropX, y: dropY, width, options, category, key } = this.activeDropdown;
+            const { x: dropX, y: dropY, width, options, category, key, menuStartY } = this.activeDropdown;
             const itemHeight = 30;
             const menuHeight = options.length * itemHeight;
+            const menuY = menuStartY !== undefined ? menuStartY : dropY + 30;
             
             // Check if clicked inside menu
-            if (x >= dropX && x <= dropX + width && y >= dropY + 30 && y <= dropY + 30 + menuHeight) {
-                const index = Math.floor((y - (dropY + 30)) / itemHeight);
+            if (x >= dropX && x <= dropX + width && y >= menuY && y <= menuY + menuHeight) {
+                const index = Math.floor((y - menuY) / itemHeight);
                 if (index >= 0 && index < options.length) {
                     const selected = options[index];
                     if (category === 'video' && key === 'qualityPreset') {
@@ -802,10 +816,13 @@ export class SettingsPanel {
                         this.settingsManager.setSetting(category, key, selected);
                     }
                     
-                    // Apply FPS limit immediately if changed
+                    // Apply FPS limit immediately if changed (only if VSync is disabled)
                     if (category === 'video' && key === 'fpsLimit') {
                         if (window.gameEngine) {
-                            window.gameEngine.setFPSLimit(selected);
+                            const vsyncEnabled = this.settingsManager.getSetting('video', 'vsync') ?? true;
+                            if (!vsyncEnabled) {
+                                window.gameEngine.setFPSLimit(selected);
+                            }
                         }
                     }
                 }

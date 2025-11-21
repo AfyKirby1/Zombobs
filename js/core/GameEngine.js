@@ -6,6 +6,7 @@ export class GameEngine {
         this.timeStep = 1000 / 60; // 60 FPS
         this.targetFPS = 0; // 0 = unlimited
         this.lastFrameTime = 0;
+        this.vsyncEnabled = true; // Default to VSync enabled
 
         this.update = () => {};
         this.draw = () => {};
@@ -27,8 +28,8 @@ export class GameEngine {
     _loop(timestamp) {
         if (!this.isRunning) return;
 
-        // FPS limiting
-        if (this.targetFPS > 0) {
+        // FPS limiting (only if VSync is disabled)
+        if (!this.vsyncEnabled && this.targetFPS > 0) {
             const targetFrameTime = 1000 / this.targetFPS;
             const elapsed = timestamp - this.lastFrameTime;
             
@@ -64,8 +65,22 @@ export class GameEngine {
     }
     
     setFPSLimit(fps) {
-        this.targetFPS = fps;
-        this.lastFrameTime = performance.now();
+        // Only apply FPS limit if VSync is disabled
+        if (!this.vsyncEnabled) {
+            this.targetFPS = fps;
+            this.lastFrameTime = performance.now();
+        } else {
+            // VSync enabled, ignore FPS limit
+            this.targetFPS = 0;
+        }
+    }
+    
+    setVSync(enabled) {
+        this.vsyncEnabled = enabled;
+        // If VSync is enabled, disable FPS limiting
+        if (enabled) {
+            this.targetFPS = 0;
+        }
     }
 }
 

@@ -14,7 +14,7 @@ import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
 import { initGroundPattern, graphicsSettings } from './systems/GraphicsSystem.js';
 import { renderingCache } from './systems/RenderingCache.js';
-import { isInViewport, getViewportBounds } from './utils/gameUtils.js';
+import { isInViewport, getViewportBounds, shouldUpdateEntity, isVisibleOnScreen } from './utils/gameUtils.js';
 import { RENDERING } from './core/constants.js';
 import { GameHUD } from './ui/GameHUD.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
@@ -58,9 +58,13 @@ const companionSystem = new CompanionSystem();
 // Make companionSystem globally accessible
 window.companionSystem = companionSystem;
 
-// Apply FPS limit from settings
+// Apply FPS limit and VSync from settings
 const initialFpsLimit = settingsManager.getSetting('video', 'fpsLimit') ?? 0;
-gameEngine.setFPSLimit(initialFpsLimit);
+const initialVSync = settingsManager.getSetting('video', 'vsync') ?? true;
+gameEngine.setVSync(initialVSync);
+if (!initialVSync) {
+    gameEngine.setFPSLimit(initialFpsLimit);
+}
 
 // Initialize HUD
 const gameHUD = new GameHUD(canvas);
@@ -117,22 +121,42 @@ function applyWebGPUSettings() {
     webgpuRenderer.setParticleCount(particles);
 }
 
-// Listen for settings changes and update WebGPU renderer
+// Listen for settings changes and update renderer/systems
 settingsManager.addChangeListener((category, key, value) => {
     if (category === 'video') {
-        if (!isWebGPUActive()) return;
+        // Handle resolution scale (affects all rendering, not just WebGPU)
+        if (key === 'resolutionScale') {
+            // Resize canvas when resolution scale changes
+            const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+            resizeCanvas(localPlayer);
+        }
         
-        if (key === 'bloomIntensity') {
-            webgpuRenderer.setBloomIntensity(value);
+        // Handle VSync and FPS limit (affects all rendering)
+        if (key === 'vsync') {
+            gameEngine.setVSync(value);
         }
-        if (key === 'distortionEffects') {
-            webgpuRenderer.setDistortionEffects(value);
+        if (key === 'fpsLimit') {
+            // Only apply FPS limit if VSync is disabled
+            const vsyncEnabled = settingsManager.getSetting('video', 'vsync') ?? true;
+            if (!vsyncEnabled) {
+                gameEngine.setFPSLimit(value);
+            }
         }
-        if (key === 'lightingQuality') {
-            webgpuRenderer.setLightingQuality(value);
-        }
-        if (key === 'particleCount') {
-            webgpuRenderer.setParticleCount(value);
+        
+        // WebGPU-specific settings (only apply if WebGPU is active)
+        if (isWebGPUActive()) {
+            if (key === 'bloomIntensity') {
+                webgpuRenderer.setBloomIntensity(value);
+            }
+            if (key === 'distortionEffects') {
+                webgpuRenderer.setDistortionEffects(value);
+            }
+            if (key === 'lightingQuality') {
+                webgpuRenderer.setLightingQuality(value);
+            }
+            if (key === 'particleCount') {
+                webgpuRenderer.setParticleCount(value);
+            }
         }
     }
 });
@@ -1719,6 +1743,9 @@ function updateGame() {
         }
     });
 
+    // Get viewport bounds for update culling (calculate once per frame)
+    const viewport = getViewportBounds(canvas);
+
     // Update players
     updatePlayers();
 
@@ -1760,35 +1787,56 @@ function updateGame() {
         }
     }
 
-    // Update bullets
+    // Update bullets (only update those near viewport for better performance)
     gameState.bullets = gameState.bullets.filter(bullet => {
+        // Always update bullets as they move fast and need accurate collision
+        // But skip if already marked for removal
+        if (bullet.markedForRemoval) return false;
         bullet.update();
         return !bullet.markedForRemoval;
     });
 
-    // Update grenades
+    // Update grenades (only update those near viewport)
     gameState.grenades = gameState.grenades.filter(grenade => {
-        grenade.update(canvas.width, canvas.height);
+        if (grenade.exploded) return false;
+        // Update if near viewport or already exploded (cleanup)
+        if (shouldUpdateEntity(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom) || grenade.exploded) {
+            grenade.update(canvas.width, canvas.height);
+        }
         return !grenade.exploded;
     });
 
-    // Update acid projectiles
+    // Update acid projectiles (only update those near viewport)
     gameState.acidProjectiles = gameState.acidProjectiles.filter(projectile => {
-        projectile.update();
+        if (projectile.isOffScreen(canvas.width, canvas.height)) return false;
+        if (shouldUpdateEntity(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            projectile.update();
+        }
         return !projectile.isOffScreen(canvas.width, canvas.height);
     });
 
-    // Update acid pools
+    // Update acid pools (only update those near viewport)
     gameState.acidPools = gameState.acidPools.filter(pool => {
-        pool.update();
+        if (pool.isExpired()) return false;
+        if (shouldUpdateEntity(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            pool.update();
+        }
         return !pool.isExpired();
     });
 
-    // Update zombies (Find target for each)
+    // Update zombies (Find target for each) - BIGGEST PERFORMANCE WIN: Only update zombies near viewport
     // Apply night difficulty modifier (20% speed increase)
     const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
 
-    gameState.zombies.forEach(zombie => {
+    // Optimized loop: use for loop instead of forEach for better performance
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const zombie = gameState.zombies[i];
+        
+        // Update culling: Skip updating zombies far off-screen (major FPS boost)
+        if (!shouldUpdateEntity(zombie, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            continue; // Skip this zombie's update - too far away
+        }
+        
         // Only the Leader or Singleplayer should run Zombie AI logic
         if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
             // Interpolation for smooth movement between server updates
@@ -1797,14 +1845,16 @@ function updateGame() {
                 zombie.x += (zombie.targetX - zombie.x) * 0.2;
                 zombie.y += (zombie.targetY - zombie.y) * 0.2;
             }
-            return;
+            continue;
         }
 
         // Find closest living player
         let closestPlayer = null;
         let minDist = Infinity;
 
-        gameState.players.forEach(p => {
+        // Optimized player search loop
+        for (let j = 0; j < gameState.players.length; j++) {
+            const p = gameState.players[j];
             if (p.health > 0) {
                 const d = (p.x - zombie.x) ** 2 + (p.y - zombie.y) ** 2;
                 if (d < minDist) {
@@ -1812,7 +1862,7 @@ function updateGame() {
                     closestPlayer = p;
                 }
             }
-        });
+        }
 
         if (closestPlayer) {
             // Store original speed if not already stored
@@ -1823,7 +1873,7 @@ function updateGame() {
             zombie.speed = zombie.baseSpeed * nightSpeedMultiplier;
             zombie.update(closestPlayer);
         }
-    });
+    }
 
     // Broadcast zombie positions to other clients (leader only, throttled)
     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
@@ -1843,9 +1893,16 @@ function updateGame() {
     // Update particles
     updateParticles();
 
-    // Update shells
+    // Update shells (only update those near viewport - shells are small and fast to despawn)
     gameState.shells = gameState.shells.filter(shell => {
-        shell.update();
+        if (shell.life <= 0) return false;
+        // Update shells near viewport, but always check life for cleanup
+        if (shouldUpdateEntity(shell, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            shell.update();
+        } else {
+            // Still decrement life even if off-screen so they despawn
+            shell.life--;
+        }
         return shell.life > 0;
     });
 
@@ -2113,95 +2170,113 @@ function drawGame() {
         ctx.restore();
     });
 
-    // Get viewport bounds for culling (only calculate once per frame)
+    // Get viewport bounds for culling (cached per frame, calculated once)
+    // Reuse same viewport object from updateGame if available, otherwise calculate
     const viewport = getViewportBounds(canvas);
     
-    // Draw entities with viewport culling
-    gameState.shells.forEach(shell => {
-        if (isInViewport(shell, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+    // Draw entities with viewport culling and small feature culling
+    // Optimized: use for loops instead of forEach for better performance
+    for (let i = 0; i < gameState.shells.length; i++) {
+        const shell = gameState.shells[i];
+        if (isInViewport(shell, viewport.left, viewport.top, viewport.right, viewport.bottom) &&
+            isVisibleOnScreen(shell)) {
             shell.draw(ctx);
         }
-    });
+    }
     
-    gameState.bullets.forEach(bullet => {
-        if (isInViewport(bullet, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+    for (let i = 0; i < gameState.bullets.length; i++) {
+        const bullet = gameState.bullets[i];
+        if (isInViewport(bullet, viewport.left, viewport.top, viewport.right, viewport.bottom) &&
+            isVisibleOnScreen(bullet)) {
             bullet.draw();
         }
-    });
+    }
     
-    gameState.grenades.forEach(grenade => {
+    for (let i = 0; i < gameState.grenades.length; i++) {
+        const grenade = gameState.grenades[i];
         if (isInViewport(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             grenade.draw();
         }
-    });
+    }
     
-    gameState.acidProjectiles.forEach(projectile => {
+    for (let i = 0; i < gameState.acidProjectiles.length; i++) {
+        const projectile = gameState.acidProjectiles[i];
         if (isInViewport(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             projectile.draw();
         }
-    });
+    }
     
-    gameState.acidPools.forEach(pool => {
+    for (let i = 0; i < gameState.acidPools.length; i++) {
+        const pool = gameState.acidPools[i];
         if (isInViewport(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pool.draw();
         }
-    });
+    }
     
-    // Batch pickup rendering with culling
-    gameState.healthPickups.forEach(pickup => {
+    // Batch pickup rendering with culling (optimized loops)
+    for (let i = 0; i < gameState.healthPickups.length; i++) {
+        const pickup = gameState.healthPickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.ammoPickups.forEach(pickup => {
+    for (let i = 0; i < gameState.ammoPickups.length; i++) {
+        const pickup = gameState.ammoPickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.damagePickups.forEach(pickup => {
+    for (let i = 0; i < gameState.damagePickups.length; i++) {
+        const pickup = gameState.damagePickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.nukePickups.forEach(pickup => {
+    for (let i = 0; i < gameState.nukePickups.length; i++) {
+        const pickup = gameState.nukePickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.speedPickups.forEach(pickup => {
+    for (let i = 0; i < gameState.speedPickups.length; i++) {
+        const pickup = gameState.speedPickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.rapidFirePickups.forEach(pickup => {
+    for (let i = 0; i < gameState.rapidFirePickups.length; i++) {
+        const pickup = gameState.rapidFirePickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.shieldPickups.forEach(pickup => {
+    for (let i = 0; i < gameState.shieldPickups.length; i++) {
+        const pickup = gameState.shieldPickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    gameState.adrenalinePickups.forEach(pickup => {
+    for (let i = 0; i < gameState.adrenalinePickups.length; i++) {
+        const pickup = gameState.adrenalinePickups[i];
         if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pickup.draw();
         }
-    });
+    }
     
-    // Zombies with culling (most important for performance)
-    gameState.zombies.forEach(zombie => {
+    // Zombies with culling (most important for performance) - optimized loop
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const zombie = gameState.zombies[i];
         if (isInViewport(zombie, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             zombie.draw();
         }
-    });
+    }
 
     drawPlayers();
 

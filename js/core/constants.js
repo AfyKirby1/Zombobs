@@ -61,6 +61,12 @@ export const RENDERING = {
     // Viewport culling margin (pixels beyond viewport to still render)
     CULL_MARGIN: 100,
     
+    // Update culling margin (larger than render margin - entities further away still update for AI/pathfinding)
+    UPDATE_MARGIN: 300,
+    
+    // Small feature culling - skip rendering entities smaller than this (screen pixels)
+    MIN_VISIBLE_SIZE: 1.0,
+    
     // Gradient cache invalidation thresholds
     CANVAS_SIZE_CHANGE_THRESHOLD: 10, // pixels
     PLAYER_POSITION_CHANGE_THRESHOLD: 50, // pixels

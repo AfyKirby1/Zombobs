@@ -1,5 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { RENDERING } from '../core/constants.js';
+import { canvas } from '../core/canvas.js';
 
 export function checkCollision(obj1, obj2) {
     const dx = obj1.x - obj2.x;
@@ -39,6 +40,47 @@ export function getViewportBounds(canvas) {
         right: canvas.width,
         bottom: canvas.height
     };
+}
+
+/**
+ * Check if an entity should be updated (larger margin than rendering)
+ * Entities far off-screen still need updates for AI/pathfinding if they might come into view soon
+ * @param {Object} entity - Entity with x, y, radius properties
+ * @param {number} viewportLeft - Left edge of viewport
+ * @param {number} viewportTop - Top edge of viewport
+ * @param {number} viewportRight - Right edge of viewport
+ * @param {number} viewportBottom - Bottom edge of viewport
+ * @returns {boolean} True if entity should be updated
+ */
+export function shouldUpdateEntity(entity, viewportLeft, viewportTop, viewportRight, viewportBottom) {
+    const margin = RENDERING.UPDATE_MARGIN;
+    const radius = entity.radius || 0;
+    
+    return entity.x + radius >= viewportLeft - margin &&
+           entity.x - radius <= viewportRight + margin &&
+           entity.y + radius >= viewportTop - margin &&
+           entity.y - radius <= viewportBottom + margin;
+}
+
+/**
+ * Check if an entity is large enough to be visible on screen
+ * Skips rendering entities smaller than 1px on screen (tiny shells, distant bullets)
+ * @param {Object} entity - Entity with radius property
+ * @param {number} entityRadius - Entity radius in world space (optional, uses entity.radius if not provided)
+ * @returns {boolean} True if entity is large enough to render
+ */
+export function isVisibleOnScreen(entity, entityRadius = null) {
+    const radius = entityRadius !== null ? entityRadius : (entity.radius || 0);
+    
+    // Simple check: skip entities with very small radius
+    // This catches tiny shells, very distant bullets, etc.
+    // For now, we use 0.5 world pixels as threshold - entities smaller than this are too tiny to see
+    // More sophisticated implementation could calculate actual screen-space size based on camera zoom
+    if (radius < 0.5) {
+        return false;
+    }
+    
+    return true;
 }
 
 export function triggerDamageIndicator() {
