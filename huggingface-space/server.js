@@ -16,7 +16,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
@@ -54,12 +54,12 @@ function logEvent(message) {
 function assignLeader() {
   // Assign leader to first player in Map
   if (players.size === 0) return;
-  
+
   // Clear all leader flags
   players.forEach((player) => {
     player.isLeader = false;
   });
-  
+
   // Assign to first player
   const firstPlayerId = Array.from(players.keys())[0];
   const firstPlayer = players.get(firstPlayerId);
@@ -72,13 +72,13 @@ function broadcastLobby() {
   const playerList = Array.from(players.values());
   console.log(`[broadcastLobby] Broadcasting lobby update to all clients`);
   console.log(`[broadcastLobby] Player count: ${playerList.length}`);
-  console.log(`[broadcastLobby] Players:`, playerList.map(p => ({ 
-    id: p.id, 
-    name: p.name, 
-    isReady: p.isReady, 
-    isLeader: p.isLeader 
+  console.log(`[broadcastLobby] Players:`, playerList.map(p => ({
+    id: p.id,
+    name: p.name,
+    isReady: p.isReady,
+    isLeader: p.isLeader
   })));
-  
+
   try {
     io.emit('lobby:update', playerList);
     console.log(`[broadcastLobby] Successfully emitted lobby:update event`);
@@ -115,10 +115,10 @@ app.get('/', (req, res) => {
   const uptime = formatUptime(process.uptime());
   const memoryMB = formatMemory(process.memoryUsage().heapUsed);
   const version = packageJson.version;
-  const eventsHTML = recentEvents.length > 0 
+  const eventsHTML = recentEvents.length > 0
     ? recentEvents.map(event => `<li>${event}</li>`).join('')
     : '<li><em>No recent activity... yet.</em></li>';
-  
+
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -351,8 +351,8 @@ app.get('/', (req, res) => {
 
 // Health check endpoint for Hugging Face
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     players: players.size,
     timestamp: new Date().toISOString()
   });
@@ -362,9 +362,9 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   const defaultName = `Survivor-${socket.id.slice(-4)}`;
   const isFirstPlayer = players.size === 0;
-  
-  players.set(socket.id, { 
-    id: socket.id, 
+
+  players.set(socket.id, {
+    id: socket.id,
     name: defaultName,
     isReady: false,
     isLeader: isFirstPlayer
@@ -388,10 +388,10 @@ io.on('connection', (socket) => {
     // Basic name sanitization (trim & length limit)
     const rawName = typeof payload.name === 'string' ? payload.name : defaultName;
     const name = rawName.trim().substring(0, 24) || defaultName;
-    
+
     const current = players.get(socket.id) || { id: socket.id, isReady: false, isLeader: false };
     players.set(socket.id, { ...current, name });
-    
+
     console.log(
       `[~] ${socket.id} set name to "${name}" | Players online: ${players.size}`
     );
@@ -405,22 +405,22 @@ io.on('connection', (socket) => {
       console.log(`[player:ready] Event received from socket.id: ${socket.id}`);
       console.log(`[player:ready] Current players in Map: ${players.size}`);
       console.log(`[player:ready] Player IDs in Map:`, Array.from(players.keys()));
-      
+
       const player = players.get(socket.id);
       if (player) {
         const oldReadyState = player.isReady;
         console.log(`[player:ready] Player found: ${player.name}, current ready state: ${oldReadyState}`);
-        
+
         player.isReady = !player.isReady;
         const newReadyState = player.isReady;
-        
+
         console.log(
           `[~] ${player.name} ${player.isReady ? 'READY' : 'NOT READY'} | Players online: ${players.size}`
         );
         console.log(`[player:ready] State changed: ${oldReadyState} -> ${newReadyState}`);
-        
+
         logEvent(`${player.name} ${player.isReady ? 'is ready' : 'is not ready'}`);
-        
+
         try {
           console.log(`[player:ready] Calling broadcastLobby()...`);
           broadcastLobby();
@@ -435,7 +435,7 @@ io.on('connection', (socket) => {
         console.error(`[player:ready] Available socket IDs:`, Array.from(players.keys()));
         console.error(`[player:ready] This may indicate a disconnect or connection issue`);
         // Emit error back to client for debugging
-        socket.emit('player:ready:error', { 
+        socket.emit('player:ready:error', {
           message: 'Player not found in server Map',
           socketId: socket.id,
           availablePlayers: Array.from(players.keys())
@@ -445,7 +445,7 @@ io.on('connection', (socket) => {
       console.error(`[player:ready] UNEXPECTED ERROR in handler:`, error);
       console.error(`[player:ready] Error stack:`, error.stack);
       // Emit error back to client
-      socket.emit('player:ready:error', { 
+      socket.emit('player:ready:error', {
         message: 'Server error processing ready toggle',
         error: error.message
       });
@@ -456,14 +456,14 @@ io.on('connection', (socket) => {
   socket.on('game:start', () => {
     const player = players.get(socket.id);
     if (!player) return;
-    
+
     // Check if requester is leader
     if (!player.isLeader) {
       console.log(`[!] Non-leader ${player.name} attempted to start game`);
       socket.emit('game:start:error', { message: 'Only the lobby leader can start the game' });
       return;
     }
-    
+
     // Check if all players are ready
     const allReady = Array.from(players.values()).every(p => p.isReady);
     if (!allReady) {
@@ -471,7 +471,7 @@ io.on('connection', (socket) => {
       socket.emit('game:start:error', { message: 'All players must be ready to start' });
       return;
     }
-    
+
     // All checks passed - broadcast game start to all clients
     console.log(`[+] Game starting! All players ready.`);
     logEvent('Game starting - all survivors ready!');
@@ -482,7 +482,7 @@ io.on('connection', (socket) => {
   socket.on('player:state', (state) => {
     const player = players.get(socket.id);
     if (!player) return;
-    
+
     // Broadcast player state to all other clients
     socket.broadcast.emit('player:state:update', {
       playerId: socket.id,
@@ -494,7 +494,7 @@ io.on('connection', (socket) => {
   socket.on('player:action', (action) => {
     const player = players.get(socket.id);
     if (!player) return;
-    
+
     // Broadcast action to all other clients
     socket.broadcast.emit('player:action:update', {
       playerId: socket.id,
@@ -502,21 +502,62 @@ io.on('connection', (socket) => {
     });
   });
 
+  // --- Zombie Synchronization ---
+
+  // Handle zombie spawns (Leader only)
+  socket.on('zombie:spawn', (data) => {
+    // Broadcast to all others
+    socket.broadcast.emit('zombie:spawn', data);
+  });
+
+  // Handle zombie updates (Leader only)
+  socket.on('zombie:update', (data) => {
+    // Volatile broadcast for frequent position updates (can be dropped)
+    socket.broadcast.volatile.emit('zombie:update', data);
+  });
+
+  // Handle zombie hit/damage
+  socket.on('zombie:hit', (data) => {
+    socket.broadcast.emit('zombie:hit', data);
+  });
+
+  // Handle zombie death
+  socket.on('zombie:die', (data) => {
+    socket.broadcast.emit('zombie:die', data);
+  });
+
+  // --- Game State Synchronization ---
+
+  // Handle XP gain
+  socket.on('game:xp', (amount) => {
+    socket.broadcast.emit('game:xp', amount);
+  });
+
+  // Handle Level Up event (if shared)
+  socket.on('game:levelup', (data) => {
+    socket.broadcast.emit('game:levelup', data);
+  });
+
+  // Handle Skill Selection
+  socket.on('game:skill', (skillId) => {
+    socket.broadcast.emit('game:skill', skillId);
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
     const wasLeader = player?.isLeader || false;
     players.delete(socket.id);
-    
+
     const displayName = player?.name || defaultName;
-    
+
     // If leader disconnected, assign new leader
     if (wasLeader && players.size > 0) {
       assignLeader();
       console.log(`[~] New leader assigned after ${displayName} disconnected`);
       logEvent(`New leader assigned after ${displayName} left`);
     }
-    
+
     console.log(
       `[-] ${displayName} disconnected (${socket.id}) | Players online: ${players.size}`
     );
@@ -524,7 +565,7 @@ io.on('connection', (socket) => {
     console.log(`    Active players: ${formatPlayerList()}`);
     logEvent(`${displayName} was lost to the horde`);
     broadcastLobby();
-    
+
     // Notify other clients that this player disconnected
     socket.broadcast.emit('player:disconnected', { playerId: socket.id });
   });
@@ -545,7 +586,7 @@ try {
     console.log(`🚀 Zombobs Server running on port ${PORT}`);
     console.log(`🧟 The horde is approaching...`);
   });
-  
+
   httpServer.on('error', (error) => {
     console.error('[!] Server error:', error);
   });

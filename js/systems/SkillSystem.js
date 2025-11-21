@@ -96,9 +96,9 @@ class SkillSystem {
 
     gainXP(amount) {
         if (!gameState.gameRunning || gameState.showLevelUp) return;
-        
+
         gameState.xp += amount;
-        
+
         // Check if we should level up
         if (gameState.xp >= gameState.nextLevelXP) {
             this.levelUp();
@@ -107,15 +107,33 @@ class SkillSystem {
 
     levelUp() {
         gameState.level++;
-        
+
         // Calculate next level XP requirement
         const baseXP = XP_BASE_REQUIREMENT;
         const scaling = Math.pow(XP_SCALING_FACTOR, gameState.level - 1);
         gameState.nextLevelXP = Math.floor(baseXP * scaling);
-        
-        // Generate choices
-        gameState.levelUpChoices = this.generateChoices();
-        gameState.showLevelUp = true;
+
+        // Multiplayer Logic
+        if (gameState.isCoop && gameState.multiplayer.active) {
+            if (!gameState.multiplayer.isLeader) {
+                // Client: Don't generate choices or show UI yet. Wait for Leader.
+                return;
+            }
+
+            // Leader: Generate and broadcast
+            gameState.levelUpChoices = this.generateChoices();
+            gameState.showLevelUp = true;
+
+            gameState.multiplayer.socket.emit('game:levelup', {
+                level: gameState.level,
+                nextLevelXP: gameState.nextLevelXP,
+                choices: gameState.levelUpChoices
+            });
+        } else {
+            // Single Player
+            gameState.levelUpChoices = this.generateChoices();
+            gameState.showLevelUp = true;
+        }
     }
 
     generateChoices() {
@@ -152,7 +170,7 @@ class SkillSystem {
 
         // Check if skill already exists
         const existingSkill = gameState.activeSkills.find(s => s.id === skillId);
-        
+
         if (existingSkill) {
             // Upgrade existing skill
             existingSkill.level = (existingSkill.level || 1) + 1;
@@ -174,6 +192,11 @@ class SkillSystem {
                 skill.effect(player);
             }
         });
+
+        // Broadcast choice if Leader
+        if (gameState.isCoop && gameState.multiplayer.active && gameState.multiplayer.isLeader) {
+            gameState.multiplayer.socket.emit('game:skill', skillId);
+        }
     }
 
     getXPForZombieType(zombieType) {

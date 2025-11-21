@@ -408,6 +408,92 @@ function initializeNetwork() {
             }
         });
 
+        // --- Zombie Synchronization Listeners (Non-Leader) ---
+        socket.on('zombie:spawn', (data) => {
+            if (gameState.multiplayer.isLeader) return; // Leader spawns locally
+
+            // Spawn zombie on non-leader client
+            const ZombieClass = getZombieClassByType(data.type);
+            if (ZombieClass) {
+                const zombie = new ZombieClass(canvas.width, canvas.height);
+                zombie.id = data.id;
+                zombie.x = data.x;
+                zombie.y = data.y;
+                zombie.health = data.health;
+                gameState.zombies.push(zombie);
+            }
+        });
+
+        socket.on('zombie:update', (zombiesData) => {
+            if (gameState.multiplayer.isLeader) return; // Leader has authoritative state
+
+            // Update zombie positions from leader
+            zombiesData.forEach(data => {
+                const zombie = gameState.zombies.find(z => z.id === data.id);
+                if (zombie) {
+                    zombie.x = data.x;
+                    zombie.y = data.y;
+                    zombie.health = data.health;
+                }
+            });
+        });
+
+        socket.on('zombie:hit', (data) => {
+            if (gameState.multiplayer.isLeader) return; // Leader already applied damage
+
+            const zombie = gameState.zombies.find(z => z.id === data.zombieId);
+            if (zombie) {
+                zombie.health = data.newHealth;
+                // Visual feedback
+                createBloodSplatter(zombie.x, zombie.y, data.angle || 0, false);
+            }
+        });
+
+        socket.on('zombie:die', (data) => {
+            if (gameState.multiplayer.isLeader) return; // Leader already removed zombie
+
+            const zombieIndex = gameState.zombies.findIndex(z => z.id === data.zombieId);
+            if (zombieIndex !== -1) {
+                const zombie = gameState.zombies[zombieIndex];
+
+                // Visual effects
+                createBloodSplatter(zombie.x, zombie.y, data.angle || 0, true);
+                createParticles(zombie.x, zombie.y, '#ff0000', 10);
+
+                // Handle exploding zombie
+                if (data.isExploding) {
+                    triggerExplosion(zombie.x, zombie.y, 100, 50, false);
+                }
+
+                // Remove zombie
+                gameState.zombies.splice(zombieIndex, 1);
+                gameState.zombiesKilled++;
+            }
+        });
+
+        // --- Game State Synchronization Listeners (Non-Leader) ---
+        socket.on('game:xp', (amount) => {
+            if (gameState.multiplayer.isLeader) return; // Leader already gained XP
+            skillSystem.gainXP(amount);
+        });
+
+        socket.on('game:levelup', (data) => {
+            if (gameState.multiplayer.isLeader) return; // Leader already leveled up
+
+            gameState.level = data.level;
+            gameState.nextLevelXP = data.nextLevelXP;
+            gameState.levelUpChoices = data.choices;
+            gameState.showLevelUp = true;
+        });
+
+        socket.on('game:skill', (skillId) => {
+            if (gameState.multiplayer.isLeader) return; // Leader already activated skill
+
+            skillSystem.activateSkill(skillId);
+            gameState.showLevelUp = false;
+            gameState.levelUpChoices = [];
+        });
+
         socket.on('connect_error', (err) => {
             console.error('Multiplayer connection error:', err.message);
             console.error('Connection details:', {
@@ -443,7 +529,26 @@ function connectToMultiplayer() {
     gameState.multiplayer.active = true;
 }
 
+// Helper function to get zombie class by type string
+function getZombieClassByType(type) {
+    const typeMap = {
+        'normal': NormalZombie,
+        'fast': FastZombie,
+        'armored': ArmoredZombie,
+        'exploding': ExplodingZombie,
+        'ghost': GhostZombie,
+        'spitter': SpitterZombie,
+        'boss': BossZombie
+    };
+    return typeMap[type] || NormalZombie;
+}
+
 function spawnBoss() {
+    // In multiplayer, only the leader spawns the boss
+    if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
+        return; // Non-leader clients will receive zombie:spawn event
+    }
+
     gameState.isSpawningWave = true;
     gameState.bossActive = true;
 
@@ -451,6 +556,17 @@ function spawnBoss() {
     const boss = new BossZombie(canvas.width / 2, -50);
     gameState.boss = boss;
     gameState.zombies.push(boss);
+
+    // Broadcast boss spawn to other clients (leader only)
+    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
+        gameState.multiplayer.socket.emit('zombie:spawn', {
+            id: boss.id,
+            type: boss.type || 'boss',
+            x: boss.x,
+            y: boss.y,
+            health: boss.health
+        });
+    }
 
     triggerWaveNotification("BOSS WAVE!", 180); // Longer notification
 
@@ -461,6 +577,11 @@ function spawnBoss() {
 }
 
 function spawnZombies(count) {
+    // In multiplayer, only the leader spawns zombies
+    if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
+        return; // Non-leader clients will receive zombie:spawn events
+    }
+
     // Clear any pending zombie spawn timeouts
     gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
     gameState.zombieSpawnTimeouts = [];
@@ -538,6 +659,17 @@ function spawnZombies(count) {
             zombie.x = spawnX;
             zombie.y = spawnY;
             gameState.zombies.push(zombie);
+
+            // Broadcast zombie spawn to other clients (leader only)
+            if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
+                gameState.multiplayer.socket.emit('zombie:spawn', {
+                    id: zombie.id,
+                    type: zombie.type || 'normal',
+                    x: zombie.x,
+                    y: zombie.y,
+                    health: zombie.health
+                });
+            }
 
             // Remove the corresponding indicator by ID
             const indicatorIndex = gameState.spawnIndicators.findIndex(ind => ind.id === indicatorId);
@@ -1605,6 +1737,21 @@ function updateGame() {
             zombie.update(closestPlayer);
         }
     });
+
+    // Broadcast zombie positions to other clients (leader only, throttled)
+    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
+        // Throttle updates to every 100ms (10 times per second)
+        if (!gameState.lastZombieUpdateBroadcast || now - gameState.lastZombieUpdateBroadcast >= 100) {
+            const zombieData = gameState.zombies.map(z => ({
+                id: z.id,
+                x: z.x,
+                y: z.y,
+                health: z.health
+            }));
+            gameState.multiplayer.socket.emit('zombie:update', zombieData);
+            gameState.lastZombieUpdateBroadcast = now;
+        }
+    }
 
     // Update particles
     updateParticles();

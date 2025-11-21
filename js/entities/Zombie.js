@@ -11,7 +11,7 @@ import { graphicsSettings } from '../systems/GraphicsSystem.js';
 export class Zombie {
     constructor(canvasWidth, canvasHeight) {
         const side = Math.floor(Math.random() * 4);
-        switch(side) {
+        switch (side) {
             case 0: this.x = Math.random() * canvasWidth; this.y = -20; break;
             case 1: this.x = canvasWidth + 20; this.y = Math.random() * canvasHeight; break;
             case 2: this.x = Math.random() * canvasWidth; this.y = canvasHeight + 20; break;
@@ -22,14 +22,17 @@ export class Zombie {
         this.health = 2 + Math.floor(gameState.wave / 3);
         this.maxHealth = this.health;
         this.type = 'base';
-        
+
         // Burning state
         this.burnTimer = 0; // ms remaining
         this.burnDamage = 0; // damage per tick
         this.baseSpeed = null; // Will be set on first update for night cycle
-        
+
         // Health bar display
         this.lastDamageTime = 0; // Timestamp when last damaged
+
+        // Unique ID for multiplayer synchronization
+        this.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
     update(player) {
@@ -52,7 +55,7 @@ export class Zombie {
             if (!this.lastBurnTick || now - this.lastBurnTick >= 200) {
                 this.health -= this.burnDamage;
                 this.lastBurnTick = now;
-                
+
                 // Spawn fire/smoke particles
                 if (gameState.particles.length < MAX_PARTICLES - 10) {
                     const fireColor = `rgba(255, ${Math.floor(Math.random() * 100 + 100)}, 0, 0.8)`;
@@ -71,7 +74,7 @@ export class Zombie {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        
+
         this.x += (dx / dist) * this.speed;
         this.y += (dy / dist) * this.speed;
     }
@@ -84,7 +87,7 @@ export class Zombie {
             ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
             ctx.fill();
         }
-        
+
         // Toxic aura (pulsing outer glow)
         const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
         const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
@@ -95,7 +98,7 @@ export class Zombie {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Zombie torso (singular piece of body) - drawn BEFORE head for proper layering
         const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);
         bodyGradient.addColorStop(0, '#9acd32');
@@ -106,7 +109,7 @@ export class Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x, this.y + 15, this.radius * 1.2, this.radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Zombie arm (singular piece of body) - drawn BEFORE head for proper layering
         ctx.strokeStyle = '#1b3a00';
         ctx.lineWidth = 3;
@@ -115,20 +118,20 @@ export class Zombie {
         ctx.moveTo(this.x - 8, this.y + 10);
         ctx.lineTo(this.x - 15, this.y + 18);
         ctx.stroke();
-        
+
         // Decayed flesh body (head)
         ctx.fillStyle = bodyGradient;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Zombie skin texture (darker patches)
         ctx.fillStyle = 'rgba(30, 60, 10, 0.3)';
         ctx.beginPath();
         ctx.arc(this.x + 4, this.y - 2, 3, 0, Math.PI * 2);
         ctx.arc(this.x - 3, this.y + 5, 2, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body outline (rough edges)
         ctx.strokeStyle = '#1b3a00';
         ctx.lineWidth = 2.5;
@@ -137,19 +140,19 @@ export class Zombie {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
-        
+
         // Eye sockets (darker areas)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.beginPath();
         ctx.ellipse(this.x - 5, this.y - 3, 4, 5, 0, 0, Math.PI * 2);
         ctx.ellipse(this.x + 5, this.y - 3, 4, 5, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Glowing zombie eyes (animated intensity)
         const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
         ctx.shadowBlur = 10 * eyePulse;
         ctx.shadowColor = '#ff0000';
-        
+
         // Eye glow gradient
         const eyeGradient = ctx.createRadialGradient(this.x - 5, this.y - 3, 0, this.x - 5, this.y - 3, 3);
         eyeGradient.addColorStop(0, '#ff6666');
@@ -159,7 +162,7 @@ export class Zombie {
         ctx.beginPath();
         ctx.arc(this.x - 5, this.y - 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        
+
         const eyeGradient2 = ctx.createRadialGradient(this.x + 5, this.y - 3, 0, this.x + 5, this.y - 3, 3);
         eyeGradient2.addColorStop(0, '#ff6666');
         eyeGradient2.addColorStop(0.5, '#ff0000');
@@ -168,16 +171,16 @@ export class Zombie {
         ctx.beginPath();
         ctx.arc(this.x + 5, this.y - 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Eye highlights
         ctx.fillStyle = 'rgba(255, 100, 100, 0.8)';
         ctx.beginPath();
         ctx.arc(this.x - 6, this.y - 4, 1, 0, Math.PI * 2);
         ctx.arc(this.x + 4, this.y - 4, 1, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.shadowBlur = 0;
-        
+
         // Jagged mouth (open and menacing)
         ctx.strokeStyle = '#1a1a1a';
         ctx.lineWidth = 2.5;
@@ -187,7 +190,7 @@ export class Zombie {
         ctx.quadraticCurveTo(this.x - 3, this.y + 8, this.x, this.y + 7);
         ctx.quadraticCurveTo(this.x + 3, this.y + 8, this.x + 6, this.y + 5);
         ctx.stroke();
-        
+
         // Teeth
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
@@ -201,7 +204,7 @@ export class Zombie {
         ctx.moveTo(this.x + 4, this.y + 5);
         ctx.lineTo(this.x + 4, this.y + 7);
         ctx.stroke();
-        
+
         // Dripping effect (zombie drool/decay)
         const dripAnim = (Date.now() / 50 + this.x) % 10;
         if (dripAnim < 5) {
@@ -210,7 +213,7 @@ export class Zombie {
             ctx.ellipse(this.x + 7, this.y + 8 + dripAnim * 0.5, 1, 2, 0, 0, Math.PI * 2);
             ctx.fill();
         }
-        
+
         // Health bar (if recently damaged and setting enabled)
         if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
             const timeSinceDamage = Date.now() - this.lastDamageTime;
@@ -219,15 +222,15 @@ export class Zombie {
                 const barHeight = 3;
                 const barX = this.x - barWidth / 2;
                 const barY = this.y - this.radius - 8;
-                
+
                 // Background
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
                 ctx.fillRect(barX, barY, barWidth, barHeight);
-                
+
                 // Health fill
                 const healthPercent = Math.max(0, this.health / this.maxHealth);
                 const fillWidth = barWidth * healthPercent;
-                
+
                 // Color gradient: green -> yellow -> red
                 const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
                 if (healthPercent > 0.5) {
@@ -237,10 +240,10 @@ export class Zombie {
                     gradient.addColorStop(0, '#ffeb3b'); // Yellow
                     gradient.addColorStop(1, '#f44336'); // Red
                 }
-                
+
                 ctx.fillStyle = gradient;
                 ctx.fillRect(barX, barY, fillWidth, barHeight);
-                
+
                 // Border
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
                 ctx.lineWidth = 1;
@@ -345,7 +348,7 @@ export class FastZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x + 2, this.y + this.radius + 2, this.radius * 1.0, this.radius * 0.3, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Reddish/orange aura (faster pulse)
         const pulse = Math.sin(Date.now() / 150) * 0.4 + 0.6;
         const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.4, this.x, this.y, this.radius * 1.8);
@@ -356,7 +359,7 @@ export class FastZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius * 1.8, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body with reddish tint
         const bodyGradient = ctx.createRadialGradient(this.x - 3, this.y - 3, 0, this.x, this.y, this.radius);
         bodyGradient.addColorStop(0, '#ff8c42');
@@ -367,13 +370,13 @@ export class FastZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x, this.y + 12, this.radius * 1.0, this.radius * 1.2, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Head
         ctx.fillStyle = bodyGradient;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body outline
         ctx.strokeStyle = '#4a2c1a';
         ctx.lineWidth = 2;
@@ -382,12 +385,12 @@ export class FastZombie extends Zombie {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
-        
+
         // Glowing red eyes (brighter for fast zombie)
         const eyePulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
         ctx.shadowBlur = 12 * eyePulse;
         ctx.shadowColor = '#ff0000';
-        
+
         const eyeGradient = ctx.createRadialGradient(this.x - 4, this.y - 2, 0, this.x - 4, this.y - 2, 2.5);
         eyeGradient.addColorStop(0, '#ff8888');
         eyeGradient.addColorStop(0.5, '#ff0000');
@@ -396,7 +399,7 @@ export class FastZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x - 4, this.y - 2, 2.5, 0, Math.PI * 2);
         ctx.fill();
-        
+
         const eyeGradient2 = ctx.createRadialGradient(this.x + 4, this.y - 2, 0, this.x + 4, this.y - 2, 2.5);
         eyeGradient2.addColorStop(0, '#ff8888');
         eyeGradient2.addColorStop(0.5, '#ff0000');
@@ -405,9 +408,9 @@ export class FastZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x + 4, this.y - 2, 2.5, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.shadowBlur = 0;
-        
+
         // Trail particles (speed lines)
         if (Math.random() < 0.3) {
             const trailX = this.x - Math.cos(Math.atan2(gameState.player.y - this.y, gameState.player.x - this.x)) * this.radius * 1.5;
@@ -444,13 +447,13 @@ export class ExplodingZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Pulsing orange/yellow glow (faster when low health or close to player)
         const distToPlayer = Math.sqrt((gameState.player.x - this.x) ** 2 + (gameState.player.y - this.y) ** 2);
         const healthRatio = this.health / (2 + Math.floor(gameState.wave / 3));
         const pulseSpeed = healthRatio < 0.5 || distToPlayer < 100 ? 100 : 200;
         const pulse = Math.sin(Date.now() / pulseSpeed) * 0.5 + 0.5;
-        
+
         const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
         auraGradient.addColorStop(0, `rgba(255, 150, 0, ${0.6 * pulse})`);
         auraGradient.addColorStop(0.5, `rgba(255, 200, 50, ${0.4 * pulse})`);
@@ -459,7 +462,7 @@ export class ExplodingZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body with orange/yellow tint
         const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);
         bodyGradient.addColorStop(0, '#ffa500');
@@ -470,13 +473,13 @@ export class ExplodingZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x, this.y + 15, this.radius * 1.2, this.radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Head
         ctx.fillStyle = bodyGradient;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body outline
         ctx.strokeStyle = '#8b4500';
         ctx.lineWidth = 2.5;
@@ -485,12 +488,12 @@ export class ExplodingZombie extends Zombie {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
-        
+
         // Glowing orange eyes
         const eyePulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
         ctx.shadowBlur = 10 * eyePulse;
         ctx.shadowColor = '#ff6600';
-        
+
         const eyeGradient = ctx.createRadialGradient(this.x - 5, this.y - 3, 0, this.x - 5, this.y - 3, 3);
         eyeGradient.addColorStop(0, '#ffaa66');
         eyeGradient.addColorStop(0.5, '#ff6600');
@@ -499,7 +502,7 @@ export class ExplodingZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x - 5, this.y - 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        
+
         const eyeGradient2 = ctx.createRadialGradient(this.x + 5, this.y - 3, 0, this.x + 5, this.y - 3, 3);
         eyeGradient2.addColorStop(0, '#ffaa66');
         eyeGradient2.addColorStop(0.5, '#ff6600');
@@ -508,9 +511,9 @@ export class ExplodingZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x + 5, this.y - 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.shadowBlur = 0;
-        
+
         // Jagged mouth
         ctx.strokeStyle = '#8b4500';
         ctx.lineWidth = 2.5;
@@ -546,7 +549,7 @@ export class GhostZombie extends Zombie {
 
         // Wobble effect
         const wobbleX = Math.sin((Date.now() + this.wobbleOffset) / 200) * 2;
-        
+
         // Pale blue aura
         const pulse = Math.sin(Date.now() / 300) * 0.4 + 0.6;
         const auraGradient = ctx.createRadialGradient(this.x + wobbleX, this.y, this.radius * 0.5, this.x + wobbleX, this.y, this.radius * 2);
@@ -563,11 +566,11 @@ export class GhostZombie extends Zombie {
         bodyGradient.addColorStop(0.6, '#80deea');
         bodyGradient.addColorStop(1, '#0097a7');
         ctx.fillStyle = bodyGradient;
-        
+
         ctx.beginPath();
         ctx.ellipse(this.x + wobbleX, this.y + 10, this.radius * 0.8, this.radius * 1.2, 0, 0, Math.PI * 2);
         ctx.fill(); // Body
-        
+
         ctx.beginPath();
         ctx.arc(this.x + wobbleX, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill(); // Head
@@ -580,7 +583,7 @@ export class GhostZombie extends Zombie {
         ctx.arc(this.x + wobbleX - 4, this.y - 2, 2, 0, Math.PI * 2);
         ctx.arc(this.x + wobbleX + 4, this.y - 2, 2, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.restore();
     }
 }
@@ -616,7 +619,7 @@ export class SpitterZombie extends Zombie {
             if (!this.lastBurnTick || now - this.lastBurnTick >= 200) {
                 this.health -= this.burnDamage;
                 this.lastBurnTick = now;
-                
+
                 if (gameState.particles.length < MAX_PARTICLES - 10) {
                     const fireColor = `rgba(255, ${Math.floor(Math.random() * 100 + 100)}, 0, 0.8)`;
                     createParticles(this.x, this.y, fireColor, 2);
@@ -633,7 +636,7 @@ export class SpitterZombie extends Zombie {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        
+
         // Kiting AI: Maintain optimal range
         if (dist < 300) {
             // Too close - move away
@@ -670,7 +673,7 @@ export class SpitterZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.2, this.radius * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Toxic green aura
         const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
         const auraGradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
@@ -681,7 +684,7 @@ export class SpitterZombie extends Zombie {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body (Toxic green)
         const bodyGradient = ctx.createRadialGradient(this.x - 4, this.y - 4, 0, this.x, this.y, this.radius);
         bodyGradient.addColorStop(0, '#66ff66');
@@ -692,17 +695,17 @@ export class SpitterZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(this.x, this.y + 15, this.radius * 1.2, this.radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Swollen/bloated appearance (spitter characteristic)
         ctx.fillStyle = 'rgba(100, 255, 100, 0.3)';
         ctx.beginPath();
         ctx.arc(this.x, this.y + 8, this.radius * 0.8, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Eyes (Bright green)
         const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
         ctx.fillStyle = `rgba(0, 255, 0, ${eyePulse})`;
@@ -710,7 +713,7 @@ export class SpitterZombie extends Zombie {
         ctx.arc(this.x - this.radius * 0.4, this.y - this.radius * 0.25, this.radius * 0.25, 0, Math.PI * 2);
         ctx.arc(this.x + this.radius * 0.4, this.y - this.radius * 0.25, this.radius * 0.25, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Body outline
         ctx.strokeStyle = '#1b5e20';
         ctx.lineWidth = 2.5;

@@ -13,7 +13,7 @@ const PLAYER_COLORS = [
 ];
 
 const AI_NAMES = [
-    "Rook", "Bishop", "Knight", "Pawn", "Sarge", "Doc", "Tex", "Tank", "Scout", "Viper", 
+    "Rook", "Bishop", "Knight", "Pawn", "Sarge", "Doc", "Tex", "Tank", "Scout", "Viper",
     "Ghost", "Soap", "Price", "Gaz", "Roach", "Frost", "Sandman", "Grinch", "Truck", "Yuri",
     "Delta", "Echo", "Foxtrot", "Kilo", "Sierra", "Tango", "Victor", "Whiskey", "X-Ray", "Yankee"
 ];
@@ -42,7 +42,7 @@ export function createPlayer(x, y, colorIndex = 0) {
         reloadStartTime: 0,
         currentAmmo: WEAPONS.pistol.ammo,
         maxAmmo: WEAPONS.pistol.maxAmmo,
-        
+
         // Per-weapon ammo tracking (for persistence when switching)
         weaponStates: {
             pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
@@ -116,7 +116,7 @@ export const gameState = {
     zombiesKilled: 0,
     zombiesPerWave: 5,
     highScore: 0,
-    
+
     // Score Multiplier Statistics
     allTimeMaxMultiplier: 1.0,
 
@@ -200,6 +200,7 @@ export const gameState = {
     lastHealthPickupSpawnTime: 0,
     lastAmmoPickupSpawnTime: 0,
     lastPowerupSpawnTime: 0,
+    lastZombieUpdateBroadcast: 0, // For multiplayer zombie sync throttling
 
     // Day/Night Cycle
     gameTime: 0, // 0 to 1, represents position in cycle
@@ -260,20 +261,20 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.maxAmmo = WEAPONS.pistol.maxAmmo;
             player.isReloading = false;
             player.grenadeCount = MAX_GRENADES;
-            
+
             // Reset score multiplier
             player.scoreMultiplier = 1.0;
             player.consecutiveKills = 0;
             player.maxMultiplierThisSession = 1.0;
             player.totalMultiplierBonus = 0;
-            
+
             // Reset skill multipliers
             player.speedMultiplier = 1.0;
             player.reloadSpeedMultiplier = 1.0;
             player.ammoMultiplier = 1.0;
             player.critChance = 0;
             player.hasRegeneration = false;
-            
+
             // Reset weapon states
             player.weaponStates = {
                 pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
@@ -281,7 +282,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
                 rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
                 flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
             };
-            
+
             // Position players in a circle around center
             const angleOffset = (Math.PI * 2 / gameState.players.length) * index;
             const radius = 50;
