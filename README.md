@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.7.1.1_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.7.1.1 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.7.2_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.7.2 ALPHA" />
   </a>
 </p>
 
@@ -52,6 +52,38 @@
 </div>
 
 ---
+
+## 🔥 What's New in V0.7.2 ALPHA
+
+> **Major Update - Game Over improvements, MongoDB migration, chat system, and balance adjustments**
+
+- **🎮 Game Over Screen Improvements** - Enhanced navigation and bug fixes
+  - **Navigation Buttons**: Added "Back to Lobby" and "Back to Main Menu" buttons on game over screen
+  - **Multiplayer Lobby Return**: Properly re-registers player and restores lobby state
+  - **Cursor Fixes**: Fixed cursor and hover state issues on game over screen
+  - **Pause Screen Fix**: Fixed bug where pause screen appeared when multiplayer games started
+
+- **🗄️ MongoDB Migration for Highscore Persistence** - Cloud-based score storage
+  - **MongoDB Atlas Integration**: Persistent highscore storage survives server restarts
+  - **Graceful Fallback**: Server continues to work if MongoDB unavailable
+  - **Server Readiness Tracking**: Improved health checks for Hugging Face Spaces deployment
+  - **Async Operations**: Non-blocking database writes for better performance
+
+- **🎨 Main Menu Layout Improvements** - Better visibility and organization
+  - **Username Box**: Moved to top of screen with modern styling
+  - **Global Leaderboard**: Repositioned towards top for better visibility
+  - **Last Run Display**: Moved to left side, shows only most recent run
+
+- **💬 Multiplayer Lobby Chat System** - Real-time player communication
+  - **Chat Window**: Glassmorphism-styled chat in multiplayer lobby
+  - **Security Features**: Rate limiting, message sanitization, XSS prevention
+  - **Character Counter**: 200 character limit with visual feedback
+  - **Auto-scroll**: Automatically scrolls to latest messages
+
+- **⚖️ XP System Balance Adjustments** - Improved progression
+  - **XP Rate Reduction**: All zombie XP values reduced by 10% for more meaningful level-ups
+  - **Linear Progression**: Changed from exponential to linear formula (100 + (level-1) × 20)
+  - **XP Bar Fix**: XP now properly resets to 0 after leveling up
 
 ## 🔥 What's New in V0.7.1.1 ALPHA
 

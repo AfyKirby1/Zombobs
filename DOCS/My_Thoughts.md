@@ -1,5 +1,21 @@
 # My Thoughts
 
+## 2025-01-22 - V0.7.2 ALPHA Major Update
+
+Just completed the V0.7.2 ALPHA release, which includes several major improvements and new features. This update focuses on improving the multiplayer experience, backend infrastructure, and game balance.
+
+**MongoDB Migration** was a critical infrastructure improvement. Moving from file-based storage to MongoDB Atlas ensures that highscores persist across server restarts on Hugging Face Spaces. The graceful fallback system means the server continues to work even if MongoDB is unavailable, which is important for reliability. The async database operations prevent blocking, so API responses remain fast.
+
+**Multiplayer Lobby Chat System** adds much-needed communication between players. The glassmorphism-styled chat window fits perfectly with the game's aesthetic. Security was a priority - rate limiting (5 messages per 10 seconds), HTML entity encoding for XSS prevention, and server-side validation ensure the chat system is safe. The circular buffer storage keeps memory usage fixed, which is important for long-running servers.
+
+**Game Over Screen Improvements** make navigation much smoother. The "Back to Lobby" and "Back to Main Menu" buttons provide clear navigation options, and fixing the cursor/hover state issues makes the interface feel more polished. The bug fix for the pause screen appearing on multiplayer game start was important for a smooth experience.
+
+**Main Menu Layout Improvements** reorganize the UI for better visibility. Moving the username box to the top, repositioning the global leaderboard, and simplifying the last run display creates a cleaner, more organized interface.
+
+**XP System Balance Adjustments** address player feedback about progression feeling too fast. The 10% XP reduction and switch to linear progression (from exponential) makes each level-up feel more meaningful. The XP bar reset fix ensures the UI correctly shows progress.
+
+Overall, this update significantly improves the multiplayer experience and backend reliability. The MongoDB migration ensures data persistence, the chat system enables better player communication, and the various bug fixes and UI improvements make the game feel more polished.
+
 ## 2025-01-21 - V0.7.1.1 ALPHA Bug Fix
 
 Quick patch release to fix a critical syntax error that was preventing the game from running. The duplicate `zombieType` declaration in `combatUtils.js` was a simple oversight that caused a runtime error. Also took the opportunity to fix the Docker configuration for the Hugging Face Space deployment and update all version references to V0.7.1.1 ALPHA.

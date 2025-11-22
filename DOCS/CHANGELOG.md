@@ -2,7 +2,7 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
-## [Unreleased]
+## [V0.7.2 ALPHA] - 2025-01-22
 
 ### 🎮 Game Over Screen Improvements
 

@@ -323,6 +323,14 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Location: `js/main.js` - lines 1394-1396
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
 
+## Recent Updates (V0.7.2 ALPHA)
+- **Game Over Screen Improvements**: Added "Back to Lobby" and "Back to Main Menu" navigation buttons, fixed cursor and hover state issues
+- **MongoDB Migration**: Migrated highscore storage from file-based to MongoDB Atlas for persistent cloud storage
+- **Main Menu Layout Improvements**: Moved username box to top, repositioned global leaderboard and last run display for better visibility
+- **Multiplayer Lobby Chat System**: Real-time chat window with rate limiting, message sanitization, and security features
+- **XP System Balance Adjustments**: Reduced XP values by 10%, changed progression from exponential to linear formula
+- **Multiplayer Bug Fixes**: Fixed stuck "GO!" screen when returning to lobby, fixed pause screen appearing on game start
+
 ## Recent Updates (V0.7.1.1 ALPHA)
 - **Bug Fix**: Fixed duplicate `zombieType` variable declaration causing syntax error
 - **Version Bump**: Updated to V0.7.1.1 ALPHA across all files and configurations

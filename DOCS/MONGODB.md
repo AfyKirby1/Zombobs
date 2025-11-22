@@ -501,6 +501,6 @@ npm install mongodb
 ---
 
 **Last Updated**: 2025-01-22  
-**Version**: 0.7.1.1-ALPHA
+**Version**: 0.7.2-ALPHA
 
 
