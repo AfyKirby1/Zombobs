@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.7.1-00C853?style=for-the-badge" height="30" alt="Version 0.7.1" />
+    <img src="https://img.shields.io/badge/Version-0.7.1.1_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.7.1.1 ALPHA" />
   </a>
 </p>
 
@@ -52,6 +52,14 @@
 </div>
 
 ---
+
+## 🔥 What's New in V0.7.1.1 ALPHA
+
+> **Bug Fix Release - Critical syntax error fix and Docker configuration update**
+
+- **🐛 Bug Fix**: Fixed duplicate `zombieType` variable declaration causing syntax error
+- **📦 Docker Configuration**: Fixed server file references in Dockerfile for Hugging Face Spaces deployment
+- **🔄 Version Update**: All version indicators updated to V0.7.1.1 ALPHA
 
 ## 🔥 What's New in V0.7.1
 

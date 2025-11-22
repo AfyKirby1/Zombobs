@@ -2,6 +2,28 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [V0.7.1.1 ALPHA] - 2025-01-21
+
+### 🐛 Bug Fix & Version Bump
+
+> **Small patch release fixing a critical syntax error and updating version indicators**
+
+#### Fixed
+- **Syntax Error Fix**: Fixed duplicate `zombieType` variable declaration in `combatUtils.js`
+  - Removed duplicate declaration on line 796 that was causing `SyntaxError: Identifier 'zombieType' has already been declared`
+  - Location: `js/utils/combatUtils.js`
+
+#### Changed
+- **Version Bump**: Updated all version references from V0.7.1 to V0.7.1.1 ALPHA
+  - Updated version indicators in UI, documentation, and server configurations
+  - News ticker updated with V0.7.1.1 ALPHA highlights
+  - Docker server configuration fixed to correctly reference server files
+
+#### Technical Details
+- **Docker Configuration**: Fixed `Dockerfile` to use correct relative paths for server files in `huggingface-space-SERVER/` directory
+- **Server Version**: Both `huggingface-space-SERVER/package.json` and `LOCAL_SERVER/package.json` updated to `0.7.1.1-ALPHA`
+- **Launcher Script**: `launch.ps1` updated with new server version
+
 ## [V0.7.1] - 2025-01-21
 
 ### 🎨 Polish Update - Enhanced Feedback & Quality of Life

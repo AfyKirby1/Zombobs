@@ -1,5 +1,11 @@
 # My Thoughts
 
+## 2025-01-21 - V0.7.1.1 ALPHA Bug Fix
+
+Quick patch release to fix a critical syntax error that was preventing the game from running. The duplicate `zombieType` declaration in `combatUtils.js` was a simple oversight that caused a runtime error. Also took the opportunity to fix the Docker configuration for the Hugging Face Space deployment and update all version references to V0.7.1.1 ALPHA.
+
+The bug fix was straightforward - just removing the duplicate variable declaration. The Docker configuration fix ensures the server files are correctly referenced when building the container image. All version indicators have been updated consistently across the project.
+
 ## 2025-01-21 - V0.7.1 Polish Update
 
 Just completed the V0.7.1 polish update focused on enhancing player feedback and quality-of-life improvements. This was a great opportunity to add those "nice to have" features that make the game feel more polished and responsive.

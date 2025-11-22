@@ -4,6 +4,16 @@
 
 ## 2025 - Active Development Notes
 
+### V0.7.1.1 ALPHA Bug Fix [2025-01-21]
+- ✅ **Syntax Error Fix**: Fixed duplicate `zombieType` variable declaration in `combatUtils.js`
+  - Removed duplicate declaration on line 796
+  - Location: `js/utils/combatUtils.js`
+- ✅ **Version Bump**: Updated all version references to V0.7.1.1 ALPHA
+  - UI version indicators, documentation, server configs, news ticker
+- ✅ **Docker Configuration Fix**: Fixed `Dockerfile` to correctly reference server files
+  - Updated COPY paths to use correct relative paths within `huggingface-space-SERVER/` directory
+  - Location: `huggingface-space-SERVER/Dockerfile`
+
 ### V0.7.1 Polish Update [2025-01-21]
 - ✅ **Enhanced Kill Feedback System** - More satisfying combat feedback
   - Kill confirmation sounds now vary by zombie type (pitch multipliers: fast=1.3x, boss=0.5x)

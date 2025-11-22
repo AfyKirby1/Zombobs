@@ -304,6 +304,12 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
+## Recent Updates (V0.7.1.1 ALPHA)
+- **Bug Fix**: Fixed duplicate `zombieType` variable declaration causing syntax error
+- **Version Bump**: Updated to V0.7.1.1 ALPHA across all files and configurations
+- **Docker Configuration**: Fixed server file references in Dockerfile
+- **News Ticker**: Updated with V0.7.1.1 ALPHA highlights
+
 ## Recent Updates (V0.7.1)
 - **Enhanced Kill Feedback System**: Kill confirmation sounds vary by zombie type, enhanced streak visuals (20+ = "LEGENDARY STREAK!"), multi-kill indicators ("MULTI KILL!", "MEGA KILL!")
 - **Quick Stats Display on Game Over**: Top 3 stats cards (kills, wave, max streak) with record notifications
@@ -311,7 +317,6 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - **Improved Pickup Visibility**: Enhanced pulse animations and stronger glow effects for rare pickups (Nuke, Damage Buff)
 - **Settings Tab Memory**: Settings panel remembers last viewed tab across sessions
 - **News Ticker Update**: Updated with V0.7.1 highlights
-- **Version Bump**: Updated to V0.7.1 across all files
 
 ## Recent Updates (V0.7.0)
 - **News Reel Improvements**: Moved to bottom of screen, increased height, updated content

@@ -2,13 +2,13 @@ FROM node:18-slim
 
 WORKDIR /app
 
-# Copy package files (from root or server directory)
+# Copy package files from huggingface-space-SERVER directory
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy server file (from root)
+# Copy server file from huggingface-space-SERVER directory
 COPY server.js ./
 
 # Expose port 7860 (Hugging Face Spaces default)

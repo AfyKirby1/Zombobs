@@ -97,7 +97,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "V0.7.1: Polish Update! ✨ | Enhanced Kill Feedback 🎯 | Multi-Kill Indicators 💥 | Improved Kill Streak Visuals 🔥 | Quick Stats on Game Over 📊 | Weapon Switch Animations ⚡ | Enhanced Pickup Visibility 💎 | Settings Tab Memory 💾 | V0.7.0: Rank & Progression System 🏅 | Achievement System 🏆 | Battlepass System 🎁 | Global Leaderboard 🌍 | And More...";
+export const NEWS_UPDATES = "V0.7.1.1 ALPHA: Bug Fix Release! 🐛 | Fixed Syntax Error | Docker Config Update | V0.7.1: Polish Update! ✨ | Enhanced Kill Feedback 🎯 | Multi-Kill Indicators 💥 | Improved Kill Streak Visuals 🔥 | Quick Stats on Game Over 📊 | Weapon Switch Animations ⚡ | Enhanced Pickup Visibility 💎 | Settings Tab Memory 💾 | V0.7.0: Rank & Progression System 🏅 | Achievement System 🏆 | Battlepass System 🎁 | Global Leaderboard 🌍 | And More...";
 
 // Weapon definitions
 export const WEAPONS = {
