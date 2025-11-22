@@ -359,7 +359,9 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 - Shows rank, username, score, and wave for each entry
 - Highlights player's own score if in top 10
 - Positioned above local high score display
-- Shows "Loading leaderboard..." if not yet fetched
+- Shows "Loading leaderboard..." if fetching
+- Shows "Nobody yet!" when leaderboard successfully loaded but empty
+- Shows error message with retry countdown if server unavailable
 
 #### Socket.IO Integration (`js/systems/MultiplayerSystem.js`)
 

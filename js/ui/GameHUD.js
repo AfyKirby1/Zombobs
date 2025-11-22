@@ -4,7 +4,7 @@ import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
-import { saveMultiplierStats } from '../utils/gameUtils.js';
+import { saveMultiplierStats, getLastRuns, formatTime } from '../utils/gameUtils.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { RankDisplay } from './RankDisplay.js';
@@ -1429,17 +1429,16 @@ export class GameHUD {
         // Global Leaderboard
         this.drawLeaderboard();
 
-        // High score - scaled
-        const highScoreFontSize = Math.max(10, 12 * scale);
-        this.ctx.font = `${highScoreFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
-        this.ctx.fillText('High Score: ' + gameState.highScore, centerX, this.canvas.height - 80);  // Moved up from -40
+        // Local Highscores (last 2 runs)
+        this.drawLocalHighscores();
 
         // Display all-time best multiplier - scaled
         if (gameState.allTimeMaxMultiplier > 1.0) {
+            const highScoreFontSize = Math.max(10, 12 * scale);
             this.ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
             this.ctx.font = `${highScoreFontSize}px "Roboto Mono", monospace`;
-            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 60);  // Moved up from -20
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 60);
         }
 
         // Draw server status indicator
@@ -1506,6 +1505,70 @@ export class GameHUD {
         const badgeX = centerX + 120 * scale;
         const badgeY = usernameY - 30 * scale;
         this.rankDisplay.drawRankBadge(badgeX, badgeY, 50 * scale);
+    }
+
+    drawLocalHighscores() {
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        const lastRuns = getLastRuns(2);
+        
+        if (lastRuns.length === 0) {
+            // No runs available - show empty state or hide
+            return;
+        }
+        
+        // Card dimensions
+        const cardWidth = 200 * scale;
+        const cardHeight = 110 * scale;
+        const cardSpacing = 20 * scale;
+        const padding = 12 * scale;
+        
+        // Calculate total width and starting X position
+        const totalWidth = lastRuns.length * cardWidth + (lastRuns.length - 1) * cardSpacing;
+        const startX = centerX - totalWidth / 2;
+        const y = this.canvas.height - 140 * scale; // Above the old highscore position
+        
+        // Draw cards for each run
+        lastRuns.forEach((run, index) => {
+            const cardX = startX + index * (cardWidth + cardSpacing);
+            
+            // Draw glass card
+            this.drawGlassCard(cardX, y, cardWidth, cardHeight);
+            
+            // Header
+            const headerFontSize = Math.max(10, 11 * scale);
+            this.ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#ff9800';
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'top';
+            const headerText = index === 0 ? 'Last Run' : 'Previous Run';
+            this.ctx.fillText(headerText, cardX + padding, y + padding);
+            
+            // Score (large, prominent)
+            const scoreFontSize = Math.max(18, 22 * scale);
+            this.ctx.font = `bold ${scoreFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#ffffff';
+            const scoreText = (run.score || 0).toLocaleString();
+            this.ctx.fillText(scoreText, cardX + padding, y + padding + 18 * scale);
+            
+            // Stats (wave, kills, time)
+            const statFontSize = Math.max(9, 10 * scale);
+            this.ctx.font = `${statFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#9e9e9e';
+            let statY = y + padding + 45 * scale;
+            
+            // Wave
+            this.ctx.fillText(`Wave: ${run.wave || 0}`, cardX + padding, statY);
+            statY += 14 * scale;
+            
+            // Kills
+            this.ctx.fillText(`Kills: ${run.kills || 0}`, cardX + padding, statY);
+            statY += 14 * scale;
+            
+            // Time
+            const timeText = formatTime(run.timeSurvived || 0);
+            this.ctx.fillText(`Time: ${timeText}`, cardX + padding, statY);
+        });
     }
 
     drawNewsTicker() {

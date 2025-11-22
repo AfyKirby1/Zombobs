@@ -4,6 +4,52 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+### 🗄️ MongoDB Migration for Highscore Persistence
+
+#### Added
+- **MongoDB Atlas Integration** - Migrated highscore storage from file-based to MongoDB database
+  - Persistent highscore storage survives server restarts on Hugging Face Spaces
+  - Connection string via `MONGO_URI` or `MONGODB_URI` environment variable
+  - Database: `zombobs`, Collection: `highscores`
+  - Automatic index creation on `score` field for fast queries
+  - Loads top 10 scores into memory cache on server startup
+  - Async database writes don't block API responses
+
+- **Graceful MongoDB Fallback** - Server continues to work if MongoDB unavailable
+  - Falls back to in-memory cache only if MongoDB connection fails
+  - Server still starts and accepts connections even without database
+  - Clear logging shows MongoDB connection status
+  - No errors crash the server if database is down
+
+- **Server Readiness Tracking** - Debug improvements for Hugging Face Spaces health checks
+  - `serverReady` flag tracks when server is fully initialized
+  - `/health` endpoint returns `503 Service Unavailable` during startup
+  - `/health` endpoint returns `200 OK` once server is ready
+  - Root endpoint provides immediate response during initialization
+  - Comprehensive debug logging for startup and endpoint access
+
+#### Changed
+- **Highscore Storage** - Replaced file-based storage (`highscores.json`) with MongoDB
+  - Old: File-based storage lost on server restart (ephemeral filesystem)
+  - New: MongoDB Atlas provides persistent cloud storage
+  - In-memory cache still used for fast API responses (no DB query per request)
+  - Async database operations prevent blocking
+
+- **Server Initialization** - Updated startup sequence for MongoDB connection
+  - Server now initializes MongoDB first, then starts HTTP server
+  - Graceful error handling if MongoDB connection fails
+  - Server starts even if database is unavailable
+
+#### Technical Details
+- MongoDB connection initialized before HTTP server starts
+- Top 10 scores cached in memory for instant API responses
+- New scores inserted into MongoDB and cache refreshed asynchronously
+- All highscore functions converted to async/await pattern
+- Debug messages track server readiness and endpoint access
+
+#### Dependencies
+- Added `mongodb` package (v^6.3.0) to `package.json`
+
 ### 💬 Multiplayer Lobby Chat System
 
 #### Added

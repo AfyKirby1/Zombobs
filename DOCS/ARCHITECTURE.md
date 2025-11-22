@@ -36,6 +36,7 @@ This modular structure improves maintainability, testability, and scalability.
     - `GET /api/highscores`: Returns cached data instantly (no DB query per request)
     - `POST /api/highscore`: Updates cache immediately, saves to MongoDB asynchronously
     - Graceful fallback to in-memory cache if MongoDB unavailable
+    - **See [MongoDB Documentation](./MONGODB.md) for detailed setup and architecture**
   - **Chat System**: Real-time lobby chat with rate limiting and sanitization
     - Circular buffer storage (max 50 messages)
     - Rate limiting: 5 messages per 10 seconds per player

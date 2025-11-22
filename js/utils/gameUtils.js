@@ -112,8 +112,8 @@ export function loadHighScore() {
 }
 
 export function saveHighScore() {
-    if (gameState.zombiesKilled > gameState.highScore) {
-        gameState.highScore = gameState.zombiesKilled;
+    if (gameState.score > gameState.highScore) {
+        gameState.highScore = gameState.score;
         localStorage.setItem('zombieSurvivalHighScore', gameState.highScore.toString());
     }
 }
@@ -241,5 +241,59 @@ export function saveScoreboardEntry(entry) {
         console.log('Failed to save scoreboard entry:', error);
         return false;
     }
+}
+
+/**
+ * Get last N runs from scoreboard sorted by dateTime (most recent first)
+ * @param {number} count - Number of runs to retrieve
+ * @returns {Array} Array of scoreboard entries sorted by dateTime descending
+ */
+export function getLastRuns(count) {
+    try {
+        const saved = localStorage.getItem('zombobs_scoreboard');
+        if (saved) {
+            const scoreboard = JSON.parse(saved);
+            if (Array.isArray(scoreboard)) {
+                // Sort by dateTime descending (most recent first)
+                const sorted = scoreboard.sort((a, b) => {
+                    const dateA = new Date(a.dateTime || 0);
+                    const dateB = new Date(b.dateTime || 0);
+                    return dateB - dateA; // Descending (newest first)
+                });
+                return sorted.slice(0, count);
+            }
+        }
+    } catch (error) {
+        console.log('Failed to load last runs:', error);
+    }
+    return [];
+}
+
+/**
+ * Format seconds into readable time string
+ * @param {number} seconds - Time in seconds
+ * @returns {string} Formatted time string (e.g., "1h 5m 23s", "5m 23s", "23s")
+ */
+export function formatTime(seconds) {
+    if (typeof seconds !== 'number' || seconds < 0) {
+        return '0s';
+    }
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    const parts = [];
+    if (hours > 0) {
+        parts.push(`${hours}h`);
+    }
+    if (minutes > 0) {
+        parts.push(`${minutes}m`);
+    }
+    if (secs > 0 || parts.length === 0) {
+        parts.push(`${secs}s`);
+    }
+    
+    return parts.join(' ');
 }
 

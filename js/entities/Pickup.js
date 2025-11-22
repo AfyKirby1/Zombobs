@@ -14,6 +14,8 @@ export class HealthPickup {
     draw() {
         const t = Date.now() / 500 + this.pulseOffset;
         const pulse = 0.8 + Math.sin(t) * 0.15;
+        // Enhanced pulse for better visibility (V0.7.1)
+        const enhancedPulse = 0.75 + Math.sin(t) * 0.2;
 
         // Outer glow - Enhanced visibility (V0.7.1)
         const glowRadius = this.radius * 2.4 * enhancedPulse;
