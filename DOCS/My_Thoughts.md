@@ -1,5 +1,23 @@
 # My Thoughts
 
+## 2025-01-21 - V0.7.1 Polish Update
+
+Just completed the V0.7.1 polish update focused on enhancing player feedback and quality-of-life improvements. This was a great opportunity to add those "nice to have" features that make the game feel more polished and responsive.
+
+**Enhanced Kill Feedback** was the biggest win. The varying kill sounds by zombie type add so much character - hearing a higher-pitched "pop" for fast zombies vs a deep "thud" for bosses gives immediate audio feedback about what you just killed. The enhanced streak visuals are also much more satisfying - seeing "LEGENDARY STREAK!" in gold at 20+ kills feels like a real achievement.
+
+**Multi-kill detection** was a fun addition. Tracking kills within a 500ms window and showing "MULTI KILL!" or "MEGA KILL!" adds that arcade-style satisfaction when you clear a group quickly. The magenta color makes it stand out from regular combo text.
+
+**Quick Stats on Game Over** provides immediate feedback about the session. The card-based layout is clean and the record notifications give that dopamine hit when you break a personal best. It's a small thing but makes the game over screen feel more informative and rewarding.
+
+**Weapon Switch Animation** is subtle but effective. The 150ms flash gives just enough feedback to confirm the weapon change without being distracting. Only showing it for the local player keeps it clean in multiplayer.
+
+**Pickup Visibility** improvements were needed. In chaotic moments, pickups can be hard to spot. The enhanced pulse and glow, especially for rare pickups, makes them much more noticeable. The double glow rings for Nuke and Damage Buff really make them stand out.
+
+**Settings Tab Memory** is a small QoL improvement that saves a click every time you open settings. Simple localStorage persistence, but it adds up over time.
+
+All features follow KISS, DOTI, and YAGNI principles - no over-engineering, just practical improvements that enhance the player experience. The update feels cohesive and focused on polish rather than adding new systems.
+
 ## 2025-01-21 - Engine Performance Micro-Optimizations
 
 Just completed 15 small performance optimizations to squeeze out extra performance from the engine. These are the "tiny improvements" that add up:
@@ -30,7 +48,7 @@ All changes maintain code readability and pass linting. Following KISS, DOTI, an
 
 ## Current State [2025-11-20]
 
-The project is currently at **V0.6.0**. Major balance overhaul with crit rate reduction, doubled zombie HP (except Boss), doubled weapon damage, and Hoarder skill bug fix. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
+The project is currently at **V0.7.0**. News reel has been moved to the bottom of the screen with improved visibility and updated content. Previous version (V0.6.0) included major balance overhaul with crit rate reduction, doubled zombie HP (except Boss), doubled weapon damage, and Hoarder skill bug fix. We've successfully implemented a robust multiplayer lobby synchronization system that ensures all players enter the game simultaneously in the same session.
 
 ### Recent Fixes
 - **Critical Bug Fix**: Resolved `Uncaught ReferenceError: MAX_GRENADES is not defined` in `main.js`.

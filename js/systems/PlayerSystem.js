@@ -332,6 +332,15 @@ export class PlayerSystem {
         const cachedShadows = settingsManager.getSetting('video', 'shadows') ?? true;
         const cachedReloadBar = settingsManager.getSetting('video', 'reloadBar') ?? true;
         
+        // Update weapon switch flash animation (V0.7.1)
+        if (gameState.weaponSwitchFlash && gameState.weaponSwitchFlash.active) {
+            const now = Date.now();
+            const elapsed = now - gameState.weaponSwitchFlash.startTime;
+            if (elapsed >= gameState.weaponSwitchFlash.duration) {
+                gameState.weaponSwitchFlash.active = false;
+            }
+        }
+        
         gameState.players.forEach(player => {
             if (player.health <= 0) return;
 

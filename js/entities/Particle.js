@@ -79,12 +79,13 @@ export class Particle {
 }
 
 export class DamageNumber {
-    constructor(x, y, value, isCrit = false, customColor = null) {
+    constructor(x, y, value, isCrit = false, customColor = null, customFontSize = null) {
         this.x = x + (Math.random() - 0.5) * 10; // Start at zombie's x with some jitter
         this.y = y;
         this.value = value;
         this.isCrit = isCrit;
         this.customColor = customColor; // Optional custom color (e.g., '#00ffff' for cyan)
+        this.customFontSize = customFontSize; // Optional custom font size (V0.7.1)
         this.life = 60; // 1 second at 60fps
         this.maxLife = 60;
         this.vy = isCrit ? -2.0 : -1.5; // Faster upward velocity for crits
@@ -103,7 +104,10 @@ export class DamageNumber {
         ctx.save();
         const alpha = Math.max(0, this.life / this.maxLife);
         const damageQuality = graphicsSettings.getQualityValues('damageNumber');
-        const baseFontSize = this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16;
+        // Use custom font size if provided, otherwise calculate based on crit status
+        const baseFontSize = this.customFontSize !== null 
+            ? this.customFontSize 
+            : (this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16);
         const fontSize = baseFontSize * damageQuality.fontSize;
         
         if (this.isCrit) {

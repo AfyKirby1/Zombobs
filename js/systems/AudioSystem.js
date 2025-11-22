@@ -319,13 +319,26 @@ export function playDamageSound() {
 }
 
 // Generate kill confirmed sound using Web Audio API
-export function playKillSound() {
+// zombieType: 'normal', 'fast', 'armored', 'exploding', 'ghost', 'spitter', 'boss'
+export function playKillSound(zombieType = 'normal') {
     if (!audioContext) {
         initAudio();
         if (!audioContext) return; // Still can't create, skip sound
     }
 
     try {
+        // Pitch multipliers based on zombie type (higher pitch = lighter/smaller feel)
+        const pitchMultipliers = {
+            'normal': 1.0,      // Base pitch
+            'fast': 1.3,        // Higher pitch (fast = lighter)
+            'armored': 0.75,   // Lower pitch (armored = heavier)
+            'exploding': 0.9,   // Slightly lower (exploding = heavier)
+            'ghost': 1.2,       // Higher pitch (ghost = lighter)
+            'spitter': 1.1,     // Slightly higher
+            'boss': 0.5         // Much lower pitch (boss = very heavy)
+        };
+        const pitchMultiplier = pitchMultipliers[zombieType] || 1.0;
+
         // Create a satisfying kill confirmation sound (pop/thud)
         const duration = 0.15; // 150ms - shorter and punchier than damage sound
         const sampleRate = audioContext.sampleRate;
@@ -337,11 +350,12 @@ export function playKillSound() {
             const t = i / sampleRate;
             let sample = 0;
             // Higher frequency pop (around 300-400Hz) for satisfying "pop" feel
-            sample += Math.sin(t * 350 * 2 * Math.PI) * 0.5;
+            // Apply pitch multiplier to all frequencies
+            sample += Math.sin(t * 350 * pitchMultiplier * 2 * Math.PI) * 0.5;
             // Add lower frequency thud (around 100Hz) for impact
-            sample += Math.sin(t * 100 * 2 * Math.PI) * 0.4;
+            sample += Math.sin(t * 100 * pitchMultiplier * 2 * Math.PI) * 0.4;
             // Add higher harmonics for crispness
-            sample += Math.sin(t * 700 * 2 * Math.PI) * 0.2;
+            sample += Math.sin(t * 700 * pitchMultiplier * 2 * Math.PI) * 0.2;
             // Add slight noise burst for texture
             sample += (Math.random() * 2 - 1) * 0.15;
             // Envelope: very quick attack, fast decay (punchy)

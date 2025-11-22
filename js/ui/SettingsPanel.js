@@ -85,7 +85,13 @@ export class SettingsPanel {
         this.targetScrollY = 0;
         this.activeDropdown = null;
         this.rebindingAction = null;
-        this.activeTab = 'video'; // Reset to first tab
+        // Restore last viewed tab (V0.7.1)
+        const lastTab = localStorage.getItem('zombobs_settings_last_tab');
+        if (lastTab && this.tabs.includes(lastTab)) {
+            this.activeTab = lastTab;
+        } else {
+            this.activeTab = 'video'; // Default to first tab
+        }
     }
 
     close() {
@@ -1027,6 +1033,8 @@ export class SettingsPanel {
             if (x >= ctrl.x && x <= ctrl.x + ctrl.width && y >= ctrl.y && y <= ctrl.y + ctrl.height) {
                 if (ctrl.type === 'tab') {
                     this.activeTab = ctrl.tab;
+                    // Save last viewed tab (V0.7.1)
+                    localStorage.setItem('zombobs_settings_last_tab', ctrl.tab);
                     this.scrollY = 0;
                     this.targetScrollY = 0;
                     return true;

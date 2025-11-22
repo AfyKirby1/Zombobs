@@ -8,6 +8,7 @@ import { saveMultiplierStats } from '../utils/gameUtils.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { RankDisplay } from './RankDisplay.js';
+import { playerProfileSystem } from '../systems/PlayerProfileSystem.js';
 
 export class GameHUD {
     constructor(canvas) {
@@ -943,9 +944,9 @@ export class GameHUD {
         }
 
         // Display rank XP gained
+        let yOffset = 60 * scale;
         if (gameState.sessionResults && gameState.sessionResults.rankProgress) {
             const rankProgress = gameState.sessionResults.rankProgress;
-            let yOffset = 60 * scale;
             
             const rankFontSize = Math.max(16, Math.round(18 * scale));
             this.ctx.font = `${rankFontSize}px "Roboto Mono", monospace`;
@@ -959,10 +960,14 @@ export class GameHUD {
             }
         }
 
+        // Quick Stats Display (V0.7.1)
+        yOffset += 40 * scale;
+        this.drawQuickStats(yOffset, scale);
+
         this.ctx.fillStyle = '#ff0000';
         const restartFontSize = Math.max(11, Math.round(16 * scale));
         this.ctx.font = `${restartFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 100 * scale);
+        this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + yOffset + 60 * scale);
     }
 
     drawPauseMenu() {
@@ -1054,6 +1059,116 @@ export class GameHUD {
         this.ctx.stroke();
 
         this.ctx.restore();
+    }
+
+    drawQuickStats(startYOffset, scale) {
+        // Get session stats
+        const sessionKills = gameState.zombiesKilled || 0;
+        const sessionWave = gameState.wave || 0;
+        const sessionStreak = gameState.maxKillStreak || 0;
+        const sessionScore = gameState.score || 0;
+        
+        // Get profile stats for comparison
+        let profile = null;
+        try {
+            if (playerProfileSystem) {
+                profile = playerProfileSystem.getProfile();
+            }
+        } catch (e) {
+            // Profile not available, continue without it
+        }
+        
+        const profileStats = profile ? profile.stats : null;
+        const previousWave = profileStats ? profileStats.highestWave : 0;
+        const previousScore = profileStats ? profileStats.highestScore : 0;
+        const previousStreak = profileStats ? profileStats.maxCombo : 0;
+        
+        // Determine top 3 stats to display
+        const stats = [
+            { label: 'Kills', value: sessionKills, icon: '💀', color: '#ff1744' },
+            { label: 'Wave', value: sessionWave, icon: '🌊', color: '#ffc107' },
+            { label: 'Max Streak', value: sessionStreak, icon: '🔥', color: '#ff6b00' }
+        ];
+        
+        // Sort by value (descending) and take top 3
+        stats.sort((a, b) => b.value - a.value);
+        const topStats = stats.slice(0, 3);
+        
+        // Draw stats cards
+        const cardWidth = 180 * scale;
+        const cardHeight = 60 * scale;
+        const cardSpacing = 15 * scale;
+        const totalWidth = (cardWidth * topStats.length) + (cardSpacing * (topStats.length - 1));
+        const startX = (this.canvas.width - totalWidth) / 2;
+        const centerY = this.canvas.height / 2;
+        
+        topStats.forEach((stat, index) => {
+            const x = startX + (index * (cardWidth + cardSpacing));
+            const y = centerY + startYOffset;
+            
+            // Card background
+            const bgGradient = this.ctx.createLinearGradient(x, y, x, y + cardHeight);
+            bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.9)');
+            bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.9)');
+            
+            this.ctx.fillStyle = bgGradient;
+            this.ctx.fillRect(x, y, cardWidth, cardHeight);
+            
+            // Card border
+            this.ctx.strokeStyle = stat.color;
+            this.ctx.lineWidth = 2 * scale;
+            this.ctx.strokeRect(x, y, cardWidth, cardHeight);
+            
+            // Glow effect
+            this.ctx.shadowBlur = 10 * scale;
+            this.ctx.shadowColor = stat.color;
+            this.ctx.strokeRect(x, y, cardWidth, cardHeight);
+            this.ctx.shadowBlur = 0;
+            
+            // Stat label
+            const labelFontSize = Math.max(10, Math.round(12 * scale));
+            this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#cccccc';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`${stat.icon} ${stat.label}`, x + cardWidth / 2, y + cardHeight * 0.35);
+            
+            // Stat value
+            const valueFontSize = Math.max(14, Math.round(20 * scale));
+            this.ctx.font = `700 ${valueFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = stat.color;
+            this.ctx.fillText(stat.value.toString(), x + cardWidth / 2, y + cardHeight * 0.7);
+            
+            // Check for record break
+            let isRecord = false;
+            if (stat.label === 'Wave' && sessionWave > previousWave) {
+                isRecord = true;
+            } else if (stat.label === 'Max Streak' && sessionStreak > previousStreak) {
+                isRecord = true;
+            }
+            
+            // Draw "NEW RECORD!" badge if record broken
+            if (isRecord) {
+                const badgeFontSize = Math.max(8, Math.round(10 * scale));
+                this.ctx.font = `700 ${badgeFontSize}px "Roboto Mono", monospace`;
+                this.ctx.fillStyle = '#00ff00';
+                this.ctx.shadowBlur = 5 * scale;
+                this.ctx.shadowColor = '#00ff00';
+                this.ctx.fillText('NEW RECORD!', x + cardWidth / 2, y - 5 * scale);
+                this.ctx.shadowBlur = 0;
+            }
+        });
+        
+        // Draw overall record notification if score record broken
+        if (sessionScore > previousScore && previousScore > 0) {
+            const recordFontSize = Math.max(12, Math.round(16 * scale));
+            this.ctx.font = `700 ${recordFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#00ff00';
+            this.ctx.shadowBlur = 10 * scale;
+            this.ctx.shadowColor = '#00ff00';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`🏆 NEW HIGH SCORE: ${sessionScore}!`, this.canvas.width / 2, centerY + startYOffset + cardHeight + 25 * scale);
+            this.ctx.shadowBlur = 0;
+        }
     }
 
     showGameOver(scoreText) {
@@ -1452,7 +1567,7 @@ export class GameHUD {
     }
 
     drawVersionBox() {
-        const version = "V0.6.0";
+        const version = "V0.7.1";
         const padding = 15;
         const boxHeight = 24;
         
@@ -1512,10 +1627,10 @@ export class GameHUD {
         const versionFontSize = Math.max(12, 16 * scale);
         this.ctx.font = `${versionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Version: V0.6.0', centerX, y);
+        this.ctx.fillText('Version: V0.7.1', centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.6.0', centerX, y);
+        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.7.1', centerX, y);
         y += 50;
 
         const descriptionFontSize = Math.max(11, 14 * scale);

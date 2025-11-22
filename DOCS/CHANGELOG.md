@@ -2,6 +2,69 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [V0.7.1] - 2025-01-21
+
+### 🎨 Polish Update - Enhanced Feedback & Quality of Life
+
+> **Small, focused update emphasizing polish, quality-of-life improvements, and minor enhancements**
+
+#### Added
+- **Enhanced Kill Feedback System** - More satisfying combat feedback
+  - **Kill Confirmation Sounds**: Distinct audio cues that vary by zombie type (pitch varies: fast zombies higher, bosses lower)
+  - **Enhanced Kill Streak Visuals**: Larger, more dramatic combo text for high streaks
+    - 20+ kills: "LEGENDARY STREAK!" (Gold, 32px font)
+    - 15+ kills: "DOMINATING!" (Orange, 28px font)
+    - 10+ kills: "UNSTOPPABLE!" (Red, 26px font)
+    - 5+ kills: "X KILL RAMPAGE!" (Amber, 24px font)
+  - **Multi-Kill Indicators**: Special notifications when 3+ zombies die within 0.5 seconds
+    - 3-4 kills: "MULTI KILL!" (Magenta, 28px font)
+    - 5+ kills: "MEGA KILL!" (Magenta, 28px font)
+  - Location: `js/systems/AudioSystem.js`, `js/utils/combatUtils.js`, `js/entities/Particle.js`
+
+- **Quick Stats Display on Game Over** - Immediate session summary
+  - **Top 3 Stats Cards**: Displays kills, wave, and max streak in beautiful card layout with icons
+  - **Record Notifications**: Shows "NEW RECORD!" badges when personal records are broken
+  - **High Score Highlight**: Special notification when new high score is achieved
+  - Location: `js/ui/GameHUD.js` - `drawQuickStats()` method
+
+- **Weapon Switch Animation** - Visual feedback for weapon changes
+  - **Flash Effect**: Subtle white flash/glow when switching weapons (150ms duration)
+  - **Smooth Animation**: Flash expands and fades out smoothly
+  - Location: `js/utils/combatUtils.js`, `js/systems/PlayerSystem.js`, `js/core/gameState.js`
+
+- **Improved Pickup Visibility** - Easier to spot in chaotic moments
+  - **Enhanced Pulse**: Stronger pulse animations for all pickups (0.75-0.95 range, up from 0.8-0.95)
+  - **Rarity Glow**: Rare pickups (Nuke, Damage Buff) have larger, brighter glow effects
+    - Damage Buff: 2.8x glow radius (up from 2.2x), double glow rings
+    - Nuke: 3.2x glow radius (up from 2.5x), double glow rings
+  - **Larger Glow Radius**: All pickups have 2.4x glow radius (up from 2.2x)
+  - Location: `js/entities/Pickup.js`
+
+- **Settings Tab Memory** - Faster access to preferred settings
+  - **Last Tab Remembered**: Settings panel remembers which tab you last viewed
+  - **Persistent Across Sessions**: Tab preference saved in localStorage
+  - Location: `js/ui/SettingsPanel.js`
+
+- **News Ticker Content Update** - Fresh content highlighting V0.7.1 features
+  - Updated `NEWS_UPDATES` constant with V0.7.1 highlights
+  - Location: `js/core/constants.js`
+
+#### Changed
+- **DamageNumber Class**: Added `customFontSize` parameter support for enhanced kill streak visuals
+  - Location: `js/entities/Particle.js`
+
+- **Game State**: Added new tracking variables
+  - `maxKillStreak`: Tracks highest streak in session for stats
+  - `recentKills`: Array tracking recent kills for multi-kill detection
+  - `weaponSwitchFlash`: Object tracking weapon switch animation state
+  - Location: `js/core/gameState.js`
+
+#### Technical Details
+- **Multi-Kill Detection**: Tracks kills within 500ms window for multi-kill notifications
+- **Kill Sound Pitch Variation**: Pitch multipliers range from 0.5 (boss) to 1.3 (fast zombie)
+- **Weapon Switch Flash**: Only shows for local player (mouse input source)
+- **Settings Tab Memory**: Uses localStorage key `zombobs_settings_last_tab`
+
 ## [Unreleased] - 2025-11-21
 
 ### 🎨 Modern UI Overhaul - HTML Overlay System
@@ -429,6 +492,26 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Integration points and data flow
   - Technical implementation details
   - Balance notes and future considerations
+
+## [0.7.0] - 2025-01-XX
+
+### 🎉 VERSION 0.7.0 RELEASE
+
+> **Version bump and news reel improvements**
+
+### Changed
+- **Version Bump**: Updated all version references across the project to V0.7.0
+  - Updated `index.html` landing page version display
+  - Updated `js/ui/GameHUD.js` version display
+  - Updated `js/core/constants.js` news ticker
+  - Updated `server/package.json` and `huggingface-space/package.json` versions
+  - Updated `launch.ps1` server version
+  - Updated all documentation files
+
+### 🎨 UI Improvements
+- **News Reel Position**: Moved news ticker to bottom of screen for better visibility
+- **News Reel Height**: Increased bar height from 24px to 28px
+- **News Content Update**: Removed old version info, added recent features to news ticker
 
 ## [0.6.0] - 2025-01-XX
 

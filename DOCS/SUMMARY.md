@@ -124,7 +124,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
   - Dynamic viewport calculations based on scaled element heights
   - News ticker font reduced to 85% size to fit more content
-  - **Font Size Verification Complete** - All hardcoded font sizes fixed (V0.6.0+)
+  - **Font Size Verification Complete** - All hardcoded font sizes fixed (V0.7.0+)
     - Fixed 20+ hardcoded font sizes across GameHUD, SettingsPanel, BossHealthBar
     - All fonts now connect to UI Scale setting (0.5-1.5)
     - All fonts connect to Text Rendering Quality setting (low/medium/high)
@@ -303,6 +303,19 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Damage multiplier and buff timers
 - Kill streak counter and timing
 - Game running/paused states
+
+## Recent Updates (V0.7.1)
+- **Enhanced Kill Feedback System**: Kill confirmation sounds vary by zombie type, enhanced streak visuals (20+ = "LEGENDARY STREAK!"), multi-kill indicators ("MULTI KILL!", "MEGA KILL!")
+- **Quick Stats Display on Game Over**: Top 3 stats cards (kills, wave, max streak) with record notifications
+- **Weapon Switch Animation**: Visual flash effect when switching weapons (150ms duration)
+- **Improved Pickup Visibility**: Enhanced pulse animations and stronger glow effects for rare pickups (Nuke, Damage Buff)
+- **Settings Tab Memory**: Settings panel remembers last viewed tab across sessions
+- **News Ticker Update**: Updated with V0.7.1 highlights
+- **Version Bump**: Updated to V0.7.1 across all files
+
+## Recent Updates (V0.7.0)
+- **News Reel Improvements**: Moved to bottom of screen, increased height, updated content
+- **Version Bump**: Updated to V0.7.0 across all files
 
 ## Recent Updates (V0.6.0)
 - **Balance Overhaul**: Major combat balance adjustments

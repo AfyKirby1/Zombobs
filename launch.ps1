@@ -6,7 +6,7 @@ $Host.UI.RawUI.WindowTitle = "Zombobs Server"
 # Server configuration
 $script:SERVER_PORT = 3000
 $SERVER_PORT = $script:SERVER_PORT  # For backward compatibility
-$SERVER_VERSION = "0.6.0"
+$SERVER_VERSION = "0.7.1"
 $HF_SPACE_URL = "https://ottertondays-zombs.hf.space"
 $HF_SPACE_PAGE = "https://huggingface.co/spaces/OttertonDays/zombs"
 

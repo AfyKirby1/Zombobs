@@ -216,6 +216,14 @@ export function switchWeapon(weapon, player) {
         // Switch to new weapon
         player.currentWeapon = weapon;
         
+        // Trigger weapon switch flash animation (V0.7.1)
+        gameState.weaponSwitchFlash = {
+            active: true,
+            startTime: now,
+            duration: 150, // 150ms flash
+            weapon: weapon
+        };
+        
         // Apply ammo multiplier (from Hoarder skill) to max ammo
         const ammoMultiplier = player.ammoMultiplier || 1.0;
         player.maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
@@ -558,15 +566,68 @@ export function handleBulletZombieCollisions() {
                             gameState.killStreak = 1;
                         }
                         gameState.lastKillTime = now;
-
-                        if (gameState.killStreak > 2) {
-                            let comboText = `${gameState.killStreak} HIT COMBO!`;
-                            if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
-                            if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                        
+                        // Track max streak for session stats
+                        if (gameState.killStreak > gameState.maxKillStreak) {
+                            gameState.maxKillStreak = gameState.killStreak;
                         }
 
-                        playKillSound();
+                        // Multi-kill detection (V0.7.1)
+                        const zombieType = zombie.type || 'normal';
+                        if (!gameState.recentKills) gameState.recentKills = [];
+                        gameState.recentKills.push({ time: now, zombieType });
+                        // Remove kills older than 500ms
+                        gameState.recentKills = gameState.recentKills.filter(k => now - k.time < 500);
+                        
+                        // Check for multi-kill (3+ kills in 0.5 seconds)
+                        if (gameState.recentKills.length >= 3) {
+                            const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX, 
+                                zombieY - 60, 
+                                multiKillText,
+                                false,
+                                '#ff00ff', // Magenta for multi-kills
+                                28 // Larger font size
+                            ));
+                        }
+
+                        // Enhanced Kill Streak Visuals (V0.7.1)
+                        if (gameState.killStreak > 2) {
+                            let comboText = `${gameState.killStreak} HIT COMBO!`;
+                            let textColor = '#ffffff';
+                            let fontSize = 20;
+                            
+                            // Enhanced visuals for high streaks
+                            if (gameState.killStreak >= 20) {
+                                comboText = "LEGENDARY STREAK!";
+                                textColor = '#ffd700'; // Gold
+                                fontSize = 32;
+                            } else if (gameState.killStreak >= 15) {
+                                comboText = "DOMINATING!";
+                                textColor = '#ff6b00'; // Orange
+                                fontSize = 28;
+                            } else if (gameState.killStreak >= 10) {
+                                comboText = "UNSTOPPABLE!";
+                                textColor = '#ff1744'; // Red
+                                fontSize = 26;
+                            } else if (gameState.killStreak % 5 === 0) {
+                                comboText = `${gameState.killStreak} KILL RAMPAGE!`;
+                                textColor = '#ffc107'; // Amber
+                                fontSize = 24;
+                            }
+                            
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX, 
+                                zombieY - 30, 
+                                comboText,
+                                false,
+                                textColor,
+                                fontSize
+                            ));
+                        }
+
+                        playKillSound(zombieType);
 
                         // Show score with multiplier if active
                         if (shootingPlayer.scoreMultiplier > 1.0) {
@@ -725,21 +786,76 @@ export function handleBulletZombieCollisions() {
                         gameState.killStreak = 1;
                     }
                     gameState.lastKillTime = now;
+                    
+                    // Track max streak for session stats
+                    if (gameState.killStreak > gameState.maxKillStreak) {
+                        gameState.maxKillStreak = gameState.killStreak;
+                    }
 
-                    if (gameState.killStreak > 2) {
-                        let comboText = `${gameState.killStreak} HIT COMBO!`;
-                        if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
-                        if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
-
+                    // Multi-kill detection (V0.7.1)
+                    // zombieType already declared above for XP calculation
+                    if (!gameState.recentKills) gameState.recentKills = [];
+                    gameState.recentKills.push({ time: now, zombieType });
+                    // Remove kills older than 500ms
+                    gameState.recentKills = gameState.recentKills.filter(k => now - k.time < 500);
+                    
+                    // Check for multi-kill (3+ kills in 0.5 seconds)
+                    if (gameState.recentKills.length >= 3) {
                         const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                         if (damageNumberStyle !== 'off') {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                            const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX, 
+                                zombieY - 60, 
+                                multiKillText,
+                                false,
+                                '#ff00ff', // Magenta for multi-kills
+                                28 // Larger font size
+                            ));
                         }
                     }
 
-                    // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
+                    // Enhanced Kill Streak Visuals (V0.7.1)
+                    if (gameState.killStreak > 2) {
+                        let comboText = `${gameState.killStreak} HIT COMBO!`;
+                        let textColor = '#ffffff';
+                        let fontSize = 20;
+                        
+                        // Enhanced visuals for high streaks
+                        if (gameState.killStreak >= 20) {
+                            comboText = "LEGENDARY STREAK!";
+                            textColor = '#ffd700'; // Gold
+                            fontSize = 32;
+                        } else if (gameState.killStreak >= 15) {
+                            comboText = "DOMINATING!";
+                            textColor = '#ff6b00'; // Orange
+                            fontSize = 28;
+                        } else if (gameState.killStreak >= 10) {
+                            comboText = "UNSTOPPABLE!";
+                            textColor = '#ff1744'; // Red
+                            fontSize = 26;
+                        } else if (gameState.killStreak % 5 === 0) {
+                            comboText = `${gameState.killStreak} KILL RAMPAGE!`;
+                            textColor = '#ffc107'; // Amber
+                            fontSize = 24;
+                        }
+
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX, 
+                                zombieY - 30, 
+                                comboText,
+                                false,
+                                textColor,
+                                fontSize
+                            ));
+                        }
+                    }
+
+                    // Play kill confirmed sound with zombie type (unless it was exploding zombie, explosion sound plays)
                     if (!isExploding) {
-                        playKillSound();
+                        playKillSound(zombieType);
                     }
                     // Create floating damage number (with crit styling if crit)
                     const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';

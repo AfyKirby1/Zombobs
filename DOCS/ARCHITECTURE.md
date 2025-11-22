@@ -866,7 +866,7 @@ This hybrid approach provides:
 - All fonts properly scale using pattern: `Math.max(minSize, baseSize * scale)`
 - Button fonts, menu text, lobby UI, and all UI elements scale consistently
 - UI scale preset buttons in settings panel (Small 70%, Medium 100%, Large 130%)
-- **Font Size Verification Complete** - All hardcoded font sizes fixed (V0.6.0+)
+- **Font Size Verification Complete** - All hardcoded font sizes fixed (V0.7.0+)
   - Fixed 20+ hardcoded font sizes across GameHUD, SettingsPanel, BossHealthBar
   - All fonts connect to UI Scale setting (0.5-1.5) and Text Rendering Quality setting (low/medium/high)
   - Text rendering quality applies to all screen contexts (Profile, Achievement, Battlepass screens)

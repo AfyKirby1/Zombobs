@@ -188,6 +188,16 @@ export const gameState = {
     adrenalineEndTime: 0,
     killStreak: 0,
     lastKillTime: 0,
+    // Multi-kill tracking (V0.7.1)
+    recentKills: [], // Array of {time, zombieType} for multi-kill detection
+    maxKillStreak: 0, // Track highest streak in session
+    // Weapon switch animation (V0.7.1)
+    weaponSwitchFlash: {
+        active: false,
+        startTime: 0,
+        duration: 150, // 150ms flash
+        weapon: null // Weapon that was switched to
+    },
 
     waveNotification: {
         active: false,
@@ -347,6 +357,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.adrenalineEndTime = 0;
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
+    gameState.maxKillStreak = 0; // V0.7.1: Track highest streak in session
+    gameState.recentKills = []; // V0.7.1: Track recent kills for multi-kill detection
+    gameState.weaponSwitchFlash = { active: false, startTime: 0, duration: 150, weapon: null }; // V0.7.1: Reset weapon switch flash
 
     gameState.waveNotification.active = false;
 

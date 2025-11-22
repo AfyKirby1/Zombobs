@@ -97,7 +97,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "V0.6.0: Balance Overhaul! ⚖️ | Crit Rate Reduced (10%→3.33%) 🎯 | Zombie HP Doubled (except Boss) 💪 | Weapon Damage Doubled 🔫 | Hoarder Skill Bug Fixed 📦 | Font Size Connections Verified ✅ | All UI Fonts Scale Properly 📏 | Highscore System Performance Boost 🚀 | Visual Settings Enhancements 🎨 | Text Rendering Quality Control 🖋️ | Rank Badge Customization 🏅 | Crosshair Customization 🎯 | Enemy Health Bar Styles 💚 | And More...";
+export const NEWS_UPDATES = "V0.7.1: Polish Update! ✨ | Enhanced Kill Feedback 🎯 | Multi-Kill Indicators 💥 | Improved Kill Streak Visuals 🔥 | Quick Stats on Game Over 📊 | Weapon Switch Animations ⚡ | Enhanced Pickup Visibility 💎 | Settings Tab Memory 💾 | V0.7.0: Rank & Progression System 🏅 | Achievement System 🏆 | Battlepass System 🎁 | Global Leaderboard 🌍 | And More...";
 
 // Weapon definitions
 export const WEAPONS = {

@@ -4,6 +4,54 @@
 
 ## 2025 - Active Development Notes
 
+### V0.7.1 Polish Update [2025-01-21]
+- ✅ **Enhanced Kill Feedback System** - More satisfying combat feedback
+  - Kill confirmation sounds now vary by zombie type (pitch multipliers: fast=1.3x, boss=0.5x)
+  - Enhanced kill streak visuals with color-coded messages:
+    - 20+ kills: "LEGENDARY STREAK!" (Gold, 32px)
+    - 15+ kills: "DOMINATING!" (Orange, 28px)
+    - 10+ kills: "UNSTOPPABLE!" (Red, 26px)
+    - 5+ kills: "X KILL RAMPAGE!" (Amber, 24px)
+  - Multi-kill indicators: "MULTI KILL!" (3-4 kills) and "MEGA KILL!" (5+ kills) within 0.5 seconds
+  - Location: `js/systems/AudioSystem.js`, `js/utils/combatUtils.js`, `js/entities/Particle.js`
+  - Added `customFontSize` parameter to DamageNumber class for enhanced visuals
+
+- ✅ **Quick Stats Display on Game Over** - Immediate session summary
+  - Top 3 stats cards displayed with icons (kills 💀, wave 🌊, max streak 🔥)
+  - "NEW RECORD!" badges when personal records are broken
+  - High score notification when new high score achieved
+  - Location: `js/ui/GameHUD.js` - `drawQuickStats()` method
+  - Uses playerProfileSystem to compare with previous records
+
+- ✅ **Weapon Switch Animation** - Visual feedback for weapon changes
+  - 150ms white flash/glow effect when switching weapons
+  - Smooth expand-and-fade animation
+  - Only shows for local player (mouse input source)
+  - Location: `js/utils/combatUtils.js`, `js/systems/PlayerSystem.js`, `js/core/gameState.js`
+  - Added `weaponSwitchFlash` state object to gameState
+
+- ✅ **Improved Pickup Visibility** - Easier to spot in chaotic moments
+  - Enhanced pulse animations: All pickups use 0.75-0.95 range (up from 0.8-0.95)
+  - Larger glow radius: 2.4x for all pickups (up from 2.2x)
+  - Rare pickup enhancements:
+    - Damage Buff: 2.8x glow radius, double glow rings
+    - Nuke: 3.2x glow radius, double glow rings
+  - Location: `js/entities/Pickup.js`
+
+- ✅ **Settings Tab Memory** - Faster access to preferred settings
+  - Settings panel remembers last viewed tab
+  - Persists across sessions via localStorage (`zombobs_settings_last_tab`)
+  - Location: `js/ui/SettingsPanel.js` - `open()` and tab click handler
+
+- ✅ **News Ticker Content Update** - Fresh content highlighting V0.7.1 features
+  - Updated NEWS_UPDATES constant with V0.7.1 highlights
+  - Location: `js/core/constants.js`
+
+- ✅ **Version Bump & Documentation** - Updated to V0.7.1
+  - All version references updated across project files
+  - CHANGELOG.md updated with comprehensive V0.7.1 entry
+  - README.md updated with "What's New" section
+
 ### Font Size Connections Verification [2025-11-21]
 - ✅ **Font Size Verification Complete** - All hardcoded font sizes fixed
   - Fixed 20+ hardcoded font sizes across GameHUD, SettingsPanel, BossHealthBar
@@ -451,7 +499,7 @@
 ### Main Menu UI Layout Improvements [2025-01-XX]
 - ✅ **Version Display Box**: Added version text box in bottom-left corner
   - Created `drawVersionBox()` method in `GameHUD.js`
-  - Small, compact box showing "V0.6.0"
+  - Small, compact box showing "V0.7.0"
   - Positioned above technology branding with proper spacing
   - Red accent color (#ff1744) matching game aesthetic
   - Semi-transparent background with subtle border

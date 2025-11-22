@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.7.0-00C853?style=for-the-badge" height="30" alt="Version 0.7.0" />
+    <img src="https://img.shields.io/badge/Version-0.7.1-00C853?style=for-the-badge" height="30" alt="Version 0.7.1" />
   </a>
 </p>
 
@@ -53,7 +53,37 @@
 
 ---
 
-## 🔥 What's New in V0.7.0
+## 🔥 What's New in V0.7.1
+
+> **Polish Update - Enhanced feedback, better visibility, and quality-of-life improvements**
+
+- **🎯 Enhanced Kill Feedback System** - More satisfying combat feedback
+  - **Kill Confirmation Sounds**: Distinct audio cues that vary by zombie type (higher pitch for fast zombies, lower for bosses)
+  - **Enhanced Kill Streak Visuals**: Larger, more dramatic combo text for high streaks (15+, 20+)
+  - **Multi-Kill Indicators**: Special "MULTI KILL!" and "MEGA KILL!" notifications when 3+ zombies die within 0.5 seconds
+  - **Color-Coded Streaks**: Gold for 20+, Orange for 15+, Red for 10+, Amber for 5+ streaks
+
+- **📊 Quick Stats Display on Game Over** - Immediate session summary
+  - **Top 3 Stats Cards**: Displays kills, wave, and max streak in beautiful card layout
+  - **Record Notifications**: Shows "NEW RECORD!" badges when personal records are broken
+  - **High Score Highlight**: Special notification when new high score is achieved
+
+- **⚡ Weapon Switch Animation** - Visual feedback for weapon changes
+  - **Flash Effect**: Subtle white flash/glow when switching weapons
+  - **Smooth Animation**: 150ms flash that expands and fades out
+
+- **💎 Improved Pickup Visibility** - Easier to spot in chaotic moments
+  - **Enhanced Pulse**: Stronger pulse animations for all pickups
+  - **Rarity Glow**: Rare pickups (Nuke, Damage Buff) have larger, brighter glow effects
+  - **Double Glow Rings**: Additional outer glow rings for rare pickups
+
+- **💾 Settings Tab Memory** - Faster access to your preferred settings
+  - **Last Tab Remembered**: Settings panel remembers which tab you last viewed
+  - **Persistent Across Sessions**: Tab preference saved in localStorage
+
+- **📰 News Ticker Update** - Fresh content highlighting V0.7.1 features
+
+## 🔥 Previously in V0.7.0
 
 > **The progression system is here. Rank up, unlock achievements, and dominate the leaderboard!**
 
@@ -99,7 +129,7 @@
   - **Enemy Health Bar Styles**: Three visual styles (Gradient/Solid/Simple)
   - All settings apply in real-time and persist across sessions
 
-## 🔥 Previously in V0.6.0
+## 🔥 Previously in V0.7.0
 
 > **Balance overhaul and critical bug fixes**
 
@@ -667,7 +697,7 @@ The horde is growing. Here's what's coming next:
 - [x] **Global Highscore Leaderboard** - Server-side score tracking with top 10 display
 - [x] **Visual Settings Enhancements** - Text rendering, rank badge, crosshair, health bar customization
 
-### ✅ Recently Completed (V0.6.0)
+### ✅ Recently Completed (V0.7.0)
 - [x] **Balance Overhaul** - Crit rate reduction, zombie HP doubling, weapon damage doubling
 - [x] **Hoarder Skill Bug Fix** - Ammo multiplier now persists across weapon switches
 
