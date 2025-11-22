@@ -2888,6 +2888,9 @@ export class GameHUD {
         // Right panel: Lobby info
         this.drawLobbyInfoPanel(rightPanelX, topY, players.length);
 
+        // Chat window (bottom left)
+        this.drawChatWindow();
+
         // Center: Player cards (responsive layout)
         const cardSpacing = 15 * scale;
         const cardsPerRow = Math.min(2, Math.floor((this.canvas.width - 500 * scale) / (240 * scale))); // Responsive: 2 cards max
@@ -3106,6 +3109,11 @@ export class GameHUD {
         if (gameState.showLobby) {
             // Prevent clicks if game is starting
             if (gameState.multiplayer.isGameStarting) return null;
+
+            // Check chat input click
+            if (this.checkChatInputClick(mouseX, mouseY)) {
+                return 'chat_input';
+            }
 
             const lobbyScale = this.getUIScale();
             const buttonWidth = 180 * lobbyScale;
@@ -4064,14 +4072,14 @@ export class GameHUD {
         const scale = this.getUIScale();
         const leaderboardFontSize = Math.max(9, 11 * scale);
         const titleFontSize = Math.max(11, 13 * scale);
-        const centerX = this.canvas.width / 2;
+        const rightX = this.canvas.width - 30 * scale; // Right side with padding
         const startY = this.canvas.height - 150 * scale; // Position above high score
 
         // Leaderboard title
         this.ctx.font = `bold ${titleFontSize}px "Roboto Mono", monospace`;
-        this.ctx.textAlign = 'center';
+        this.ctx.textAlign = 'right';
         this.ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
-        this.ctx.fillText('Global Leaderboard', centerX, startY);
+        this.ctx.fillText('Global Leaderboard', rightX, startY);
 
         // Check fetch state and show appropriate message
         const now = Date.now();
@@ -4085,15 +4093,16 @@ export class GameHUD {
             
             if (showTimeoutMessage) {
                 // Show timeout/error message
+                this.ctx.textAlign = 'right';
                 this.ctx.fillStyle = 'rgba(255, 152, 0, 0.9)';
-                this.ctx.fillText('Highscore server wasn\'t reached', centerX, startY + 20 * scale);
+                this.ctx.fillText('Highscore server wasn\'t reached', rightX, startY + 20 * scale);
                 
                 // Calculate retry countdown
                 const retryInSeconds = Math.ceil((this.leaderboardFetchInterval - timeSinceLastFetch) / 1000);
                 if (retryInSeconds > 0 && retryInSeconds < this.leaderboardFetchInterval / 1000) {
                     this.ctx.fillStyle = 'rgba(158, 158, 158, 0.7)';
                     this.ctx.font = `${Math.max(8, 9 * scale)}px "Roboto Mono", monospace`;
-                    this.ctx.fillText(`Retrying in ${retryInSeconds}s...`, centerX, startY + 35 * scale);
+                    this.ctx.fillText(`Retrying in ${retryInSeconds}s...`, rightX, startY + 35 * scale);
                     this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
                 }
                 
@@ -4103,12 +4112,22 @@ export class GameHUD {
                     const localScoreY = retryInSeconds > 0 && retryInSeconds < this.leaderboardFetchInterval / 1000 
                         ? startY + 50 * scale 
                         : startY + 35 * scale;
-                    this.ctx.fillText(`Local High Score: ${gameState.highScore.toLocaleString()}`, centerX, localScoreY);
+                    this.ctx.fillText(`Local High Score: ${gameState.highScore.toLocaleString()}`, rightX, localScoreY);
                 }
+            } else if (this.leaderboardFetchState === 'success') {
+                // Successfully loaded but empty - show "Nobody yet!"
+                this.ctx.textAlign = 'right';
+                this.ctx.fillStyle = 'rgba(158, 158, 158, 0.7)';
+                this.ctx.fillText('Nobody yet!', rightX, startY + 20 * scale);
+                this.ctx.font = `${Math.max(8, 9 * scale)}px "Roboto Mono", monospace`;
+                this.ctx.fillStyle = 'rgba(158, 158, 158, 0.5)';
+                this.ctx.fillText('Be the first to set a score!', rightX, startY + 35 * scale);
+                this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
             } else {
                 // Show loading state
+                this.ctx.textAlign = 'right';
                 this.ctx.fillStyle = 'rgba(158, 158, 158, 0.5)';
-                this.ctx.fillText('Loading leaderboard...', centerX, startY + 20 * scale);
+                this.ctx.fillText('Loading leaderboard...', rightX, startY + 20 * scale);
             }
             return;
         }
@@ -4126,31 +4145,32 @@ export class GameHUD {
             // Highlight player's own score
             if (isPlayerEntry) {
                 this.ctx.fillStyle = 'rgba(255, 152, 0, 0.3)';
-                this.ctx.fillRect(centerX - 140 * scale, y - entryHeight / 2, 280 * scale, entryHeight);
+                this.ctx.fillRect(rightX - 280 * scale, y - entryHeight / 2, 280 * scale, entryHeight);
             }
 
-            // Rank (right-aligned)
-            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
+            // Wave (rightmost, smaller font)
             this.ctx.textAlign = 'right';
-            this.ctx.fillText(`#${i + 1}`, centerX - 120 * scale, y);
-
-            // Username (left-aligned)
-            this.ctx.textAlign = 'left';
-            const username = entry.username && entry.username.length > 15 ? entry.username.substring(0, 15) + '...' : (entry.username || 'Survivor');
-            this.ctx.fillText(username, centerX - 100 * scale, y);
-
-            // Score (right-aligned)
-            this.ctx.textAlign = 'right';
-            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 215, 0, 0.8)';
-            const score = entry.score || 0;
-            this.ctx.fillText(score.toLocaleString(), centerX + 100 * scale, y);
-
-            // Wave (right-aligned, smaller font)
             this.ctx.fillStyle = 'rgba(158, 158, 158, 0.6)';
             this.ctx.font = `${Math.max(8, 9 * scale)}px "Roboto Mono", monospace`;
             const wave = entry.wave || 0;
-            this.ctx.fillText(`Wave ${wave}`, centerX + 130 * scale, y);
+            this.ctx.fillText(`Wave ${wave}`, rightX, y);
             this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+
+            // Score (right-aligned, next to wave)
+            this.ctx.textAlign = 'right';
+            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 215, 0, 0.8)';
+            const score = entry.score || 0;
+            this.ctx.fillText(score.toLocaleString(), rightX - 50 * scale, y);
+
+            // Username (right-aligned, truncated if needed)
+            this.ctx.textAlign = 'right';
+            const username = entry.username && entry.username.length > 12 ? entry.username.substring(0, 12) + '...' : (entry.username || 'Survivor');
+            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
+            this.ctx.fillText(username, rightX - 130 * scale, y);
+
+            // Rank (right-aligned, leftmost)
+            this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
+            this.ctx.fillText(`#${i + 1}`, rightX - 200 * scale, y);
         }
 
         // Reset text alignment
@@ -4205,5 +4225,192 @@ export class GameHUD {
             startY += height + 10 * scale;
             return true;
         });
+    }
+
+    /**
+     * Draw chat window in lobby
+     */
+    drawChatWindow() {
+        if (!gameState.showLobby || gameState.multiplayer.isGameStarting) return;
+
+        const scale = this.getUIScale();
+        const chatWidth = Math.min(400 * scale, this.canvas.width * 0.4);
+        const chatHeight = 200 * scale;
+        const chatX = 30 * scale;
+        const chatY = this.canvas.height - chatHeight - 200 * scale; // Position above buttons
+
+        // Draw glassmorphism card
+        this.drawGlassCard(chatX, chatY, chatWidth, chatHeight);
+
+        // Draw chat title
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `bold ${Math.max(12, 14 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('Chat', chatX + 10 * scale, chatY + 10 * scale);
+
+        // Draw messages area
+        const messagesAreaHeight = chatHeight - 50 * scale; // Reserve space for input
+        const messagesAreaY = chatY + 30 * scale;
+        this.drawChatMessages(chatX + 10 * scale, messagesAreaY, chatWidth - 20 * scale, messagesAreaHeight);
+
+        // Draw input field
+        const inputY = chatY + chatHeight - 40 * scale;
+        this.drawChatInput(chatX + 10 * scale, inputY, chatWidth - 20 * scale, 30 * scale);
+    }
+
+    /**
+     * Draw chat messages list
+     */
+    drawChatMessages(x, y, width, height) {
+        const scale = this.getUIScale();
+        const messages = gameState.multiplayer.chatMessages || [];
+        const fontSize = Math.max(10, 12 * scale);
+        const lineHeight = fontSize + 4 * scale;
+        const maxVisibleMessages = Math.floor(height / lineHeight);
+
+        // Clip to messages area
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(x, y, width, height);
+        this.ctx.clip();
+
+        // Show last N messages (scroll to bottom)
+        const startIndex = Math.max(0, messages.length - maxVisibleMessages);
+        const visibleMessages = messages.slice(startIndex);
+
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+
+        visibleMessages.forEach((message, index) => {
+            if (!message) return;
+
+            const messageY = y + index * lineHeight;
+            const isOwnMessage = message.playerId === gameState.multiplayer.playerId;
+            const isSystemMessage = message.isSystem;
+
+            // Format message text
+            let displayText = '';
+            if (isSystemMessage) {
+                this.ctx.fillStyle = 'rgba(158, 158, 158, 0.7)';
+                this.ctx.font = `italic ${fontSize}px "Roboto Mono", monospace`;
+                displayText = `[System]: ${message.message}`;
+            } else {
+                this.ctx.fillStyle = isOwnMessage ? 'rgba(255, 152, 0, 0.9)' : 'rgba(255, 255, 255, 0.8)';
+                this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+                const playerName = message.playerName || 'Unknown';
+                displayText = `${playerName}: ${message.message}`;
+            }
+
+            // Word wrap if needed
+            const maxWidth = width - 10 * scale;
+            const words = displayText.split(' ');
+            let line = '';
+            let currentY = messageY;
+
+            words.forEach(word => {
+                const testLine = line + (line ? ' ' : '') + word;
+                const metrics = this.ctx.measureText(testLine);
+                if (metrics.width > maxWidth && line) {
+                    this.ctx.fillText(line, x, currentY);
+                    line = word;
+                    currentY += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            });
+            if (line) {
+                this.ctx.fillText(line, x, currentY);
+            }
+        });
+
+        this.ctx.restore();
+    }
+
+    /**
+     * Draw chat input field
+     */
+    drawChatInput(x, y, width, height) {
+        const scale = this.getUIScale();
+        const isFocused = gameState.multiplayer.chatFocused;
+        const isDisabled = gameState.multiplayer.isGameStarting;
+
+        // Input background
+        const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+        bgGradient.addColorStop(0, isFocused ? 'rgba(42, 42, 42, 0.95)' : 'rgba(26, 26, 26, 0.9)');
+        bgGradient.addColorStop(1, isFocused ? 'rgba(26, 26, 26, 0.95)' : 'rgba(10, 10, 10, 0.9)');
+        this.ctx.fillStyle = bgGradient;
+        this.ctx.fillRect(x, y, width, height);
+
+        // Border
+        this.ctx.strokeStyle = isFocused ? '#ff1744' : (isDisabled ? '#666666' : '#444444');
+        this.ctx.lineWidth = isFocused ? 2 : 1;
+        this.ctx.strokeRect(x, y, width, height);
+
+        // Focus glow
+        if (isFocused && !isDisabled) {
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.4)';
+            this.ctx.strokeRect(x, y, width, height);
+            this.ctx.shadowBlur = 0;
+        }
+
+        // Input text
+        const inputText = gameState.multiplayer.chatInput || '';
+        const fontSize = Math.max(11, 13 * scale);
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillStyle = isDisabled ? 'rgba(136, 136, 136, 0.7)' : '#ffffff';
+
+        // Show placeholder or input text
+        if (!inputText && !isFocused) {
+            this.ctx.fillStyle = 'rgba(158, 158, 158, 0.5)';
+            this.ctx.fillText('Type a message... (Enter to send)', x + 8 * scale, y + height / 2);
+        } else {
+            // Show input text with cursor if focused
+            const displayText = inputText.substring(0, 200); // Max 200 chars
+            this.ctx.fillText(displayText, x + 8 * scale, y + height / 2);
+
+            // Draw cursor if focused
+            if (isFocused && !isDisabled) {
+                const textWidth = this.ctx.measureText(displayText).width;
+                const cursorX = x + 8 * scale + textWidth;
+                const cursorBlink = Math.floor(Date.now() / 500) % 2;
+                if (cursorBlink) {
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillRect(cursorX, y + 6 * scale, 2, height - 12 * scale);
+                }
+            }
+        }
+
+        // Character counter
+        const charCount = inputText.length;
+        const maxChars = 200;
+        this.ctx.fillStyle = charCount > maxChars * 0.9 ? '#ff9800' : 'rgba(158, 158, 158, 0.6)';
+        this.ctx.font = `${Math.max(9, 10 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText(`${charCount}/${maxChars}`, x + width - 8 * scale, y + height / 2);
+    }
+
+    /**
+     * Check if click is on chat input field
+     */
+    checkChatInputClick(x, y) {
+        if (!gameState.showLobby || gameState.multiplayer.isGameStarting) return false;
+
+        const scale = this.getUIScale();
+        const chatWidth = Math.min(400 * scale, this.canvas.width * 0.4);
+        const chatHeight = 200 * scale;
+        const chatX = 30 * scale;
+        const chatY = this.canvas.height - chatHeight - 200 * scale;
+        const inputY = chatY + chatHeight - 40 * scale;
+        const inputX = chatX + 10 * scale;
+        const inputWidth = chatWidth - 20 * scale;
+        const inputHeight = 30 * scale;
+
+        return x >= inputX && x <= inputX + inputWidth &&
+               y >= inputY && y <= inputY + inputHeight;
     }
 }

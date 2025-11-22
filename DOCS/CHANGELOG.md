@@ -4,6 +4,45 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+### 💬 Multiplayer Lobby Chat System
+
+#### Added
+- **Real-Time Chat** - Chat window in multiplayer lobby for player communication
+  - Glassmorphism-styled chat window positioned bottom-left of lobby
+  - Scrollable message list showing last 8-10 messages
+  - Character counter (200 character limit)
+  - Auto-scroll to latest messages
+  - System message support (for future join/leave notifications)
+  - Disabled during game start countdown
+
+- **Server-Side Chat System** (`huggingface-space-SERVER/server.js`)
+  - Circular buffer storage (max 50 messages)
+  - Rate limiting: 5 messages per 10 seconds per player
+  - Message sanitization: HTML entity encoding, XSS prevention
+  - Socket.IO events: `chat:message`, `chat:message:new`, `chat:history`, `chat:rateLimit`, `chat:error`
+  - Helper functions: `sanitizeChatMessage()`, `checkRateLimit()`, `addChatMessage()`, `getChatHistory()`
+
+- **Client-Side Chat Integration**
+  - Chat state in `gameState.multiplayer` (chatMessages, chatInput, chatFocused)
+  - Network handlers in `MultiplayerSystem.js` for all chat events
+  - UI components in `GameHUD.js`: `drawChatWindow()`, `drawChatMessages()`, `drawChatInput()`
+  - Input handling in `main.js`: Enter to send, Escape to clear, text input capture
+  - Click detection for chat input field focus/unfocus
+
+- **Security Features**
+  - HTML entity encoding prevents XSS attacks
+  - Message length validation (1-200 characters)
+  - Rate limiting prevents spam (5 messages per 10 seconds)
+  - Server-side validation and sanitization
+  - Input sanitization (trim, control character removal)
+
+#### Technical Details
+- Messages stored in circular buffer for fixed memory usage
+- Rate limit tracking cleaned up on player disconnect
+- Efficient rendering (only visible messages drawn)
+- Word wrapping for long messages
+- Color coding: own messages (orange), others (white), system (gray)
+
 ### ⚖️ XP System Balance Adjustments
 
 #### Changed

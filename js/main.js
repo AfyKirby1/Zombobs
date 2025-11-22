@@ -1013,6 +1013,41 @@ gameEngine.draw = () => {
 document.addEventListener('keydown', (e) => {
     activeInputSource = 'mouse';
 
+    // Chat input handling (when chat is focused)
+    if (gameState.showLobby && gameState.multiplayer.chatFocused && !gameState.multiplayer.isGameStarting) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // Send message
+            const message = gameState.multiplayer.chatInput?.trim();
+            if (message && message.length > 0 && message.length <= 200) {
+                multiplayerSystem.sendChatMessage(message);
+                gameState.multiplayer.chatInput = '';
+            }
+            gameState.multiplayer.chatFocused = false;
+            return;
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            // Clear input and unfocus
+            gameState.multiplayer.chatInput = '';
+            gameState.multiplayer.chatFocused = false;
+            return;
+        } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            // Handle backspace
+            if (gameState.multiplayer.chatInput) {
+                gameState.multiplayer.chatInput = gameState.multiplayer.chatInput.slice(0, -1);
+            }
+            return;
+        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            // Regular character input (prevent default to avoid browser shortcuts)
+            e.preventDefault();
+            if (gameState.multiplayer.chatInput.length < 200) {
+                gameState.multiplayer.chatInput += e.key;
+            }
+            return;
+        }
+    }
+
     if (e.key === 'Escape') {
         if (gameState.showSettingsPanel) {
             if (settingsPanel.rebindingAction) {
@@ -1038,6 +1073,9 @@ document.addEventListener('keydown', (e) => {
             return;
         }
     }
+
+    // Prevent game input when chat is focused
+    if (gameState.multiplayer.chatFocused) return;
 
     if (gameState.showMainMenu) return;
     if (gameState.showSettingsPanel) return;
@@ -1247,9 +1285,23 @@ canvas.addEventListener('mousedown', (e) => {
     // Multiplayer Lobby
     if (gameState.showLobby) {
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        
+        // Handle chat input click
+        if (clickedButton === 'chat_input') {
+            gameState.multiplayer.chatFocused = true;
+            if (!gameState.multiplayer.chatInput) {
+                gameState.multiplayer.chatInput = '';
+            }
+            return;
+        } else if (clickedButton !== null) {
+            // Clicked elsewhere - unfocus chat
+            gameState.multiplayer.chatFocused = false;
+        }
+        
         if (clickedButton === 'lobby_back') {
             gameState.showLobby = false;
             gameState.showMainMenu = true;
+            gameState.multiplayer.chatFocused = false; // Unfocus chat when leaving lobby
             if (!gameState.menuMusicMuted) {
                 playMenuMusic();
             }

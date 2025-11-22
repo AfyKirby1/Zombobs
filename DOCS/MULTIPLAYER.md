@@ -267,21 +267,26 @@ The `gameState.multiplayer` object tracks:
 
 ### Overview
 
-The server maintains a global leaderboard of top 10 player scores. Scores are submitted on game over and persist across server restarts via file-based storage.
+The server maintains a global leaderboard of top 10 player scores. Scores are submitted on game over and persist across server restarts via MongoDB (with graceful fallback to in-memory cache if MongoDB unavailable).
 
 ### Server-Side (`huggingface-space-SERVER/server.js`)
 
-#### File-Based Storage
+#### MongoDB Storage
 
-- **Storage File**: `highscores.json` in server root directory
+- **Database**: MongoDB (connection string via `MONGO_URI` or `MONGODB_URI` environment variable)
+- **Database Name**: `zombobs`
+- **Collection**: `highscores`
+- **Index**: Created on `score` field (descending) for fast queries
 - **Max Entries**: Top 10 scores only
 - **Persistence**: Scores survive server restarts
+- **Fallback**: If MongoDB unavailable, uses in-memory cache only (scores lost on restart)
 
 #### Storage Functions
 
-- `loadHighscores()`: Loads top 10 scores from JSON file (sorted by score descending)
-- `saveHighscores(highscores)`: Saves sorted highscore array to file
-- `addHighscore(entry)`: Adds new entry, maintains top 10 limit, returns updated list
+- `initMongoDB()`: Initializes MongoDB connection and loads initial highscores into cache
+- `getHighscoresFromDB()`: Fetches top 10 scores from MongoDB (sorted by score descending)
+- `getHighscores()`: Returns cached highscores instantly (no DB query per request)
+- `addHighscore(entry)`: Adds new entry to MongoDB, refreshes cache, maintains top 10 limit, returns updated list (async)
 
 #### Highscore Entry Structure
 
@@ -407,11 +412,198 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 
 ### Performance Considerations
 
-- **File I/O**: Synchronous file operations (acceptable for low-frequency writes)
+- **MongoDB Queries**: Asynchronous database operations (non-blocking)
+- **In-Memory Cache**: Instant API responses without DB queries per request
 - **Throttling**: Client fetches throttled to 30 seconds to reduce load
-- **Top 10 Limit**: Only top 10 stored in memory/file (efficient)
+- **Top 10 Limit**: Only top 10 stored in memory/DB (efficient)
 - **Non-Blocking**: Score submission doesn't block game over screen
 - **Real-Time Updates**: Socket.IO broadcasts only when top 10 changes
+- **Graceful Fallback**: Server continues operating with in-memory cache if MongoDB unavailable
+
+## Chat System
+
+### Overview
+
+Real-time chat system for the multiplayer lobby that allows players to communicate before and during game sessions. Includes message history, rate limiting, and proper sanitization.
+
+### Server-Side (`huggingface-space-SERVER/server.js`)
+
+#### Chat Message Storage
+- **Circular Buffer**: `chatMessages` array (max 50 messages) similar to `recentEvents`
+- **Message Structure**: `{ id, playerId, playerName, message, timestamp, isSystem }`
+- **Rate Limiting**: `chatRateLimits` Map tracking per-player message timestamps
+  - Max 5 messages per 10-second window per player
+  - Automatically cleaned up on player disconnect
+
+#### Helper Functions
+
+**`sanitizeChatMessage(message)`**
+- Trims whitespace
+- Removes control characters (except newlines/tabs)
+- HTML entity encoding for XSS prevention (`&`, `<`, `>`, `"`, `'`)
+- Length validation (1-200 characters)
+- Returns `null` if invalid
+
+**`checkRateLimit(socketId)`**
+- Checks if player has exceeded rate limit (5 messages per 10 seconds)
+- Removes old timestamps outside the window
+- Returns `true` if allowed, `false` if rate limited
+
+**`addChatMessage(playerId, playerName, message, isSystem)`**
+- Adds message to circular buffer
+- Generates unique message ID
+- Returns message object
+
+**`getChatHistory(limit)`**
+- Returns recent messages from buffer (default 20)
+- Messages returned in chronological order
+
+#### Socket.IO Events
+
+**Client → Server: `chat:message`**
+- Payload: `{ message: string }`
+- Validates message length (1-200 chars)
+- Checks rate limit (max 5 messages per 10 seconds)
+- Sanitizes message (trim, HTML encoding, XSS prevention)
+- Broadcasts `chat:message:new` to all clients
+- Stores message in circular buffer
+- Sends `chat:rateLimit` error if rate limit exceeded
+- Sends `chat:error` if message is invalid
+
+**Client → Server: `chat:history`** (optional)
+- Requests recent chat history on lobby join
+- Server responds with last 20 messages from buffer
+
+**Server → Client: `chat:message:new`**
+- Broadcast to all clients when new message received
+- Payload: `{ id, playerId, playerName, message, timestamp, isSystem }`
+
+**Server → Client: `chat:rateLimit`**
+- Sent when player exceeds rate limit
+- Payload: `{ message: string, retryAfter: number }`
+
+**Server → Client: `chat:error`**
+- Sent when message validation fails
+- Payload: `{ message: string }`
+
+### Client-Side
+
+#### State Management (`js/core/gameState.js`)
+
+The `gameState.multiplayer` object includes:
+- `chatMessages: []` - Array of chat messages
+- `chatInput: ''` - Current input text
+- `chatFocused: false` - Input focus state
+- `chatScrollPosition: 0` - Scroll position for message history
+
+#### Network Integration (`js/systems/MultiplayerSystem.js`)
+
+**Event Handlers**
+- `chat:message:new` - Receives new chat message, adds to `gameState.multiplayer.chatMessages`
+- `chat:history` - Receives chat history on lobby join (optional)
+- `chat:rateLimit` - Handles rate limit error (logs warning)
+- `chat:error` - Handles chat error (logs error)
+
+**Methods**
+- `sendChatMessage(message)` - Emits `chat:message` event to server
+  - Validates socket connection
+  - Trims message before sending
+  - Logs warnings on failure
+
+#### UI Integration (`js/ui/GameHUD.js`)
+
+**Chat Window Component (`drawChatWindow`)**
+- Position: Bottom-left of lobby (above action buttons)
+- Dimensions: ~400px wide, ~200px tall (scaled with UI scale)
+- Glassmorphism styling matching lobby design
+- Disabled during game start countdown
+
+**Chat Message Display (`drawChatMessages`)**
+- Scrollable message list (max visible: ~8-10 messages)
+- Message format: `PlayerName: message text`
+- System messages: `[System]: message text` (gray, italic)
+- Color coding:
+  - Own messages: Orange highlight (`rgba(255, 152, 0, 0.9)`)
+  - Other players: White (`rgba(255, 255, 255, 0.8)`)
+  - System messages: Gray (`rgba(158, 158, 158, 0.7)`)
+- Word wrapping for long messages (max 2-3 lines)
+- Auto-scrolls to bottom (shows last N messages)
+
+**Chat Input Field (`drawChatInput`)**
+- Text input at bottom of chat window
+- Character counter: `150/200` format
+- Focus state: Red border glow when focused
+- Placeholder text: "Type a message... (Enter to send)"
+- Cursor blinking animation when focused
+- Disabled during game start countdown
+
+**Click Detection (`checkChatInputClick`)**
+- Hit testing for input field
+- Returns `true` if click is on input field
+- Used by `checkMenuButtonClick()` to return `'chat_input'`
+
+#### Input Handling (`js/main.js`)
+
+**Keyboard Events**
+- **Enter**: Sends message (if chat focused and message valid)
+  - Trims message
+  - Validates length (1-200 chars)
+  - Calls `multiplayerSystem.sendChatMessage()`
+  - Clears input and unfocuses
+- **Escape**: Clears input and unfocuses (if chat focused)
+- **Backspace**: Deletes last character (if chat focused)
+- **Regular Characters**: Appends to input (if chat focused, max 200 chars)
+- **Input Blocking**: Prevents game input when chat is focused
+
+**Mouse Events**
+- Click on input field: Focuses chat input
+- Click elsewhere in lobby: Unfocuses chat input
+- Chat unfocused when leaving lobby
+
+### Security & Performance
+
+#### Security
+- **HTML Entity Encoding**: Prevents XSS attacks (`&`, `<`, `>`, `"`, `'`)
+- **Message Length Limits**: 1-200 characters enforced
+- **Rate Limiting**: 5 messages per 10 seconds per player
+- **Input Sanitization**: Trim, remove control characters
+- **Server-Side Validation**: All validation happens on server
+
+#### Performance
+- **Circular Buffer**: Fixed memory usage (50 messages max)
+- **In-Memory Cache**: Messages stored in memory for fast access
+- **Efficient Rendering**: Only visible messages rendered
+- **Rate Limit Cleanup**: Old timestamps automatically removed
+
+### Message Flow
+
+1. **Player Types Message**
+   - Client captures keyboard input when chat focused
+   - Message stored in `gameState.multiplayer.chatInput`
+
+2. **Player Presses Enter**
+   - Client validates message (length, not empty)
+   - Client calls `multiplayerSystem.sendChatMessage(message)`
+   - Client clears input and unfocuses
+
+3. **Server Receives Message**
+   - Server validates: message format, length (1-200 chars)
+   - Server checks rate limit (5 per 10 seconds)
+   - Server sanitizes: trim, HTML encoding, XSS prevention
+   - Server adds to circular buffer
+   - Server broadcasts `chat:message:new` to all clients
+
+4. **All Clients Receive Message**
+   - Clients add message to `gameState.multiplayer.chatMessages`
+   - UI automatically updates to show new message
+   - Message list auto-scrolls to bottom
+
+### Error Handling
+
+- **Rate Limit Exceeded**: Server sends `chat:rateLimit`, client logs warning
+- **Invalid Message**: Server sends `chat:error`, client logs error
+- **Network Error**: Socket.io handles reconnection, messages may be lost
+- **Server Disconnect**: Chat input disabled, messages cleared on reconnect
 
 ## Future Enhancements
 
@@ -421,6 +613,13 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 - Reconnection handling (resume ready state)
 - Client-side prediction for local player
 - Binary protocol for zombie updates (30-50% smaller payloads)
+- **Chat Enhancements**:
+  - Chat during gameplay (separate feature)
+  - Emoji support
+  - Private messages
+  - Chat commands (/help, /players, etc.)
+  - Message persistence across server restarts
+  - Chat history on lobby rejoin
 - **Leaderboard Enhancements**:
   - Time-based leaderboards (daily/weekly/monthly)
   - Category-specific leaderboards (wave-based, score-based, kills-based)

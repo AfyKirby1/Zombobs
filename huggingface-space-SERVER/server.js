@@ -2,7 +2,6 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 const packageJson = require('./package.json');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
@@ -57,6 +56,13 @@ const MAX_RECENT_EVENTS = 10;
 const recentEvents = new Array(MAX_RECENT_EVENTS);
 let recentEventsIndex = 0;
 const userSessions = new Map(); // Track user sessions with cookies
+let serverReady = false; // Track when server is fully initialized and listening
+
+// Chat message storage (circular buffer)
+const MAX_CHAT_MESSAGES = 50;
+const chatMessages = new Array(MAX_CHAT_MESSAGES);
+let chatMessagesIndex = 0;
+const chatRateLimits = new Map(); // socketId -> timestamp[]
 
 // Track leader ID directly instead of iterating
 let currentLeaderId = null;
@@ -113,6 +119,85 @@ function getRecentEvents() {
     }
   }
   return events;
+}
+
+// Chat helper functions
+function sanitizeChatMessage(message) {
+  if (typeof message !== 'string') return null;
+  
+  // Trim whitespace
+  let sanitized = message.trim();
+  
+  // Remove control characters (except newlines and tabs for multi-line support)
+  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  
+  // HTML entity encoding for XSS prevention
+  sanitized = sanitized
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  
+  // Length validation (1-200 characters)
+  if (sanitized.length === 0 || sanitized.length > 200) {
+    return null;
+  }
+  
+  return sanitized;
+}
+
+function checkRateLimit(socketId) {
+  const now = Date.now();
+  const RATE_LIMIT_WINDOW = 10000; // 10 seconds
+  const MAX_MESSAGES = 5;
+  
+  if (!chatRateLimits.has(socketId)) {
+    chatRateLimits.set(socketId, []);
+  }
+  
+  const timestamps = chatRateLimits.get(socketId);
+  
+  // Remove timestamps outside the window
+  const validTimestamps = timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW);
+  chatRateLimits.set(socketId, validTimestamps);
+  
+  // Check if under limit
+  if (validTimestamps.length >= MAX_MESSAGES) {
+    return false;
+  }
+  
+  // Add current timestamp
+  validTimestamps.push(now);
+  return true;
+}
+
+function addChatMessage(playerId, playerName, message, isSystem = false) {
+  const chatMessage = {
+    id: `${playerId}-${Date.now()}`,
+    playerId: playerId,
+    playerName: playerName,
+    message: message,
+    timestamp: Date.now(),
+    isSystem: isSystem
+  };
+  
+  chatMessages[chatMessagesIndex] = chatMessage;
+  chatMessagesIndex = (chatMessagesIndex + 1) % MAX_CHAT_MESSAGES;
+  
+  return chatMessage;
+}
+
+function getChatHistory(limit = 20) {
+  // Return messages in chronological order (oldest first)
+  const messages = [];
+  for (let i = 0; i < MAX_CHAT_MESSAGES && messages.length < limit; i++) {
+    const idx = (chatMessagesIndex + i) % MAX_CHAT_MESSAGES;
+    if (chatMessages[idx]) {
+      messages.push(chatMessages[idx]);
+    }
+  }
+  return messages;
 }
 
 function assignLeader() {
@@ -177,6 +262,12 @@ function formatMemory(bytes) {
 
 // Root endpoint - serve a simple HTML page
 app.get('/', (req, res) => {
+  console.log('[DEBUG] Root endpoint accessed');
+  if (!serverReady) {
+    console.log('[DEBUG] Server not ready yet, sending immediate response');
+    res.send('Server starting... Please wait.');
+    return;
+  }
   const userId = getOrCreateUserId(req, res);
   const uptime = formatUptime(process.uptime());
   
@@ -567,50 +658,82 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Highscore Storage System
-const HIGHSCORES_FILE = './highscores.json';
+// MongoDB Connection Setup
+const { MongoClient } = require('mongodb');
+
+const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+const DB_NAME = 'zombobs';
+const COLLECTION_NAME = 'highscores';
 const MAX_HIGHSCORES = 10;
 
-// In-memory cache for highscores (loaded on server start)
-let highscoresCache = [];
+let db = null;
+let highscoresCollection = null;
+let highscoresCache = []; // In-memory cache for fast API responses
 
 /**
- * Load highscores from file (used only on server start)
+ * Initialize MongoDB connection and load initial highscores
+ */
+async function initMongoDB() {
+  if (!MONGODB_URI) {
+    console.warn('[MongoDB] No connection string found in environment variables. Highscores will not persist.');
+    highscoresCache = [];
+    return;
+  }
+
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    db = client.db(DB_NAME);
+    highscoresCollection = db.collection(COLLECTION_NAME);
+    
+    // Create index on score for faster queries
+    await highscoresCollection.createIndex({ score: -1 });
+    
+    console.log('[MongoDB] ✅ Connected to MongoDB Highscores');
+    
+    // Load initial highscores into cache
+    highscoresCache = await getHighscoresFromDB();
+    console.log(`[highscores] Loaded ${highscoresCache.length} highscores from MongoDB`);
+  } catch (error) {
+    console.error('[MongoDB] ❌ Connection error:', error.message);
+    // Fall back to empty array if DB fails - server will still run
+    highscoresCache = [];
+  }
+}
+
+/**
+ * Fetch top highscores from MongoDB
  * @returns {Array} Array of highscore entries, sorted by score descending
  */
-function loadHighscoresFromFile() {
-  try {
-    if (fs.existsSync(HIGHSCORES_FILE)) {
-      const data = fs.readFileSync(HIGHSCORES_FILE, 'utf8');
-      const highscores = JSON.parse(data);
-      if (Array.isArray(highscores)) {
-        // Sort by score descending and limit to top 10
-        return highscores.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
-      }
-    }
-  } catch (error) {
-    console.error('[highscores] Error loading highscores from file:', error);
+async function getHighscoresFromDB() {
+  if (!highscoresCollection) {
+    return [];
   }
-  return [];
-}
-
-/**
- * Save highscores to file asynchronously (non-blocking)
- * @param {Array} highscores - Array of highscore entries
- */
-async function saveHighscoresAsync(highscores) {
+  
   try {
-    // Ensure sorted and limited to top 10
-    const sorted = highscores.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
-    await fs.promises.writeFile(HIGHSCORES_FILE, JSON.stringify(sorted, null, 2), 'utf8');
+    const scores = await highscoresCollection
+      .find({})
+      .sort({ score: -1 })
+      .limit(MAX_HIGHSCORES)
+      .toArray();
+    
+    // Ensure all entries have required fields
+    return (scores || []).map(entry => ({
+      userId: entry.userId || 'unknown',
+      username: entry.username || 'Survivor',
+      score: entry.score || 0,
+      wave: entry.wave || 0,
+      zombiesKilled: entry.zombiesKilled || 0,
+      timestamp: entry.timestamp || new Date().toISOString()
+    }));
   } catch (error) {
-    console.error('[highscores] Error saving highscores to file:', error);
-    // Don't throw - file write errors shouldn't crash the server
+    console.error('[highscores] Error fetching from MongoDB:', error);
+    return [];
   }
 }
 
 /**
- * Get highscores from cache (instant, no disk I/O)
+ * Get highscores from cache (instant, no DB query per request)
  * @returns {Array} Array of highscore entries, sorted by score descending
  */
 function getHighscores() {
@@ -619,35 +742,59 @@ function getHighscores() {
 }
 
 /**
- * Add a new highscore entry
+ * Add a new highscore entry to MongoDB
  * @param {Object} entry - Highscore entry { userId, username, score, wave, zombiesKilled }
  * @returns {Array} Updated highscores array
  */
-function addHighscore(entry) {
-  // Add new entry with timestamp
-  highscoresCache.push({
-    userId: entry.userId,
+async function addHighscore(entry) {
+  // Validate entry
+  const scoreEntry = {
+    userId: entry.userId || 'unknown',
     username: entry.username || 'Survivor',
-    score: entry.score || 0,
-    wave: entry.wave || 0,
-    zombiesKilled: entry.zombiesKilled || 0,
+    score: typeof entry.score === 'number' ? entry.score : 0,
+    wave: typeof entry.wave === 'number' ? entry.wave : 0,
+    zombiesKilled: typeof entry.zombiesKilled === 'number' ? entry.zombiesKilled : 0,
     timestamp: new Date().toISOString()
-  });
-  
-  // Sort and limit to top 10
-  highscoresCache = highscoresCache.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
-  
-  // Save to file asynchronously (non-blocking)
-  saveHighscoresAsync(highscoresCache).catch(err => {
-    console.error('[highscores] Background save failed:', err);
-  });
-  
-  // Return updated cache immediately
-  return [...highscoresCache];
+  };
+
+  if (scoreEntry.score <= 0) {
+    // Don't save invalid scores
+    return getHighscores();
+  }
+
+  // If MongoDB is not connected, fall back to in-memory only
+  if (!highscoresCollection) {
+    console.warn('[highscores] MongoDB not connected, using in-memory only');
+    highscoresCache.push(scoreEntry);
+    highscoresCache = highscoresCache.sort((a, b) => b.score - a.score).slice(0, MAX_HIGHSCORES);
+    return [...highscoresCache];
+  }
+
+  try {
+    // Insert new score into MongoDB
+    await highscoresCollection.insertOne(scoreEntry);
+    
+    // Refresh cache from DB (get top 10)
+    highscoresCache = await getHighscoresFromDB();
+    
+    return [...highscoresCache];
+  } catch (error) {
+    console.error('[highscores] Error saving to MongoDB:', error);
+    // Return cached version on error
+    return getHighscores();
+  }
 }
 
 // Health check endpoint for Hugging Face
 app.get('/health', (req, res) => {
+  console.log('[DEBUG] Health check requested');
+  if (!serverReady) {
+    console.log('[DEBUG] Server not ready yet, returning 503');
+    return res.status(503).json({
+      status: 'starting',
+      message: 'Server is still initializing'
+    });
+  }
   res.json({
     status: 'ok',
     players: players.size,
@@ -667,7 +814,7 @@ app.get('/api/highscores', (req, res) => {
   }
 });
 
-app.post('/api/highscore', (req, res) => {
+app.post('/api/highscore', async (req, res) => {
   try {
     const userId = getOrCreateUserId(req, res);
     const { username, score, wave, zombiesKilled } = req.body;
@@ -677,8 +824,8 @@ app.post('/api/highscore', (req, res) => {
       return res.status(400).json({ error: 'Invalid score' });
     }
     
-    // Add highscore
-    const updatedHighscores = addHighscore({
+    // Add highscore (now async)
+    const updatedHighscores = await addHighscore({
       userId,
       username: username || 'Survivor',
       score,
@@ -914,7 +1061,7 @@ io.on('connection', (socket) => {
   });
 
   // Handle score submission (game over)
-  socket.on('game:score', (data) => {
+  socket.on('game:score', async (data) => {
     try {
       // Get user ID from socket handshake cookies
       const cookies = socket.handshake.headers.cookie || '';
@@ -940,8 +1087,8 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // Add highscore
-      const updatedHighscores = addHighscore({
+      // Add highscore (now async)
+      const updatedHighscores = await addHighscore({
         userId,
         username,
         score,
@@ -973,12 +1120,60 @@ io.on('connection', (socket) => {
     }
   });
 
+  // --- Chat System ---
+
+  // Handle chat message
+  socket.on('chat:message', (data) => {
+    const player = players.get(socket.id);
+    if (!player) {
+      socket.emit('chat:error', { message: 'Player not found' });
+      return;
+    }
+
+    // Validate payload
+    if (!data || typeof data.message !== 'string') {
+      socket.emit('chat:error', { message: 'Invalid message format' });
+      return;
+    }
+
+    // Check rate limit
+    if (!checkRateLimit(socket.id)) {
+      socket.emit('chat:rateLimit', { 
+        message: 'Rate limit exceeded. Please wait before sending another message.',
+        retryAfter: 10
+      });
+      return;
+    }
+
+    // Sanitize message
+    const sanitized = sanitizeChatMessage(data.message);
+    if (!sanitized) {
+      socket.emit('chat:error', { message: 'Invalid message. Must be 1-200 characters.' });
+      return;
+    }
+
+    // Add to chat history
+    const chatMessage = addChatMessage(socket.id, player.name, sanitized, false);
+
+    // Broadcast to all clients
+    io.emit('chat:message:new', chatMessage);
+  });
+
+  // Handle chat history request (optional - send on lobby join)
+  socket.on('chat:history', () => {
+    const history = getChatHistory(20);
+    socket.emit('chat:history', { messages: history });
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
     const wasLeader = player?.isLeader || false;
     const userId = player?.userId;
     players.delete(socket.id);
+    
+    // Clean up rate limit tracking
+    chatRateLimits.delete(socket.id);
     
     // Remove socket from user session
     if (userId && userSessions.has(userId)) {
@@ -1014,21 +1209,34 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('[!] Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Initialize highscores cache on server start
-highscoresCache = loadHighscoresFromFile();
-console.log(`[highscores] Loaded ${highscoresCache.length} highscores from file`);
+// Initialize MongoDB and start server
+initMongoDB().then(() => {
+  // Start server after MongoDB is initialized (or failed to connect)
+  try {
+    httpServer.listen(PORT, '0.0.0.0', () => {
+      serverReady = true; // Mark server as ready
+      console.log(`🚀 Zombobs Server running on port ${PORT}`);
+      console.log(`🧟 The horde is approaching...`);
+      console.log(`[DEBUG] Server is ready and listening for requests`);
+      console.log(`[DEBUG] Health check available at: http://0.0.0.0:${PORT}/health`);
+      console.log(`[DEBUG] Highscores API available at: http://0.0.0.0:${PORT}/api/highscores`);
+    });
 
-// Start server with error handling
-try {
+    httpServer.on('error', (error) => {
+      console.error('[!] Server error:', error);
+    });
+  } catch (error) {
+    console.error('[!] Failed to start server:', error);
+    process.exit(1);
+  }
+}).catch((error) => {
+  console.error('[!] Failed to initialize MongoDB:', error);
+  // Start server anyway - it will use in-memory cache only
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Zombobs Server running on port ${PORT}`);
+    serverReady = true; // Mark server as ready
+    console.log(`🚀 Zombobs Server running on port ${PORT} (MongoDB unavailable)`);
     console.log(`🧟 The horde is approaching...`);
+    console.log(`[DEBUG] Server is ready (MongoDB unavailable - using in-memory only)`);
+    console.log(`[DEBUG] Health check available at: http://0.0.0.0:${PORT}/health`);
   });
-
-  httpServer.on('error', (error) => {
-    console.error('[!] Server error:', error);
-  });
-} catch (error) {
-  console.error('[!] Failed to start server:', error);
-  process.exit(1);
-}
+});

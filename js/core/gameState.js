@@ -112,7 +112,12 @@ export const gameState = {
         isLeader: false,
         isReady: false,
         isGameStarting: false,
-        gameStartTime: 0
+        gameStartTime: 0,
+        // Chat state
+        chatMessages: [],
+        chatInput: '',
+        chatFocused: false,
+        chatScrollPosition: 0
     },
     username: 'Survivor',
     menuMusicMuted: false,

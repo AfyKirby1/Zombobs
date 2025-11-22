@@ -590,11 +590,65 @@ export class MultiplayerSystem {
                     gameHUD.fetchLeaderboard();
                 }
             });
+
+            // --- Chat System Listeners ---
+            socket.on('chat:message:new', (message) => {
+                if (!message || !message.message) return;
+                
+                // Add message to chat history
+                if (!gameState.multiplayer.chatMessages) {
+                    gameState.multiplayer.chatMessages = [];
+                }
+                
+                gameState.multiplayer.chatMessages.push(message);
+                
+                // Limit chat history to last 50 messages
+                if (gameState.multiplayer.chatMessages.length > 50) {
+                    gameState.multiplayer.chatMessages.shift();
+                }
+                
+                // Auto-scroll to bottom if user hasn't manually scrolled up
+                // (This will be handled in the UI rendering)
+            });
+
+            socket.on('chat:history', (data) => {
+                if (data.messages && Array.isArray(data.messages)) {
+                    gameState.multiplayer.chatMessages = data.messages;
+                }
+            });
+
+            socket.on('chat:rateLimit', (data) => {
+                console.warn('[Chat] Rate limit exceeded:', data.message);
+                // Could show user feedback in UI
+            });
+
+            socket.on('chat:error', (data) => {
+                console.error('[Chat] Error:', data.message);
+                // Could show user feedback in UI
+            });
         } else {
             console.error('Socket.io not found. Make sure the CDN script is loaded.');
             gameState.multiplayer.status = 'error';
             gameState.multiplayer.connected = false;
         }
+    }
+
+    /**
+     * Send a chat message to the server
+     * @param {string} message - The message to send
+     */
+    sendChatMessage(message) {
+        if (!gameState.multiplayer.socket || !gameState.multiplayer.connected) {
+            console.warn('[Chat] Cannot send message - not connected');
+            return;
+        }
+
+        if (!message || typeof message !== 'string' || message.trim().length === 0) {
+            console.warn('[Chat] Invalid message');
+            return;
+        }
+
+        gameState.multiplayer.socket.emit('chat:message', { message: message.trim() });
     }
 
     /**

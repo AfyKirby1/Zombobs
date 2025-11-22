@@ -40,7 +40,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Time and date formatting with relative timestamps
 
 ✅ **Global Highscore Leaderboard System** - Server-side global score tracking
-  - File-based persistence (`highscores.json`) for top 10 global scores
+  - MongoDB persistence for top 10 global scores (graceful fallback to in-memory if unavailable)
   - HTTP API endpoints: `GET /api/highscores`, `POST /api/highscore`
   - Socket.IO real-time score submission and leaderboard updates
   - Automatic score submission on game over (Socket.IO or HTTP fallback)
@@ -51,8 +51,9 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - **10-second timeout handling** with error state tracking
   - **LocalStorage fallback** when server unavailable (shows local high score)
   - **Timeout message display**: "Highscore server wasn't reached" with fallback info
-  - **In-memory caching**: Backend uses cache for instant API responses (no disk I/O per request)
-  - **Asynchronous file saving**: Non-blocking file writes prevent API delays
+  - **Empty leaderboard message**: Shows "Nobody yet!" when leaderboard is empty
+  - **In-memory caching**: Backend uses cache for instant API responses (no DB query per request)
+  - **Asynchronous MongoDB saving**: Non-blocking database writes prevent API delays
   - **Fixed infinite retry loop**: Proper cooldown enforcement prevents 429 errors
   - **Retry countdown display**: Shows "Retrying in X seconds..." for better user feedback
 ✅ **Multiplayer Rank Display** - Rank badges in multiplayer lobby
@@ -62,6 +63,16 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Server tracks and broadcasts rank information in lobby updates
   - Server status page displays rank information for connected players
   - Non-blocking score submission (doesn't delay game over screen)
+✅ **Multiplayer Lobby Chat System** - Real-time chat for player communication
+  - Chat window in lobby (bottom-left, glassmorphism styling)
+  - Scrollable message list with word wrapping
+  - Character counter (200 char limit) and input field with focus state
+  - Rate limiting: 5 messages per 10 seconds per player
+  - Message sanitization: HTML entity encoding, XSS prevention
+  - Socket.IO real-time message broadcasting
+  - Enter to send, Escape to clear, click to focus/unfocus
+  - Disabled during game start countdown
+  - System message support for future join/leave notifications
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **System Refactoring** - Large systems extracted from main.js into dedicated modules
   - ZombieUpdateSystem: Zombie AI, multiplayer sync, interpolation (~173 lines extracted)

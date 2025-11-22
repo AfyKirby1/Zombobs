@@ -30,20 +30,30 @@ This modular structure improves maintainability, testability, and scalability.
 ### Production Server (`huggingface-space-SERVER/`)
 - `server.js`: Express + socket.io server for Hugging Face Spaces deployment
   - Socket.io WebSocket server for multiplayer
-  - Global highscore leaderboard system with **in-memory caching** for performance
-    - `highscoresCache`: Global variable loaded on server start from `highscores.json`
-    - `GET /api/highscores`: Returns cached data instantly (no disk I/O per request)
-    - `POST /api/highscore`: Updates cache immediately, saves to file asynchronously
-    - File writes are non-blocking using `fs.promises.writeFile`
+  - Global highscore leaderboard system with **MongoDB persistence** and in-memory caching
+    - MongoDB connection for persistent score storage (optional, falls back to in-memory if unavailable)
+    - `highscoresCache`: Global variable loaded on server start from MongoDB
+    - `GET /api/highscores`: Returns cached data instantly (no DB query per request)
+    - `POST /api/highscore`: Updates cache immediately, saves to MongoDB asynchronously
+    - Graceful fallback to in-memory cache if MongoDB unavailable
+  - **Chat System**: Real-time lobby chat with rate limiting and sanitization
+    - Circular buffer storage (max 50 messages)
+    - Rate limiting: 5 messages per 10 seconds per player
+    - Message sanitization: HTML entity encoding, XSS prevention
+    - Socket.IO events: `chat:message`, `chat:message:new`, `chat:history`, `chat:rateLimit`, `chat:error`
   - HTTP API endpoints for score submission and leaderboard retrieval
   - Cookie-based user session tracking (`zombobs_user_id`)
   - Performance optimizations (compression, circular buffers, efficient leader tracking)
   - Default port: 7860 (Hugging Face Spaces standard, configurable via PORT env var)
-- `package.json`: Node.js dependencies (Express, socket.io, cookie-parser, compression)
+- `package.json`: Node.js dependencies (Express, socket.io, cookie-parser, compression, mongodb)
 - `Dockerfile`: Container configuration for Hugging Face Spaces deployment
-- `highscores.json`: File-based storage for top 10 global scores (auto-generated, persists across restarts)
+- **MongoDB Integration**: Persistent highscore storage (optional, falls back to in-memory if unavailable)
+  - Connection string via `MONGO_URI` or `MONGODB_URI` environment variable
+  - Database: `zombobs`, Collection: `highscores`
+  - Indexed on `score` field for fast queries
   - Loaded into memory cache on server startup
   - Updated asynchronously when new scores are submitted
+  - Graceful fallback to in-memory cache if MongoDB unavailable
 - `launch.bat`: Windows batch file that calls PowerShell wrapper
 
 ## Module Structure
@@ -823,7 +833,11 @@ This hybrid approach provides:
 - `draw()` - Delegates to HUD, menu, or lobby render paths
 - `drawStat()` - Render individual stat panel
 - `drawMainMenu()` - Render main menu (single/multi/settings/gallery/about buttons, username, high score)
-- `drawLobby()` - Render multiplayer lobby (status text, player list, back/start buttons)
+- `drawLobby()` - Render multiplayer lobby (status text, player list, chat window, back/start buttons)
+- `drawChatWindow()` - Render chat window in lobby (bottom-left, glassmorphism styling)
+- `drawChatMessages()` - Render scrollable chat message list with word wrapping
+- `drawChatInput()` - Render chat input field with focus state and character counter
+- `checkChatInputClick(x, y)` - Hit testing for chat input field
 - `drawGallery()` - Render gallery showcase screen with zombies, weapons, and pickups
   - Displays 7 zombie types, 7 weapons, and 8 pickups in card-based layout
   - Includes visual icon drawing functions: `drawZombieIcon()`, `drawWeaponIcon()`, `drawPickupIcon()`
@@ -883,6 +897,13 @@ This hybrid approach provides:
 - Player cards display rank badges (rank name and tier) with orange/amber styling
 - Rank data synchronized from client to server on player registration
 - Rank badges positioned below player name in lobby cards
+- **Chat System**: Real-time chat window for player communication
+  - Chat window positioned bottom-left of lobby (above action buttons)
+  - Scrollable message list with word wrapping (max 8-10 visible messages)
+  - Input field with focus state, character counter (200 char limit), cursor animation
+  - Color coding: own messages (orange), others (white), system (gray)
+  - Enter to send, Escape to clear, click to focus/unfocus
+  - Disabled during game start countdown
 
 **Leaderboard System**:
 - Global leaderboard fetched from server with 10-second timeout
@@ -1700,14 +1721,17 @@ Local scoreboard system that tracks and displays top 10 game sessions on the HTM
 ## Global Highscore System
 
 ### Overview
-Server-side global highscore leaderboard system that tracks top 10 scores across all players. Uses in-memory caching for performance and asynchronous file persistence.
+Server-side global highscore leaderboard system that tracks top 10 scores across all players. Uses MongoDB for persistent storage with in-memory caching for performance. Gracefully falls back to in-memory cache only if MongoDB unavailable.
 
 ### Backend Storage (`huggingface-space-SERVER/server.js`)
-- **File Storage**: `highscores.json` (top 10 entries, auto-generated)
+- **MongoDB Storage**: Persistent database storage (connection string via `MONGO_URI` or `MONGODB_URI` env var)
+  - Database: `zombobs`, Collection: `highscores`
+  - Indexed on `score` field (descending) for fast queries
+  - Graceful fallback to in-memory cache if MongoDB unavailable
 - **In-Memory Cache**: `highscoresCache` global variable loaded on server start
-- **Cache Initialization**: `loadHighscoresFromFile()` called on server startup
-- **Cache Updates**: `addHighscore()` updates cache immediately, saves to file asynchronously
-- **File Persistence**: `saveHighscoresAsync()` uses `fs.promises.writeFile` (non-blocking)
+- **Cache Initialization**: `initMongoDB()` called on server startup, loads initial highscores into cache
+- **Cache Updates**: `addHighscore()` updates MongoDB, refreshes cache immediately
+- **Database Operations**: All MongoDB operations are asynchronous and non-blocking
 
 ### API Endpoints
 - **`GET /api/highscores`**: Returns cached highscores instantly (no disk I/O)
@@ -1726,7 +1750,8 @@ Server-side global highscore leaderboard system that tracks top 10 scores across
 - **LocalStorage Fallback**: Displays local high score when server unavailable
 
 ### Performance Optimizations
-- **Instant API Responses**: Cache eliminates disk I/O on every GET request
-- **Non-Blocking Writes**: File saves happen asynchronously, don't delay API responses
+- **Instant API Responses**: Cache eliminates DB queries on every GET request
+- **Non-Blocking Writes**: MongoDB operations happen asynchronously, don't delay API responses
 - **Request Throttling**: Frontend enforces 30-second cooldown to prevent 429 errors
 - **Error Recovery**: Proper state management prevents infinite retry loops
+- **Graceful Fallback**: Server continues operating with in-memory cache if MongoDB unavailable
