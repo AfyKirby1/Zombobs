@@ -4,6 +4,47 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+### 🎮 Game Over Screen Improvements
+
+#### Added
+- **Navigation Buttons on Game Over Screen** - Added "Back to Lobby" and "Back to Main Menu" buttons
+  - "Back to Lobby" button: Only shown for multiplayer games, returns player to multiplayer lobby
+  - "Back to Main Menu" button: Always shown, returns player to main menu
+  - Buttons positioned at bottom of screen with consistent styling
+  - Removed "Press R to Restart" text and keyboard handling
+  - Location: `js/ui/GameHUD.js` - `drawGameOver()`, `checkMenuButtonClick()`
+  - Click handling: `js/main.js` - mousedown event listener
+
+- **Multiplayer Lobby Return Functionality** - Enhanced "Back to Lobby" from game over
+  - Properly re-registers player with server if already connected
+  - Resets ready state and multiplayer flags
+  - Ensures lobby state is correctly restored
+  - Location: `js/main.js` - `gameover_lobby` button handler
+
+#### Fixed
+- **Cursor Not Working on Game Over Screen** - Fixed cursor and hover state issues
+  - Cursor now draws correctly on game over screen
+  - Hover states update properly for game over buttons
+  - Mouse move events properly trigger hover updates
+  - Cursor style correctly set to 'none' for custom cursor
+  - Location: `js/ui/GameHUD.js` - `draw()`, `updateMenuHover()`
+  - Location: `js/main.js` - mousemove event listener, cursor style handling
+
+- **Pause Screen on Multiplayer Game Start** - Fixed bug where pause screen appeared when multiplayer games started
+  - Issue: Pause state wasn't being reset when game started
+  - Fix: Explicitly reset `gameState.gamePaused = false` and call `gameHUD.hidePauseMenu()` in both `startGame()` and `game:start` event handler
+  - Location: `js/systems/GameStateManager.js` - `startGame()`
+  - Location: `js/systems/MultiplayerSystem.js` - `game:start` event handler
+
+### 🐛 Multiplayer Lobby Return Bug Fix
+
+#### Fixed
+- **Stuck "GO!" Screen** - Fixed bug where returning to lobby from dead multiplayer game showed stuck countdown screen
+  - Issue: `isGameStarting` flag and `gameStartTime` weren't reset when clicking "Back to Lobby" from game over screen
+  - Fix: Added state reset for `gameState.multiplayer.isGameStarting = false` and `gameState.multiplayer.gameStartTime = 0`
+  - Location: `js/main.js` - `gameover_lobby` button handler
+  - Lobby now correctly displays normal interface instead of stuck "GO!" countdown overlay
+
 ### 🗄️ MongoDB Migration for Highscore Persistence
 
 #### Added

@@ -228,7 +228,7 @@ export class GameHUD {
         // Draw custom cursor when in menus or paused
         if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || 
             gameState.showAILobby || gameState.showAbout || gameState.showGallery || 
-            this.paused || gameState.gamePaused || gameState.showLevelUp) {
+            this.paused || gameState.gamePaused || gameState.showLevelUp || this.gameOver) {
             this.drawCursor();
         }
     }
@@ -236,9 +236,21 @@ export class GameHUD {
     drawSinglePlayerHUD() {
         const player = gameState.players[0];
         const startX = this.padding;
-        let startY = this.padding;
-        const itemSpacing = this.getScaledItemSpacing();
         const scale = this.getUIScale();
+        const itemSpacing = this.getScaledItemSpacing();
+        
+        // Position HP bar below WebGPU indicator
+        // WebGPU icon height is 32px, positioned at padding (15px)
+        const webgpuHeight = 32;
+        const webgpuSpacing = 8;
+        let startY = this.padding + webgpuHeight + webgpuSpacing;
+
+        // Draw centralized multiplier indicator at top center (if active)
+        if (player.scoreMultiplier > 1.0) {
+            const centerX = this.canvas.width / 2;
+            const multiplierY = this.padding + webgpuHeight + webgpuSpacing;
+            this.drawMultiplierIndicator(player, centerX, multiplierY);
+        }
 
         this.drawPlayerStats(player, startX, startY);
 
@@ -260,12 +272,13 @@ export class GameHUD {
         const bottomHeight = 50 * scale; // XP bar height
         const weaponInfoHeight = (bottomHeight + itemSpacing) * 2; // Weapon + Grenades
         
-        // Bottom left: Active Skills
-        const skillsX = this.padding;
+        // Top right: Active Skills (moved from bottom left)
+        const hpBarHeight = 50 * scale;
+        const skillsSpacing = 10 * scale;
+        const skillsX = this.canvas.width - bottomWidth - this.padding;
         const skillCount = gameState.activeSkills?.length || 0;
         const skillHeight = 40 * scale;
-        const skillsTotalHeight = skillCount > 0 ? (skillCount * (skillHeight + itemSpacing) - itemSpacing) : 0;
-        const skillsY = bottomUIBaseline - skillsTotalHeight;
+        const skillsY = this.padding + webgpuHeight + webgpuSpacing + hpBarHeight + skillsSpacing;
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
         
         // Bottom middle: XP Bar
@@ -295,8 +308,24 @@ export class GameHUD {
         // Calculate positions for 2x2 grid
         const leftX = padding;
         const rightX = this.canvas.width - width - padding;
-        const topY = padding;
+        
+        // Position P1 HP bar below WebGPU indicator
+        // WebGPU icon height is 32px, positioned at padding (15px)
+        const webgpuHeight = 32;
+        const webgpuSpacing = 8;
+        const topY = padding + webgpuHeight + webgpuSpacing;
         const playerBottomY = this.canvas.height - statsHeight - padding;
+
+        // Get local player (mouse input) or first player
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
+
+        // Draw centralized multiplier indicator at top center (if active)
+        // Use local player or first player for multiplier display
+        if (localPlayer && localPlayer.scoreMultiplier > 1.0) {
+            const centerX = this.canvas.width / 2;
+            const multiplierY = padding + webgpuHeight + webgpuSpacing;
+            this.drawMultiplierIndicator(localPlayer, centerX, multiplierY);
+        }
 
         // Draw players in grid positions
         if (gameState.players.length >= 1) {
@@ -328,15 +357,13 @@ export class GameHUD {
         const bottomHeight = 50 * scale; // XP bar height
         const weaponInfoHeight = (bottomHeight + itemSpacing) * 2; // Weapon + Grenades
         
-        // Get local player (mouse input) or first player
-        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
-        
-        // Bottom left: Active Skills
-        const skillsX = padding;
+        // Top right: Active Skills (moved from bottom left)
+        const hpBarHeight = 50 * scale;
+        const skillsSpacing = 10 * scale;
+        const skillsX = this.canvas.width - bottomWidth - padding;
         const skillCount = gameState.activeSkills?.length || 0;
         const skillHeight = 40 * scale;
-        const skillsTotalHeight = skillCount > 0 ? (skillCount * (skillHeight + itemSpacing) - itemSpacing) : 0;
-        const skillsY = bottomUIBaseline - skillsTotalHeight;
+        const skillsY = padding + webgpuHeight + webgpuSpacing + hpBarHeight + skillsSpacing;
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
         
         // XP Bar at very bottom (above instructions)
@@ -370,11 +397,7 @@ export class GameHUD {
             currentY += height + itemSpacing;
         }
 
-        // Multiplier indicator (if active)
-        if (player.scoreMultiplier > 1.0) {
-            currentY += height + itemSpacing;
-            this.drawMultiplierIndicator(player, x, currentY);
-        }
+        // Multiplier indicator removed - now drawn centrally at top
     }
 
     drawSharedStats(x, y) {
@@ -408,13 +431,7 @@ export class GameHUD {
             currentY += height + itemSpacing;
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', x, currentY, width);
 
-            // Draw multiplier indicator for player 1 (single player)
-            const player = gameState.players[0];
-            if (player.scoreMultiplier > 1.0) {
-                currentY += height + itemSpacing;
-                this.drawMultiplierIndicator(player, x, currentY);
-                currentY += 50 * scale; // Add space for multiplier indicator
-            }
+            // Multiplier indicator removed - now drawn centrally at top
         }
 
         // Buffs
@@ -597,7 +614,7 @@ export class GameHUD {
             const progressBarWidth = width - (20 * scale);
             const progressBarHeight = 6 * scale;
             const progressBarX = x + (10 * scale);
-            const progressBarY = currentY + (35 * scale);
+            const progressBarY = currentY + (40 * scale); // Moved down a bit to separate from percentage
 
             // Background
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -616,17 +633,23 @@ export class GameHUD {
             this.ctx.lineWidth = 1;
             this.ctx.strokeRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
 
-            // Text
+            // Text - weapon name and percentage on same line
             const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
+            const fontSize = this.getScaledFontSize();
+            const textY = currentY + (15 * scale);
+            
+            // Draw weapon name
             this.ctx.fillStyle = '#ffffff';
             this.ctx.font = this.font;
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'middle';
-            const fontSize = this.getScaledFontSize();
-            this.ctx.fillText(`${weaponLabel}:`, x + (10 * scale), currentY + (15 * scale));
+            this.ctx.fillText(`${weaponLabel}:`, x + (10 * scale), textY);
+            
+            // Draw percentage next to weapon name
+            const weaponNameWidth = this.ctx.measureText(`${weaponLabel}:`).width;
             this.ctx.fillStyle = ammoColor;
             this.ctx.font = `700 ${fontSize + Math.round(2 * scale)}px 'Roboto Mono', monospace`;
-            this.ctx.fillText(ammoText, x + (10 * scale), currentY + (35 * scale));
+            this.ctx.fillText(ammoText, x + (10 * scale) + weaponNameWidth + (6 * scale), textY);
         } else {
             const ammoText = `${player.currentAmmo}/${player.maxAmmo}`;
             this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, x, currentY, width);
@@ -966,10 +989,30 @@ export class GameHUD {
         yOffset += 40 * scale;
         this.drawQuickStats(yOffset, scale);
 
-        this.ctx.fillStyle = '#ff0000';
-        const restartFontSize = Math.max(11, Math.round(16 * scale));
-        this.ctx.font = `${restartFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + yOffset + 60 * scale);
+        // Draw navigation buttons at bottom
+        const centerX = this.canvas.width / 2;
+        const buttonWidth = 200 * scale;
+        const buttonHeight = 50 * scale;
+        const buttonSpacing = 15 * scale;
+        
+        // Check if game was multiplayer
+        const wasMultiplayer = gameState.multiplayer.active || gameState.multiplayer.connected;
+        
+        // Position buttons near bottom
+        let buttonY = this.canvas.height - 120 * scale;
+        
+        // "Back to Lobby" button (only show if multiplayer)
+        if (wasMultiplayer) {
+            const lobbyButtonY = buttonY;
+            const lobbyHovered = this.hoveredButton === 'gameover_lobby';
+            this.drawMenuButton('Back to Lobby', centerX - buttonWidth / 2, lobbyButtonY, buttonWidth, buttonHeight, lobbyHovered, false);
+            buttonY = this.canvas.height - 60 * scale;
+        }
+        
+        // "Back to Main Menu" button (always show)
+        const menuButtonY = buttonY;
+        const menuHovered = this.hoveredButton === 'gameover_menu';
+        this.drawMenuButton('Back to Main Menu', centerX - buttonWidth / 2, menuButtonY, buttonWidth, buttonHeight, menuHovered, false);
     }
 
     drawPauseMenu() {
@@ -2733,7 +2776,7 @@ export class GameHUD {
         // Ready status indicator
         const isReady = player?.isReady || false;
         const statusX = x + cardWidth - padding - 20 * scale;
-        const statusY = y + cardHeight / 2;
+        const statusY = y + cardHeight / 2 + 4 * scale; // Moved down a smidge
         this.drawStatusIndicator(statusX, statusY, isReady ? 'ready' : 'notReady', true, 16 * scale);
 
         // Ready status text
@@ -2742,7 +2785,7 @@ export class GameHUD {
         this.ctx.textAlign = 'right';
         this.ctx.textBaseline = 'middle';
         const statusText = isReady ? 'READY' : 'NOT READY';
-        this.ctx.fillText(statusText, x + cardWidth - padding, statusY + 18 * scale);
+        this.ctx.fillText(statusText, x + cardWidth - padding, statusY + 24 * scale);
         
         this.ctx.restore();
     }
@@ -3204,6 +3247,30 @@ export class GameHUD {
             return null;
         }
 
+        // Check Game Over Screen
+        if (this.gameOver) {
+            const wasMultiplayer = gameState.multiplayer.active || gameState.multiplayer.connected;
+            let buttonY = this.canvas.height - 120 * uiScale;
+            
+            // "Back to Lobby" button (only if multiplayer)
+            if (wasMultiplayer) {
+                const lobbyButtonY = buttonY;
+                if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                    mouseY >= lobbyButtonY && mouseY <= lobbyButtonY + buttonHeight) {
+                    return 'gameover_lobby';
+                }
+                buttonY = this.canvas.height - 60 * uiScale;
+            }
+            
+            // "Back to Main Menu" button (always show)
+            const menuButtonY = buttonY;
+            if (mouseX >= centerX - buttonWidth / 2 && mouseX <= centerX + buttonWidth / 2 &&
+                mouseY >= menuButtonY && mouseY <= menuButtonY + buttonHeight) {
+                return 'gameover_menu';
+            }
+            return null;
+        }
+
         // Check AI Lobby
         if (gameState.showAILobby) {
             const addBotY = this.canvas.height - (220 * uiScale);
@@ -3401,7 +3468,7 @@ export class GameHUD {
     updateMenuHover(mouseX, mouseY) {
         this.mouseX = mouseX;
         this.mouseY = mouseY;
-        if (!this.mainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && !gameState.showAbout && !gameState.showGallery && !gameState.gamePaused) {
+        if (!this.mainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && !gameState.showAbout && !gameState.showGallery && !gameState.gamePaused && !this.gameOver) {
             this.hoveredButton = null;
             return;
         }
@@ -4047,7 +4114,7 @@ export class GameHUD {
         this.ctx.fillText(statusText, dotX + 20 * scale, dotY);
     }
 
-    drawMultiplierIndicator(player, x, y) {
+    drawMultiplierIndicator(player, centerX, y) {
         if (player.scoreMultiplier <= 1.0) {
             return; // Don't show at 1x
         }
@@ -4080,11 +4147,12 @@ export class GameHUD {
         this.ctx.textBaseline = 'middle';
         this.ctx.shadowBlur = 15 * pulse * scale;
         this.ctx.shadowColor = color;
-        this.ctx.fillText(`${player.scoreMultiplier}x`, x + width / 2, y);
+        this.ctx.fillText(`${player.scoreMultiplier}x`, centerX, y);
         this.ctx.shadowBlur = 0;
 
-        // Progress bar to next tier
-        this.drawMultiplierProgress(player, x, y + 25, width);
+        // Progress bar to next tier (centered)
+        const progressX = centerX - width / 2;
+        this.drawMultiplierProgress(player, progressX, y + 25, width);
 
         this.ctx.restore();
     }
@@ -4374,8 +4442,9 @@ export class GameHUD {
         const scale = this.getUIScale();
         const chatWidth = Math.min(400 * scale, this.canvas.width * 0.4);
         const chatHeight = 200 * scale;
-        const chatX = 30 * scale;
-        const chatY = this.canvas.height - chatHeight - 200 * scale; // Position above buttons
+        const padding = 20 * scale; // Small space from sides and bottom
+        const chatX = padding; // Left side with spacing
+        const chatY = this.canvas.height - chatHeight - padding; // Lower left with bottom spacing
 
         // Draw glassmorphism card
         this.drawGlassCard(chatX, chatY, chatWidth, chatHeight);
@@ -4541,8 +4610,9 @@ export class GameHUD {
         const scale = this.getUIScale();
         const chatWidth = Math.min(400 * scale, this.canvas.width * 0.4);
         const chatHeight = 200 * scale;
-        const chatX = 30 * scale;
-        const chatY = this.canvas.height - chatHeight - 200 * scale;
+        const padding = 20 * scale; // Small space from sides and bottom
+        const chatX = padding; // Left side with spacing
+        const chatY = this.canvas.height - chatHeight - padding; // Lower left with bottom spacing
         const inputY = chatY + chatHeight - 40 * scale;
         const inputX = chatX + 10 * scale;
         const inputWidth = chatWidth - 20 * scale;

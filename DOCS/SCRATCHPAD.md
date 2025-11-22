@@ -4,6 +4,14 @@
 
 ## 2025 - Active Development Notes
 
+### Multiplayer Lobby Return Bug Fix [2025-11-22]
+- ✅ **Stuck "GO!" Screen Fix** - Fixed bug where returning to lobby from dead multiplayer game showed stuck countdown screen
+  - Issue: `isGameStarting` flag and `gameStartTime` weren't reset when clicking "Back to Lobby" from game over
+  - Fix: Added state reset in `gameover_lobby` button handler: `isGameStarting = false` and `gameStartTime = 0`
+  - Location: `js/main.js` - lines 1394-1396
+  - Lobby now correctly displays normal interface instead of stuck "GO!" countdown overlay
+  - See `DOCS/debugs/lobby-return-bug.md` for full details
+
 ### XP System Balance Adjustments [2025-01-21]
 - ✅ **XP Rate Reduction** - Reduced all XP values by 10% (7, 14, 21, 16, 24, 21, 338)
   - Location: `js/systems/SkillSystem.js` - constructor `xpValues`

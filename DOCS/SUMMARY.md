@@ -316,6 +316,13 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Kill streak counter and timing
 - Game running/paused states
 
+## Recent Updates (Unreleased)
+- **Bug Fix**: Fixed stuck "GO!" screen when returning to lobby from dead multiplayer game
+  - Issue: `isGameStarting` flag and `gameStartTime` weren't reset when clicking "Back to Lobby" from game over
+  - Fix: Added state reset in `gameover_lobby` button handler: `isGameStarting = false` and `gameStartTime = 0`
+  - Location: `js/main.js` - lines 1394-1396
+  - Lobby now correctly displays normal interface instead of stuck countdown overlay
+
 ## Recent Updates (V0.7.1.1 ALPHA)
 - **Bug Fix**: Fixed duplicate `zombieType` variable declaration causing syntax error
 - **Version Bump**: Updated to V0.7.1.1 ALPHA across all files and configurations

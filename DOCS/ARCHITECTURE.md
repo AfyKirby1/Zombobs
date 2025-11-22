@@ -847,7 +847,7 @@ This hybrid approach provides:
 - **Center**: Main menu button grid (2 columns, multiple rows)
   - Arcade, Campaign, Local Co-op, Play with AI, Settings, Multiplayer, Gallery, Profile, Achievements, About
 - `drawLobby()` - Render multiplayer lobby (status text, player list, chat window, back/start buttons)
-- `drawChatWindow()` - Render chat window in lobby (bottom-left, glassmorphism styling)
+- `drawChatWindow()` - Render chat window in lobby (lower-left corner with 20px padding, glassmorphism styling)
 - `drawChatMessages()` - Render scrollable chat message list with word wrapping
 - `drawChatInput()` - Render chat input field with focus state and character counter
 - `checkChatInputClick(x, y)` - Hit testing for chat input field
@@ -857,7 +857,7 @@ This hybrid approach provides:
   - Supports smooth scrolling with mouse wheel
   - Uses `drawGallerySection()` helper for consistent section rendering
 - `drawAboutScreen()` - Render about screen with game information
-- `drawGameOver()` - Render game over screen
+- `drawGameOver()` - Render game over screen with navigation buttons (Back to Lobby for multiplayer, Back to Main Menu)
 - `drawPauseMenu()` - Render pause menu with interactive buttons (Resume, Restart, Settings, Return to Menu)
 - `drawCursor()` - Render custom cursor for menus and pause screen
 - `drawSinglePlayerHUD()` - Render single-player HUD layout
@@ -911,7 +911,7 @@ This hybrid approach provides:
 - Rank data synchronized from client to server on player registration
 - Rank badges positioned below player name in lobby cards
 - **Chat System**: Real-time chat window for player communication
-  - Chat window positioned bottom-left of lobby (above action buttons)
+  - Chat window positioned lower-left corner of lobby with 20px padding from edges
   - Scrollable message list with word wrapping (max 8-10 visible messages)
   - Input field with focus state, character counter (200 char limit), cursor animation
   - Color coding: own messages (orange), others (white), system (gray)

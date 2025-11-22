@@ -120,6 +120,7 @@ export class GameStateManager {
         gameState.showLobby = false;
         gameState.showCoopLobby = false;
         gameState.showAILobby = false;
+        this.gameHUD.hidePauseMenu(); // Ensure pause menu is hidden when game starts
 
         // Set game start time for session tracking
         gameState.gameStartTime = Date.now();

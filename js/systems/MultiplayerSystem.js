@@ -239,6 +239,10 @@ export class MultiplayerSystem {
                     console.log('[game:start] Player sync complete. Total players:', gameState.players.length);
                     console.log('[game:start] Player IDs:', gameState.players.map(p => ({ id: p.id, name: p.name })));
 
+                    // Ensure game is not paused when starting
+                    gameState.gamePaused = false;
+                    gameHUD.hidePauseMenu();
+
                     initAudio();
                     this.startGameCallback();
                 } else {

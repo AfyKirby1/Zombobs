@@ -643,8 +643,8 @@ function drawGame() {
 
     // Hide cursor during gameplay (crosshair used) or when paused (custom cursor used)
     // Settings panel uses default cursor, otherwise use custom
-    if (!gameState.showSettingsPanel && gameState.gamePaused) {
-        canvas.style.cursor = 'none'; // Use custom cursor when paused
+    if (!gameState.showSettingsPanel && (gameState.gamePaused || gameHUD.gameOver)) {
+        canvas.style.cursor = 'none'; // Use custom cursor when paused or game over
     } else {
         // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
         if (activeInputSource === 'gamepad') {
@@ -1104,7 +1104,7 @@ document.addEventListener('keydown', (e) => {
     if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && localPlayer) reloadWeapon(localPlayer);
     if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && localPlayer) performMeleeAttack(localPlayer);
 
-    if (gameState.gamePaused || !gameState.gameRunning) {
+    if (gameState.gamePaused || (!gameState.gameRunning && !gameHUD.gameOver)) {
         if (key === controls.reload) restartGame();
         if (gameState.gamePaused && (key === 'm')) restartGame();
     }
@@ -1140,7 +1140,7 @@ canvas.addEventListener('mousemove', (e) => {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
     } else if (gameState.showLevelUp) {
         gameHUD.updateLevelUpHover(mouse.x, mouse.y);
-    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout || gameState.showGallery || gameState.gamePaused) {
+    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout || gameState.showGallery || gameState.gamePaused || gameHUD.gameOver) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
 });
@@ -1372,6 +1372,46 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.isCoop = true;
             initAudio();
             startGame();
+        }
+        return;
+    }
+
+    // Game Over Screen
+    if (gameHUD.gameOver) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'gameover_lobby') {
+            // Return to multiplayer lobby
+            gameState.showLobby = true;
+            gameState.showMainMenu = false;
+            gameState.gameRunning = false;
+            gameState.isCoop = false;
+            gameState.gamePaused = false;
+            gameHUD.hideGameOver();
+            if (!gameState.menuMusicMuted) {
+                playMenuMusic();
+            }
+            
+            // Reset multiplayer game starting state to prevent stuck "GO!" screen
+            gameState.multiplayer.isGameStarting = false;
+            gameState.multiplayer.gameStartTime = 0;
+            
+            // Ensure multiplayer connection is active
+            if (!gameState.multiplayer.socket || !gameState.multiplayer.connected) {
+                connectToMultiplayer();
+            } else {
+                // Socket is connected - re-register player to rejoin lobby
+                gameState.multiplayer.active = true;
+                gameState.multiplayer.isReady = false; // Reset ready state
+                // Re-register with server to ensure we're back in the lobby
+                if (gameState.multiplayer.socket.connected) {
+                    multiplayerSystem.updateUsernameOnServer();
+                }
+            }
+            
+            resetGameState(canvas.width, canvas.height);
+        } else if (clickedButton === 'gameover_menu') {
+            // Return to main menu
+            restartGame();
         }
         return;
     }

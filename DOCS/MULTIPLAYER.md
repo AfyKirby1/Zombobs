@@ -106,6 +106,8 @@ The `gameState.multiplayer` object tracks:
   - Validates socket exists and is connected before emitting
   - Includes debug logging for troubleshooting
 - `'lobby_back'`: Returns to main menu
+- `'gameover_lobby'`: Returns to multiplayer lobby from game over screen (multiplayer games only)
+- `'gameover_menu'`: Returns to main menu from game over screen
 
 ## Packet Flow
 
@@ -153,6 +155,21 @@ The `gameState.multiplayer` object tracks:
 3. Server calls `assignLeader()` to assign new leader
 4. Server broadcasts `lobby:update` to all clients
 5. New leader's UI updates to show "Start Game" button
+
+### Game Over Screen Navigation
+
+1. When game ends in multiplayer, game over screen displays with two navigation options:
+   - **"Back to Lobby"** button (only shown for multiplayer games):
+     - Returns player to multiplayer lobby
+     - Re-registers player with server if already connected
+     - Resets ready state and multiplayer flags
+     - Ensures lobby state is correctly restored
+   - **"Back to Main Menu"** button (always shown):
+     - Returns player to main menu
+     - Calls `restartGame()` to reset all game state
+2. "Press R to Restart" functionality removed from game over screen
+3. Cursor and hover states work correctly on game over screen
+4. Pause state is properly reset when game starts to prevent pause screen from appearing
 
 ## Username System
 
@@ -515,7 +532,7 @@ The `gameState.multiplayer` object includes:
 #### UI Integration (`js/ui/GameHUD.js`)
 
 **Chat Window Component (`drawChatWindow`)**
-- Position: Bottom-left of lobby (above action buttons)
+- Position: Lower-left corner of lobby with 20px padding from edges
 - Dimensions: ~400px wide, ~200px tall (scaled with UI scale)
 - Glassmorphism styling matching lobby design
 - Disabled during game start countdown
