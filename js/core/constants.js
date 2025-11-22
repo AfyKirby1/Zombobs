@@ -97,7 +97,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "V0.6.0: Balance Overhaul! ⚖️ | Crit Rate Reduced (10%→3.33%) 🎯 | Zombie HP Doubled (except Boss) 💪 | Weapon Damage Doubled 🔫 | Hoarder Skill Bug Fixed 📦 | V0.5.3: UI Improvements & Scaling Fixes! 🎨 | Modern Glassmorphism Lobby 🌐 | Comprehensive Font Scaling 📏 | V0.5.2: Engine Micro-Optimizations! 🚀 | Math.sqrt() Elimination (30-50% FPS boost) ⚡ | V0.5.1: Speed Sync & Network Optimizations! ⚡ | Delta Compression (50-80% bandwidth reduction) 📉 | V0.5.0: Cloud Server 🌐 | Hugging Face Spaces ☁️ | UI Scaling System 📏 | And More...";
+export const NEWS_UPDATES = "V0.6.0: Balance Overhaul! ⚖️ | Crit Rate Reduced (10%→3.33%) 🎯 | Zombie HP Doubled (except Boss) 💪 | Weapon Damage Doubled 🔫 | Hoarder Skill Bug Fixed 📦 | Font Size Connections Verified ✅ | All UI Fonts Scale Properly 📏 | Highscore System Performance Boost 🚀 | Visual Settings Enhancements 🎨 | Text Rendering Quality Control 🖋️ | Rank Badge Customization 🏅 | Crosshair Customization 🎯 | Enemy Health Bar Styles 💚 | And More...";
 
 // Weapon definitions
 export const WEAPONS = {

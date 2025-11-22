@@ -76,8 +76,16 @@ This modular structure improves maintainability, testability, and scalability.
 - `ctx` - Canvas 2D rendering context
 - `gpuCanvas` - WebGPU canvas element used by the GPU renderer
 - `resizeCanvas(player)` - Resize canvas to fit window
+- `applyTextRenderingQuality(context, quality)` - Apply text rendering quality to a canvas context
+- `applyTextRenderingQualityToAll()` - Apply text rendering quality to all canvas contexts
 
-**Dependencies**: `constants.js`
+**Text Rendering Quality System**:
+- Applies font smoothing settings (low, medium, high) to all canvas contexts
+- `applyTextRenderingQualityToAll()` updates: main canvas, GameHUD, RankDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BossHealthBar
+- Change listener in `js/main.js` calls `applyTextRenderingQualityToAll()` when `textRenderingQuality` setting changes
+- Settings persist via SettingsManager and localStorage
+
+**Dependencies**: `constants.js`, `systems/SettingsManager.js`
 
 #### WebGPURenderer.js
 **Purpose**: GPU-accelerated background rendering and compute-driven particles
@@ -795,6 +803,17 @@ This modular structure improves maintainability, testability, and scalability.
 
 ### UI Modules (`js/ui/`)
 
+**Architecture Note**: The UI system uses a hybrid rendering approach:
+- **Game Rendering**: Canvas 2D + WebGPU for game entities, particles, and visual effects
+- **UI Overlays**: HTML/CSS for complex menu screens (Battlepass, Achievements, Profile)
+- **In-Game HUD**: Canvas 2D for real-time game information overlay
+
+This hybrid approach provides:
+- Better performance for UI-heavy screens (HTML layout engine)
+- More flexible styling and animations (CSS)
+- Native accessibility and browser features
+- Smooth transitions and modern aesthetics
+
 #### GameHUD.js
 **Purpose**: In-game HUD + menu + lobby overlay component
 
@@ -847,6 +866,11 @@ This modular structure improves maintainability, testability, and scalability.
 - All fonts properly scale using pattern: `Math.max(minSize, baseSize * scale)`
 - Button fonts, menu text, lobby UI, and all UI elements scale consistently
 - UI scale preset buttons in settings panel (Small 70%, Medium 100%, Large 130%)
+- **Font Size Verification Complete** - All hardcoded font sizes fixed (V0.6.0+)
+  - Fixed 20+ hardcoded font sizes across GameHUD, SettingsPanel, BossHealthBar
+  - All fonts connect to UI Scale setting (0.5-1.5) and Text Rendering Quality setting (low/medium/high)
+  - Text rendering quality applies to all screen contexts (Profile, Achievement, Battlepass screens)
+  - Consistent scaling pattern with minimum sizes for readability
 - Settings panel header/tab layout uses dynamic calculations to prevent intersection
 - Header height: `(35 * scale) + (30 * scale) + (15 * scale)` for title + divider + spacing
 - Viewport height calculated dynamically based on scaled header/tab/footer heights

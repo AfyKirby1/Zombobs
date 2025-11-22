@@ -1,257 +1,262 @@
-import { ctx } from '../core/canvas.js';
 import { achievementSystem } from '../systems/AchievementSystem.js';
 import { getAchievementCategories } from '../core/achievementDefinitions.js';
-import { settingsManager } from '../systems/SettingsManager.js';
+import { gameState } from '../core/gameState.js';
 
 /**
  * AchievementScreen - UI component for achievement gallery
+ * Uses HTML overlay instead of Canvas 2D drawing
  */
 export class AchievementScreen {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
+        this.container = null;
+        this.isMounted = false;
         this.selectedCategory = 'all';
-        this.scrollY = 0;
-        this.maxScrollY = 0;
-    }
-
-    getUIScale() {
-        const scale = settingsManager.getSetting('video', 'uiScale') ?? 1.0;
-        return Number.isFinite(scale) && scale > 0 ? scale : 1.0;
+        this.gridContainer = null;
+        this.achievementsGrid = null;
     }
 
     /**
-     * Draw achievement screen
+     * Mount the HTML overlay
      */
-    draw() {
-        const scale = this.getUIScale();
-        const width = this.canvas.width;
-        const height = this.canvas.height;
+    mount() {
+        if (this.isMounted) {
+            this.update();
+            return;
+        }
 
-        // Background overlay
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-        this.ctx.fillRect(0, 0, width, height);
+        // Create container
+        this.container = document.createElement('div');
+        this.container.className = 'overlay-container';
+        this.container.id = 'achievements-overlay';
 
-        // Title
-        const titleFontSize = Math.max(24, 32 * scale);
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = `bold ${titleFontSize}px 'Roboto Mono', monospace`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'top';
-        this.ctx.fillText('ACHIEVEMENTS', width / 2, 30 * scale);
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'overlay-header';
 
-        // Category filter buttons
-        const categories = ['all', ...getAchievementCategories()];
-        const buttonWidth = 120 * scale;
-        const buttonHeight = 35 * scale;
-        const buttonSpacing = 10 * scale;
-        const startX = (width - (categories.length * (buttonWidth + buttonSpacing) - buttonSpacing)) / 2;
-        const startY = 80 * scale;
+        const headerLeft = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'overlay-title';
+        title.textContent = 'ACHIEVEMENTS';
 
-        categories.forEach((category, index) => {
-            const buttonX = startX + index * (buttonWidth + buttonSpacing);
-            const isSelected = this.selectedCategory === category;
-            
-            // Button background
-            this.ctx.fillStyle = isSelected ? '#ff6b00' : 'rgba(42, 42, 42, 0.9)';
-            this.ctx.fillRect(buttonX, startY, buttonWidth, buttonHeight);
+        headerLeft.appendChild(title);
+        header.appendChild(headerLeft);
 
-            // Button border
-            this.ctx.strokeStyle = isSelected ? '#ff8c00' : '#666666';
-            this.ctx.lineWidth = 2 * scale;
-            this.ctx.strokeRect(buttonX, startY, buttonWidth, buttonHeight);
-
-            // Button text
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.font = `bold ${Math.max(10, 12 * scale)}px 'Roboto Mono', monospace`;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            const categoryName = category === 'all' ? 'All' : category.charAt(0).toUpperCase() + category.slice(1);
-            this.ctx.fillText(categoryName, buttonX + buttonWidth / 2, startY + buttonHeight / 2);
+        // Back button
+        const backButton = document.createElement('button');
+        backButton.className = 'btn-back';
+        backButton.innerHTML = '<span>BACK</span>';
+        backButton.addEventListener('click', () => {
+            gameState.showAchievements = false;
+            gameState.showMainMenu = true;
+            this.unmount();
         });
+        header.appendChild(backButton);
 
-        // Achievement grid
-        const gridStartY = startY + buttonHeight + 30 * scale;
-        const gridHeight = height - gridStartY - 50 * scale;
-        const cardWidth = 200 * scale;
-        const cardHeight = 120 * scale;
-        const cardSpacing = 15 * scale;
-        const cardsPerRow = Math.floor((width - 40 * scale) / (cardWidth + cardSpacing));
-        const visibleRows = Math.floor(gridHeight / (cardHeight + cardSpacing));
+        // Create main content (2-column layout)
+        const main = document.createElement('div');
+        main.className = 'achievements-main';
+
+        // Sidebar for categories
+        const sidebar = document.createElement('div');
+        sidebar.className = 'achievements-sidebar';
+        this.sidebar = sidebar;
+
+        // Main grid container
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'achievements-grid-container';
+        this.gridContainer = gridContainer;
+
+        const achievementsGrid = document.createElement('div');
+        achievementsGrid.className = 'achievements-grid';
+        this.achievementsGrid = achievementsGrid;
+
+        gridContainer.appendChild(achievementsGrid);
+        main.appendChild(sidebar);
+        main.appendChild(gridContainer);
+
+        // Assemble
+        this.container.appendChild(header);
+        this.container.appendChild(main);
+        document.body.appendChild(this.container);
+
+        // Render categories and achievements
+        this.renderCategories();
+        this.renderList(this.selectedCategory);
+
+        this.isMounted = true;
+
+        // Handle scroll events
+        gridContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            gridContainer.scrollTop += e.deltaY;
+        });
+    }
+
+    /**
+     * Unmount the HTML overlay
+     */
+    unmount() {
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        this.container = null;
+        this.isMounted = false;
+        this.sidebar = null;
+        this.gridContainer = null;
+        this.achievementsGrid = null;
+    }
+
+    /**
+     * Update the overlay content
+     */
+    update() {
+        if (!this.isMounted) return;
+        this.renderList(this.selectedCategory);
+    }
+
+    /**
+     * Render category buttons in sidebar
+     */
+    renderCategories() {
+        if (!this.sidebar) return;
+
+        this.sidebar.innerHTML = '';
+
+        const categories = ['all', ...getAchievementCategories()];
+
+        categories.forEach(category => {
+            const button = document.createElement('button');
+            button.className = 'category-button';
+            if (category === this.selectedCategory) {
+                button.classList.add('active');
+            }
+
+            const categoryName = category === 'all' 
+                ? 'All' 
+                : category.charAt(0).toUpperCase() + category.slice(1);
+            button.textContent = categoryName;
+
+            button.addEventListener('click', () => {
+                this.selectedCategory = category;
+                this.renderCategories(); // Update active state
+                this.renderList(category);
+            });
+
+            this.sidebar.appendChild(button);
+        });
+    }
+
+    /**
+     * Render achievement list based on category filter
+     */
+    renderList(category) {
+        if (!this.achievementsGrid) return;
 
         // Get filtered achievements
-        let achievements = this.selectedCategory === 'all' 
+        let achievements = category === 'all'
             ? achievementSystem.getAllAchievements()
-            : achievementSystem.getAchievementsByCategory(this.selectedCategory);
+            : achievementSystem.getAchievementsByCategory(category);
 
-        // Calculate scroll
-        const totalRows = Math.ceil(achievements.length / cardsPerRow);
-        this.maxScrollY = Math.max(0, (totalRows - visibleRows) * (cardHeight + cardSpacing));
-
-        const startRow = Math.floor(this.scrollY / (cardHeight + cardSpacing));
-        const endRow = Math.min(startRow + visibleRows + 1, totalRows);
-
-        // Draw visible achievements
-        for (let row = startRow; row < endRow; row++) {
-            for (let col = 0; col < cardsPerRow; col++) {
-                const index = row * cardsPerRow + col;
-                if (index >= achievements.length) break;
-
-                const achievement = achievements[index];
-                const cardX = 20 * scale + col * (cardWidth + cardSpacing);
-                const cardY = gridStartY + row * (cardHeight + cardSpacing) - this.scrollY;
-
-                this.drawAchievementCard(achievement, cardX, cardY, cardWidth, cardHeight);
-            }
-        }
-
-        // Scrollbar
-        if (this.maxScrollY > 0) {
-            const scrollbarWidth = 8 * scale;
-            const scrollbarX = width - scrollbarWidth - 10 * scale;
-            const scrollbarHeight = gridHeight;
-            const scrollbarY = gridStartY;
-            const thumbHeight = (gridHeight / (totalRows * (cardHeight + cardSpacing))) * scrollbarHeight;
-            const thumbY = scrollbarY + (this.scrollY / this.maxScrollY) * (scrollbarHeight - thumbHeight);
-
-            // Scrollbar track
-            this.ctx.fillStyle = 'rgba(42, 42, 42, 0.5)';
-            this.ctx.fillRect(scrollbarX, scrollbarY, scrollbarWidth, scrollbarHeight);
-
-            // Scrollbar thumb
-            this.ctx.fillStyle = '#ff6b00';
-            this.ctx.fillRect(scrollbarX, thumbY, scrollbarWidth, thumbHeight);
-        }
-
-        // Back button
-        this.drawBackButton(width - 120 * scale, 30 * scale, 100 * scale, 35 * scale);
-    }
-
-    /**
-     * Draw achievement card
-     */
-    drawAchievementCard(achievement, x, y, width, height) {
-        const scale = this.getUIScale();
-
-        // Card background
-        const isUnlocked = achievement.unlocked;
-        this.ctx.fillStyle = isUnlocked ? 'rgba(42, 42, 42, 0.9)' : 'rgba(20, 20, 20, 0.9)';
-        this.ctx.fillRect(x, y, width, height);
-
-        // Card border
-        this.ctx.strokeStyle = isUnlocked ? '#ff6b00' : '#444444';
-        this.ctx.lineWidth = 2 * scale;
-        this.ctx.strokeRect(x, y, width, height);
-
-        // Icon
-        const iconSize = 32 * scale;
-        this.ctx.font = `${iconSize}px serif`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(achievement.icon, x + width / 2, y + 25 * scale);
-
-        // Name
-        const nameFontSize = Math.max(9, 11 * scale);
-        this.ctx.fillStyle = isUnlocked ? '#ffffff' : '#888888';
-        this.ctx.font = `bold ${nameFontSize}px 'Roboto Mono', monospace`;
-        this.ctx.fillText(achievement.name, x + width / 2, y + 55 * scale);
-
-        // Progress bar (if locked)
-        if (!isUnlocked && achievement.requirement) {
-            const progress = Math.min(100, (achievement.progress / achievement.requirement.value) * 100);
-            const barWidth = width - 20 * scale;
-            const barHeight = 6 * scale;
-            const barX = x + 10 * scale;
-            const barY = y + height - 25 * scale;
-
-            // Progress bar background
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            this.ctx.fillRect(barX, barY, barWidth, barHeight);
-
-            // Progress bar fill
-            this.ctx.fillStyle = '#ff6b00';
-            this.ctx.fillRect(barX, barY, (barWidth * progress) / 100, barHeight);
-
-            // Progress text
-            this.ctx.fillStyle = '#aaaaaa';
-            this.ctx.font = `${Math.max(7, 9 * scale)}px 'Roboto Mono', monospace`;
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(`${Math.floor(progress)}%`, x + width / 2, barY - 12 * scale);
-        } else if (isUnlocked) {
-            // Unlocked indicator
-            this.ctx.fillStyle = '#00ff00';
-            this.ctx.font = `${Math.max(8, 10 * scale)}px 'Roboto Mono', monospace`;
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('✓ UNLOCKED', x + width / 2, y + height - 20 * scale);
-        }
-    }
-
-    /**
-     * Draw back button
-     */
-    drawBackButton(x, y, width, height) {
-        const scale = this.getUIScale();
-
-        // Button background
-        this.ctx.fillStyle = 'rgba(42, 42, 42, 0.9)';
-        this.ctx.fillRect(x, y, width, height);
-
-        // Button border
-        this.ctx.strokeStyle = '#ff6b00';
-        this.ctx.lineWidth = 2 * scale;
-        this.ctx.strokeRect(x, y, width, height);
-
-        // Button text
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = `bold ${Math.max(10, 12 * scale)}px 'Roboto Mono', monospace`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText('BACK', x + width / 2, y + height / 2);
-    }
-
-    /**
-     * Handle click
-     */
-    handleClick(x, y) {
-        const scale = this.getUIScale();
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-
-        // Back button
-        const backX = width - 120 * scale;
-        const backY = 30 * scale;
-        const backWidth = 100 * scale;
-        const backHeight = 35 * scale;
-
-        if (x >= backX && x <= backX + backWidth && y >= backY && y <= backY + backHeight) {
-            return { action: 'back' };
-        }
-
-        // Category buttons
-        const categories = ['all', ...getAchievementCategories()];
-        const buttonWidth = 120 * scale;
-        const buttonHeight = 35 * scale;
-        const buttonSpacing = 10 * scale;
-        const startX = (width - (categories.length * (buttonWidth + buttonSpacing) - buttonSpacing)) / 2;
-        const startY = 80 * scale;
-
-        categories.forEach((category, index) => {
-            const buttonX = startX + index * (buttonWidth + buttonSpacing);
-            if (x >= buttonX && x <= buttonX + buttonWidth && y >= startY && y <= startY + buttonHeight) {
-                this.selectedCategory = category;
-                this.scrollY = 0; // Reset scroll when changing category
-                return { action: 'category', category };
-            }
+        // Sort: unlocked first, then by progress
+        achievements.sort((a, b) => {
+            if (a.unlocked && !b.unlocked) return -1;
+            if (!a.unlocked && b.unlocked) return 1;
+            if (a.unlocked && b.unlocked) return 0;
+            // Both locked - sort by progress (descending)
+            return (b.progress || 0) - (a.progress || 0);
         });
 
-        return null;
+        // Clear grid
+        this.achievementsGrid.innerHTML = '';
+
+        // Create achievement cards
+        achievements.forEach(achievement => {
+            const card = document.createElement('div');
+            card.className = 'achievement-card';
+            if (achievement.unlocked) {
+                card.classList.add('unlocked');
+            } else {
+                card.classList.add('locked');
+            }
+
+            // Icon
+            const icon = document.createElement('div');
+            icon.className = 'achievement-icon';
+            icon.textContent = achievement.icon;
+            card.appendChild(icon);
+
+            // Name
+            const name = document.createElement('div');
+            name.className = 'achievement-name';
+            name.textContent = achievement.name;
+            card.appendChild(name);
+
+            // Progress or unlocked indicator
+            if (!achievement.unlocked && achievement.requirement) {
+                const progress = document.createElement('div');
+                progress.className = 'achievement-progress';
+
+                const progressPercent = Math.min(100, 
+                    (achievement.progress / achievement.requirement.value) * 100
+                );
+
+                const progressBar = document.createElement('div');
+                progressBar.className = 'progress-bar-mini';
+
+                const progressFill = document.createElement('div');
+                progressFill.className = 'progress-bar-mini-fill';
+                progressFill.style.width = `${progressPercent}%`;
+
+                progressBar.appendChild(progressFill);
+
+                const progressText = document.createElement('div');
+                progressText.className = 'progress-text';
+                progressText.textContent = `${Math.floor(progressPercent)}% - ${achievement.progress} / ${achievement.requirement.value}`;
+
+                progress.appendChild(progressBar);
+                progress.appendChild(progressText);
+                card.appendChild(progress);
+            } else if (achievement.unlocked) {
+                const unlockedText = document.createElement('div');
+                unlockedText.className = 'achievement-unlocked-text';
+                unlockedText.textContent = '✓ UNLOCKED';
+                card.appendChild(unlockedText);
+            }
+
+            // Description tooltip on hover
+            card.title = achievement.description;
+
+            this.achievementsGrid.appendChild(card);
+        });
     }
 
     /**
-     * Handle scroll
+     * Draw achievement screen (legacy method - now uses HTML overlay)
+     */
+    draw() {
+        if (gameState.showAchievements) {
+            this.mount();
+            this.update();
+        } else {
+            this.unmount();
+        }
+    }
+
+    /**
+     * Handle click (back button)
+     */
+    handleClick() {
+        gameState.showAchievements = false;
+        this.unmount();
+        return { action: 'back' };
+    }
+
+    /**
+     * Handle scroll (now handled by DOM events)
      */
     handleScroll(deltaY) {
-        this.scrollY = Math.max(0, Math.min(this.maxScrollY, this.scrollY + deltaY));
+        // Scrolling is now handled by DOM wheel events
+        // This method kept for compatibility
     }
 }
-

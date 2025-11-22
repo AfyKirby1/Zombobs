@@ -124,6 +124,12 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
   - Dynamic viewport calculations based on scaled element heights
   - News ticker font reduced to 85% size to fit more content
+  - **Font Size Verification Complete** - All hardcoded font sizes fixed (V0.6.0+)
+    - Fixed 20+ hardcoded font sizes across GameHUD, SettingsPanel, BossHealthBar
+    - All fonts now connect to UI Scale setting (0.5-1.5)
+    - All fonts connect to Text Rendering Quality setting (low/medium/high)
+    - Text rendering quality applies to all screen contexts (Profile, Achievement, Battlepass screens)
+    - Consistent scaling pattern with minimum sizes for readability
 ✅ **Visual Settings Enhancements** - Comprehensive visual customization options
   - **Text Rendering Quality**: Global control over font smoothing (low, medium, high)
   - **Rank Badge Settings**: Show/hide toggle and size control (small, normal, large)

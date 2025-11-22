@@ -703,8 +703,9 @@ export class SettingsPanel {
         // Label
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.font = '13px "Roboto Mono", monospace';
-        this.ctx.fillText(label, labelX, y + 20);
+        const labelFontSize = Math.max(10, Math.round(13 * scale));
+        this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(label, labelX, y + 20 * scale);
 
         const isHovered = mouse.x >= dropdownX && mouse.x <= dropdownX + dropdownWidth &&
                           mouse.y >= dropdownY && mouse.y <= dropdownY + dropdownHeight &&
@@ -911,8 +912,9 @@ export class SettingsPanel {
             // Label
             this.ctx.textAlign = 'left';
             this.ctx.fillStyle = COLORS.textMain;
-            this.ctx.font = '13px "Roboto Mono", monospace';
-            this.ctx.fillText(label, labelX, y + 20);
+            const labelFontSize = Math.max(10, Math.round(13 * scale));
+            this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillText(label, labelX, y + 20 * scale);
 
             const isRebinding = this.rebindingAction === key;
             const isHovered = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&

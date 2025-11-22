@@ -4,6 +4,18 @@
 
 ## 2025 - Active Development Notes
 
+### Font Size Connections Verification [2025-11-21]
+- ✅ **Font Size Verification Complete** - All hardcoded font sizes fixed
+  - Fixed 20+ hardcoded font sizes across GameHUD, SettingsPanel, BossHealthBar
+  - All fonts now connect to UI Scale setting (0.5-1.5) using pattern: `Math.max(minSize, baseSize * scale)`
+  - Minimum font sizes ensure readability at all scales (6-32px minimums)
+  - Text rendering quality now applies to all screen contexts (Profile, Achievement, Battlepass, BossHealthBar)
+  - `applyTextRenderingQualityToAll()` function updated to include all contexts
+  - Global references added in `js/main.js` for ProfileScreen, AchievementScreen, BattlepassScreen
+  - Consistent scaling pattern across entire UI
+  - Location: `js/ui/GameHUD.js`, `js/ui/SettingsPanel.js`, `js/ui/BossHealthBar.js`, `js/core/canvas.js`, `js/main.js`
+  - Documentation: `DOCS/debugs/font-size-verification.md` created with comprehensive results
+
 ### Visual Settings Enhancements [2025-11-21]
 - ✅ **Text Rendering Quality Setting** - Global font smoothing control
   - Three quality levels: Low (no smoothing), Medium, High (best quality)

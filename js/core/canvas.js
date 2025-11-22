@@ -37,9 +37,23 @@ export function applyTextRenderingQualityToAll() {
         if (window.gameHUD.rankDisplay && window.gameHUD.rankDisplay.ctx) {
             applyTextRenderingQuality(window.gameHUD.rankDisplay.ctx, quality);
         }
+        if (window.gameHUD.bossHealthBar && window.gameHUD.bossHealthBar.ctx) {
+            // BossHealthBar uses main ctx, but check if it has its own
+            const bossCtx = window.gameHUD.bossHealthBar.ctx;
+            if (bossCtx) applyTextRenderingQuality(bossCtx, quality);
+        }
     }
     if (window.settingsPanel && window.settingsPanel.ctx) {
         applyTextRenderingQuality(window.settingsPanel.ctx, quality);
+    }
+    if (window.profileScreen && window.profileScreen.ctx) {
+        applyTextRenderingQuality(window.profileScreen.ctx, quality);
+    }
+    if (window.achievementScreen && window.achievementScreen.ctx) {
+        applyTextRenderingQuality(window.achievementScreen.ctx, quality);
+    }
+    if (window.battlepassScreen && window.battlepassScreen.ctx) {
+        applyTextRenderingQuality(window.battlepassScreen.ctx, quality);
     }
 }
 

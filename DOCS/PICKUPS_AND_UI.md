@@ -7,6 +7,7 @@ This document covers all pickup items, their mechanics, visual design, spawn con
 - [Powerup Pickups](#powerup-pickups)
 - [UI Feedback Systems](#ui-feedback-systems)
 - [Collection Mechanics](#collection-mechanics)
+- [UI Overlay System](#ui-overlay-system)
 
 ---
 
@@ -484,6 +485,78 @@ const isActive = Date.now() < buffEndTime
 
 ---
 
+## UI Overlay System
+
+**Architecture**: Hybrid rendering approach (Canvas 2D + HTML/CSS overlays)
+
+The game uses a hybrid UI system where:
+- **Game Rendering**: Canvas 2D + WebGPU for game entities, particles, and visual effects
+- **UI Overlays**: HTML/CSS for complex menu screens (Battlepass, Achievements, Profile)
+- **In-Game HUD**: Canvas 2D for real-time game information overlay
+
+This hybrid approach provides:
+- Better performance for UI-heavy screens (HTML layout engine)
+- More flexible styling and animations (CSS)
+- Native accessibility and browser features
+- Smooth transitions and modern aesthetics
+
+### HTML Overlay Screens
+
+**Battlepass Screen** (`js/ui/BattlepassScreen.js`):
+- Modern AAA game aesthetic with glassmorphism effects
+- Horizontal scrollable tier track (50 tiers)
+- Animated progress bar with shine effects
+- 3D-style tier cards with hover effects
+- Glowing borders for unlocked items
+- Pulse animation for current tier
+- CSS: `css/ui-overlay.css` (`.battlepass-main`, `.tier-card`, `.progress-bar-fill`)
+
+**Achievement Screen** (`js/ui/AchievementScreen.js`):
+- Gallery-style 2-column layout with sidebar category filters
+- Responsive achievement grid layout
+- Progress bars for locked achievements
+- Gold glow effects for unlocked achievements
+- Smooth category switching
+- Native DOM scrolling with custom scrollbar styling
+- CSS: `css/ui-overlay.css` (`.achievements-main`, `.achievement-card`, `.category-button`)
+
+**Profile Screen** (`js/ui/ProfileScreen.js`):
+- Post-apocalyptic "Confidential Dossier" theme
+- Typewriter fonts (Courier Prime, Special Elite) for authentic feel
+- Paper texture background with typed report aesthetic
+- "TOP SECRET" stamp animation
+- Paperclip decorations
+- 2-column grid layout (Personnel Info + Field Statistics & Commendations)
+- Grid layout for statistics looking like typed reports
+- CSS: `css/ui-overlay.css` (`.dossier-container`, `.personnel-file`, `.stamp-secret`, `.stat-grid`)
+
+### Overlay Lifecycle
+
+**Mount/Unmount Pattern**:
+- Screens mount when shown (`mount()` method)
+- Screens unmount when hidden (`unmount()` method)
+- Clean DOM cleanup on screen transitions
+- Event listeners properly attached/removed
+
+**Event Handling**:
+- Native DOM event listeners for buttons and interactions
+- Click handling via HTML button elements
+- Scroll handling via DOM wheel events
+- No canvas coordinate-based click detection needed
+
+**Styling**:
+- Centralized CSS variables for consistent theming
+- CSS keyframe animations for smooth effects
+- Responsive design with media queries
+- Glassmorphism effects with backdrop blur
+
+**File Locations**:
+- HTML overlay styles: `css/ui-overlay.css`
+- Screen components: `js/ui/BattlepassScreen.js`, `js/ui/AchievementScreen.js`, `js/ui/ProfileScreen.js`
+- Font imports: `zombie-game.html` (Google Fonts: Courier Prime, Special Elite)
+
+---
+
 ## Future Considerations
 
 **Potential Enhancements:**
@@ -494,3 +567,4 @@ const isActive = Date.now() < buffEndTime
 - Pickup rarity tiers
 - Stacking buffs (multiple of same type)
 - Buff duration indicators in HUD
+- Additional HTML overlay screens (Settings panel, Inventory screen)

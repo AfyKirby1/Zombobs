@@ -154,14 +154,17 @@ export class GameHUD {
         this.ctx.fillText('❤️', iconX, iconY);
 
         // 6. Text Label "HP"
-        this.ctx.font = 'bold 12px "Roboto Mono", monospace';
+        const scale = this.getUIScale();
+        const labelFontSize = Math.max(8, Math.round(12 * scale));
+        this.ctx.font = `bold ${labelFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#9e9e9e';
         this.ctx.textAlign = 'left';
         this.ctx.fillText('HP', x + 50, y + 15);
 
         // 7. Health Value (Big Number)
         this.ctx.textAlign = 'right';
-        this.ctx.font = 'bold 24px "Roboto Mono", monospace';
+        const healthFontSize = Math.max(16, Math.round(24 * scale));
+        this.ctx.font = `bold ${healthFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = health < 30 ? '#ff5252' : '#ffffff';
         this.ctx.shadowBlur = health < 30 ? 10 : 0;
         this.ctx.shadowColor = '#ff0000';
@@ -170,7 +173,8 @@ export class GameHUD {
         this.ctx.textAlign = 'left'; // Reset alignment
 
         // 8. Preview Label
-        this.ctx.font = 'italic 8px "Roboto Mono", monospace';
+        const previewFontSize = Math.max(6, Math.round(8 * scale));
+        this.ctx.font = `italic ${previewFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.fillText('PREVIEW', x + 3, y + 8);
     }
@@ -699,20 +703,22 @@ export class GameHUD {
         if (!text) return;
 
         this.ctx.save();
-        this.ctx.font = '14px "Roboto Mono", monospace';
+        const scale = this.getUIScale();
+        const tooltipFontSize = Math.max(10, Math.round(14 * scale));
+        this.ctx.font = `${tooltipFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'bottom';
 
-        const padding = 10;
+        const padding = 10 * scale;
         const textMetrics = this.ctx.measureText(text);
         const textWidth = textMetrics.width;
-        const textHeight = 20;
+        const textHeight = 20 * scale;
         const tooltipWidth = textWidth + padding * 2;
         const tooltipHeight = textHeight + padding * 2;
 
         // Position tooltip above the point
         const tooltipX = x;
-        const tooltipY = y - 10;
+        const tooltipY = y - 10 * scale;
 
         // Background
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
@@ -811,22 +817,24 @@ export class GameHUD {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.font = 'bold 48px "Creepster", cursive';
+        const scale = this.getUIScale();
+        const titleFontSize = Math.max(32, 48 * scale);
+        this.ctx.font = `bold ${titleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 20;
+        this.ctx.shadowBlur = 20 * scale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        this.ctx.fillText('LOCAL CO-OP (UP TO 4 PLAYERS)', this.canvas.width / 2, 80);
+        this.ctx.fillText('LOCAL CO-OP (UP TO 4 PLAYERS)', this.canvas.width / 2, 80 * scale);
         this.ctx.shadowBlur = 0;
 
         // 2x2 grid layout for 4 player slots
-        const slotWidth = 350;
-        const slotHeight = 150;
-        const spacing = 30;
+        const slotWidth = 350 * scale;
+        const slotHeight = 150 * scale;
+        const spacing = 30 * scale;
         const gridWidth = slotWidth * 2 + spacing;
         const gridHeight = slotHeight * 2 + spacing;
         const startX = (this.canvas.width - gridWidth) / 2;
-        const startY = 150;
+        const startY = 150 * scale;
 
         const playerColors = ['#66b3ff', '#ff6666', '#66ff66', '#ffaa66'];
         const playerLabels = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
@@ -844,38 +852,42 @@ export class GameHUD {
             this.ctx.fillStyle = 'rgba(15, 15, 20, 0.8)';
             this.ctx.fillRect(x, y, slotWidth, slotHeight);
             this.ctx.strokeStyle = player ? playerColors[i] : 'rgba(255, 255, 255, 0.2)';
-            this.ctx.lineWidth = 2;
+            this.ctx.lineWidth = 2 * scale;
             this.ctx.strokeRect(x, y, slotWidth, slotHeight);
 
             // Player label
-            this.ctx.font = '24px "Roboto Mono", monospace';
+            const labelFontSize = Math.max(16, 24 * scale);
+            this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
             this.ctx.textAlign = 'center';
             this.ctx.fillStyle = playerColors[i];
-            this.ctx.fillText(playerLabels[i], x + slotWidth / 2, y + 30);
+            this.ctx.fillText(playerLabels[i], x + slotWidth / 2, y + 30 * scale);
 
             // Player status
-            this.ctx.font = '16px "Roboto Mono", monospace';
+            const statusFontSize = Math.max(11, 16 * scale);
+            this.ctx.font = `${statusFontSize}px "Roboto Mono", monospace`;
 
             if (player) {
                 // Player joined
                 const controls = player.inputSource === 'mouse' ? 'WASD + Mouse' :
                     (player.inputSource === 'gamepad' ? `Gamepad ${player.gamepadIndex + 1}` : 'Keyboard');
                 this.ctx.fillStyle = '#cccccc';
-                this.ctx.fillText(`Controls: ${controls}`, x + slotWidth / 2, y + 70);
+                this.ctx.fillText(`Controls: ${controls}`, x + slotWidth / 2, y + 70 * scale);
                 this.ctx.fillStyle = '#76ff03';
-                this.ctx.fillText('✓ Ready', x + slotWidth / 2, y + 100);
+                this.ctx.fillText('✓ Ready', x + slotWidth / 2, y + 100 * scale);
 
                 if (i > 0) {
                     this.ctx.fillStyle = '#888888';
-                    this.ctx.font = '12px "Roboto Mono", monospace';
-                    this.ctx.fillText('(Press Back/B to Leave)', x + slotWidth / 2, y + 125);
+                    const hintFontSize = Math.max(9, 12 * scale);
+                    this.ctx.font = `${hintFontSize}px "Roboto Mono", monospace`;
+                    this.ctx.fillText('(Press Back/B to Leave)', x + slotWidth / 2, y + 125 * scale);
                 }
             } else {
                 // Empty slot
                 this.ctx.fillStyle = '#888888';
-                this.ctx.fillText('Press A/Enter to Join', x + slotWidth / 2, y + 70);
-                this.ctx.font = '14px "Roboto Mono", monospace';
-                this.ctx.fillText('(Any Gamepad or Keyboard)', x + slotWidth / 2, y + 100);
+                this.ctx.fillText('Press A/Enter to Join', x + slotWidth / 2, y + 70 * scale);
+                const hintFontSize2 = Math.max(10, 14 * scale);
+                this.ctx.font = `${hintFontSize2}px "Roboto Mono", monospace`;
+                this.ctx.fillText('(Any Gamepad or Keyboard)', x + slotWidth / 2, y + 100 * scale);
             }
         }
 
@@ -899,53 +911,58 @@ export class GameHUD {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.font = '48px "Creepster", cursive';
+        const scale = this.getUIScale();
+        const gameOverFontSize = Math.max(32, 48 * scale);
+        this.ctx.font = `${gameOverFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#ff0000';
-        this.ctx.shadowBlur = 20;
+        this.ctx.shadowBlur = 20 * scale;
         this.ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 100);
+        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 100 * scale);
         this.ctx.shadowBlur = 0;
 
-        this.ctx.font = '20px "Roboto Mono", monospace';
+        const scoreFontSize = Math.max(14, Math.round(20 * scale));
+        this.ctx.font = `${scoreFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#cccccc';
         this.ctx.textAlign = 'center';
 
-        this.ctx.fillText(this.finalScore, this.canvas.width / 2, this.canvas.height / 2 - 30);
+        this.ctx.fillText(this.finalScore, this.canvas.width / 2, this.canvas.height / 2 - 30 * scale);
 
         // Display multiplier stats
         const player = gameState.players[0];
         if (player.maxMultiplierThisSession > 1.0) {
-            this.ctx.font = '18px "Roboto Mono", monospace';
+            const multiplierFontSize = Math.max(12, Math.round(18 * scale));
+            this.ctx.font = `${multiplierFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#ffd700';
-            this.ctx.fillText(`Max Multiplier: ${player.maxMultiplierThisSession}x`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+            this.ctx.fillText(`Max Multiplier: ${player.maxMultiplierThisSession}x`, this.canvas.width / 2, this.canvas.height / 2 + 10 * scale);
 
             if (player.totalMultiplierBonus > 0) {
                 this.ctx.fillStyle = '#4caf50';
-                this.ctx.fillText(`Bonus Score: +${Math.floor(player.totalMultiplierBonus)}`, this.canvas.width / 2, this.canvas.height / 2 + 35);
+                this.ctx.fillText(`Bonus Score: +${Math.floor(player.totalMultiplierBonus)}`, this.canvas.width / 2, this.canvas.height / 2 + 35 * scale);
             }
         }
 
         // Display rank XP gained
         if (gameState.sessionResults && gameState.sessionResults.rankProgress) {
             const rankProgress = gameState.sessionResults.rankProgress;
-            const scale = this.getUIScale();
-            let yOffset = 60;
+            let yOffset = 60 * scale;
             
-            this.ctx.font = `${Math.max(16, 18 * scale)}px "Roboto Mono", monospace`;
+            const rankFontSize = Math.max(16, Math.round(18 * scale));
+            this.ctx.font = `${rankFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#ff6b00';
             this.ctx.fillText(`Rank XP Gained: +${rankProgress.xpGained}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
             
             if (rankProgress.rankUp) {
-                yOffset += 25;
+                yOffset += 25 * scale;
                 this.ctx.fillStyle = '#00ff00';
                 this.ctx.fillText(`RANK UP! ${rankProgress.rankName} Tier ${rankProgress.newTier}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
             }
         }
 
         this.ctx.fillStyle = '#ff0000';
-        this.ctx.font = '16px "Roboto Mono", monospace';
-        this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 100);
+        const restartFontSize = Math.max(11, Math.round(16 * scale));
+        this.ctx.font = `${restartFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText('Press R to Restart', this.canvas.width / 2, this.canvas.height / 2 + 100 * scale);
     }
 
     drawPauseMenu() {
@@ -1350,14 +1367,14 @@ export class GameHUD {
         const icon = gameState.menuMusicMuted ? '🔇' : '🔊';
         this.ctx.fillText(icon, muteButtonX + muteButtonSize / 2, muteButtonY + muteButtonSize / 2);
 
-        // Draw news ticker above footer
-        this.drawNewsTicker();
-
         // Draw version box
         this.drawVersionBox();
 
         // Draw technology branding in bottom-left
         this.drawTechnologyBranding();
+
+        // Draw news ticker at bottom (after other elements to appear on top)
+        this.drawNewsTicker();
     }
 
     drawRankBadge() {
@@ -1385,15 +1402,12 @@ export class GameHUD {
 
         // Dimensions
         const boxWidth = 650;  // Increased from 480
-        const boxHeight = 24;
+        const boxHeight = 28;  // Increased from 24 for better visibility
         const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
         const boxX = centerX - (boxWidth / 2);
         
-        // Position below UI buttons
-        // Last row center is roughly centerY + 135 (see drawMainMenu)
-        // Bottom of buttons is roughly centerY + 155
-        const boxY = centerY + 230;
+        // Position at bottom of screen with 10px padding
+        const boxY = canvas.height - boxHeight - 10;
 
         // Measure text width for scrolling calculation (using smaller font)
         ctx.font = `${newsFontSize}px "Roboto Mono", monospace`;
@@ -2718,16 +2732,19 @@ export class GameHUD {
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
             // Enhanced countdown number with stronger effects
+            const lobbyScale = this.getUIScale();
             const pulse = 0.8 + Math.sin(Date.now() * 0.02) * 0.2;
-            this.ctx.font = 'bold 140px "Roboto Mono", monospace';
+            const countdownFontSize = Math.max(80, 140 * lobbyScale);
+            this.ctx.font = `bold ${countdownFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#ff1744';
-            this.ctx.shadowBlur = 60 * pulse;
+            this.ctx.shadowBlur = 60 * pulse * lobbyScale;
             this.ctx.shadowColor = '#ff0000';
             this.ctx.fillText(timeLeft > 0 ? timeLeft : 'GO!', centerX, centerY);
             this.ctx.shadowBlur = 0;
 
             // Enhanced "DEPLOYING" text
-            this.ctx.font = 'bold 36px "Roboto Mono", monospace';
+            const deployingFontSize = Math.max(24, 36 * lobbyScale);
+            this.ctx.font = `bold ${deployingFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#ffffff';
             this.ctx.shadowBlur = 20;
             this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
@@ -3328,7 +3345,9 @@ export class GameHUD {
         const directions = ['N', 'E', 'S', 'W'];
         const directionAngles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
 
-        this.ctx.font = 'bold 14px "Roboto Mono", monospace';
+        const scale = this.getUIScale();
+        const compassFontSize = Math.max(10, Math.round(14 * scale));
+        this.ctx.font = `bold ${compassFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
 
@@ -3371,10 +3390,11 @@ export class GameHUD {
     drawTechnologyBranding() {
         this.ctx.save();
 
-        const padding = 15;
-        const fontSize = 10;
-        const lineHeight = 14;
-        const textPadding = 8;
+        const scale = this.getUIScale();
+        const padding = 15 * scale;
+        const fontSize = Math.max(8, Math.round(10 * scale));
+        const lineHeight = 14 * scale;
+        const textPadding = 8 * scale;
 
         // Calculate text dimensions
         this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
@@ -3500,7 +3520,9 @@ export class GameHUD {
         this.ctx.stroke();
 
         // Draw "WebGPU" text
-        this.ctx.font = 'bold 10px "Roboto Mono", monospace';
+        const scale = this.getUIScale();
+        const webgpuFontSize = Math.max(8, Math.round(10 * scale));
+        this.ctx.font = `bold ${webgpuFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
 
@@ -3549,28 +3571,31 @@ export class GameHUD {
 
         // Title
         ctx.save();
+        const scale = this.getUIScale();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 20 * scale;
         ctx.shadowColor = '#ffc107';
         ctx.fillStyle = '#ffc107';
-        ctx.font = 'bold 48px "Roboto Mono", monospace';
-        ctx.fillText('LEVEL UP!', canvas.width / 2, 80);
+        const titleFontSize = Math.max(32, 48 * scale);
+        ctx.font = `bold ${titleFontSize}px "Roboto Mono", monospace`;
+        ctx.fillText('LEVEL UP!', canvas.width / 2, 80 * scale);
         ctx.shadowBlur = 0;
 
         // Level display
         ctx.fillStyle = '#ffffff';
-        ctx.font = '24px "Roboto Mono", monospace';
-        ctx.fillText(`Level ${gameState.level}`, canvas.width / 2, 130);
+        const levelFontSize = Math.max(16, 24 * scale);
+        ctx.font = `${levelFontSize}px "Roboto Mono", monospace`;
+        ctx.fillText(`Level ${gameState.level}`, canvas.width / 2, 130 * scale);
         ctx.restore();
 
         // Draw skill cards
-        const cardWidth = 300;
-        const cardHeight = 400;
-        const cardSpacing = 40;
+        const cardWidth = 300 * scale;
+        const cardHeight = 400 * scale;
+        const cardSpacing = 40 * scale;
         const totalWidth = (cardWidth * 3) + (cardSpacing * 2);
         const startX = (canvas.width - totalWidth) / 2;
-        const cardY = canvas.height / 2 - cardHeight / 2 + 40;
+        const cardY = canvas.height / 2 - cardHeight / 2 + 40 * scale;
 
         gameState.levelUpChoices.forEach((skill, index) => {
             const cardX = startX + (index * (cardWidth + cardSpacing));
@@ -3597,39 +3622,44 @@ export class GameHUD {
             ctx.shadowBlur = 0;
 
             // Icon
-            ctx.font = '64px serif';
+            const iconFontSize = 64 * scale;
+            ctx.font = `${iconFontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(skill.icon, cardX + cardWidth / 2, cardY + 80);
+            ctx.fillText(skill.icon, cardX + cardWidth / 2, cardY + 80 * scale);
 
             // Skill name
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 24px "Roboto Mono", monospace';
-            ctx.fillText(skill.name, cardX + cardWidth / 2, cardY + 160);
+            const skillNameFontSize = Math.max(16, 24 * scale);
+            ctx.font = `bold ${skillNameFontSize}px "Roboto Mono", monospace`;
+            ctx.fillText(skill.name, cardX + cardWidth / 2, cardY + 160 * scale);
 
             // Description
             ctx.fillStyle = '#cccccc';
-            ctx.font = '16px "Roboto Mono", monospace';
-            const descriptionLines = this.wrapText(ctx, skill.description, cardWidth - 40);
-            let lineY = cardY + 200;
+            const descFontSize = Math.max(11, 16 * scale);
+            ctx.font = `${descFontSize}px "Roboto Mono", monospace`;
+            const descriptionLines = this.wrapText(ctx, skill.description, cardWidth - 40 * scale);
+            let lineY = cardY + 200 * scale;
             descriptionLines.forEach(line => {
                 ctx.fillText(line, cardX + cardWidth / 2, lineY);
-                lineY += 24;
+                lineY += 24 * scale;
             });
 
             // Check if already owned
             const existingSkill = gameState.activeSkills.find(s => s.id === skill.id);
             if (existingSkill) {
                 ctx.fillStyle = '#ffc107';
-                ctx.font = 'bold 18px "Roboto Mono", monospace';
-                ctx.fillText(`UPGRADE (Level ${existingSkill.level + 1})`, cardX + cardWidth / 2, cardY + cardHeight - 40);
+                const upgradeFontSize = Math.max(12, 18 * scale);
+                ctx.font = `bold ${upgradeFontSize}px "Roboto Mono", monospace`;
+                ctx.fillText(`UPGRADE (Level ${existingSkill.level + 1})`, cardX + cardWidth / 2, cardY + cardHeight - 40 * scale);
             }
         });
 
         // Instruction text
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.font = '18px "Roboto Mono", monospace';
-        ctx.fillText('Click a skill to select it', canvas.width / 2, canvas.height - 60);
+        const instructionFontSize = Math.max(12, 18 * scale);
+        ctx.font = `${instructionFontSize}px "Roboto Mono", monospace`;
+        ctx.fillText('Click a skill to select it', canvas.width / 2, canvas.height - 60 * scale);
     }
 
     wrapText(ctx, text, maxWidth) {
@@ -3747,11 +3777,13 @@ export class GameHUD {
         this.ctx.shadowBlur = 0;
 
         // Status text
+        const scale = this.getUIScale();
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '12px "Roboto Mono", monospace';
+        const statusFontSize = Math.max(9, 12 * scale);
+        this.ctx.font = `${statusFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(statusText, dotX + 20, dotY);
+        this.ctx.fillText(statusText, dotX + 20 * scale, dotY);
     }
 
     drawMultiplierIndicator(player, x, y) {
@@ -3779,11 +3811,13 @@ export class GameHUD {
 
         // Render multiplier text
         this.ctx.save();
-        this.ctx.font = 'bold 24px "Roboto Mono"';
+        const scale = this.getUIScale();
+        const multiplierFontSize = Math.max(16, 24 * scale);
+        this.ctx.font = `bold ${multiplierFontSize}px "Roboto Mono"`;
         this.ctx.fillStyle = color;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.shadowBlur = 15 * pulse;
+        this.ctx.shadowBlur = 15 * pulse * scale;
         this.ctx.shadowColor = color;
         this.ctx.fillText(`${player.scoreMultiplier}x`, x + width / 2, y);
         this.ctx.shadowBlur = 0;
@@ -3811,8 +3845,10 @@ export class GameHUD {
         }
 
         // At max tier
+        const scale = this.getUIScale();
         if (kills >= thresholds[thresholds.length - 1]) {
-            this.ctx.font = '12px "Roboto Mono"';
+            const maxFontSize = Math.max(9, 12 * scale);
+            this.ctx.font = `${maxFontSize}px "Roboto Mono"`;
             this.ctx.fillStyle = '#ffd700';
             this.ctx.textAlign = 'center';
             this.ctx.fillText('MAX', x + width / 2, y);
@@ -3840,10 +3876,11 @@ export class GameHUD {
 
         // Show kills remaining
         const killsRemaining = nextThreshold - kills;
-        this.ctx.font = '10px "Roboto Mono"';
+        const killsFontSize = Math.max(8, Math.round(10 * scale));
+        this.ctx.font = `${killsFontSize}px "Roboto Mono"`;
         this.ctx.fillStyle = '#9e9e9e';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(`${killsRemaining} kills to ${player.scoreMultiplier + 1.0}x`, x + width / 2, y + 16);
+        this.ctx.fillText(`${killsRemaining} kills to ${player.scoreMultiplier + 1.0}x`, x + width / 2, y + 16 * scale);
     }
 
     /**

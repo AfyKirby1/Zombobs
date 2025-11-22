@@ -79,6 +79,10 @@ window.gameHUD = gameHUD; // Make globally accessible for text rendering quality
 const profileScreen = new ProfileScreen(canvas);
 const achievementScreen = new AchievementScreen(canvas);
 const battlepassScreen = new BattlepassScreen(canvas);
+// Make globally accessible for text rendering quality
+window.profileScreen = profileScreen;
+window.achievementScreen = achievementScreen;
+window.battlepassScreen = battlepassScreen;
 
 // Initialize new systems
 const meleeSystem = new MeleeSystem();
@@ -218,6 +222,23 @@ settingsManager.addChangeListener((category, key, value) => {
             if (key === 'particleCount') {
                 webgpuRenderer.setParticleCount(value);
             }
+        }
+        
+        // Handle vignette, shadows, and lighting changes - invalidate cache for immediate visual update
+        if (key === 'vignette' || key === 'lighting') {
+            // Invalidate rendering cache when vignette/lighting toggles change
+            const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+            if (localPlayer) {
+                renderingCache.invalidate(localPlayer);
+            }
+            // Cache will be updated on next drawGame() call with new settings
+        }
+        
+        // Shadows are read directly in rendering code, no cache invalidation needed
+        // But we can still add a listener for consistency
+        if (key === 'shadows') {
+            // Shadows are read directly per-frame, so changes apply immediately
+            // No cache invalidation needed
         }
     }
 });
@@ -637,14 +658,25 @@ function drawGame() {
     const cachedGraphicsSettings = graphicsSettings;
     // Use consolidated WebGPU check helper
     const webgpuActive = isWebGPUActive();
+    const qualityPreset = settingsManager.getSetting('video', 'qualityPreset') || 'high';
     const postProcessingQuality = cachedGraphicsSettings.postProcessingQuality || 'medium';
     
-    // Post-processing quality controls vignette and lighting
-    // Off = no effects, Low = vignette only, Medium = vignette + lighting, High = all + enhanced
-    const vignetteEnabled = cachedGraphicsSettings.vignette !== false && 
-                           (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high');
-    const lightingEnabled = cachedGraphicsSettings.lighting !== false && 
-                           (postProcessingQuality === 'medium' || postProcessingQuality === 'high');
+    // When quality preset is 'custom', individual toggles work independently
+    // Otherwise, post-processing quality acts as a global override
+    const isCustomPreset = qualityPreset === 'custom';
+    
+    // Vignette: Works independently if custom preset, otherwise respects postProcessingQuality
+    const vignetteEnabled = isCustomPreset 
+        ? cachedGraphicsSettings.vignette !== false  // Independent toggle when custom
+        : (cachedGraphicsSettings.vignette !== false && 
+           (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
+    
+    // Lighting: Works independently if custom preset, otherwise respects postProcessingQuality  
+    const lightingEnabled = isCustomPreset
+        ? cachedGraphicsSettings.lighting !== false  // Independent toggle when custom
+        : (cachedGraphicsSettings.lighting !== false && 
+           (postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
+    
     const enhancedPostProcessing = postProcessingQuality === 'high';
     
     const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
@@ -1194,33 +1226,21 @@ canvas.addEventListener('mousedown', (e) => {
         return;
     }
 
-    // Profile Screen
+    // Profile Screen - click handling now done via DOM events in overlay
+    // No need to handle canvas clicks, the overlay handles all interactions
     if (gameState.showProfile) {
-        const result = profileScreen.handleClick(clickX, clickY);
-        if (result && result.action === 'back') {
-            gameState.showProfile = false;
-            gameState.showMainMenu = true;
-        }
         return;
     }
 
-    // Achievement Screen
+    // Achievement Screen - click handling now done via DOM events in overlay
+    // No need to handle canvas clicks, the overlay handles all interactions
     if (gameState.showAchievements) {
-        const result = achievementScreen.handleClick(clickX, clickY);
-        if (result && result.action === 'back') {
-            gameState.showAchievements = false;
-            gameState.showMainMenu = true;
-        }
         return;
     }
 
-    // Battlepass Screen
+    // Battlepass Screen - click handling now done via DOM events in overlay
+    // No need to handle canvas clicks, the overlay handles all interactions
     if (gameState.showBattlepass) {
-        const result = battlepassScreen.handleClick(clickX, clickY);
-        if (result && result.action === 'back') {
-            gameState.showBattlepass = false;
-            gameState.showMainMenu = true;
-        }
         return;
     }
 
@@ -1354,17 +1374,15 @@ canvas.addEventListener('wheel', (e) => {
         return;
     }
 
-    // Achievement screen scrolling
+    // Achievement screen scrolling - now handled by DOM overlay
     if (gameState.showAchievements) {
-        e.preventDefault();
-        achievementScreen.handleScroll(e.deltaY * 0.5);
+        e.preventDefault(); // Prevent page scroll, overlay handles its own scrolling
         return;
     }
 
-    // Battlepass screen scrolling
+    // Battlepass screen scrolling - now handled by DOM overlay
     if (gameState.showBattlepass) {
-        e.preventDefault();
-        battlepassScreen.handleScroll(e.deltaX * 0.5); // Horizontal scroll for battlepass
+        e.preventDefault(); // Prevent page scroll, overlay handles its own scrolling
         return;
     }
 

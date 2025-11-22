@@ -4,6 +4,134 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased] - 2025-11-21
 
+### 🎨 Modern UI Overhaul - HTML Overlay System
+
+> **Complete refactor of Battlepass, Achievements, and Profile screens from Canvas 2D to modern HTML/CSS overlays**
+
+#### Added
+- **HTML Overlay System**: New modern UI system replacing Canvas-based rendering for menus
+  - Glassmorphism effects with backdrop blur
+  - Smooth animations and transitions
+  - Hover effects and interactive elements
+  - Responsive design with mobile support
+  - Location: `css/ui-overlay.css`, `js/ui/BattlepassScreen.js`, `js/ui/AchievementScreen.js`, `js/ui/ProfileScreen.js`
+
+- **Battlepass Screen Redesign**: Modern AAA game aesthetic
+  - Horizontal scrollable tier track with smooth scrolling
+  - 3D-style tier cards with hover effects
+  - Animated progress bar with shine effects
+  - Glowing borders for unlocked items
+  - Pulse animation for current tier
+  - Location: `js/ui/BattlepassScreen.js`, `css/ui-overlay.css`
+
+- **Achievement Screen Redesign**: Gallery-style layout
+  - 2-column layout with sidebar category filters
+  - Responsive achievement grid
+  - Progress bars for locked achievements
+  - Gold glow effects for unlocked achievements
+  - Smooth category switching
+  - Location: `js/ui/AchievementScreen.js`, `css/ui-overlay.css`
+
+- **Profile Screen Dossier Theme**: Post-apocalyptic organization style
+  - "Confidential Dossier" visual design
+  - Typewriter fonts (Courier Prime, Special Elite)
+  - Paper texture background with typed report aesthetic
+  - "TOP SECRET" stamp animation
+  - Paperclip decorations
+  - Grid layout for statistics
+  - Personnel Information and Commendations sections
+  - Location: `js/ui/ProfileScreen.js`, `css/ui-overlay.css`
+
+- **Typewriter Fonts**: Added Google Fonts for dossier theme
+  - Courier Prime (monospace)
+  - Special Elite (typewriter style)
+  - Location: `zombie-game.html`
+
+#### Changed
+- **UI Rendering Architecture**: Shift from pure Canvas 2D to hybrid Canvas + HTML
+  - Game rendering remains Canvas-based (WebGPU + Canvas 2D)
+  - UI overlays now use HTML/CSS for complex layouts
+  - Better performance for UI-heavy screens
+  - More flexible styling and animations
+  - Location: `js/ui/BattlepassScreen.js`, `js/ui/AchievementScreen.js`, `js/ui/ProfileScreen.js`
+
+- **Screen Lifecycle Management**: New mount/unmount pattern
+  - Screens mount when shown, unmount when hidden
+  - Clean DOM cleanup on screen transitions
+  - Event listeners properly attached/removed
+  - Location: All refactored screen classes
+
+- **Click Handling**: Moved from canvas coordinate-based to DOM events
+  - Native HTML button clicks
+  - Better accessibility
+  - More reliable interaction detection
+  - Location: `js/main.js`, refactored screen classes
+
+- **Scroll Handling**: Native DOM scrolling
+  - Smooth native scroll behavior
+  - Custom scrollbars styled to match theme
+  - Better performance than manual scroll simulation
+  - Location: Refactored screen classes
+
+#### Technical Details
+- **CSS Variables**: Centralized color and styling system
+  - Consistent theming across all overlays
+  - Easy customization and future theme support
+  - Location: `css/ui-overlay.css`
+
+- **Animation System**: CSS keyframe animations
+  - Fade-in effects for overlays
+  - Pulse animations for active elements
+  - Shine effects for progress bars
+  - Stamp appearance animation
+  - Location: `css/ui-overlay.css`
+
+- **Responsive Design**: Mobile-first approach
+  - Grid layouts adapt to screen size
+  - Sidebars convert to horizontal scroll on mobile
+  - Touch-friendly interactions
+  - Location: `css/ui-overlay.css` media queries
+
+## [Unreleased] - 2025-11-21
+
+### 🎨 Font Size Connections Verification & Fixes
+
+> **Fixed all hardcoded font sizes and verified UI Scale and Text Rendering Quality connections**
+
+#### Fixed
+- **Hardcoded Font Sizes**: Fixed 20+ hardcoded font sizes across multiple UI files
+  - `js/ui/GameHUD.js`: Health display, tooltips, menus, game over screen, level up screen, compass, technology branding, multiplayer lobby, connection status, multiplier indicator, WebGPU status icon
+  - `js/ui/SettingsPanel.js`: Dropdown labels, keybind button labels
+  - `js/ui/BossHealthBar.js`: Added `getUIScale()` method and fixed boss health bar font size
+  - All fonts now use consistent scaling pattern: `Math.max(minSize, baseSize * scale)`
+  - Minimum font sizes prevent unreadable text at low UI scales
+  - Location: All UI files with font rendering
+
+#### Added
+- **Text Rendering Quality Coverage**: Extended `applyTextRenderingQualityToAll()` to include all screen contexts
+  - Now applies to: Main canvas, GameHUD, RankDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BossHealthBar
+  - Text rendering quality changes apply immediately to all contexts
+  - Location: `js/core/canvas.js`, `js/main.js`
+
+#### Changed
+- **UI Scale System**: All fonts now properly scale with UI Scale setting (0.5-1.5)
+  - Consistent scaling pattern across all UI components
+  - All font sizes recalculate each frame to respond to UI scale changes
+  - Tooltip dimensions and other UI elements now scale proportionally
+  - Location: All UI files (`js/ui/*.js`)
+
+#### Verified
+- ✅ All fonts connect to UI Scale setting
+- ✅ All fonts connect to Text Rendering Quality setting
+- ✅ No hardcoded font sizes remain
+- ✅ Settings changes apply immediately
+- ✅ Consistent scaling pattern across entire UI
+- ✅ Minimum font sizes ensure readability
+
+#### Documentation
+- Created `DOCS/debugs/font-size-verification.md` with comprehensive verification results
+- Documents all fixes, verification tasks, and testing recommendations
+
 ### 🚀 Highscore System Performance & Reliability Improvements
 
 > **Fixed infinite retry loop and optimized backend with in-memory caching**
