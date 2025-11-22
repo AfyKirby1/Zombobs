@@ -188,6 +188,26 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - XP now resets to 0 in `levelUp()` method after calculating new `nextLevelXP`
   - XP bar visualization now correctly shows progress from 0% after each level-up
 
+### 🏅 Profile Screen Rank XP Progress Bar
+
+#### Added
+- **Rank XP Progress Bar** - Visual progress bar on Personnel Dossier profile screen
+  - Displays current tier XP and next tier requirement
+  - Shows progress percentage (0-100%)
+  - Gold gradient fill matching dossier theme (#d4af37 to #ffd700)
+  - Positioned below "RANK XP: XXXX" text in Personnel Information section
+  - Format: "XXX / YYY XP (ZZ%)"
+  - Uses `rankSystem.getProgress()` to get `currentTierXP`, `nextTierXP`, and `progressPercent`
+  - Styled with Courier Prime monospace font and gold borders matching dossier aesthetic
+  - Location: `js/ui/ProfileScreen.js` - `renderContent()` method
+
+#### Technical Details
+- Progress bar wrapper with gold border (#8b6914) and dark background
+- Animated gradient fill with glow effect
+- Text overlay with shadow for readability
+- Responsive width based on progress percentage
+- Smooth transition animation on progress updates
+
 ## [V0.7.1.1 ALPHA] - 2025-01-21
 
 ### 🐛 Bug Fix & Version Bump

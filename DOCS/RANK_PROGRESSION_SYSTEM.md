@@ -88,8 +88,13 @@ nextTierXP = baseXP × (scalingFactor ^ totalTiers)
 - Optional rank badge in HUD (future feature)
 
 **Profile Screen**:
-- Full rank display with progress bar
-- Shows current tier XP and next tier requirement
+- Full rank display with visual progress bar
+- Progress bar shows current tier XP and next tier requirement
+- Displays format: "XXX / YYY XP (ZZ%)"
+- Gold gradient styling matching dossier theme (#d4af37 to #ffd700)
+- Positioned below "RANK XP: XXXX" text in Personnel Information section
+- Uses `rankSystem.getProgress()` to get `currentTierXP`, `nextTierXP`, and `progressPercent`
+- Animated fill with glow effect and smooth transitions
 - Displays total rank XP accumulated
 
 **Game Over Screen**:

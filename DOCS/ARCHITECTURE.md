@@ -1039,7 +1039,8 @@ This hybrid approach provides:
 
 **Features**:
 - Player username and title display
-- Full rank display with progress
+- Full rank display with visual progress bar (shows current tier XP / next tier XP with percentage)
+- Rank XP progress bar with gold gradient styling matching dossier theme
 - Comprehensive statistics overview
 - Achievement summary (unlocked/total, completion %)
 - Battlepass progress summary

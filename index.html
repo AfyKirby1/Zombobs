@@ -652,6 +652,15 @@
             color: var(--text-main);
         }
 
+        .scoreboard-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.7;
+            margin-top: -4px;
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+
         .scoreboard-meta {
             font-size: 10px;
             color: var(--text-muted);
@@ -1464,6 +1473,7 @@
         <aside class="scoreboard-card" id="scoreboard-container">
             <div>
                 <div class="side-heading">🏆 Top Scores</div>
+                <div class="scoreboard-label">Local Scores (Browser Storage)</div>
                 <div id="scoreboard-entries">
                     <div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>
                 </div>

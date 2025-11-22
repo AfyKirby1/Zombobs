@@ -117,6 +117,7 @@ export class ProfileScreen {
         const profile = playerProfileSystem.getProfile();
         const stats = profile.stats;
         const rankData = rankSystem.getData();
+        const rankProgress = rankSystem.getProgress(); // Get progress data for progress bar
         const achievementStats = achievementSystem.getStatistics();
         const battlepassProgress = battlepassSystem.getProgress();
 
@@ -178,6 +179,51 @@ export class ProfileScreen {
         rankXP.style.fontFamily = "'Courier Prime', monospace";
         rankXP.textContent = `RANK XP: ${rankData.rankXP || 0}`;
         rankDiv.appendChild(rankXP);
+
+        // Rank XP Progress Bar
+        const progressContainer = document.createElement('div');
+        progressContainer.style.marginTop = '16px';
+        
+        const progressWrapper = document.createElement('div');
+        progressWrapper.className = 'progress-bar-wrapper';
+        progressWrapper.style.height = '24px'; // Smaller than battlepass bar
+        progressWrapper.style.border = '1px solid #8b6914';
+        progressWrapper.style.background = 'rgba(0, 0, 0, 0.5)';
+        progressWrapper.style.borderRadius = '4px';
+        progressWrapper.style.overflow = 'hidden';
+        progressWrapper.style.position = 'relative';
+        
+        const progressFill = document.createElement('div');
+        progressFill.className = 'progress-bar-fill';
+        const progressPercent = Math.min(100, Math.max(0, rankProgress.progressPercent || 0));
+        progressFill.style.width = `${progressPercent}%`;
+        progressFill.style.height = '100%';
+        progressFill.style.background = 'linear-gradient(90deg, #d4af37 0%, #ffd700 100%)';
+        progressFill.style.borderRadius = '4px';
+        progressFill.style.transition = 'width 0.3s ease';
+        progressFill.style.boxShadow = '0 0 10px rgba(212, 175, 55, 0.6)';
+        
+        const progressText = document.createElement('div');
+        progressText.className = 'progress-bar-text';
+        progressText.style.position = 'absolute';
+        progressText.style.inset = '0';
+        progressText.style.display = 'flex';
+        progressText.style.alignItems = 'center';
+        progressText.style.justifyContent = 'center';
+        progressText.style.fontWeight = '700';
+        progressText.style.fontSize = '11px';
+        progressText.style.color = '#ffffff';
+        progressText.style.fontFamily = "'Courier Prime', monospace";
+        progressText.style.textShadow = '0 0 8px rgba(0, 0, 0, 0.8)';
+        progressText.style.pointerEvents = 'none';
+        const currentXP = rankProgress.currentTierXP || 0;
+        const nextXP = rankProgress.nextTierXP || 100;
+        progressText.textContent = `${currentXP} / ${nextXP} XP (${Math.floor(progressPercent)}%)`;
+        
+        progressWrapper.appendChild(progressFill);
+        progressWrapper.appendChild(progressText);
+        progressContainer.appendChild(progressWrapper);
+        rankDiv.appendChild(progressContainer);
 
         personnelInfo.appendChild(rankDiv);
         leftColumn.appendChild(personnelInfo);

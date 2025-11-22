@@ -330,6 +330,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - **Multiplayer Lobby Chat System**: Real-time chat window with rate limiting, message sanitization, and security features
 - **XP System Balance Adjustments**: Reduced XP values by 10%, changed progression from exponential to linear formula
 - **Multiplayer Bug Fixes**: Fixed stuck "GO!" screen when returning to lobby, fixed pause screen appearing on game start
+- **Profile Screen Rank XP Progress Bar**: Added visual progress bar showing current tier XP, next tier requirement, and progress percentage with gold gradient styling
 
 ## Recent Updates (V0.7.1.1 ALPHA)
 - **Bug Fix**: Fixed duplicate `zombieType` variable declaration causing syntax error

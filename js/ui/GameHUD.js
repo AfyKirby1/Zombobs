@@ -36,6 +36,17 @@ export class GameHUD {
         this.leaderboardFetchInterval = 30000; // Fetch every 30 seconds
         this.leaderboardFetchState = 'loading'; // 'loading' | 'success' | 'timeout' | 'error'
         this.leaderboardFetchStartTime = 0; // Timestamp when fetch started
+        // News ticker drag state
+        this.newsTickerDragging = false;
+        this.newsTickerDragStartX = 0;
+        this.newsTickerManualOffset = 0;
+        this.newsTickerAutoOffset = 0;
+        this.newsTickerDragStartOffset = 0;
+        this.newsTickerBoxX = 0;
+        this.newsTickerBoxY = 0;
+        this.newsTickerBoxWidth = 0;
+        this.newsTickerBoxHeight = 0;
+        this.newsTickerTextWidth = 0;
     }
 
     getUIScale() {
@@ -1550,9 +1561,6 @@ export class GameHUD {
             this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 60);
         }
 
-        // Draw server status indicator
-        this.drawServerStatus();
-
         // Draw mute button in bottom right
         const muteButtonSize = 40;
         const muteButtonX = this.canvas.width - 60;
@@ -1690,16 +1698,26 @@ export class GameHUD {
         // Position at bottom of screen with 10px padding
         const boxY = canvas.height - boxHeight - 10;
 
+        // Store box coordinates for hit detection
+        this.newsTickerBoxX = boxX;
+        this.newsTickerBoxY = boxY;
+        this.newsTickerBoxWidth = boxWidth;
+        this.newsTickerBoxHeight = boxHeight;
+
         // Measure text width for scrolling calculation (using smaller font)
         ctx.font = `${newsFontSize}px "Roboto Mono", monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         const textWidth = ctx.measureText(NEWS_UPDATES).width;
+        this.newsTickerTextWidth = textWidth;
 
-        // Calculate scroll offset (stateless animation using Date.now)
+        // Calculate automatic scroll offset (stateless animation using Date.now)
         // Scroll speed: divide by 30 for pixel-per-30ms movement (3x slower)
         const scrollSpeed = 30;
-        const scrollOffset = (Date.now() / scrollSpeed) % (textWidth + boxWidth);
+        this.newsTickerAutoOffset = (Date.now() / scrollSpeed) % (textWidth + boxWidth);
+
+        // Use manual offset if dragging, otherwise use auto offset
+        const scrollOffset = this.newsTickerDragging ? this.newsTickerManualOffset : this.newsTickerAutoOffset;
         const textX = boxX - scrollOffset;
 
         // Draw background box
@@ -1730,6 +1748,37 @@ export class GameHUD {
 
         // Restore clipping
         ctx.restore();
+    }
+
+    checkNewsTickerHit(x, y) {
+        return x >= this.newsTickerBoxX && 
+               x <= this.newsTickerBoxX + this.newsTickerBoxWidth &&
+               y >= this.newsTickerBoxY && 
+               y <= this.newsTickerBoxY + this.newsTickerBoxHeight;
+    }
+
+    startNewsTickerDrag(x, y) {
+        if (!this.checkNewsTickerHit(x, y)) return false;
+        this.newsTickerDragging = true;
+        this.newsTickerDragStartX = x;
+        this.newsTickerDragStartOffset = this.newsTickerManualOffset || this.newsTickerAutoOffset;
+        return true;
+    }
+
+    updateNewsTickerDrag(x) {
+        if (!this.newsTickerDragging) return;
+        const dragDistance = this.newsTickerDragStartX - x;
+        const newOffset = this.newsTickerDragStartOffset + dragDistance;
+        const maxOffset = this.newsTickerTextWidth + this.newsTickerBoxWidth;
+        // Clamp offset to valid range
+        this.newsTickerManualOffset = Math.max(0, Math.min(maxOffset, newOffset));
+    }
+
+    endNewsTickerDrag() {
+        this.newsTickerDragging = false;
+        // Reset manual offset to current auto offset to prevent jump when resuming auto-scroll
+        // This ensures smooth transition from manual drag back to automatic scrolling
+        this.newsTickerManualOffset = this.newsTickerAutoOffset;
     }
 
     drawVersionBox() {
@@ -3863,20 +3912,22 @@ export class GameHUD {
         this.ctx.fillText('WebGPU', centerX, centerY);
         this.ctx.globalAlpha = 1.0;
 
-        // Draw connection status dot close to WebGPU icon (to the right)
-        const isConnected = gameState.multiplayer.connected;
-        const dotRadius = 4 * scale; // Slightly bigger
-        const dotX = iconX + iconWidth + 8 * scale; // Close to icon, to the right
-        const dotY = iconY + iconHeight / 2; // Vertically centered with icon
+        // Draw WebGPU status dot on top-right corner of hexagon
+        // Shows green when WebGPU is active, orange when inactive/fallback
+        const dotRadius = 3 * scale; // Smaller to fit on corner
+        // Position on top-right corner of hexagon (hexagon right edge is at centerX + hexRadius horizontally)
+        // Top edge is at iconY, rightmost point is at centerX + hexRadius
+        const dotX = centerX + hexRadius - dotRadius; // Position on right edge, slightly inset
+        const dotY = iconY + dotRadius; // Position on top edge, slightly inset
 
-        // Connection status dot (green when connected, orange when not)
-        if (isConnected) {
-            this.ctx.fillStyle = '#76ff03'; // Green (matches connection status)
+        // WebGPU status dot (green when active, orange when inactive/using Canvas fallback)
+        if (isWebGPUActive) {
+            this.ctx.fillStyle = '#10b981'; // Green when WebGPU is active
             const pulse = 0.7 + Math.sin(Date.now() * 0.01) * 0.3;
             this.ctx.shadowBlur = 8 * scale * pulse;
-            this.ctx.shadowColor = 'rgba(118, 255, 3, 0.8)';
+            this.ctx.shadowColor = 'rgba(16, 185, 129, 0.8)';
         } else {
-            this.ctx.fillStyle = '#ff9800'; // Orange
+            this.ctx.fillStyle = '#ff9800'; // Orange when using Canvas 2D fallback
             this.ctx.shadowBlur = 6 * scale;
             this.ctx.shadowColor = 'rgba(255, 152, 0, 0.6)';
         }

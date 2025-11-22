@@ -570,7 +570,14 @@ function drawGame() {
 
     if (gameState.showMainMenu) {
         gameHUD.mainMenu = true;
-        canvas.style.cursor = 'none'; // Use custom cursor
+        // Set cursor based on news ticker interaction
+        if (gameHUD.newsTickerDragging) {
+            canvas.style.cursor = 'grabbing';
+        } else if (gameHUD.checkNewsTickerHit(mouse.x, mouse.y)) {
+            canvas.style.cursor = 'grab';
+        } else {
+            canvas.style.cursor = 'none'; // Use custom cursor
+        }
         gameHUD.draw();
         return;
     }
@@ -1136,6 +1143,11 @@ canvas.addEventListener('mousemove', (e) => {
     mouse.x = pos.x;
     mouse.y = pos.y;
 
+    // Handle news ticker dragging
+    if (gameHUD.newsTickerDragging) {
+        gameHUD.updateNewsTickerDrag(mouse.x);
+    }
+
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
     } else if (gameState.showLevelUp) {
@@ -1171,6 +1183,11 @@ canvas.addEventListener('mousedown', (e) => {
 
     // Main Menu
     if (gameState.showMainMenu) {
+        // Check for news ticker drag first
+        if (gameHUD.startNewsTickerDrag(clickX, clickY)) {
+            return; // Don't process button clicks if starting drag
+        }
+
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
 
         // Try to start menu music on first interaction if it's not playing
@@ -1446,6 +1463,9 @@ canvas.addEventListener('mousedown', (e) => {
 
 canvas.addEventListener('mouseup', (e) => {
     if (e.button === 0) mouse.isDown = false;
+    if (gameHUD.newsTickerDragging) {
+        gameHUD.endNewsTickerDrag();
+    }
     if (gameState.showSettingsPanel) settingsPanel.handleMouseUp();
 });
 
