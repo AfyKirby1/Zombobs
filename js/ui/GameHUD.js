@@ -312,9 +312,11 @@ export class GameHUD {
             this.drawPlayerStats(gameState.players[3], rightX, playerBottomY, "P4");
         }
 
-        // Shared stats in Top Center
-        const centerX = this.canvas.width / 2 - (80 * scale);
-        this.drawSharedStats(centerX, padding);
+        // Shared stats on left, below P1 HP box
+        // HP box is at topY, and has height of statHeight (50 * scale) + itemSpacing + shield (if exists)
+        // Position shared stats below P1's stats
+        const sharedStatsY = topY + statsHeight + itemSpacing;
+        this.drawSharedStats(leftX, sharedStatsY);
         
         // Calculate bottom UI positions (above instructions)
         const instructionsTop = this.canvas.height - (85 * scale);
@@ -322,7 +324,7 @@ export class GameHUD {
         const bottomUIBaseline = instructionsTop - bottomSpacing;
         
         const bottomWidth = 160 * scale;
-        const xpBarWidth = 240 * scale; // Wider XP bar
+        const xpBarWidth = 320 * scale; // Wider XP bar (increased from 240)
         const bottomHeight = 50 * scale; // XP bar height
         const weaponInfoHeight = (bottomHeight + itemSpacing) * 2; // Weapon + Grenades
         
@@ -337,9 +339,9 @@ export class GameHUD {
         const skillsY = bottomUIBaseline - skillsTotalHeight;
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
         
-        // Bottom middle: XP Bar
+        // XP Bar at very bottom (above instructions)
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        const xpBarY = bottomUIBaseline - bottomHeight;
+        const xpBarY = this.canvas.height - (85 * scale) - bottomHeight; // Positioned just above instructions
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
         
         // Bottom right: Weapon Info (for local player)
@@ -1372,18 +1374,82 @@ export class GameHUD {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
-        const usernameY = centerY - (130 * scale);
+        // Modern Username Box - Moved to top of window
+        const usernameY = 30 * scale + 25 * scale; // Top padding + half box height
         const usernameHovered = this.hoveredButton === 'username';
-        const fontSize = this.getScaledFontSize();
-        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillStyle = usernameHovered ? '#ff9800' : '#cccccc';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(`Welcome, ${gameState.username}`, centerX, usernameY);
-
+        const usernameBoxWidth = 320 * scale;
+        const usernameBoxHeight = 50 * scale;
+        const usernameBoxX = centerX - usernameBoxWidth / 2;
+        const usernameBoxY = 30 * scale; // Top of window with padding
+        const cornerRadius = 12 * scale;
+        
+        // Draw username box background with gradient effect
+        this.ctx.save();
+        
+        // Outer glow on hover
         if (usernameHovered) {
-            this.ctx.font = `${Math.max(8, Math.round(12 * scale))}px "Roboto Mono", monospace`;
+            this.ctx.shadowBlur = 20 * scale;
+            this.ctx.shadowColor = 'rgba(255, 152, 0, 0.6)';
+        } else {
+            this.ctx.shadowBlur = 8 * scale;
+            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        }
+        
+        // Draw rounded rectangle background
+        this.ctx.beginPath();
+        this.ctx.roundRect(usernameBoxX, usernameBoxY, usernameBoxWidth, usernameBoxHeight, cornerRadius);
+        this.ctx.closePath();
+        
+        // Background gradient
+        const gradient = this.ctx.createLinearGradient(usernameBoxX, usernameBoxY, usernameBoxX, usernameBoxY + usernameBoxHeight);
+        if (usernameHovered) {
+            gradient.addColorStop(0, 'rgba(30, 30, 30, 0.95)');
+            gradient.addColorStop(1, 'rgba(20, 20, 20, 0.95)');
+        } else {
+            gradient.addColorStop(0, 'rgba(25, 25, 25, 0.9)');
+            gradient.addColorStop(1, 'rgba(15, 15, 15, 0.9)');
+        }
+        this.ctx.fillStyle = gradient;
+        this.ctx.fill();
+        
+        // Border
+        this.ctx.shadowBlur = 0;
+        this.ctx.strokeStyle = usernameHovered ? '#ff9800' : '#555555';
+        this.ctx.lineWidth = 2 * scale;
+        this.ctx.stroke();
+        
+        // Inner highlight
+        this.ctx.beginPath();
+        this.ctx.roundRect(usernameBoxX + 1 * scale, usernameBoxY + 1 * scale, usernameBoxWidth - 2 * scale, usernameBoxHeight / 2, cornerRadius - 1);
+        this.ctx.closePath();
+        this.ctx.fillStyle = usernameHovered ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)';
+        this.ctx.fill();
+        
+        this.ctx.restore();
+        
+        // Username text
+        const fontSize = Math.max(16, Math.round(18 * scale));
+        this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = usernameHovered ? '#ff9800' : '#e0e0e0';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Text shadow for better readability
+        this.ctx.shadowBlur = 4 * scale;
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillText(gameState.username || 'Survivor', centerX, usernameY);
+        this.ctx.shadowBlur = 0;
+        
+        // Hint text below box when hovered
+        if (usernameHovered) {
+            const hintFontSize = Math.max(10, Math.round(12 * scale));
+            this.ctx.font = `${hintFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#ff9800';
-            this.ctx.fillText('Click to change name', centerX, usernameY + (20 * scale));
+            this.ctx.textBaseline = 'top';
+            this.ctx.shadowBlur = 6 * scale;
+            this.ctx.shadowColor = 'rgba(255, 152, 0, 0.5)';
+            this.ctx.fillText('Click to change name', centerX, usernameY + usernameBoxHeight / 2 + (10 * scale));
+            this.ctx.shadowBlur = 0;
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
@@ -1498,77 +1564,71 @@ export class GameHUD {
         
         const scale = this.getUIScale();
         const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        const usernameY = centerY - (130 * scale);
+        // Draw rank badge to the right of username (username is now at top)
+        const usernameY = 30 * scale + 25 * scale; // Top padding + half box height
+        const usernameBoxWidth = 320 * scale;
         
-        // Draw rank badge to the right of username
-        const badgeX = centerX + 120 * scale;
-        const badgeY = usernameY - 30 * scale;
+        // Draw rank badge to the right of username box
+        const badgeX = centerX + usernameBoxWidth / 2 + 20 * scale;
+        const badgeY = 30 * scale + 25 * scale - 25 * scale; // Aligned with username box center
         this.rankDisplay.drawRankBadge(badgeX, badgeY, 50 * scale);
     }
 
     drawLocalHighscores() {
         const scale = this.getUIScale();
-        const centerX = this.canvas.width / 2;
-        const lastRuns = getLastRuns(2);
+        const lastRuns = getLastRuns(1); // Only show the last run on left side
         
         if (lastRuns.length === 0) {
             // No runs available - show empty state or hide
             return;
         }
         
+        const run = lastRuns[0]; // Get the last run
+        
         // Card dimensions
         const cardWidth = 200 * scale;
         const cardHeight = 110 * scale;
-        const cardSpacing = 20 * scale;
         const padding = 12 * scale;
         
-        // Calculate total width and starting X position
-        const totalWidth = lastRuns.length * cardWidth + (lastRuns.length - 1) * cardSpacing;
-        const startX = centerX - totalWidth / 2;
-        const y = this.canvas.height - 140 * scale; // Above the old highscore position
+        // Position on left side of screen
+        const cardX = 20 * scale; // Left padding
+        const y = 100 * scale; // Below username box area
         
-        // Draw cards for each run
-        lastRuns.forEach((run, index) => {
-            const cardX = startX + index * (cardWidth + cardSpacing);
-            
-            // Draw glass card
-            this.drawGlassCard(cardX, y, cardWidth, cardHeight);
-            
-            // Header
-            const headerFontSize = Math.max(10, 11 * scale);
-            this.ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
-            this.ctx.fillStyle = '#ff9800';
-            this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'top';
-            const headerText = index === 0 ? 'Last Run' : 'Previous Run';
-            this.ctx.fillText(headerText, cardX + padding, y + padding);
-            
-            // Score (large, prominent)
-            const scoreFontSize = Math.max(18, 22 * scale);
-            this.ctx.font = `bold ${scoreFontSize}px "Roboto Mono", monospace`;
-            this.ctx.fillStyle = '#ffffff';
-            const scoreText = (run.score || 0).toLocaleString();
-            this.ctx.fillText(scoreText, cardX + padding, y + padding + 18 * scale);
-            
-            // Stats (wave, kills, time)
-            const statFontSize = Math.max(9, 10 * scale);
-            this.ctx.font = `${statFontSize}px "Roboto Mono", monospace`;
-            this.ctx.fillStyle = '#9e9e9e';
-            let statY = y + padding + 45 * scale;
-            
-            // Wave
-            this.ctx.fillText(`Wave: ${run.wave || 0}`, cardX + padding, statY);
-            statY += 14 * scale;
-            
-            // Kills
-            this.ctx.fillText(`Kills: ${run.kills || 0}`, cardX + padding, statY);
-            statY += 14 * scale;
-            
-            // Time
-            const timeText = formatTime(run.timeSurvived || 0);
-            this.ctx.fillText(`Time: ${timeText}`, cardX + padding, statY);
-        });
+        // Draw glass card
+        this.drawGlassCard(cardX, y, cardWidth, cardHeight);
+        
+        // Header
+        const headerFontSize = Math.max(10, 11 * scale);
+        this.ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#ff9800';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('Last Run', cardX + padding, y + padding);
+        
+        // Score (large, prominent)
+        const scoreFontSize = Math.max(18, 22 * scale);
+        this.ctx.font = `bold ${scoreFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#ffffff';
+        const scoreText = (run.score || 0).toLocaleString();
+        this.ctx.fillText(scoreText, cardX + padding, y + padding + 18 * scale);
+        
+        // Stats (wave, kills, time)
+        const statFontSize = Math.max(9, 10 * scale);
+        this.ctx.font = `${statFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#9e9e9e';
+        let statY = y + padding + 45 * scale;
+        
+        // Wave
+        this.ctx.fillText(`Wave: ${run.wave || 0}`, cardX + padding, statY);
+        statY += 14 * scale;
+        
+        // Kills
+        this.ctx.fillText(`Kills: ${run.kills || 0}`, cardX + padding, statY);
+        statY += 14 * scale;
+        
+        // Time
+        const timeText = formatTime(run.timeSurvived || 0);
+        this.ctx.fillText(`Time: ${timeText}`, cardX + padding, statY);
     }
 
     drawNewsTicker() {
@@ -1633,11 +1693,25 @@ export class GameHUD {
         const version = "V0.7.1.1 ALPHA";
         const padding = 15;
         const boxHeight = 24;
+        const spacing = 8; // Space between version box and technology branding
         
-        const x = padding;
-        const y = padding;
-
+        // Calculate technology branding position to position version box above it
+        const scale = this.getUIScale();
+        const techPadding = 15 * scale;
+        const techFontSize = Math.max(8, Math.round(10 * scale));
+        const techLineHeight = 14 * scale;
+        const techTextPadding = 8 * scale;
+        
+        // Calculate technology branding height (same as in drawTechnologyBranding)
         this.ctx.save();
+        this.ctx.font = `${techFontSize}px "Roboto Mono", monospace`;
+        const techPanelHeight = 3 * techLineHeight + techTextPadding * 2; // 3 lines
+        const techPanelY = this.canvas.height - techPanelHeight - techPadding;
+        
+        // Position version box above technology branding
+        const x = padding;
+        const y = techPanelY - boxHeight - spacing;
+
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
         const textWidth = this.ctx.measureText(version).width;
         const boxWidth = textWidth + 24;
@@ -2640,10 +2714,13 @@ export class GameHUD {
             this.ctx.fillText(rankText, rankX + 4 * scale, rankY + 2 * scale);
         }
 
-        // Leader indicator
+        // Leader indicator - positioned above center of username
         if (player?.isLeader) {
-            const leaderX = nameX + this.ctx.measureText(playerName).width + 6 * scale;
-            this.drawStatusIndicator(leaderX, nameY + 6 * scale, 'leader', true, 14 * scale);
+            const playerNameWidth = this.ctx.measureText(playerName).width;
+            const leaderX = nameX + (playerNameWidth / 2); // Center of username
+            const crownSize = 20 * scale; // Bigger crown (was 14 * scale)
+            const leaderY = nameY - crownSize + 8 * scale; // Moved down more (was +2, now +8)
+            this.drawStatusIndicator(leaderX, leaderY, 'leader', true, crownSize);
         }
 
         // Player ID badge (moved down to make room for rank)
@@ -3244,12 +3321,13 @@ export class GameHUD {
         const centerY = this.canvas.height / 2;
         const buttonSpacing = 15 * scale;
 
-        // Username
-        const usernameY = centerY - (130 * scale);
-        const usernameHitWidth = 150 * scale;
-        const usernameHitHeight = 20 * scale;
-        if (mouseX >= centerX - usernameHitWidth && mouseX <= centerX + usernameHitWidth &&
-            mouseY >= usernameY - usernameHitHeight && mouseY <= usernameY + usernameHitHeight) {
+        // Username box hit detection (moved to top)
+        const usernameBoxWidth = 320 * scale;
+        const usernameBoxHeight = 50 * scale;
+        const usernameBoxX = centerX - usernameBoxWidth / 2;
+        const usernameBoxY = 30 * scale; // Top of window with padding
+        if (mouseX >= usernameBoxX && mouseX <= usernameBoxX + usernameBoxWidth &&
+            mouseY >= usernameBoxY && mouseY <= usernameBoxY + usernameBoxHeight) {
             return 'username';
         }
 
@@ -3645,16 +3723,9 @@ export class GameHUD {
         const iconHeight = 32;
 
         let iconX = padding;
-        let iconY = this.canvas.height - iconHeight - padding;
+        let iconY = padding; // Moved to top of screen
 
-        // If on Main Menu, stack above technology branding
-        if (this.mainMenu) {
-            // Branding height calculation from drawTechnologyBranding:
-            // 3 lines * 14 lineHeight + 8 padding * 2 = 42 + 16 = 58px
-            // plus 15px padding from bottom = 73px
-            const brandingHeight = 58 + 15;
-            iconY = this.canvas.height - brandingHeight - iconHeight - 10; // 10px gap
-        }
+        // No longer need special positioning for main menu since it's at top
 
         // Draw hexagon badge shape
         const hexRadius = iconHeight / 2;
@@ -3725,18 +3796,22 @@ export class GameHUD {
         this.ctx.fillText('WebGPU', centerX, centerY);
         this.ctx.globalAlpha = 1.0;
 
-        // Draw status indicator dot
-        const dotRadius = 3;
-        const dotX = iconX + iconWidth - dotRadius - 4;
-        const dotY = iconY + dotRadius + 4;
+        // Draw connection status dot close to WebGPU icon (to the right)
+        const isConnected = gameState.multiplayer.connected;
+        const dotRadius = 4 * scale; // Slightly bigger
+        const dotX = iconX + iconWidth + 8 * scale; // Close to icon, to the right
+        const dotY = iconY + iconHeight / 2; // Vertically centered with icon
 
-        if (isWebGPUActive) {
-            this.ctx.fillStyle = '#10b981'; // Green
-            this.ctx.shadowBlur = 4;
-            this.ctx.shadowColor = 'rgba(16, 185, 129, 0.8)';
+        // Connection status dot (green when connected, orange when not)
+        if (isConnected) {
+            this.ctx.fillStyle = '#76ff03'; // Green (matches connection status)
+            const pulse = 0.7 + Math.sin(Date.now() * 0.01) * 0.3;
+            this.ctx.shadowBlur = 8 * scale * pulse;
+            this.ctx.shadowColor = 'rgba(118, 255, 3, 0.8)';
         } else {
-            this.ctx.fillStyle = 'rgba(156, 163, 175, 0.6)'; // Gray
-            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = '#ff9800'; // Orange
+            this.ctx.shadowBlur = 6 * scale;
+            this.ctx.shadowColor = 'rgba(255, 152, 0, 0.6)';
         }
 
         this.ctx.beginPath();
@@ -4136,7 +4211,7 @@ export class GameHUD {
         const leaderboardFontSize = Math.max(9, 11 * scale);
         const titleFontSize = Math.max(11, 13 * scale);
         const rightX = this.canvas.width - 30 * scale; // Right side with padding
-        const startY = this.canvas.height - 150 * scale; // Position above high score
+        const startY = 100 * scale; // Position near top, below username box
 
         // Leaderboard title
         this.ctx.font = `bold ${titleFontSize}px "Roboto Mono", monospace`;

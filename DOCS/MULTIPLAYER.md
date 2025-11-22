@@ -358,7 +358,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 - Displays global leaderboard on main menu
 - Shows rank, username, score, and wave for each entry
 - Highlights player's own score if in top 10
-- Positioned above local high score display
+- Positioned near top of screen (100 * scale from top), right-aligned
 - Shows "Loading leaderboard..." if fetching
 - Shows "Nobody yet!" when leaderboard successfully loaded but empty
 - Shows error message with retry countdown if server unavailable

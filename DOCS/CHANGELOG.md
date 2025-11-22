@@ -50,6 +50,31 @@ All notable changes to the Zombie Survival Game project will be documented in th
 #### Dependencies
 - Added `mongodb` package (v^6.3.0) to `package.json`
 
+### 🎨 Main Menu Layout Improvements
+
+#### Changed
+- **Username Box Position** - Moved username box to top of screen
+  - Positioned at 30px from top (was centerY - 130px)
+  - Modern styled container with gradient background and hover effects
+  - Rank badge positioned to the right of username box
+  - Location: `js/ui/GameHUD.js` - `drawMainMenu()`
+
+- **Global Leaderboard Position** - Moved leaderboard towards top of screen
+  - Positioned at 100px from top (was canvas.height - 150px)
+  - Right-aligned on main menu
+  - Better visibility and accessibility
+  - Location: `js/ui/GameHUD.js` - `drawLeaderboard()`
+
+- **Last Run Display** - Moved to left side of screen
+  - Positioned at 100px from top, 20px from left
+  - Shows only the most recent run (removed "Previous Run")
+  - Better use of screen space
+  - Location: `js/ui/GameHUD.js` - `drawLocalHighscores()`
+
+#### Documentation
+- Updated `DOCS/ARCHITECTURE.md` with new main menu layout structure
+- Updated `DOCS/MULTIPLAYER.md` with leaderboard position information
+
 ### 💬 Multiplayer Lobby Chat System
 
 #### Added

@@ -834,6 +834,18 @@ This hybrid approach provides:
 - `draw()` - Delegates to HUD, menu, or lobby render paths
 - `drawStat()` - Render individual stat panel
 - `drawMainMenu()` - Render main menu (single/multi/settings/gallery/about buttons, username, high score)
+
+**Main Menu Layout**:
+- **Top Center**: Username box (styled container, 320px wide, 50px tall, positioned at 30px from top)
+- **Top Right**: Rank badge displayed next to username box
+- **Right Side (Top)**: Global Leaderboard (positioned at 100px from top, right-aligned)
+  - Shows top 10 scores with rank, username, score, and wave
+  - Highlights player's own score if in top 10
+  - Shows loading/error states with retry countdown
+- **Left Side**: Last Run card (positioned at 100px from top, 20px from left)
+  - Displays score, wave, kills, and time from most recent game session
+- **Center**: Main menu button grid (2 columns, multiple rows)
+  - Arcade, Campaign, Local Co-op, Play with AI, Settings, Multiplayer, Gallery, Profile, Achievements, About
 - `drawLobby()` - Render multiplayer lobby (status text, player list, chat window, back/start buttons)
 - `drawChatWindow()` - Render chat window in lobby (bottom-left, glassmorphism styling)
 - `drawChatMessages()` - Render scrollable chat message list with word wrapping

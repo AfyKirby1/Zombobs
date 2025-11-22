@@ -196,6 +196,20 @@ export function loadScoreboard() {
 }
 
 /**
+ * Clear the scoreboard from localStorage
+ */
+export function clearScoreboard() {
+    try {
+        localStorage.removeItem('zombobs_scoreboard');
+        console.log('Scoreboard cleared');
+        return true;
+    } catch (error) {
+        console.log('Failed to clear scoreboard:', error);
+        return false;
+    }
+}
+
+/**
  * Save a new scoreboard entry if it qualifies for top 10
  * @param {Object} entry - Scoreboard entry object
  * @param {number} entry.score - Final score
@@ -210,6 +224,23 @@ export function saveScoreboardEntry(entry) {
     try {
         const scoreboard = loadScoreboard();
         
+        // Get username from entry, gameState, or localStorage, with fallback
+        let username = entry.username;
+        if (!username || username.trim() === '') {
+            // Try to get from gameState
+            if (gameState && gameState.username && gameState.username.trim() !== '') {
+                username = gameState.username.trim();
+            } else {
+                // Try to get from localStorage
+                const savedUsername = localStorage.getItem('zombobs_username');
+                if (savedUsername !== null && savedUsername.trim() !== '') {
+                    username = savedUsername.trim();
+                } else {
+                    username = 'Survivor';
+                }
+            }
+        }
+        
         // Add new entry
         scoreboard.push({
             score: entry.score || 0,
@@ -218,7 +249,7 @@ export function saveScoreboardEntry(entry) {
             timeSurvived: entry.timeSurvived || 0,
             maxMultiplier: entry.maxMultiplier || 1.0,
             dateTime: entry.dateTime || new Date().toISOString(),
-            username: entry.username || 'Survivor'
+            username: username
         });
         
         // Sort by score descending

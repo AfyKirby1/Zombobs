@@ -35,7 +35,7 @@ import {
 import {
     checkCollision, triggerDamageIndicator, triggerWaveNotification,
     loadHighScore, saveHighScore, loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted,
-    loadMultiplierStats
+    loadMultiplierStats, clearScoreboard
 } from './utils/gameUtils.js';
 
 // Make triggerDamageIndicator available globally for AcidPool
@@ -1207,6 +1207,8 @@ canvas.addEventListener('mousedown', (e) => {
                 gameState.username = newUsername.trim();
                 saveUsername();
                 playerProfileSystem.setUsername(gameState.username);
+                // Update username on server if connected to multiplayer
+                multiplayerSystem.updateUsernameOnServer();
             }
         } else if (clickedButton === 'multiplayer') {
             gameState.showMainMenu = false;
@@ -1483,4 +1485,8 @@ loadMenuMusicMuted();
 loadMultiplierStats();
 checkServerHealth(); // Start checking server status
 gameHUD.fetchLeaderboard(); // Fetch initial leaderboard
+
+// Make clearScoreboard available globally for console access
+window.clearScoreboard = clearScoreboard;
+
 gameEngine.start();

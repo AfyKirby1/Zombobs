@@ -662,5 +662,24 @@ export class MultiplayerSystem {
         }
         gameState.multiplayer.active = true;
     }
+
+    /**
+     * Update username on server if connected
+     * Called when username is changed on the main menu
+     */
+    updateUsernameOnServer() {
+        if (!gameState.multiplayer.socket || !gameState.multiplayer.connected) {
+            // Not connected, nothing to update
+            return;
+        }
+
+        // Emit player:register with new username to update server
+        gameState.multiplayer.socket.emit('player:register', {
+            name: gameState.username || `Survivor-${gameState.multiplayer.playerId?.slice(-4) || '0000'}`,
+            rank: rankSystem.getData() // { rankXP, rank, rankTier, rankName }
+        });
+        
+        console.log('[Multiplayer] Username updated on server:', gameState.username);
+    }
 }
 

@@ -1770,11 +1770,26 @@
                     return;
                 }
 
+                // Get current username from localStorage as fallback for old entries
+                const currentUsername = (() => {
+                    try {
+                        const saved = localStorage.getItem('zombobs_username');
+                        return (saved && saved.trim() !== '') ? saved.trim() : 'Survivor';
+                    } catch (e) {
+                        return 'Survivor';
+                    }
+                })();
+
                 let html = '';
                 scoreboard.forEach((entry, index) => {
                     const rank = index + 1;
                     const rankClass = rank <= 3 ? `rank-${rank}` : '';
                     const rankText = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
+                    
+                    // Get username from entry, or use current username from localStorage, or fallback to 'Survivor'
+                    const displayUsername = entry.username && entry.username.trim() !== '' 
+                        ? entry.username.trim() 
+                        : currentUsername;
                     
                     html += `
                         <div class="scoreboard-entry ${rankClass}">
@@ -1795,7 +1810,7 @@
                                 </div>
                             </div>
                             <div class="scoreboard-meta">
-                                ${entry.username || 'Survivor'} • ${formatDate(entry.dateTime)}
+                                ${displayUsername} • ${formatDate(entry.dateTime)}
                             </div>
                         </div>
                     `;
@@ -1803,6 +1818,21 @@
 
                 scoreboardContainer.innerHTML = html;
             }
+
+            function clearScoreboard() {
+                try {
+                    localStorage.removeItem(SCOREBOARD_KEY);
+                    console.log('Scoreboard cleared');
+                    renderScoreboard(); // Re-render to show empty state
+                    return true;
+                } catch (error) {
+                    console.log('Failed to clear scoreboard:', error);
+                    return false;
+                }
+            }
+
+            // Make clearScoreboard available globally
+            window.clearScoreboard = clearScoreboard;
 
             // Render scoreboard on page load
             renderScoreboard();
