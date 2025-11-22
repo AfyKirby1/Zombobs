@@ -442,7 +442,7 @@ This modular structure improves maintainability, testability, and scalability.
 #### SkillSystem.js
 **Purpose**: Skill upgrade system and XP management
 
-**Exports**: `SkillSystem` class, `skillSystem` singleton, `SKILLS_POOL` array, `MAX_SKILL_SLOTS`, `XP_BASE_REQUIREMENT`, `XP_SCALING_FACTOR`
+**Exports**: `SkillSystem` class, `skillSystem` singleton, `SKILLS_POOL` array, `MAX_SKILL_SLOTS`, `XP_BASE_REQUIREMENT` (note: `XP_SCALING_FACTOR` is no longer used - progression is now linear)
 
 **Methods**:
 - `gainXP(amount)` - Add XP and check for level-up
@@ -472,10 +472,10 @@ This modular structure improves maintainability, testability, and scalability.
 **Features**:
 - XP gain from zombie kills (scaled by zombie type)
 - Level-up system with 3 skill choices (expanded from 2)
-- XP scaling: Base 100 XP, scales by 1.2 per level
+- XP scaling: Linear progression - Base 100 XP, +20 per level (100, 120, 140, 160...)
 - Skill upgrading: Skills can be upgraded multiple times
 - Multiplayer synchronization: Leader generates choices, broadcasts to clients
-- XP values at 1.5x rate (normal: 8, fast: 15, exploding: 23, armored: 18, ghost: 27, spitter: 23, boss: 375)
+- XP values balanced (normal: 7, fast: 14, exploding: 21, armored: 16, ghost: 24, spitter: 21, boss: 338)
 
 **Skill Effect Integration**:
 - Combat effects (Thick Skin, Lucky Strike, Adrenaline, Bloodlust) applied in `combatUtils.js`
@@ -1317,12 +1317,12 @@ This hybrid approach provides:
 
 ### Skill & XP System
 **Location**: `js/systems/SkillSystem.js`, `js/ui/GameHUD.js`, `js/utils/combatUtils.js`
-- XP gain from zombie kills (1.5x rate increase for faster progression)
+- XP gain from zombie kills (balanced values: normal: 7, fast: 14, exploding: 21, armored: 16, ghost: 24, spitter: 21, boss: 338)
 - Level-up system: Players level up when XP reaches threshold
 - **3-Choice Level-Up Screen**: Shows 3 skill cards instead of 2
   - Level-up UI displays 3 skill choices with proper spacing and click detection
   - Works in both single-player and multiplayer modes
-- XP scaling: Base 100 XP requirement, scales by 1.2 per level
+- XP scaling: Linear progression - Base 100 XP requirement, +20 per level
 - Skill activation: Skills applied to all players when selected
 - Skill upgrading: Skills can be upgraded multiple times (stacking effects)
 - **16 Total Skills**: 6 original + 10 new basic skills

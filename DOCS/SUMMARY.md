@@ -147,10 +147,11 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Level-up now shows 3 skill choices instead of 2
   - Updated UI layout and click detection for 3 cards
   - More strategic choices per level-up
-✅ **XP Rate Increase** - Increased XP gains by 1.5x (50% faster)
-  - Normal: 8 XP, Fast: 15 XP, Exploding: 23 XP, Armored: 18 XP, Ghost: 27 XP, Spitter: 23 XP, Boss: 375 XP
-  - Provides more engaging leveling experience
-  - Players level up more frequently while maintaining meaningful progression
+✅ **XP System Balance** - Balanced XP values and linear progression
+  - Normal: 7 XP, Fast: 14 XP, Exploding: 21 XP, Armored: 16 XP, Ghost: 24 XP, Spitter: 21 XP, Boss: 338 XP (10% reduction from previous)
+  - Linear progression: +20 XP per level (100, 120, 140, 160...)
+  - XP bar now properly resets to 0 after each level-up
+  - Provides steady, predictable progression
 ✅ **Permanent Rank & Progression System** - Long-term progression that persists across all game sessions
   - **Rank System**: 9 ranks (Private → Legend) with 5 tiers per rank
   - Rank XP accumulates from session score (1 score = 0.1 rank XP) and wave completion bonuses

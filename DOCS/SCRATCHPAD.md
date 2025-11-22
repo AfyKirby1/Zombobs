@@ -4,6 +4,20 @@
 
 ## 2025 - Active Development Notes
 
+### XP System Balance Adjustments [2025-01-21]
+- ✅ **XP Rate Reduction** - Reduced all XP values by 10% (7, 14, 21, 16, 24, 21, 338)
+  - Location: `js/systems/SkillSystem.js` - constructor `xpValues`
+  - Makes leveling slightly slower for more meaningful progression
+- ✅ **Linear XP Progression** - Changed from exponential (1.2x scaling) to linear (+20 per level)
+  - Formula: `100 + (level - 1) * 20`
+  - Location: `js/systems/SkillSystem.js` - `levelUp()` method
+  - Removed dependency on `XP_SCALING_FACTOR` constant
+  - Provides predictable progression: 100, 120, 140, 160, 180...
+- ✅ **XP Bar Reset Fix** - Fixed XP bar not resetting after level up
+  - Added `gameState.xp = 0;` after calculating new `nextLevelXP`
+  - Location: `js/systems/SkillSystem.js` - `levelUp()` method
+  - XP bar now correctly shows 0% at start of each new level
+
 ### V0.7.1.1 ALPHA Bug Fix [2025-01-21]
 - ✅ **Syntax Error Fix**: Fixed duplicate `zombieType` variable declaration in `combatUtils.js`
   - Removed duplicate declaration on line 796

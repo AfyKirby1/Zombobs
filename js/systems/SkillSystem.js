@@ -193,13 +193,13 @@ export const SKILLS_POOL = [
 class SkillSystem {
     constructor() {
         this.xpValues = {
-            normal: 8,      // 1.5x increase from 5 (was reduced from 10)
-            fast: 15,       // 1.5x increase from 10 (was reduced from 20)
-            exploding: 23,  // 1.5x increase from 15 (was reduced from 30)
-            armored: 18,    // 1.5x increase from 12 (was reduced from 25)
-            ghost: 27,      // 1.5x increase from 18 (was reduced from 35)
-            spitter: 23,    // 1.5x increase from 15 (was reduced from 30)
-            boss: 375       // 1.5x increase from 250 (was reduced from 500)
+            normal: 7,      // Reduced by 10% from 8 (was 1.5x increase from 5)
+            fast: 14,       // Reduced by 10% from 15 (was 1.5x increase from 10)
+            exploding: 21,  // Reduced by 10% from 23 (was 1.5x increase from 15)
+            armored: 16,    // Reduced by 10% from 18 (was 1.5x increase from 12)
+            ghost: 24,      // Reduced by 10% from 27 (was 1.5x increase from 18)
+            spitter: 21,    // Reduced by 10% from 23 (was 1.5x increase from 15)
+            boss: 338       // Reduced by 10% from 375 (was 1.5x increase from 250)
         };
     }
 
@@ -217,10 +217,11 @@ class SkillSystem {
     levelUp() {
         gameState.level++;
 
-        // Calculate next level XP requirement
-        const baseXP = XP_BASE_REQUIREMENT;
-        const scaling = Math.pow(XP_SCALING_FACTOR, gameState.level - 1);
-        gameState.nextLevelXP = Math.floor(baseXP * scaling);
+        // Calculate next level XP requirement (linear progression: +20 per level, starting at 100)
+        gameState.nextLevelXP = XP_BASE_REQUIREMENT + (gameState.level - 1) * 20;
+
+        // Reset XP to 0 so XP bar resets properly after level up
+        gameState.xp = 0;
 
         // Multiplayer Logic
         if (gameState.isCoop && gameState.multiplayer.active) {

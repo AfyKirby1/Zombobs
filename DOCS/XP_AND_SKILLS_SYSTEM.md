@@ -2,7 +2,7 @@
 
 ## Overview
 
-The XP (Experience Points) and Skills System is a core progression mechanic in Zombobs that allows players to level up by defeating zombies and choose skills to enhance their combat effectiveness. The system features 16 unique skills, a 3-choice level-up selection screen, and exponential XP scaling.
+The XP (Experience Points) and Skills System is a core progression mechanic in Zombobs that allows players to level up by defeating zombies and choose skills to enhance their combat effectiveness. The system features 16 unique skills, a 3-choice level-up selection screen, and linear XP scaling.
 
 ---
 
@@ -25,15 +25,15 @@ Players gain XP exclusively by **killing zombies**. The amount of XP awarded dep
 
 | Zombie Type | XP Awarded | Notes |
 |------------|-----------|-------|
-| Normal | 8 XP | Basic zombie, most common |
-| Fast (Runner) | 15 XP | Faster movement speed |
-| Exploding (Boomer) | 23 XP | Explodes on death, AOE damage |
-| Armored (Tank) | 18 XP | Higher health, slower movement |
-| Ghost | 27 XP | Can phase through obstacles |
-| Spitter | 23 XP | Ranged acid projectile attacks |
-| Boss | 375 XP | Large health pool, special abilities |
+| Normal | 7 XP | Basic zombie, most common |
+| Fast (Runner) | 14 XP | Faster movement speed |
+| Exploding (Boomer) | 21 XP | Explodes on death, AOE damage |
+| Armored (Tank) | 16 XP | Higher health, slower movement |
+| Ghost | 24 XP | Can phase through obstacles |
+| Spitter | 21 XP | Ranged acid projectile attacks |
+| Boss | 338 XP | Large health pool, special abilities |
 
-**Note**: XP values were increased by 1.5x from previous values to accelerate progression.
+**Note**: XP values were reduced by 10% from previous values (8, 15, 23, 18, 27, 23, 375) to slow down progression slightly.
 
 ### XP Award Locations
 
@@ -51,9 +51,9 @@ XP is awarded in the following combat scenarios:
    - When zombies are killed by melee attacks
    - XP is awarded on successful melee kill
 
-### XP Rate Multiplier
+### XP Rate Balance
 
-The current XP rate is **1.5x** the base values, meaning players gain experience 50% faster than the original balanced progression. This was implemented to provide a more engaging leveling experience.
+XP values have been balanced to provide a steady, predictable progression rate. The values were reduced by 10% from previous rates to slightly slow down leveling and make each level-up feel more meaningful.
 
 ---
 
@@ -65,20 +65,20 @@ Players start at **Level 1** with **0 XP**. Each level requires progressively mo
 
 **XP Requirements Formula**:
 ```
-nextLevelXP = baseXP × (scalingFactor ^ (level - 1))
+nextLevelXP = 100 + (level - 1) × 20
 ```
 
 **Constants**:
-- `XP_BASE_REQUIREMENT = 100` (base XP for level 2)
-- `XP_SCALING_FACTOR = 1.2` (20% increase per level)
+- `XP_BASE_REQUIREMENT = 100` (base XP for level 1 → 2)
+- Linear progression: +20 XP per level
 
 **Example Progression**:
 - Level 1 → 2: 100 XP
-- Level 2 → 3: 120 XP (100 × 1.2¹)
-- Level 3 → 4: 144 XP (100 × 1.2²)
-- Level 4 → 5: 173 XP (100 × 1.2³)
-- Level 5 → 6: 207 XP (100 × 1.2⁴)
-- Level 10 → 11: 516 XP (100 × 1.2⁹)
+- Level 2 → 3: 120 XP (100 + 1 × 20)
+- Level 3 → 4: 140 XP (100 + 2 × 20)
+- Level 4 → 5: 160 XP (100 + 3 × 20)
+- Level 5 → 6: 180 XP (100 + 4 × 20)
+- Level 10 → 11: 280 XP (100 + 9 × 20)
 
 ### Level-Up Process
 
@@ -86,7 +86,7 @@ nextLevelXP = baseXP × (scalingFactor ^ (level - 1))
 2. **Level Check**: Each time XP is gained, the system checks if `gameState.xp >= gameState.nextLevelXP`
 3. **Level-Up Trigger**: When threshold is reached, `levelUp()` is called
 4. **Skill Selection**: A 3-choice skill selection screen appears
-5. **XP Reset**: XP is NOT reset to 0; it continues accumulating (allowing multiple level-ups if enough XP is gained)
+5. **XP Reset**: XP is reset to 0 after leveling up, ensuring the XP bar starts at 0% for the next level
 
 ### Level-Up UI
 
@@ -311,7 +311,7 @@ In multiplayer (co-op) mode, the **leader** (host) controls XP and skill selecti
 ```javascript
 export const MAX_SKILL_SLOTS = 6;
 export const XP_BASE_REQUIREMENT = 100;
-export const XP_SCALING_FACTOR = 1.2;
+// Note: XP_SCALING_FACTOR is no longer used - progression is now linear
 ```
 
 ### XP Gain Flow
@@ -369,9 +369,10 @@ Level-up screen closes (gameState.showLevelUp = false)
 
 - **Original Values**: Normal: 10, Fast: 20, Exploding: 30, Armored: 25, Ghost: 35, Spitter: 30, Boss: 500
 - **Balanced Values** (50% reduction): Normal: 5, Fast: 10, Exploding: 15, Armored: 12, Ghost: 18, Spitter: 15, Boss: 250
-- **Current Values** (1.5x increase): Normal: 8, Fast: 15, Exploding: 23, Armored: 18, Ghost: 27, Spitter: 23, Boss: 375
+- **Previous Values** (1.5x increase): Normal: 8, Fast: 15, Exploding: 23, Armored: 18, Ghost: 27, Spitter: 23, Boss: 375
+- **Current Values** (10% reduction): Normal: 7, Fast: 14, Exploding: 21, Armored: 16, Ghost: 24, Spitter: 21, Boss: 338
 
-The current 1.5x multiplier provides a faster progression rate while maintaining meaningful level-up milestones.
+The current values provide a balanced progression rate with linear XP requirements (+20 per level), making each level-up predictable and meaningful.
 
 ### Skill Balance
 

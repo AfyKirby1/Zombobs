@@ -2,6 +2,41 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [Unreleased]
+
+### ⚖️ XP System Balance Adjustments
+
+#### Changed
+- **XP Rate Reduction** - Reduced all zombie XP values by 10% to slightly slow down leveling
+  - Normal: 8 → 7 XP
+  - Fast: 15 → 14 XP
+  - Exploding: 23 → 21 XP
+  - Armored: 18 → 16 XP
+  - Ghost: 27 → 24 XP
+  - Spitter: 23 → 21 XP
+  - Boss: 375 → 338 XP
+  - Makes each level-up feel more meaningful
+
+- **XP Progression Formula** - Changed from exponential to linear progression
+  - **Old Formula**: `baseXP × (1.2 ^ (level - 1))` (exponential scaling)
+  - **New Formula**: `100 + (level - 1) × 20` (linear +20 increments)
+  - Level 1 → 2: 100 XP
+  - Level 2 → 3: 120 XP
+  - Level 3 → 4: 140 XP
+  - Level 4 → 5: 160 XP
+  - Level 10 → 11: 280 XP
+  - Provides predictable, steady progression instead of exponential growth
+
+- **XP Bar Reset Fix** - XP now properly resets to 0 after leveling up
+  - XP bar correctly shows 0% at start of each new level
+  - Previously, XP would continue accumulating without reset
+  - Location: `js/systems/SkillSystem.js` - `levelUp()` method
+
+#### Fixed
+- **XP Bar Display** - Fixed issue where XP bar didn't reset after leveling up
+  - XP now resets to 0 in `levelUp()` method after calculating new `nextLevelXP`
+  - XP bar visualization now correctly shows progress from 0% after each level-up
+
 ## [V0.7.1.1 ALPHA] - 2025-01-21
 
 ### 🐛 Bug Fix & Version Bump
