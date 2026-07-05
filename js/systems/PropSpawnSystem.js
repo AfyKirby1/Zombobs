@@ -46,7 +46,7 @@ export class PropSpawnSystem {
                 
                 // Activate chunk and spawn props
                 chunkManager.activateChunk(chunkX, chunkY);
-                this.spawnPropsInChunk(gameState, chunkX, chunkY);
+                this.spawnPropsInChunk(gameState, chunkX, chunkY, player);
             }
         }
     }
@@ -57,7 +57,7 @@ export class PropSpawnSystem {
      * @param {number} chunkX - Chunk X coordinate
      * @param {number} chunkY - Chunk Y coordinate
      */
-    spawnPropsInChunk(gameState, chunkX, chunkY) {
+    spawnPropsInChunk(gameState, chunkX, chunkY, player = null) {
         // Calculate chunk world bounds
         const chunkWorldX = chunkX * CHUNK_SIZE;
         const chunkWorldY = chunkY * CHUNK_SIZE;
@@ -88,14 +88,13 @@ export class PropSpawnSystem {
                 propX = spawnLeft + Math.random() * spawnWidth;
                 propY = spawnTop + Math.random() * spawnHeight;
                 
-                // Check distance from player spawn (center of canvas)
-                const playerSpawnX = canvas.width / 2;
-                const playerSpawnY = canvas.height / 2;
-                const distFromSpawn = Math.sqrt(
-                    Math.pow(propX - playerSpawnX, 2) + Math.pow(propY - playerSpawnY, 2)
-                );
-                
-                if (distFromSpawn < PROP_MIN_DISTANCE * 2) {
+                const avoidX = player ? player.x : canvas.width / 2;
+                const avoidY = player ? player.y : canvas.height / 2;
+                const dxFromPlayer = propX - avoidX;
+                const dyFromPlayer = propY - avoidY;
+                const minPlayerDistance = PROP_MIN_DISTANCE * 1.5;
+
+                if (dxFromPlayer * dxFromPlayer + dyFromPlayer * dyFromPlayer < minPlayerDistance * minPlayerDistance) {
                     attempts++;
                     continue;
                 }
@@ -103,10 +102,11 @@ export class PropSpawnSystem {
                 // Check distance from other props
                 validPosition = true;
                 for (const existingProp of gameState.props) {
-                    const dist = Math.sqrt(
-                        Math.pow(propX - existingProp.x, 2) + Math.pow(propY - existingProp.y, 2)
-                    );
-                    if (dist < PROP_MIN_DISTANCE) {
+                    const dx = propX - existingProp.x;
+                    const dy = propY - existingProp.y;
+                    const propPadding = Math.min(80, PROP_MIN_DISTANCE + (existingProp.radius || 0) * 0.35);
+
+                    if (dx * dx + dy * dy < propPadding * propPadding) {
                         validPosition = false;
                         break;
                     }
@@ -120,22 +120,32 @@ export class PropSpawnSystem {
                 // Randomly choose prop type with weights
                 const rand = Math.random();
                 let propType;
-                if (rand < 0.25) {
-                    propType = 'rock'; // 25% chance
+                if (rand < 0.17) {
+                    propType = 'rock';
+                } else if (rand < 0.31) {
+                    propType = 'debris';
+                } else if (rand < 0.38) {
+                    propType = 'burntCar';
                 } else if (rand < 0.45) {
-                    propType = 'debris'; // 20% chance
-                } else if (rand < 0.55) {
-                    propType = 'burntCar'; // 10% chance
-                } else if (rand < 0.65) {
-                    propType = 'skull'; // 10% chance
-                } else if (rand < 0.73) {
-                    propType = 'zombieArms'; // 8% chance
-                } else if (rand < 0.78) {
-                    propType = 'zombieLegs'; // 5% chance
-                } else if (rand < 0.85) {
-                    propType = 'trashCan'; // 7% chance
+                    propType = 'skull';
+                } else if (rand < 0.50) {
+                    propType = 'zombieArms';
+                } else if (rand < 0.54) {
+                    propType = 'zombieLegs';
+                } else if (rand < 0.59) {
+                    propType = 'trashCan';
+                } else if (rand < 0.70) {
+                    propType = 'explosiveBarrel';
+                } else if (rand < 0.77) {
+                    propType = 'abandonedMotorbike';
+                } else if (rand < 0.83) {
+                    propType = 'sandbagBarricade';
+                } else if (rand < 0.88) {
+                    propType = 'medicalCrate';
+                } else if (rand < 0.92) {
+                    propType = 'concreteBarrier';
                 } else {
-                    propType = 'explosiveBarrel'; // 15% chance
+                    propType = 'ammoCrate';
                 }
                 
                 const prop = new Prop(propX, propY, propType);

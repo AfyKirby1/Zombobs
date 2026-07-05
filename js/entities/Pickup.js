@@ -476,3 +476,72 @@ export class AdrenalinePickup {
     }
 }
 
+// Frost Nova Pickup (Ice Blue — freezes all zombies on contact)
+export class FrostPickup {
+    constructor(canvasWidth, canvasHeight) {
+        const margin = 40;
+        this.radius = 13;
+        this.x = margin + Math.random() * (canvasWidth - margin * 2);
+        this.y = margin + Math.random() * (canvasHeight - margin * 2);
+        this.pulseOffset = Math.random() * Math.PI * 2;
+        this.type = 'frost';
+    }
+
+    draw() {
+        const t = Date.now() / 350 + this.pulseOffset;
+        const pulse = 0.75 + Math.sin(t) * 0.25;
+
+        const glowRadius = this.radius * 2.6 * pulse;
+        const glowGradient = ctx.createRadialGradient(
+            this.x, this.y, 0,
+            this.x, this.y, glowRadius
+        );
+        glowGradient.addColorStop(0, 'rgba(224, 247, 250, 1.0)');
+        glowGradient.addColorStop(0.45, 'rgba(129, 212, 250, 0.55)');
+        glowGradient.addColorStop(1, 'rgba(3, 169, 244, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        const coreGradient = ctx.createRadialGradient(
+            this.x - 3, this.y - 3, 0,
+            this.x, this.y, this.radius
+        );
+        coreGradient.addColorStop(0, '#e0f7fa');
+        coreGradient.addColorStop(0.55, '#4dd0e1');
+        coreGradient.addColorStop(1, '#0277bd');
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Six-point snowflake
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const inner = this.radius * 0.25;
+            const outer = this.radius * 0.72;
+            ctx.beginPath();
+            ctx.moveTo(this.x + Math.cos(angle) * inner, this.y + Math.sin(angle) * inner);
+            ctx.lineTo(this.x + Math.cos(angle) * outer, this.y + Math.sin(angle) * outer);
+            ctx.stroke();
+            const branch = angle + Math.PI / 6;
+            const mid = this.radius * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(this.x + Math.cos(angle) * mid, this.y + Math.sin(angle) * mid);
+            ctx.lineTo(this.x + Math.cos(branch) * (mid + 3), this.y + Math.sin(branch) * (mid + 3));
+            ctx.stroke();
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+

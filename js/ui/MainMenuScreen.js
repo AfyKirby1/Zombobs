@@ -14,17 +14,27 @@ export class MainMenuScreen {
         this.rankDisplay = hud.rankDisplay;
         this.leaderboardDisplay = hud.leaderboardDisplay;
         this.hoveredButton = null;
+        
+        // Cache device type
+        const ua = (navigator && navigator.userAgent) || '';
+        this.isMobileDevice = /Android|iPhone|iPad|iPod/i.test(ua);
+        
         // News ticker state (shared with GameHUD)
         this.newsTickerDragging = false;
         this.newsTickerDragStartX = 0;
-        this.newsTickerManualOffset = 0;
-        this.newsTickerAutoOffset = 0;
+        this.newsTickerOffset = 0; // Delta-time stateful offset
+        this.lastNewsTickerTime = 0;
         this.newsTickerDragStartOffset = 0;
         this.newsTickerBoxX = 0;
         this.newsTickerBoxY = 0;
         this.newsTickerBoxWidth = 0;
         this.newsTickerBoxHeight = 0;
         this.newsTickerTextWidth = 0;
+        
+        // Mouse coordinate tracking for news ticker hover pause
+        this.lastMouseX = undefined;
+        this.lastMouseY = undefined;
+        
         // Username modal state
         this.usernameInputText = '';
         this.usernameInputFocused = false;
@@ -39,6 +49,24 @@ export class MainMenuScreen {
 
     getUIScale() {
         return this.hud.getUIScale();
+    }
+
+    getMenuScale() {
+        const baseScale = this.getUIScale();
+        const aspectRatio = this.canvas.height > 0 ? this.canvas.width / this.canvas.height : 1.0;
+        const isMobile = this.isMobileDevice;
+        const mobileScale = isMobile ? 0.7 : 1.0;
+        const wideScale = aspectRatio > 1.9 ? 0.85 : 1.0;
+        return baseScale * mobileScale * wideScale;
+    }
+
+    getButtonLayout(scale) {
+        const isMobile = this.isMobileDevice;
+        const width = (isMobile ? 150 : 180) * scale;
+        const height = (isMobile ? 28 : 36) * scale;
+        const spacing = (isMobile ? 10 : 15) * scale;
+        const colSpacing = (isMobile ? 12 : 20) * scale;
+        return { width, height, spacing, colSpacing };
     }
 
     updateEffects() {
@@ -229,15 +257,8 @@ export class MainMenuScreen {
         this.hud.drawCreepyBackground();
         this.drawEffects();
 
-        // Base UI scale from settings, with a mobile-specific shrink so the menu fits better on phones
-        const baseScale = this.getUIScale();
-        const aspectRatio = this.canvas.height > 0 ? this.canvas.width / this.canvas.height : 1.0;
-        const ua = (navigator && navigator.userAgent) || '';
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
-        const mobileScale = isMobile ? 0.7 : 1.0; // Increased from 0.5 to give buttons more room
-        // On very wide phones in landscape, shrink a bit more
-        const wideScale = aspectRatio > 1.9 ? 0.85 : 1.0;
-        const scale = baseScale * mobileScale * wideScale;
+        const scale = this.getMenuScale();
+        const isMobile = this.isMobileDevice;
         this.isMobileLayout = isMobile;
 
         // Main title - scaled
@@ -272,9 +293,8 @@ export class MainMenuScreen {
             this.ctx.fillText(musicTipText, this.canvas.width / 2, musicTipY);
             this.ctx.shadowBlur = 0;
         }
-        const buttonWidth = (isMobile ? 150 : 180) * scale;  // Reduced for mobile
-        const buttonHeight = (isMobile ? 28 : 36) * scale;  // Reduced for mobile
-        const buttonSpacing = (isMobile ? 10 : 15) * scale;
+        
+        const { width: buttonWidth, height: buttonHeight, spacing: buttonSpacing, colSpacing: columnSpacing } = this.getButtonLayout(scale);
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
@@ -357,7 +377,6 @@ export class MainMenuScreen {
         }
 
         // 2x4 Grid Layout: 2 columns, 4 rows
-        const columnSpacing = (isMobile ? 12 : 20) * scale;
         const buttonStartY = centerY - (30 * scale);
         const leftColumnX = centerX - buttonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
@@ -495,7 +514,7 @@ export class MainMenuScreen {
         const showRankBadge = settingsManager.getSetting('video', 'showRankBadge') !== false;
         if (!showRankBadge) return;
 
-        const scale = this.getUIScale();
+        const scale = this.getMenuScale();
         const centerX = this.canvas.width / 2;
         // Draw rank badge to the right of username (username is now at top)
         const usernameY = 30 * scale + 25 * scale; // Top padding + half box height
@@ -808,13 +827,28 @@ export class MainMenuScreen {
         const textWidth = ctx.measureText(NEWS_UPDATES).width;
         this.newsTickerTextWidth = textWidth;
 
-        // Calculate automatic scroll offset (stateless animation using Date.now)
-        // Scroll speed: divide by 30 for pixel-per-30ms movement (3x slower)
-        const scrollSpeed = 30;
-        this.newsTickerAutoOffset = (Date.now() / scrollSpeed) % (textWidth + boxWidth);
+        // Delta-time based scrolling
+        const now = Date.now();
+        if (!this.lastNewsTickerTime) {
+            this.lastNewsTickerTime = now;
+        }
+        let dt = now - this.lastNewsTickerTime;
+        this.lastNewsTickerTime = now;
+        if (dt > 200) {
+            dt = 16.67; // Cap to 1 frame to prevent wild jumps when returning to tab
+        }
 
-        // Use manual offset if dragging, otherwise use auto offset
-        const scrollOffset = this.newsTickerDragging ? this.newsTickerManualOffset : this.newsTickerAutoOffset;
+        // Scroll speed: moves 1 pixel per 30ms (approx 33.3px per second)
+        const scrollSpeed = 1 / 30;
+
+        // Check if mouse is hovered over news ticker to pause it
+        const isHovered = this.lastMouseX !== undefined && this.checkNewsTickerHit(this.lastMouseX, this.lastMouseY);
+
+        if (!this.newsTickerDragging && !isHovered) {
+            this.newsTickerOffset = (this.newsTickerOffset + dt * scrollSpeed) % (textWidth + boxWidth);
+        }
+
+        const scrollOffset = this.newsTickerOffset;
         const textX = boxX - scrollOffset;
 
         // Draw background box
@@ -960,12 +994,10 @@ export class MainMenuScreen {
         }
 
         const centerX = this.canvas.width / 2;
-        const scale = this.getUIScale();
-        const isMobile = this.isMobileLayout === true;
-        const mainMenuButtonWidth = (isMobile ? 160 : 180) * scale;  // Increased slightly from 150
-        const mainMenuButtonHeight = (isMobile ? 26 : 36) * scale;  // Thinner
+        const scale = this.getMenuScale();
+        const isMobile = this.isMobileDevice;
+        const { width: mainMenuButtonWidth, height: mainMenuButtonHeight, spacing: buttonSpacing, colSpacing: columnSpacing } = this.getButtonLayout(scale);
         const centerY = this.canvas.height / 2;
-        const buttonSpacing = (isMobile ? 8 : 15) * scale;
 
         // Username box hit detection (moved to top)
         const usernameBoxWidth = (isMobile ? 240 : 320) * scale;
@@ -978,7 +1010,6 @@ export class MainMenuScreen {
         }
 
         // 2x5 Grid Layout: 2 columns, 5 rows
-        const columnSpacing = (isMobile ? 12 : 20) * scale;
         const buttonStartY = centerY - (30 * scale);
         const leftColumnX = centerX - mainMenuButtonWidth - columnSpacing / 2;
         const rightColumnX = centerX + columnSpacing / 2;
@@ -1040,6 +1071,8 @@ export class MainMenuScreen {
     }
 
     updateHover(x, y) {
+        this.lastMouseX = x;
+        this.lastMouseY = y;
         // Check username modal hover first
         if (gameState.showUsernameModal) {
             this.hoveredButton = this.checkUsernameModalClick(x, y);
@@ -1060,7 +1093,7 @@ export class MainMenuScreen {
         if (!this.checkNewsTickerHit(x, y)) return false;
         this.newsTickerDragging = true;
         this.newsTickerDragStartX = x;
-        this.newsTickerDragStartOffset = this.newsTickerManualOffset || this.newsTickerAutoOffset;
+        this.newsTickerDragStartOffset = this.newsTickerOffset;
         return true;
     }
 
@@ -1070,14 +1103,11 @@ export class MainMenuScreen {
         const newOffset = this.newsTickerDragStartOffset + dragDistance;
         const maxOffset = this.newsTickerTextWidth + this.newsTickerBoxWidth;
         // Clamp offset to valid range
-        this.newsTickerManualOffset = Math.max(0, Math.min(maxOffset, newOffset));
+        this.newsTickerOffset = Math.max(0, Math.min(maxOffset, newOffset));
     }
 
     endNewsTickerDrag() {
         this.newsTickerDragging = false;
-        // Reset manual offset to current auto offset to prevent jump when resuming auto-scroll
-        // This ensures smooth transition from manual drag back to automatic scrolling
-        this.newsTickerManualOffset = this.newsTickerAutoOffset;
     }
 
     drawUsernameModal() {

@@ -10,7 +10,7 @@ import {
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
-import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
+import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkPickupCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
@@ -1276,15 +1276,21 @@ export function handlePlayerZombieCollisions() {
     }
 }
 
+function shouldShowPickupFloatingText() {
+    if (settingsManager.getSetting('video', 'floatingText') === false) return false;
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    return damageNumberStyle !== 'off';
+}
+
 export function handlePickupCollisions() {
-    const showFloatingText = settingsManager.getSetting('video', 'floatingText') !== false;
+    const showFloatingText = shouldShowPickupFloatingText();
 
     // Check player-health pickup collisions
     if (gameState.healthPickups.length > 0) {
         gameState.healthPickups = gameState.healthPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (player.health < PLAYER_MAX_HEALTH && checkCollision(player, pickup)) {
+                if (player.health < PLAYER_MAX_HEALTH && checkPickupCollision(player, pickup)) {
                     player.health = Math.min(
                         PLAYER_MAX_HEALTH,
                         player.health + HEALTH_PICKUP_HEAL_AMOUNT
@@ -1307,7 +1313,7 @@ export function handlePickupCollisions() {
         gameState.ammoPickups = gameState.ammoPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if ((player.currentAmmo < player.maxAmmo || player.grenadeCount < MAX_GRENADES) && checkCollision(player, pickup)) {
+                if ((player.currentAmmo < player.maxAmmo || player.grenadeCount < MAX_GRENADES) && checkPickupCollision(player, pickup)) {
                     // Restore ammo for current weapon
                     player.currentAmmo = Math.min(player.maxAmmo, player.currentAmmo + AMMO_PICKUP_AMOUNT);
                     // Also refill grenades
@@ -1330,9 +1336,11 @@ export function handlePickupCollisions() {
         gameState.damagePickups = gameState.damagePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     gameState.damageBuffEndTime = Date.now() + 10000; // 10 seconds
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "DOUBLE DAMAGE!"));
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "DOUBLE DAMAGE!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#9c27b0', 12);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1348,8 +1356,8 @@ export function handlePickupCollisions() {
         gameState.nukePickups = gameState.nukePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
-                    triggerNuke(pickup.x, pickup.y);
+                if (checkPickupCollision(player, pickup)) {
+                    triggerNuke(pickup.x, pickup.y, showFloatingText);
                     createParticles(pickup.x, pickup.y, '#ffeb3b', 20);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1365,9 +1373,11 @@ export function handlePickupCollisions() {
         gameState.speedPickups = gameState.speedPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     gameState.speedBoostEndTime = Date.now() + 8000; // 8 seconds
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "SPEED BOOST!"));
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "SPEED BOOST!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#00bcd4', 12);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1383,9 +1393,11 @@ export function handlePickupCollisions() {
         gameState.rapidFirePickups = gameState.rapidFirePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     gameState.rapidFireEndTime = Date.now() + 10000; // 10 seconds
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "RAPID FIRE!"));
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "RAPID FIRE!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#ff9800', 12);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1401,10 +1413,9 @@ export function handlePickupCollisions() {
         gameState.shieldPickups = gameState.shieldPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     player.shield = Math.min(player.maxShield, player.shield + 50);
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
+                    if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "+50 SHIELD!"));
                     }
                     createParticles(pickup.x, pickup.y, '#03a9f4', 12);
@@ -1422,13 +1433,12 @@ export function handlePickupCollisions() {
         gameState.adrenalinePickups = gameState.adrenalinePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     // Apply all three buffs: Speed + Reload Speed + Fire Rate
                     gameState.adrenalineEndTime = Date.now() + 12000; // 12 seconds
                     gameState.speedBoostEndTime = Math.max(gameState.speedBoostEndTime, Date.now() + 12000);
                     gameState.rapidFireEndTime = Math.max(gameState.rapidFireEndTime, Date.now() + 12000);
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
+                    if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "ADRENALINE RUSH!"));
                     }
                     createParticles(pickup.x, pickup.y, '#4caf50', 15);
@@ -1440,11 +1450,56 @@ export function handlePickupCollisions() {
             return !collected;
         });
     }
+
+    // Check frost nova pickup collisions
+    if (gameState.frostPickups.length > 0) {
+        gameState.frostPickups = gameState.frostPickups.filter(pickup => {
+            let collected = false;
+            for (const player of gameState.players) {
+                if (checkPickupCollision(player, pickup)) {
+                    triggerFrostNova(pickup.x, pickup.y, showFloatingText);
+                    collected = true;
+                    gameState.pickupsCollected++;
+                    break;
+                }
+            }
+            return !collected;
+        });
+    }
 }
 
-function triggerNuke(x, y) {
+function triggerFrostNova(x, y, showFloatingText = true) {
+    const FROST_DURATION = 6000;
+    gameState.frostNovaEndTime = Date.now() + FROST_DURATION;
+    gameState.shakeAmount = Math.max(gameState.shakeAmount, 10);
+    if (showFloatingText) {
+        gameState.damageNumbers.push(new DamageNumber(x, y - 50, "FROST NOVA!", false, '#80deea'));
+        gameState.damageNumbers.push(new DamageNumber(x, y - 25, "ZOMBIES FROZEN 6s", false, '#e1f5fe'));
+    }
+    gameState.frostNovaEffect = {
+        active: true,
+        x,
+        y,
+        startTime: Date.now(),
+        duration: 900,
+        maxRadius: Math.max(canvas.width, canvas.height) * 0.9
+    };
+
+    createParticles(x, y, '#e1f5fe', 28);
+    createParticles(x, y, '#ffffff', 16);
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const zombie = gameState.zombies[i];
+        createParticles(zombie.x, zombie.y, '#b3e5fc', 5);
+        createParticles(zombie.x, zombie.y - zombie.radius * 0.5, '#ffffff', 2);
+    }
+}
+
+function triggerNuke(x, y, showFloatingText = true) {
     gameState.shakeAmount = 30;
-    gameState.damageNumbers.push(new DamageNumber(x, y - 50, "TACTICAL NUKE!"));
+    if (showFloatingText) {
+        gameState.damageNumbers.push(new DamageNumber(x, y - 50, "TACTICAL NUKE!"));
+    }
 
     // Flash effect (simulated by white particles everywhere or just screen flash handled in draw)
     // We'll just kill everyone

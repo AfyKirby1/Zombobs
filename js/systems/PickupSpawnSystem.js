@@ -13,7 +13,8 @@ import {
     SpeedPickup,
     RapidFirePickup,
     ShieldPickup,
-    AdrenalinePickup
+    AdrenalinePickup,
+    FrostPickup
 } from '../entities/Pickup.js';
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
@@ -108,7 +109,7 @@ export class PickupSpawnSystem {
 
     /**
      * Spawn powerup with weighted distribution
-     * Distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
+     * Distribution: Damage (18%), Nuke (7%), Frost (6%), Speed (17%), RapidFire (17%), Shield (22%), Adrenaline (13%)
      * @param {Object} gameState - Game state object
      * @param {HTMLCanvasElement} canvas - Canvas element for spawn bounds
      * @param {number} now - Current timestamp
@@ -142,24 +143,28 @@ export class PickupSpawnSystem {
                     }
                 };
                 
-                // Distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
-                if (rand < 0.20) { // Damage
+                // Distribution: Damage (18%), Nuke (7%), Frost (6%), Speed (17%), RapidFire (17%), Shield (22%), Adrenaline (13%)
+                if (rand < 0.18) { // Damage
                     if (gameState.damagePickups.length < 1) {
                         spawnPickupInWorldSpace(DamagePickup, gameState.damagePickups);
                     }
-                } else if (rand < 0.28) { // Nuke
+                } else if (rand < 0.25) { // Nuke
                     if (gameState.nukePickups.length < 1) {
                         spawnPickupInWorldSpace(NukePickup, gameState.nukePickups);
                     }
-                } else if (rand < 0.46) { // Speed
+                } else if (rand < 0.31) { // Frost Nova
+                    if (gameState.frostPickups.length < 1) {
+                        spawnPickupInWorldSpace(FrostPickup, gameState.frostPickups);
+                    }
+                } else if (rand < 0.48) { // Speed
                     if (gameState.speedPickups.length < 1) {
                         spawnPickupInWorldSpace(SpeedPickup, gameState.speedPickups);
                     }
-                } else if (rand < 0.64) { // RapidFire
+                } else if (rand < 0.65) { // RapidFire
                     if (gameState.rapidFirePickups.length < 1) {
                         spawnPickupInWorldSpace(RapidFirePickup, gameState.rapidFirePickups);
                     }
-                } else if (rand < 0.88) { // Shield
+                } else if (rand < 0.87) { // Shield
                     if (gameState.shieldPickups.length < 1) {
                         spawnPickupInWorldSpace(ShieldPickup, gameState.shieldPickups);
                     }

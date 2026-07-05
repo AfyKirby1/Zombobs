@@ -40,14 +40,16 @@ export class EntityRenderSystem {
         this.drawEntityArray(gameState.rapidFirePickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.shieldPickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.adrenalinePickups, ctx, viewport, false, false);
-        
-        // Zombies with culling (most important for performance) - optimized loop, no ctx parameter
+        this.drawEntityArray(gameState.frostPickups, ctx, viewport, false, false);
+
         // Post-draw: render name tags above each zombie
         this.drawEntityArray(gameState.zombies, ctx, viewport, false, false, (entity, context) => {
             if (typeof entity.drawNameTag === 'function') {
                 entity.drawNameTag(context);
             }
         });
+
+        this.drawFrostNovaEffect(gameState, ctx);
     }
 
     /**
@@ -91,6 +93,37 @@ export class EntityRenderSystem {
                 postDraw(entity, ctx || canvasCtx);
             }
         }
+    }
+
+    drawFrostNovaEffect(gameState, ctx) {
+        const fx = gameState.frostNovaEffect;
+        if (!fx || !fx.active) return;
+
+        const elapsed = Date.now() - fx.startTime;
+        if (elapsed >= fx.duration) {
+            fx.active = false;
+            return;
+        }
+
+        const t = elapsed / fx.duration;
+        const radius = fx.maxRadius * t;
+        const alpha = (1 - t) * 0.5;
+
+        ctx.save();
+        ctx.strokeStyle = `rgba(176, 224, 230, ${alpha})`;
+        ctx.lineWidth = 4 * (1 - t * 0.5);
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const fillGradient = ctx.createRadialGradient(fx.x, fx.y, radius * 0.85, fx.x, fx.y, radius);
+        fillGradient.addColorStop(0, 'rgba(224, 247, 250, 0)');
+        fillGradient.addColorStop(1, `rgba(129, 212, 250, ${alpha * 0.35})`);
+        ctx.fillStyle = fillGradient;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
     }
 }
 

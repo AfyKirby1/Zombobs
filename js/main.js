@@ -1135,6 +1135,14 @@ function drawGame() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    if (gameState.frostNovaEndTime > Date.now()) {
+        const frostTimeLeft = gameState.frostNovaEndTime - Date.now();
+        const frostPulse = 0.08 + Math.sin(Date.now() / 180) * 0.03;
+        const frostFade = Math.min(1, frostTimeLeft / 1200);
+        ctx.fillStyle = `rgba(176, 224, 230, ${frostPulse * frostFade})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
     // Draw particles AFTER all overlays so they're visible on top
     // Particles need to be drawn in world space, so we restore the camera transform
     ctx.save();
@@ -1583,13 +1591,17 @@ function handleMenuInteraction(clickX, clickY) {
         } else if (clickedButton === 'username') {
             if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.openUsernameModal();
         } else if (clickedButton === 'username_ok') {
-            if (gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
-                gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
+            if (gameHUD.mainMenuScreen) {
+                let newUsername = gameHUD.mainMenuScreen.usernameInputText.trim();
+                if (newUsername === '') {
+                    newUsername = 'Survivor';
+                }
+                gameState.username = newUsername;
                 saveUsername();
                 playerProfileSystem.setUsername(gameState.username);
                 multiplayerSystem.updateUsernameOnServer();
+                gameHUD.mainMenuScreen.closeUsernameModal();
             }
-            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.closeUsernameModal();
         } else if (clickedButton === 'username_cancel' || clickedButton === 'username_background') {
             if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.closeUsernameModal();
         } else if (clickedButton === 'username_input') {
@@ -1774,16 +1786,22 @@ document.addEventListener('keydown', (e) => {
 
     // Username modal input handling (when modal is open)
     if (gameState.showUsernameModal && gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputFocused) {
+        // Allow browser/system shortcut keys through (Ctrl, Alt, Cmd/Meta combos, and F-keys)
+        if (e.ctrlKey || e.altKey || e.metaKey || (e.key.startsWith('F') && e.key.length > 1)) {
+            return;
+        }
         const result = gameHUD.mainMenuScreen.handleUsernameModalKey(e.key);
         if (result === 'submit') {
             e.preventDefault();
             // Submit username
-            if (gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
-                gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
-                saveUsername();
-                playerProfileSystem.setUsername(gameState.username);
-                multiplayerSystem.updateUsernameOnServer();
+            let newUsername = gameHUD.mainMenuScreen.usernameInputText.trim();
+            if (newUsername === '') {
+                newUsername = 'Survivor';
             }
+            gameState.username = newUsername;
+            saveUsername();
+            playerProfileSystem.setUsername(gameState.username);
+            multiplayerSystem.updateUsernameOnServer();
             gameHUD.mainMenuScreen.closeUsernameModal();
             return;
         } else if (result === 'cancel') {

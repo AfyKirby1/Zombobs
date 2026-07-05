@@ -343,6 +343,39 @@ export class Zombie {
                 }
             }
         }
+
+        if (gameState.frostNovaEndTime > Date.now()) {
+            const isBoss = this.type === 'boss';
+            const iceAlpha = isBoss ? 0.35 : 0.6;
+            context.save();
+            context.fillStyle = `rgba(176, 224, 230, ${iceAlpha})`;
+            context.strokeStyle = 'rgba(224, 247, 250, 0.95)';
+            context.lineWidth = 2;
+            context.beginPath();
+            context.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI * 2 * i / 6) - Math.PI / 2;
+                const spikeLen = this.radius * 0.45;
+                const baseX = this.x + Math.cos(angle) * (this.radius + 2);
+                const baseY = this.y + Math.sin(angle) * (this.radius + 2);
+                const tipX = this.x + Math.cos(angle) * (this.radius + 2 + spikeLen);
+                const tipY = this.y + Math.sin(angle) * (this.radius + 2 + spikeLen);
+                context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                context.beginPath();
+                context.moveTo(baseX, baseY);
+                context.lineTo(tipX, tipY);
+                context.lineTo(
+                    baseX + Math.cos(angle + Math.PI / 2) * 3,
+                    baseY + Math.sin(angle + Math.PI / 2) * 3
+                );
+                context.closePath();
+                context.fill();
+            }
+            context.restore();
+        }
     }
 
     /**

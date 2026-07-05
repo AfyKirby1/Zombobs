@@ -705,6 +705,12 @@ export class GameHUD {
             this.drawStat('Rapid', '>>> ' + timeLeft + 's', '🔥', '#ff9800', x, currentY, width);
         }
 
+        if (gameState.frostNovaEndTime > Date.now()) {
+            currentY += height + itemSpacing;
+            const timeLeft = Math.ceil((gameState.frostNovaEndTime - Date.now()) / 1000);
+            this.drawStat('Frost', timeLeft + 's frozen', '❄', '#4dd0e1', x, currentY, width);
+        }
+
         if (gameState.adrenalineEndTime > Date.now()) {
             currentY += height + this.itemSpacing;
             const timeLeft = Math.ceil((gameState.adrenalineEndTime - Date.now()) / 1000);

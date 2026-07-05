@@ -10,6 +10,13 @@ export function checkCollision(obj1, obj2) {
     return distSquared < radiusSum * radiusSum;
 }
 
+export function checkPickupCollision(player, pickup, bonusRadius = 12) {
+    const dx = player.x - pickup.x;
+    const dy = player.y - pickup.y;
+    const radiusSum = player.radius + pickup.radius + bonusRadius;
+    return dx * dx + dy * dy < radiusSum * radiusSum;
+}
+
 /**
  * Check collision between a bullet and a zombie, including secondary lower body hitbox
  * @param {Object} bullet - Bullet object with x, y, radius properties

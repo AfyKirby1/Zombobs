@@ -100,7 +100,8 @@ export class GalleryScreen {
             { type: 'speed', name: 'Speed Boost', effect: '1.5x Speed (8s)', desc: 'Increased movement speed' },
             { type: 'rapidfire', name: 'Rapid Fire', effect: '2x Fire Rate (10s)', desc: 'Faster weapon firing' },
             { type: 'shield', name: 'Shield', effect: '+50 Shield', desc: 'Absorbs damage before health' },
-            { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects' }
+            { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects' },
+            { type: 'frost', name: 'Frost Nova', effect: 'Freeze All (6s)', desc: 'Rare - stops zombies cold, slows bosses' }
         ], 'pickup');
 
         const totalContentHeight = currentY + this.galleryScrollY - contentStartY;
@@ -650,6 +651,31 @@ export class GalleryScreen {
                 ctx.moveTo(0, -radius/2);
                 ctx.lineTo(0, radius/2);
                 ctx.stroke();
+                break;
+            case 'frost':
+                const frostGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.4 * pulse);
+                frostGlow.addColorStop(0, 'rgba(224, 247, 250, 1.0)');
+                frostGlow.addColorStop(1, 'rgba(3, 169, 244, 0)');
+                ctx.fillStyle = frostGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.4 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const frostGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                frostGradient.addColorStop(0, '#e0f7fa');
+                frostGradient.addColorStop(1, '#0277bd');
+                ctx.fillStyle = frostGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(angle) * radius * 0.2, Math.sin(angle) * radius * 0.2);
+                    ctx.lineTo(Math.cos(angle) * radius * 0.7, Math.sin(angle) * radius * 0.7);
+                    ctx.stroke();
+                }
                 break;
         }
         ctx.restore();

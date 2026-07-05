@@ -1,4 +1,5 @@
 import { shouldUpdateEntity } from '../utils/gameUtils.js';
+import { gameState } from '../core/gameState.js';
 
 /**
  * ZombieUpdateSystem handles zombie AI updates, multiplayer interpolation,
@@ -59,6 +60,11 @@ export class ZombieUpdateSystem {
      * @param {number} nightSpeedMultiplier - Speed multiplier for night time
      */
     updateZombieAI(zombie, players, nightSpeedMultiplier) {
+        const frostActive = gameState.frostNovaEndTime > Date.now();
+        if (frostActive && zombie.type !== 'boss') {
+            return;
+        }
+
         // Find closest living player
         let closestPlayer = null;
         let minDist = Infinity;
@@ -80,8 +86,8 @@ export class ZombieUpdateSystem {
             if (!zombie.baseSpeed) {
                 zombie.baseSpeed = zombie.speed;
             }
-            // Apply night speed boost
-            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier;
+            const bossFrostSlow = frostActive && zombie.type === 'boss' ? 0.3 : 1.0;
+            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow;
             zombie.update(closestPlayer);
         }
     }

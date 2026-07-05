@@ -8,7 +8,7 @@ export class Prop {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.type = type; // 'rock', 'debris', 'burntCar', 'skull', 'zombieArms', 'zombieLegs'
+        this.type = type; // 'rock', 'debris', 'burntCar', 'skull', 'zombieArms', 'zombieLegs', 'trashCan', 'explosiveBarrel', 'abandonedMotorbike', 'sandbagBarricade', 'medicalCrate', 'concreteBarrier', 'ammoCrate'
         this.rotation = Math.random() * Math.PI * 2; // Random rotation
         
         // Set dimensions and visual properties based on type
@@ -41,7 +41,9 @@ export class Prop {
                          y: (Math.random() - 0.5) * this.height * 0.5,
                          length: 4 + Math.random() * 8,
                          angle: Math.random() * Math.PI * 2,
-                         width: 0.5 + Math.random() * 1
+                         width: 0.5 + Math.random() * 1,
+                         midOffsetX: (Math.random() - 0.5) * 2,
+                         midOffsetY: (Math.random() - 0.5) * 2
                      });
                 }
                 break;
@@ -110,7 +112,11 @@ export class Prop {
                         rotation: (Math.random() - 0.5) * 1.5, // More random rotation variation
                         elbowAngle: 0.2 + Math.random() * 0.8, // Slight bend to 90 degree bend
                         scale: 0.8 + Math.random() * 0.4,
-                        flip: Math.random() > 0.5 ? 1 : -1 // Left or right bending
+                        flip: Math.random() > 0.5 ? 1 : -1, // Left or right bending
+                        goreVerts: Array.from({ length: 5 }, (_, k) => ({
+                            angle: (k / 5) * Math.PI * 2,
+                            rOffset: Math.random() * 2
+                        }))
                     });
                 }
                 break;
@@ -126,7 +132,11 @@ export class Prop {
                         rotation: (Math.random() - 0.5) * 0.5,
                         kneeAngle: 0.1 + Math.random() * 0.4, // Less bend than elbow typically for lying legs
                         scale: 0.9 + Math.random() * 0.3,
-                        flip: Math.random() > 0.5 ? 1 : -1
+                        flip: Math.random() > 0.5 ? 1 : -1,
+                        goreVerts: Array.from({ length: 6 }, (_, k) => ({
+                            angle: (k / 6) * Math.PI * 2,
+                            rOffset: Math.random() * 2.5
+                        }))
                     });
                 }
                 break;
@@ -153,6 +163,42 @@ export class Prop {
                 this.fuseTime = 600;
                 this.detonated = false;
                 this.isExplosive = true;
+                break;
+            case 'abandonedMotorbike':
+                this.width = 70 + Math.random() * 20;
+                this.height = 35 + Math.random() * 12;
+                this.color = '#3a3a3a';
+                this.outlineColor = '#1a1a1a';
+                this.fallenSide = Math.random() > 0.5 ? 1 : -1;
+                this.initMotorbikeDetails();
+                break;
+            case 'sandbagBarricade':
+                this.width = 80 + Math.random() * 25;
+                this.height = 45 + Math.random() * 15;
+                this.color = '#8b7355';
+                this.outlineColor = '#4a3a2a';
+                this.initSandbagDetails();
+                break;
+            case 'medicalCrate':
+                this.width = 50 + Math.random() * 15;
+                this.height = 40 + Math.random() * 12;
+                this.color = '#c8c8c0';
+                this.outlineColor = '#5a5a50';
+                this.initMedicalCrateDetails();
+                break;
+            case 'concreteBarrier':
+                this.width = 65 + Math.random() * 20;
+                this.height = 35 + Math.random() * 10;
+                this.color = '#9a9a96';
+                this.outlineColor = '#5a5a56';
+                this.initConcreteBarrierDetails();
+                break;
+            case 'ammoCrate':
+                this.width = 55 + Math.random() * 15;
+                this.height = 45 + Math.random() * 12;
+                this.color = '#3d4a2a';
+                this.outlineColor = '#1a2010';
+                this.initAmmoCrateDetails();
                 break;
             default:
                 this.width = 20;
@@ -511,6 +557,21 @@ export class Prop {
             case 'explosiveBarrel':
                 this.drawExplosiveBarrel();
                 break;
+            case 'abandonedMotorbike':
+                this.drawAbandonedMotorbike();
+                break;
+            case 'sandbagBarricade':
+                this.drawSandbagBarricade();
+                break;
+            case 'medicalCrate':
+                this.drawMedicalCrate();
+                break;
+            case 'concreteBarrier':
+                this.drawConcreteBarrier();
+                break;
+            case 'ammoCrate':
+                this.drawAmmoCrate();
+                break;
         }
         
         ctx.restore();
@@ -557,8 +618,8 @@ export class Prop {
                     const endY = crack.y + Math.sin(crack.angle) * crack.length/2;
                     
                     // Add a mid-point deviation
-                    const midX = (startX + endX)/2 + (Math.random()-0.5)*2;
-                    const midY = (startY + endY)/2 + (Math.random()-0.5)*2;
+                    const midX = (startX + endX) / 2 + crack.midOffsetX;
+                    const midY = (startY + endY) / 2 + crack.midOffsetY;
                     
                     ctx.moveTo(startX, startY);
                     ctx.lineTo(midX, midY);
@@ -1207,13 +1268,14 @@ export class Prop {
             ctx.fillStyle = '#8a0303'; // Dark red blood
             ctx.beginPath();
             // Jagged flesh shape
-            for(let k=0; k<5; k++) {
-                const angle = (k/5) * Math.PI * 2;
-                const r = armThickness/2 + (Math.random() * 2);
-                const x = Math.cos(angle) * r;
-                const y = Math.sin(angle) * r;
-                if (k===0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+            for(let k=0; k<props.goreVerts.length; k++) {
+                const vert = props.goreVerts[k];
+                const angle = vert.angle;
+                const r = armThickness/2 + vert.rOffset;
+                const gx = Math.cos(angle) * r;
+                const gy = Math.sin(angle) * r;
+                if (k===0) ctx.moveTo(gx, gy);
+                else ctx.lineTo(gx, gy);
             }
             ctx.closePath();
             ctx.fill();
@@ -1316,13 +1378,14 @@ export class Prop {
             // Gore
             ctx.fillStyle = '#8a0303'; // Dark red blood
             ctx.beginPath();
-            for(let k=0; k<6; k++) {
-                const angle = (k/6) * Math.PI * 2;
-                const r = legThickness/2 + (Math.random() * 2.5);
-                const x = Math.cos(angle) * r;
-                const y = Math.sin(angle) * r;
-                if (k===0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+            for(let k=0; k<props.goreVerts.length; k++) {
+                const vert = props.goreVerts[k];
+                const angle = vert.angle;
+                const r = legThickness/2 + vert.rOffset;
+                const gx = Math.cos(angle) * r;
+                const gy = Math.sin(angle) * r;
+                if (k===0) ctx.moveTo(gx, gy);
+                else ctx.lineTo(gx, gy);
             }
             ctx.closePath();
             ctx.fill();
@@ -1722,6 +1785,845 @@ export class Prop {
         ctx.beginPath();
         ctx.roundRect(-halfWidth, -halfHeight, this.width, this.height, 4);
         ctx.stroke();
+    }
+
+    initMotorbikeDetails() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+        this.rustPatches = [];
+        for (let i = 0; i < 4; i++) {
+            this.rustPatches.push({
+                x: (Math.random() - 0.5) * hw * 1.4,
+                y: (Math.random() - 0.5) * hh * 1.2,
+                rx: 4 + Math.random() * 8,
+                ry: 3 + Math.random() * 5,
+                rot: Math.random() * 0.5,
+                alpha: 0.25 + Math.random() * 0.15
+            });
+        }
+        this.oilStain = {
+            x: hw * 0.3 * this.fallenSide,
+            y: hh * 0.6,
+            rx: hw * 0.35,
+            ry: hh * 0.25
+        };
+        this.chainLinks = [];
+        for (let i = 0; i < 8; i++) {
+            this.chainLinks.push({
+                x: -hw * 0.15 + i * (hw * 0.04),
+                y: hh * 0.15 + Math.sin(i * 0.8) * 2
+            });
+        }
+        this.flatTire = Math.random() > 0.4;
+        this.mirrorBroken = Math.random() > 0.3;
+        this.seatTorn = Math.random() > 0.35;
+    }
+
+    initSandbagDetails() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+        this.bags = [];
+        const rows = 3;
+        const cols = 4 + Math.floor(Math.random() * 2);
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols - row; col++) {
+                const bagW = hw * 0.38;
+                const bagH = hh * 0.32;
+                const offsetX = (col - (cols - row - 1) / 2) * bagW * 0.92;
+                const offsetY = hh * 0.35 - row * bagH * 0.75;
+                this.bags.push({
+                    x: offsetX + (Math.random() - 0.5) * 3,
+                    y: offsetY,
+                    w: bagW * (0.9 + Math.random() * 0.15),
+                    h: bagH * (0.85 + Math.random() * 0.2),
+                    shade: 0.75 + Math.random() * 0.25,
+                    seamAngle: (Math.random() - 0.5) * 0.15
+                });
+            }
+        }
+        this.bulletHoles = [];
+        const holeCount = 2 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < holeCount; i++) {
+            this.bulletHoles.push({
+                x: (Math.random() - 0.5) * hw * 1.2,
+                y: (Math.random() - 0.5) * hh * 0.6,
+                r: 1.5 + Math.random() * 2
+            });
+        }
+        this.barbWireLoops = 5 + Math.floor(Math.random() * 3);
+        this.hasCautionTape = Math.random() > 0.4;
+        this.bloodSplatters = [];
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) {
+            this.bloodSplatters.push({
+                x: (Math.random() - 0.5) * hw,
+                y: hh * 0.2 + Math.random() * hh * 0.3,
+                r: 3 + Math.random() * 5,
+                rot: Math.random() * Math.PI
+            });
+        }
+    }
+
+    initMedicalCrateDetails() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+        this.crateAngle = 0.25 + Math.random() * 0.35;
+        this.lidDetached = Math.random() > 0.35;
+        this.spilledItems = [];
+        const itemTypes = ['bandage', 'syringe', 'bottle', 'gauze'];
+        const count = 3 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < count; i++) {
+            this.spilledItems.push({
+                type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
+                x: hw * 0.2 + Math.random() * hw * 0.9,
+                y: hh * 0.1 + Math.random() * hh * 0.5,
+                rot: Math.random() * Math.PI * 2,
+                scale: 0.7 + Math.random() * 0.5
+            });
+        }
+        this.bloodStains = [];
+        for (let i = 0; i < 3; i++) {
+            this.bloodStains.push({
+                x: (Math.random() - 0.5) * hw * 0.8,
+                y: (Math.random() - 0.5) * hh * 0.6,
+                rx: 4 + Math.random() * 10,
+                ry: 3 + Math.random() * 6,
+                rot: Math.random() * Math.PI
+            });
+        }
+        this.crossDamaged = Math.random() > 0.45;
+        this.woodCracks = [];
+        for (let i = 0; i < 3; i++) {
+            this.woodCracks.push({
+                x1: (Math.random() - 0.5) * hw,
+                y1: (Math.random() - 0.5) * hh,
+                x2: (Math.random() - 0.5) * hw,
+                y2: (Math.random() - 0.5) * hh
+            });
+        }
+    }
+
+    initConcreteBarrierDetails() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+        this.rebarExposed = Math.random() > 0.35;
+        this.rebarPieces = [];
+        if (this.rebarExposed) {
+            const count = 2 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count; i++) {
+                this.rebarPieces.push({
+                    x: hw * 0.3 + Math.random() * hw * 0.4,
+                    y: -hh * 0.2 + Math.random() * hh * 0.3,
+                    len: 8 + Math.random() * 14,
+                    angle: -0.3 + Math.random() * 0.6,
+                    bent: Math.random() > 0.5
+                });
+            }
+        }
+        this.cracks = [];
+        for (let i = 0; i < 4 + Math.floor(Math.random() * 3); i++) {
+            this.cracks.push({
+                x: (Math.random() - 0.5) * hw * 0.9,
+                y: (Math.random() - 0.5) * hh * 0.7,
+                len: 6 + Math.random() * 14,
+                angle: Math.random() * Math.PI * 2,
+                branches: 1 + Math.floor(Math.random() * 2)
+            });
+        }
+        this.graffitiColor = ['#e040fb', '#ff5722', '#ffeb3b', '#00bcd4'][Math.floor(Math.random() * 4)];
+        this.graffitiText = ['DEAD', 'RUN', 'HELP', 'RIOT', '666'][Math.floor(Math.random() * 5)];
+        this.handprint = {
+            x: -hw * 0.35 + Math.random() * hw * 0.3,
+            y: hh * 0.05,
+            scale: 0.8 + Math.random() * 0.4,
+            rot: (Math.random() - 0.5) * 0.5
+        };
+        this.chipDamage = [];
+        for (let i = 0; i < 3; i++) {
+            this.chipDamage.push({
+                x: (Math.random() - 0.5) * hw,
+                y: (Math.random() - 0.5) * hh * 0.5,
+                w: 4 + Math.random() * 8,
+                h: 3 + Math.random() * 5
+            });
+        }
+    }
+
+    initAmmoCrateDetails() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+        this.lidOpen = true;
+        this.lidAngle = 0.4 + Math.random() * 0.5;
+        this.casings = [];
+        const casingCount = 8 + Math.floor(Math.random() * 10);
+        for (let i = 0; i < casingCount; i++) {
+            this.casings.push({
+                x: (Math.random() - 0.5) * hw * 1.6,
+                y: hh * 0.1 + Math.random() * hh * 0.8,
+                rot: Math.random() * Math.PI * 2,
+                len: 3 + Math.random() * 2,
+                brass: Math.random() > 0.25
+            });
+        }
+        this.beltSegments = [];
+        for (let i = 0; i < 6 + Math.floor(Math.random() * 4); i++) {
+            this.beltSegments.push({
+                x: hw * 0.1 + i * 5,
+                y: -hh * 0.1 + Math.sin(i * 0.5) * 3,
+                rot: 0.3 + Math.random() * 0.4
+            });
+        }
+        this.stencilWorn = 0.3 + Math.random() * 0.5;
+        this.woodSplinters = [];
+        for (let i = 0; i < 4; i++) {
+            this.woodSplinters.push({
+                x: -hw * 0.3 + Math.random() * hw * 0.2,
+                y: -hh * 0.2 + Math.random() * hh * 0.3,
+                len: 4 + Math.random() * 6,
+                angle: Math.random() * Math.PI * 2
+            });
+        }
+    }
+
+    drawAbandonedMotorbike() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+        const side = this.fallenSide;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(hw * 0.1 * side, hh * 0.55, hw * 0.85, hh * 0.35, 0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (this.oilStain) {
+            ctx.fillStyle = 'rgba(20, 20, 15, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(this.oilStain.x, this.oilStain.y, this.oilStain.rx, this.oilStain.ry, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(40, 35, 20, 0.25)';
+            ctx.beginPath();
+            ctx.ellipse(this.oilStain.x + 2, this.oilStain.y + 1, this.oilStain.rx * 0.6, this.oilStain.ry * 0.5, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const drawWheel = (cx, cy, r, flat) => {
+            ctx.save();
+            ctx.translate(cx, cy);
+            const tireGrad = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r);
+            tireGrad.addColorStop(0, '#2a2a2a');
+            tireGrad.addColorStop(0.7, '#1a1a1a');
+            tireGrad.addColorStop(1, '#0a0a0a');
+            ctx.fillStyle = tireGrad;
+            ctx.beginPath();
+            if (flat) {
+                ctx.ellipse(0, 0, r, r * 0.55, 0, 0, Math.PI * 2);
+            } else {
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+            }
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(80,80,80,0.5)';
+            ctx.lineWidth = 1;
+            for (let t = 0; t < 8; t++) {
+                const a = (t / 8) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5);
+                ctx.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#4a4a4a';
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.lineWidth = 1;
+            for (let s = 0; s < 5; s++) {
+                const a = (s / 5) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
+                ctx.stroke();
+            }
+            ctx.restore();
+        };
+
+        drawWheel(-hw * 0.55, hh * 0.05, hh * 0.42, false);
+        drawWheel(hw * 0.5, hh * 0.1, hh * 0.42, this.flatTire);
+
+        const frameGrad = ctx.createLinearGradient(-hw, 0, hw, 0);
+        frameGrad.addColorStop(0, '#4a4a4a');
+        frameGrad.addColorStop(0.5, '#2a2a2a');
+        frameGrad.addColorStop(1, '#1a1a1a');
+        ctx.strokeStyle = frameGrad;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.5, hh * 0.05);
+        ctx.lineTo(-hw * 0.1, -hh * 0.15);
+        ctx.lineTo(hw * 0.15, -hh * 0.2);
+        ctx.lineTo(hw * 0.45, hh * 0.05);
+        ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.1, -hh * 0.15);
+        ctx.lineTo(hw * 0.05, hh * 0.15);
+        ctx.stroke();
+
+        const tankGrad = ctx.createLinearGradient(-hw * 0.05, -hh * 0.35, hw * 0.2, -hh * 0.05);
+        tankGrad.addColorStop(0, '#5a2020');
+        tankGrad.addColorStop(0.5, '#8b3030');
+        tankGrad.addColorStop(1, '#3a1515');
+        ctx.fillStyle = tankGrad;
+        ctx.beginPath();
+        ctx.ellipse(hw * 0.05, -hh * 0.2, hw * 0.18, hh * 0.22, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2a1010';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#c0c0b0';
+        ctx.beginPath();
+        ctx.ellipse(hw * 0.12, -hh * 0.28, hw * 0.04, hh * 0.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const seatGrad = ctx.createLinearGradient(0, -hh * 0.1, 0, hh * 0.1);
+        seatGrad.addColorStop(0, '#1a1a1a');
+        seatGrad.addColorStop(1, '#0a0a0a');
+        ctx.fillStyle = seatGrad;
+        ctx.beginPath();
+        ctx.ellipse(-hw * 0.05, hh * 0.02, hw * 0.2, hh * 0.14, 0.1, 0, Math.PI * 2);
+        ctx.fill();
+        if (this.seatTorn) {
+            ctx.strokeStyle = '#3a2020';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-hw * 0.12, hh * 0.05);
+            ctx.lineTo(-hw * 0.02, hh * 0.12);
+            ctx.lineTo(hw * 0.05, hh * 0.02);
+            ctx.stroke();
+            ctx.fillStyle = '#4a3020';
+            ctx.beginPath();
+            ctx.ellipse(-hw * 0.04, hh * 0.08, 4, 2, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.strokeStyle = '#3a3a3a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(hw * 0.15, -hh * 0.2);
+        ctx.lineTo(hw * 0.35, -hh * 0.45);
+        ctx.lineTo(hw * 0.42, -hh * 0.35);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(hw * 0.42, -hh * 0.35, 3, 0, Math.PI * 2);
+        ctx.stroke();
+        if (this.mirrorBroken) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(hw * 0.38, -hh * 0.42, 5, 3);
+        } else {
+            ctx.fillStyle = 'rgba(180,200,220,0.4)';
+            ctx.fillRect(hw * 0.38, -hh * 0.44, 6, 4);
+        }
+
+        ctx.fillStyle = '#2a2a2a';
+        ctx.beginPath();
+        ctx.ellipse(hw * 0.38, hh * 0.12, hw * 0.06, hh * 0.08, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        if (this.chainLinks) {
+            ctx.strokeStyle = '#5a5a5a';
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i < this.chainLinks.length - 1; i++) {
+                const a = this.chainLinks[i];
+                const b = this.chainLinks[i + 1];
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+                ctx.strokeRect(a.x - 1.5, a.y - 1, 3, 2);
+            }
+        }
+
+        if (this.rustPatches) {
+            for (const patch of this.rustPatches) {
+                ctx.fillStyle = `rgba(139, 69, 19, ${patch.alpha})`;
+                ctx.beginPath();
+                ctx.ellipse(patch.x, patch.y, patch.rx, patch.ry, patch.rot, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    drawSandbagBarricade() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(0, hh * 0.42, hw * 0.95, hh * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#3a3020';
+        ctx.fillRect(-hw * 0.9, hh * 0.3, hw * 1.8, hh * 0.15);
+        ctx.strokeStyle = '#2a2010';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-hw * 0.9, hh * 0.3, hw * 1.8, hh * 0.15);
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(-hw * 0.8 + i * hw * 0.4, hh * 0.3);
+            ctx.lineTo(-hw * 0.75 + i * hw * 0.4, hh * 0.45);
+            ctx.stroke();
+        }
+
+        if (this.bags) {
+            for (const bag of this.bags) {
+                ctx.save();
+                ctx.translate(bag.x, bag.y);
+                ctx.rotate(bag.seamAngle);
+                const bagColor = `rgb(${Math.floor(139 * bag.shade)}, ${Math.floor(115 * bag.shade)}, ${Math.floor(85 * bag.shade)})`;
+                const bagGrad = ctx.createLinearGradient(-bag.w / 2, -bag.h / 2, bag.w / 2, bag.h / 2);
+                bagGrad.addColorStop(0, bagColor);
+                bagGrad.addColorStop(0.5, `rgb(${Math.floor(110 * bag.shade)}, ${Math.floor(90 * bag.shade)}, ${Math.floor(65 * bag.shade)})`);
+                bagGrad.addColorStop(1, `rgb(${Math.floor(80 * bag.shade)}, ${Math.floor(65 * bag.shade)}, ${Math.floor(45 * bag.shade)})`);
+                ctx.fillStyle = bagGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, bag.w / 2, bag.h / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#4a3a2a';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(60,50,35,0.6)';
+                ctx.beginPath();
+                ctx.moveTo(-bag.w * 0.3, 0);
+                ctx.lineTo(bag.w * 0.3, 0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, -bag.h * 0.25);
+                ctx.lineTo(0, bag.h * 0.25);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        ctx.strokeStyle = '#6a6a6a';
+        ctx.lineWidth = 1.2;
+        const wireY = -hh * 0.35;
+        const wireLeft = -hw * 0.75;
+        const wireRight = hw * 0.75;
+        ctx.beginPath();
+        for (let x = wireLeft; x <= wireRight; x += 6) {
+            const y = wireY + Math.sin((x - wireLeft) * 0.25) * 4;
+            if (x === wireLeft) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        for (let loop = 0; loop < this.barbWireLoops; loop++) {
+            const lx = wireLeft + (loop / (this.barbWireLoops - 1)) * (wireRight - wireLeft);
+            const ly = wireY + Math.sin((lx - wireLeft) * 0.25) * 4;
+            ctx.beginPath();
+            ctx.moveTo(lx - 3, ly - 2);
+            ctx.lineTo(lx, ly + 3);
+            ctx.lineTo(lx + 3, ly - 2);
+            ctx.stroke();
+        }
+
+        if (this.bulletHoles) {
+            for (const hole of this.bulletHoles) {
+                ctx.fillStyle = '#1a1a1a';
+                ctx.beginPath();
+                ctx.arc(hole.x, hole.y, hole.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.arc(hole.x, hole.y, hole.r + 1.5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        if (this.bloodSplatters) {
+            for (const splat of this.bloodSplatters) {
+                ctx.fillStyle = 'rgba(120, 15, 15, 0.65)';
+                ctx.beginPath();
+                ctx.ellipse(splat.x, splat.y, splat.r, splat.r * 0.6, splat.rot, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(80, 8, 8, 0.4)';
+                ctx.beginPath();
+                ctx.ellipse(splat.x + 1, splat.y + 1, splat.r * 0.5, splat.r * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        if (this.hasCautionTape) {
+            ctx.strokeStyle = 'rgba(255, 235, 59, 0.7)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(-hw * 0.6, -hh * 0.5);
+            ctx.lineTo(hw * 0.3, hh * 0.1);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.font = 'bold 5px Arial';
+            ctx.fillText('CAUTION', -hw * 0.15, -hh * 0.15);
+        }
+    }
+
+    drawMedicalCrate() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(hw * 0.15, hh * 0.35, hw * 0.7, hh * 0.25, this.crateAngle, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.rotate(this.crateAngle);
+
+        const woodGrad = ctx.createLinearGradient(-hw, -hh, hw, hh);
+        woodGrad.addColorStop(0, '#d8d0c0');
+        woodGrad.addColorStop(0.5, this.color);
+        woodGrad.addColorStop(1, '#a8a090');
+        ctx.fillStyle = woodGrad;
+        ctx.fillRect(-hw * 0.75, -hh * 0.55, hw * 1.5, hh * 1.1);
+        ctx.strokeStyle = this.outlineColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-hw * 0.75, -hh * 0.55, hw * 1.5, hh * 1.1);
+
+        ctx.strokeStyle = '#8a8070';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-hw * 0.7, -hh * 0.5, hw * 1.4, hh);
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.7, 0);
+        ctx.lineTo(hw * 0.7, 0);
+        ctx.moveTo(0, -hh * 0.5);
+        ctx.lineTo(0, hh * 0.5);
+        ctx.stroke();
+
+        if (this.woodCracks) {
+            ctx.strokeStyle = 'rgba(60,50,40,0.5)';
+            ctx.lineWidth = 0.8;
+            for (const crack of this.woodCracks) {
+                ctx.beginPath();
+                ctx.moveTo(crack.x1, crack.y1);
+                ctx.lineTo(crack.x2, crack.y2);
+                ctx.stroke();
+            }
+        }
+
+        const crossSize = hh * 0.28;
+        ctx.fillStyle = this.crossDamaged ? 'rgba(180, 30, 30, 0.7)' : '#cc2222';
+        ctx.fillRect(-crossSize * 0.15, -crossSize * 0.55, crossSize * 0.3, crossSize * 1.1);
+        ctx.fillRect(-crossSize * 0.55, -crossSize * 0.15, crossSize * 1.1, crossSize * 0.3);
+        if (this.crossDamaged) {
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-crossSize * 0.3, -crossSize * 0.2);
+            ctx.lineTo(crossSize * 0.1, crossSize * 0.3);
+            ctx.stroke();
+        }
+
+        if (this.bloodStains) {
+            for (const stain of this.bloodStains) {
+                ctx.save();
+                ctx.translate(stain.x, stain.y);
+                ctx.rotate(stain.rot);
+                ctx.fillStyle = 'rgba(100, 12, 12, 0.55)';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, stain.rx, stain.ry, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        ctx.restore();
+
+        if (this.lidDetached) {
+            ctx.save();
+            ctx.translate(hw * 0.35, -hh * 0.15);
+            ctx.rotate(this.crateAngle + 0.6);
+            ctx.fillStyle = '#b8b0a0';
+            ctx.fillRect(-hw * 0.35, -hh * 0.08, hw * 0.7, hh * 0.16);
+            ctx.strokeStyle = '#6a6050';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(-hw * 0.35, -hh * 0.08, hw * 0.7, hh * 0.16);
+            ctx.restore();
+        }
+
+        if (this.spilledItems) {
+            for (const item of this.spilledItems) {
+                ctx.save();
+                ctx.translate(item.x, item.y);
+                ctx.rotate(item.rot);
+                ctx.scale(item.scale, item.scale);
+                if (item.type === 'bandage') {
+                    ctx.fillStyle = '#f5f0e8';
+                    ctx.fillRect(-5, -2, 10, 4);
+                    ctx.strokeStyle = '#cc2222';
+                    ctx.lineWidth = 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(-3, 0);
+                    ctx.lineTo(3, 0);
+                    ctx.stroke();
+                } else if (item.type === 'syringe') {
+                    ctx.fillStyle = 'rgba(200,220,240,0.7)';
+                    ctx.fillRect(-1, -6, 2, 8);
+                    ctx.fillStyle = '#888';
+                    ctx.fillRect(-2, 2, 4, 3);
+                    ctx.fillStyle = '#cc2222';
+                    ctx.fillRect(-0.5, -7, 1, 2);
+                } else if (item.type === 'bottle') {
+                    ctx.fillStyle = 'rgba(180,210,180,0.6)';
+                    ctx.fillRect(-3, -5, 6, 8);
+                    ctx.fillStyle = '#4a6a4a';
+                    ctx.fillRect(-2, -6, 4, 2);
+                } else {
+                    ctx.fillStyle = '#f0ece0';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#d0ccc0';
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+    }
+
+    drawConcreteBarrier() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, hh * 0.38, hw * 0.9, hh * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const barrierGrad = ctx.createLinearGradient(-hw, -hh, hw, hh);
+        barrierGrad.addColorStop(0, '#b0b0ac');
+        barrierGrad.addColorStop(0.4, this.color);
+        barrierGrad.addColorStop(1, '#7a7a76');
+        ctx.fillStyle = barrierGrad;
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.85, hh * 0.35);
+        ctx.lineTo(-hw * 0.65, -hh * 0.45);
+        ctx.lineTo(hw * 0.65, -hh * 0.45);
+        ctx.lineTo(hw * 0.85, hh * 0.35);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = this.outlineColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.6, -hh * 0.35);
+        ctx.lineTo(-hw * 0.55, hh * 0.25);
+        ctx.lineTo(-hw * 0.45, hh * 0.25);
+        ctx.lineTo(-hw * 0.5, -hh * 0.35);
+        ctx.closePath();
+        ctx.fill();
+
+        if (this.chipDamage) {
+            ctx.fillStyle = '#6a6a66';
+            for (const chip of this.chipDamage) {
+                ctx.fillRect(chip.x, chip.y, chip.w, chip.h);
+            }
+        }
+
+        if (this.cracks) {
+            ctx.strokeStyle = 'rgba(50,50,48,0.7)';
+            ctx.lineWidth = 1;
+            for (const crack of this.cracks) {
+                ctx.beginPath();
+                ctx.moveTo(crack.x, crack.y);
+                ctx.lineTo(
+                    crack.x + Math.cos(crack.angle) * crack.len,
+                    crack.y + Math.sin(crack.angle) * crack.len
+                );
+                ctx.stroke();
+                for (let b = 0; b < crack.branches; b++) {
+                    const mid = crack.len * (0.4 + b * 0.2);
+                    const bx = crack.x + Math.cos(crack.angle) * mid;
+                    const by = crack.y + Math.sin(crack.angle) * mid;
+                    const bAngle = crack.angle + (b % 2 === 0 ? 0.6 : -0.6);
+                    ctx.beginPath();
+                    ctx.moveTo(bx, by);
+                    ctx.lineTo(bx + Math.cos(bAngle) * crack.len * 0.4, by + Math.sin(bAngle) * crack.len * 0.4);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        if (this.rebarPieces) {
+            ctx.strokeStyle = '#8a5030';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            for (const bar of this.rebarPieces) {
+                ctx.beginPath();
+                ctx.moveTo(bar.x, bar.y);
+                if (bar.bent) {
+                    ctx.lineTo(bar.x + Math.cos(bar.angle) * bar.len * 0.6, bar.y + Math.sin(bar.angle) * bar.len * 0.6);
+                    ctx.lineTo(bar.x + Math.cos(bar.angle + 0.8) * bar.len, bar.y + Math.sin(bar.angle + 0.8) * bar.len);
+                } else {
+                    ctx.lineTo(bar.x + Math.cos(bar.angle) * bar.len, bar.y + Math.sin(bar.angle) * bar.len);
+                }
+                ctx.stroke();
+            }
+        }
+
+        ctx.save();
+        ctx.font = `bold ${Math.floor(hh * 0.45)}px Arial`;
+        ctx.fillStyle = this.graffitiColor;
+        ctx.globalAlpha = 0.75;
+        ctx.translate(-hw * 0.1, hh * 0.05);
+        ctx.rotate(-0.15);
+        ctx.fillText(this.graffitiText, 0, 0);
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#000';
+        ctx.fillText(this.graffitiText, 1.5, 1.5);
+        ctx.restore();
+
+        if (this.handprint) {
+            ctx.save();
+            ctx.translate(this.handprint.x, this.handprint.y);
+            ctx.rotate(this.handprint.rot);
+            ctx.scale(this.handprint.scale, this.handprint.scale);
+            ctx.fillStyle = 'rgba(100, 12, 12, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 6, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            for (let f = 0; f < 4; f++) {
+                ctx.beginPath();
+                ctx.ellipse(-4 + f * 2.5, -9, 1.5, 4, -0.2 + f * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.beginPath();
+            ctx.ellipse(5, -4, 2, 3, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    drawAmmoCrate() {
+        const hw = this.width / 2;
+        const hh = this.height / 2;
+
+        if (this.casings) {
+            for (const casing of this.casings) {
+                ctx.save();
+                ctx.translate(casing.x, casing.y);
+                ctx.rotate(casing.rot);
+                const brass = casing.brass;
+                ctx.fillStyle = brass ? '#c9a227' : '#8a8a7a';
+                ctx.fillRect(-casing.len / 2, -1.2, casing.len, 2.4);
+                ctx.fillStyle = brass ? '#a08018' : '#6a6a5a';
+                ctx.beginPath();
+                ctx.ellipse(casing.len / 2, 0, 1, 1.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#3a3a30';
+                ctx.beginPath();
+                ctx.ellipse(-casing.len / 2, 0, 0.8, 1, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(0, hh * 0.42, hw * 0.75, hh * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const crateGrad = ctx.createLinearGradient(-hw, -hh, hw, hh);
+        crateGrad.addColorStop(0, '#4a5a32');
+        crateGrad.addColorStop(0.5, this.color);
+        crateGrad.addColorStop(1, '#2a3018');
+        ctx.fillStyle = crateGrad;
+        ctx.fillRect(-hw * 0.7, -hh * 0.45, hw * 1.4, hh * 0.9);
+        ctx.strokeStyle = this.outlineColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-hw * 0.7, -hh * 0.45, hw * 1.4, hh * 0.9);
+
+        ctx.strokeStyle = '#2a3818';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-hw * 0.65, -hh * 0.4, hw * 1.3, hh * 0.8);
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.65, 0);
+        ctx.lineTo(hw * 0.65, 0);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.globalAlpha = this.stencilWorn;
+        ctx.fillStyle = '#c8c8b0';
+        ctx.font = `bold ${Math.floor(hh * 0.22)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('AMMO', 0, hh * 0.08);
+        ctx.font = `${Math.floor(hh * 0.14)}px Arial`;
+        ctx.fillText('7.62', 0, hh * 0.28);
+        ctx.restore();
+
+        if (this.lidOpen) {
+            ctx.save();
+            ctx.translate(-hw * 0.35, -hh * 0.45);
+            ctx.rotate(-this.lidAngle);
+            ctx.fillStyle = '#354020';
+            ctx.fillRect(0, 0, hw * 0.75, hh * 0.12);
+            ctx.strokeStyle = '#1a2010';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(0, 0, hw * 0.75, hh * 0.12);
+            ctx.fillStyle = '#2a3018';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(hw * 0.1 + i * hw * 0.15, hh * 0.02, 2, hh * 0.08);
+            }
+            ctx.restore();
+        }
+
+        if (this.beltSegments) {
+            ctx.strokeStyle = '#4a5a30';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < this.beltSegments.length; i++) {
+                const seg = this.beltSegments[i];
+                ctx.save();
+                ctx.translate(seg.x, seg.y);
+                ctx.rotate(seg.rot);
+                ctx.fillStyle = '#3d4a2a';
+                ctx.fillRect(-3, -2, 6, 5);
+                ctx.fillStyle = '#c9a227';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 2, 2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        if (this.woodSplinters) {
+            ctx.fillStyle = '#5a4a30';
+            for (const splinter of this.woodSplinters) {
+                ctx.save();
+                ctx.translate(splinter.x, splinter.y);
+                ctx.rotate(splinter.angle);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(splinter.len, -1);
+                ctx.lineTo(splinter.len * 0.9, 1);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        ctx.fillStyle = '#2a2818';
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.ellipse(-hw * 0.3 + i * 4, -hh * 0.35, 2.5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 }
 
