@@ -2,6 +2,41 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Audio Balance — Music vs Gunshots (2026-06-26) ✅ COMPLETE
+- **Done**: Halved default `audio.musicVolume` (`0.5` → `0.25`) so MP3 menu/gameplay tracks sit under gunfire without boosting SFX.
+- **Done**: Settings schema v3 migration — existing saves still on legacy default `0.5` auto-migrate to `0.25`; custom music levels untouched.
+- **Done**: Updated fallbacks in `AudioSystem.js` and `ArcadeMusicSystem.js`.
+- **Docs**: `CHANGELOG`, `SUMMARY`, `settings.roadmap`, `ARCHITECTURE`.
+
+### Main Menu Startup Performance (2026-06-26) ✅ COMPLETE
+- **Done**: Cached menu scoreboard/recent-run reads to avoid per-frame `localStorage` parse/sort.
+- **Done**: Prerendered creepy background scanlines/vignette and throttled noise draw.
+- **Done**: Deferred WebGPU renderer module load/init until first gameplay or WebGPU setting re-enable.
+- **Done**: Deferred vendored Socket.IO client load until multiplayer/network init.
+- **Done**: Added `zombobs:*` performance marks/measures; enable console logs with `?perf=1` or `localStorage.zombobs_perf='1'`.
+- **Done**: V0.9.0 modality sweep — menu version/news ticker, About screen, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`.
+- **Done**: Smooth game entry — idle WebGPU + ground texture warm-up on menu; async `startGame()` with canvas prep overlay when GPU not ready; `gpuCanvas` opacity fade-in.
+- **Docs**: `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `REFACTOR_PLAN`, `My_Thoughts`.
+- **Next**: Browser QA cold boot, first Play click with WebGPU enabled, multiplayer lobby connect.
+
+### Class Tree System (3×5 hybrid) [2026-06-25] ✅ COMPLETE
+- **Done**: `skillTreeDefinitions.js` — Gunner/Survivor/Scavenger × 5 skills, prereq chains, hybrid pool with flat 16.
+- **Done**: `SkillSystem` merge pools, tree weight 0.35, `getSkillById`, profile unlock tracking.
+- **Done**: Combat — fire rate, pierce, damage mult, Executioner, Second Wind, magnet, bloodlust/adrenaline tuning.
+- **Done**: LevelUpScreen tree badge + tagline; GameHUD tree accent bar.
+- **Done**: Tree Master achievement + `treeSkillsUnlocked` profile stat.
+- **Done**: Docs — SUMMARY, CHANGELOG, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN.
+- **Next**: Browser QA — pick tree T1→T5 path, verify prereqs block early tiers, co-op level-up sync.
+
+### Controls Panel → Settings (2026-06-25) ✅ COMPLETE
+- Removed `GameHUD.drawInstructions()` in-game overlay; bottom HUD layout via `getBottomHudRowY()`.
+- Settings → Controls: mouse fixed section, cycle throwable, dodge, throw throwable labels, gamepad sticks.
+- Docs + V0.8.4 modality: `NEWS_UPDATES`, landing bubbles, itch, `CHANGELOG`, `ARCHITECTURE`.
+
+### Wave Chaos Escalation [2026-06-25]
+- **Done**: Dynamic wave breaks, scaled spawn stagger/bursts, 5 wave mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), boss minions, music intensity scaling, brief-break UI.
+- **Next**: Browser QA waves 5–15; tune mutator rates if too punishing.
+
 ### Campaign Zone: The Railyard [Active]
 - **Objective**: Build the first campaign map based on `CAMPAIGN_DESIGN.md`.
 - **Tasks**:
@@ -22,6 +57,20 @@
 - **Current Status**: ⏳ In progress
 
 ## Compacted History
+- **Class Tree System — hybrid 3×5 (2026-06-25) ✅ COMPLETE**
+  - `skillTreeDefinitions.js` (Gunner/Survivor/Scavenger × 5), hybrid with flat 16, prereqs, 35% tree weight, combat hooks, tree UI, Tree Master achievement. Docs: SUMMARY, CHANGELOG, XP_AND_SKILLS, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN.
+- **v0.8.4 ALPHA — The Chaos & Horde Update (2026-06-25) ✅ RELEASED**
+  - Version bump: `MainMenuScreen`, `AboutScreen`, `landing.html`, `NEWS_UPDATES`, `launch.ps1`, server `package.json`, itch copy, `mobile/www` sync.
+  - Ship list: Wave Chaos, Scrap Shop shrine, zombie visual AI + torso overlays, MP3 soundtrack, controls in Settings (overlay removed), GameLoopSystem refactor, touch gate fix.
+- **Scrap Shop / Wave-Break Shrine (2026-06-25) ✅ COMPLETE**
+  - `ScrapShrine` + `ScrapShopSystem`; 45% spawn wave 4+ on break; E buy (Ammo 20 / Shield 30 / Overclock 40); tooltip; reset on wave start. Multiplayer gated.
+- **Zombie Visual Polish — Torso Overlays + Organic Motion (2026-06-25) ✅ COMPLETE**
+  - Additive torso overlays (5 types, ~70% spawn, id-deterministic) on upright zombies.
+  - Gaze-tracking eyes, velocity lean/bob, cosmetic micro-behaviors, hit recoil flash.
+  - Per-type `getMotionProfile()` for fast/armored/exploding/spitter; spitter throat pulse.
+  - Docs: `SUMMARY.md`, `CHANGELOG.md`, `ARCHITECTURE.md`, `My_Thoughts.md`.
+- **Scavenger Update — Scrap System (2026-06-25) ✅ COMPLETE**
+  - Zombie death drops (`tryDropScrapFromZombie`), magnetic `ScrapPickup` update/render, `handlePickupCollisions` collection, HUD scrap stat, `gameState` reset. Removed random timer spawn stub.
 - **Runtime bugfixes — combatUtils / GameHUD / index.html (2026-06-14) ✅ COMPLETE**
   - **combatUtils.js**: Removed stray `}` in quadtree init inside `handleBulletZombieCollisions()` — fixed module parse error (`Unexpected token '}'`).
   - **GameHUD.js**: Added missing `xpBarWidth = 280 * scale` in `drawCoopHUD()` — fixed co-op HUD `ReferenceError`.
@@ -95,11 +144,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Runtime bugfixes (2026-06-14)**: Removed stray `}` in `combatUtils.js` quadtree init (syntax error at load); added missing `xpBarWidth` in `GameHUD.drawCoopHUD()`; added `mobile-web-app-capable` meta to `index.html`.
-2. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
-3. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
-4. **index.html QoL (2026-04-06)**: Boot overlay, meta, safe-area, noscript, font preload; `dismissBootOverlayOnce` on first draw.
-5. Vendored Socket.IO for itch CSP; narrowed `console.warn` filter in `index.html`.
+1. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
+2. **Class Tree System shipped (2026-06-25)**: `skillTreeDefinitions.js`, SkillSystem hybrid pool, combat hooks, LevelUp/HUD tree UI, Tree Master achievement.
+3. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
+4. **Desktop touch-control fix (2026-06-25)**: Gated `TouchControlSystem` + virtual gamepad behind `isMobileDevice()`.
+5. **GameLoopSystem syntax fix (2026-06-25)**: Added missing `}` on `_updateMusicIntensity()` — fixed load crash at `draw()`.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

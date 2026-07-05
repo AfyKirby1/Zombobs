@@ -1,3 +1,4 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Version Update Checklist
 
 When pushing a new version update, update these files to maintain consistency across the project:
@@ -46,7 +47,9 @@ When pushing a new version update, update these files to maintain consistency ac
 
 Use consistent format: `V0.X.Y.Z ALPHA` (with space before ALPHA)
 
-Example: `V0.8.3.3 ALPHA`
+Example: `V0.8.4 ALPHA`
+
+[AMENDED 2026-06-26]: Current release example: `V0.9.0 ALPHA`
 
 ## Quick Reference
 
@@ -67,4 +70,14 @@ Example: `V0.8.3.3 ALPHA`
     </ul>
 </div>
 ```
+
+[AMENDED 2026-06-25 — V0.8.4 ALPHA shipped]: Updated `NEWS_UPDATES`, landing bubbles, UI version boxes, server packages, itch copy. In-game news reel is the live update modality; landing bubbles are the web marketing modality.
+
+[AMENDED 2026-06-25 — V0.8.4 modality pass]: News reel now includes subtitle *The Chaos & Horde Update*, scrap kill drops, touch fix, Phase 4 engine. Landing bubbles expanded to nine items (scrap economy loop, shrine **E**/45%, music intensity, `GameLoopSystem`, controls in Settings). Itch `page_description.md` gained V0.8.4 section; audio copy fixed (MP3 not procedural).
+
+[AMENDED 2026-06-25 — controls hub]: In-game HUD instructions removed; Settings → Controls is single source of truth. `NEWS_UPDATES` adds *Controls in Settings ⚙️*.
+
+[AMENDED 2026-06-26 — V0.9.0 modality pass]: Updated `NEWS_UPDATES`, main-menu/About version boxes, landing bubbles, mobile web mirror, itch `page_description.md`, launcher, and server package metadata. V0.9.0 public copy leads with *Performance & Systems Update* (main-menu smoothness, lazy WebGPU, lazy Socket.IO, startup metrics, class tree skills).
+
+[AMENDED 2026-06-26 — smooth game entry]: Documented idle GPU/ground warm-up, async `startGame()`, session prep overlay, and `gpuCanvas` fade-in in `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `REFACTOR_PLAN`, `My_Thoughts`. No version bump — ships under existing V0.9.0 ALPHA performance release.
 

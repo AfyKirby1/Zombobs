@@ -1,4 +1,65 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
+
+## 2026-06-26 - Smooth Game Entry
+
+Lazy WebGPU fixed menu boot but moved the hitch to **Play** — module parse, shader compile, and `gpuCanvas` pop-in all landed at once with no feedback. Split the fix into two paths: **idle warm-up** on menu (`requestIdleCallback` ~2–3.5s) starts GPU + ground texture quietly; **async `startGame()`** only shows the **PREPARING WORLD** overlay when Play beats warm-up. `gpuCanvas` gets a CSS opacity fade so the GPU layer doesn't snap in. Keeps fast path instant when user reads menu a few seconds; cold immediate-Play still feels intentional, not broken.
+
+## 2026-06-26 - V0.9.0 ALPHA Modality Pass
+
+V0.9.0 is positioned as **Performance & Systems Update** because the player-facing win is feel: menu stops hitching, WebGPU/Sockets no longer punish first paint, and perf marks make future startup regressions visible. Kept V0.8.4 horde/scrap content in copy as "still live" rather than pretending all gameplay systems changed today. Updated all major modalities together: `NEWS_UPDATES`, menu/About version boxes, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`, `SCRATCHPAD`, and this checklist trail.
+
+## 2026-06-25 - Class Tree System (hybrid 3×5)
+
+Nation Red feel = **build identity**, not just stat bumps. Chose **hybrid** over full replace: flat 16 stays for variety; 15 tree-exclusive skills in **linear** chains (not branching web yet) keeps scope shippable in vanilla JS. Tree weight 0.35 → rare picks feel special; 6 slot cap forces commitment. Capstones wired in combat (Executioner, Second Wind, pierce, magnet) so deep paths *feel* different. Pause-menu tree map = v2.
+
+## 2026-06-25 - Controls Panel → Settings (V0.8.4 follow-up)
+
+The bottom in-game controls box duplicated Settings and ate ~75px of HUD. Pulling it out keeps gameplay clean; **Settings → Controls** is now the canonical reference with fixed mouse rows (aim/shoot/melee/scroll), full keyboard rebinds (including cycle throwable + dodge), and gamepad stick map. News reel + landing bubble updated so players know where to look.
+
+## 2026-06-25 - V0.8.4 ALPHA Release (The Chaos & Horde Update)
+
+Cut release after aligning all version touchpoints per `VERSION_UPDATE_CHECKLIST.md`. **NEWS_UPDATES** (main-menu news reel) is the primary in-game announcement modality — leads with *The Chaos & Horde Update*, Wave Chaos, Scrap Shop, scrap drops, zombie polish, MP3 soundtrack, touch fix, Phase 4 engine. Landing page version bubbles mirror eight bullets for web visitors. Itch `page_description.md` has a dedicated V0.8.4 block and corrected audio copy (MP3 playlist, not procedural arcade). Server `package.json` and `launch.ps1` bumped to `0.8.4-ALPHA` with UI at `V0.8.4 ALPHA`.
+
+[AMENDED 2026-06-25]: Modality pass — shrine specifics (45%, wave 4+, **E** key, three offers), scrap economy loop, music intensity scaling, Phase 4 `GameLoopSystem` called out in landing + itch.
+
+## 2026-06-25 - Scrap Shop / Wave-Break Shrine
+
+Mid-run scrap sink without meta-progression shop yet.
+
+- **Wave-break timing** — Shrine only during `waveBreakActive`, not ambient world spawn. Breather = decision moment; pairs with Wave Chaos shorter breaks.
+- **One random offer per shrine** — Keeps scope small; no full menu. Player reads tooltip + presses E.
+- **Reuse existing buffs** — Overclock hooks `rapidFireEndTime`; armor uses `player.shield`; ammo refills `weaponStates`. No new combat systems.
+- **Multiplayer gated** — No sync protocol yet; co-op + single-player arcade only.
+- **Follow-up** — Touch buy button for mobile; optional 1/2/3 key picks if we show all three offers later.
+
+## 2026-06-25 - Zombie Torso Overlays + Visual AI Polish
+
+**Torso overlays** — Additive clipped layers sit above the flesh ellipse but below arms/head, so detail reads without breaking silhouette. ~30% of zombies get no overlay to avoid visual noise in large swarms. Deterministic from `id` so the same zombie always looks the same within a session.
+
+**Organic motion without a sprite rig** — Gaze, lean, bob, and micro-behaviors are pure pose offsets computed in `update()` / `getPoseOffsets()`. No animation framework, no assets, no multiplayer packet changes. Micro-behaviors (`lurch`, `stagger`, etc.) only affect draw pose — never `speed` — so leader/non-leader sync stays intact.
+
+**Per-zombie desync** — Replacing global `Date.now()` sine waves with `walkPhase` + `animSeed` was the biggest perceived improvement; synchronized shuffling made hordes look like a single unit.
+
+**Variant profiles over subclass duplication** — `getMotionProfile()` lets fast/armored/exploding/spitter tune feel without forking draw code. Spitter needed `updateOrganicMotion()` wired into its custom kiting `update()` since it doesn't call `super.update()`.
+
+## 2026-06-25 - Phase 4 Refactor + Touch Control Gate
+
+**GameLoopSystem extraction** — `main.js` had regrown to ~2k lines after Phase 3 docs claimed ~1,241. Moving `updateGame()` / `drawGame()` into a dedicated system restores the coordinator pattern: `main.js` wires init and DOM input; `GameLoopSystem` owns the per-frame simulation and render pipeline.
+
+**bulletZombieCollisions split** — The ~600-line collision handler was the largest remaining chunk in `combatUtils.js`. Keeping score helpers in `combatUtils` and importing them avoids a circular module graph. Re-export preserves any stale `combatUtils` import paths.
+
+**Touch controls on desktop** — `navigator.maxTouchPoints > 0` is true on many Windows laptops without a usable touchscreen UX intent. Mobile overlay visibility must match the HUD's UA-based `isMobile()` gate, not hardware touch capability alone. Centralized as `isMobileDevice()` in `gameUtils.js`.
+
+## 2026-06-25 - Scavenger Update Scrap System
+
+Finished wiring the half-built scrap feature from a prior agent pass. Key decisions:
+
+- **Death-driven drops** over passive timer spawn — scrap should feel earned from kills, not ambient RNG.
+- **Collection in `handlePickupCollisions`** — same pattern as health/ammo pickups; magnetic pull via `PickupSpawnSystem.updateScrapPickups()` (called from `GameLoopSystem.update()`).
+- [AMENDED 2026-06-25]: Was documented as `ScrapPickup.update()` in `main.js`; moved to `PickupSpawnSystem` during Phase 4.
+- **Session-only currency for now** — `player.scrap` + `gameState.scrapCollected` reset each run; persistent between-run shop remains roadmap. [AMENDED 2026-06-25]: Mid-run wave-break `ScrapShrine` added as in-session spend sink.
+- **Conservative drop rates** — 20% regular / 100% boss keeps economy from flooding before meta-progression exists.
 
 ## 2025-12-27 - V0.8.2.2 ALPHA Bug Fix
 

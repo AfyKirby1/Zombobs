@@ -6,6 +6,55 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Smooth Game Entry (2026-06-26)** — Idle menu warm-up (`requestIdleCallback`, ~2–3.5s) preloads WebGPU module/init and ground texture while the main menu is visible. Async `startGame()` awaits `prepareGameSession()` when GPU is not ready; `GameHUD` draws a brief **PREPARING WORLD** canvas overlay (fade in/out). `#gpuCanvas` uses a 450ms opacity transition instead of popping in. Key files: `js/main.js`, `js/ui/GameHUD.js`, `css/style.css`.
+- **Startup Performance Metrics (2026-06-26)** — Added `zombobs:*` performance marks/measures for bootstrap, loop start, first draw, WebGPU module load, and WebGPU init. Console logging can be enabled with `?perf=1` or `localStorage.zombobs_perf='1'`; `window.zombobsPerf.entries()` returns captured measures.
+- **Class Tree System (hybrid 3×5)** — Nation Red-style build paths alongside existing 16 flat skills. Three trees (Gunner, Survivor, Scavenger) with 5 tiered tree-exclusive skills each, linear prereqs, rarer level-up weight (35%). New file `js/core/skillTreeDefinitions.js`. Combat hooks: fire rate, pierce, damage mult, Executioner, Second Wind, scrap magnet, Feeding Frenzy heal, Killing Spree adrenaline. UI: tree badges on level-up cards, tree color accent on HUD active skills. Achievement **Tree Master** (15 tree skills lifetime). Profile tracks `unlockedTreeSkillIds`.
+
+### Changed
+- **Game Start Flow (2026-06-26)** — `startGame()` in `js/main.js` is async: waits for WebGPU when needed before `GameStateManager.startGame()`. Multiplayer lobby host start routes through the same path. Session prep overlay skipped when idle warm-up already completed GPU init.
+- **Default Music Volume (2026-06-26)** — Halved default `audio.musicVolume` from `0.5` to `0.25` so MP3 menu/gameplay tracks sit below gunfire without boosting SFX. Settings schema bumped to v3; saves still on the legacy default auto-migrate. Custom music levels are preserved. Key files: `js/systems/SettingsManager.js`, `js/systems/AudioSystem.js`, `js/systems/ArcadeMusicSystem.js`.
+- **Main Menu Startup Deferrals (2026-06-26)** — WebGPU renderer code now loads dynamically on first gameplay/WebGPU re-enable instead of during menu boot. Vendored Socket.IO client now lazy-loads only when multiplayer networking initializes.
+
+### Fixed
+- **Main Menu Lag Spike (2026-06-26)** — Removed per-frame localStorage scoreboard parsing, prerendered static creepy-background layers, throttled noise draw, and moved WebGPU/Socket.IO startup work off the initial menu path.
+
+## [v0.9.0] - 2026-06-26
+
+> **Performance & Systems Update** — Main-menu smoothness, lazy startup systems, measurable boot metrics, class tree progression, and synchronized v0.9.0 public modalities.
+
+### Added
+- **Startup Performance Metrics** — `zombobs:*` marks/measures cover bootstrap, loop start, first draw, WebGPU module load, and WebGPU init. Enable console output with `?perf=1` or `localStorage.zombobs_perf='1'`; inspect via `window.zombobsPerf.entries()`.
+- **V0.9.0 Public Modalities** — Main-menu version/news ticker, About screen, landing page, mobile web mirror, itch page description, launcher banner, and server package metadata now present **V0.9.0 ALPHA**.
+
+### Changed
+- **WebGPU Startup Path** — `WebGPURenderer` now loads with dynamic `import()` and initializes on first gameplay or WebGPU re-enable instead of menu boot.
+- **Socket.IO Startup Path** — Vendored Socket.IO client lazy-loads only when multiplayer networking initializes instead of blocking `index.html`.
+
+### Fixed
+- **Main Menu Lag Spike** — Cached local score reads, prebaked static horror-background layers, throttled menu noise drawing, and removed GPU/network startup work from the first menu path.
+
+[AMENDED 2026-06-26 — smooth game entry, same release train]: Idle menu warm-up for WebGPU + ground texture; async `startGame()` with **PREPARING WORLD** canvas overlay when GPU not ready; `#gpuCanvas` 450ms opacity fade-in. See `[Unreleased]` for full entry.
+
+## [v0.8.4] - 2026-06-25
+
+> **The Chaos & Horde Update** — Wave escalation, scrap economy shrine, zombie visual AI polish, MP3 soundtrack, and Phase 4 engine refactor.
+
+### Added
+- **Zombie Torso Overlay VFX** — Additive Canvas 2D layers clipped to the torso ellipse on upright zombies (~70% spawn rate, deterministic per `id`). Five variants: `goreWetness`, `decayMold`, `tornRemnants`, `infectionPulse`, `slimeFilm`. Uses `screen`/`lighter` blending; gated by aura quality preset. Disabled on ghost, blight, crawler, and flying types.
+- **Scrap Shop — Wave-Break Shrine (2026-06-25)** — Mid-run scrap spending during wave breaks (wave 4+). `ScrapShopSystem` rolls 45% shrine spawn; golden `ScrapShrine` pedestal near player with one random offer: **Ammo Cache** (20 scrap, full mag refill), **Armor Plate** (30 scrap, +25 shield), **Overclock** (40 scrap, 10s rapid fire via `rapidFireEndTime`). Press **E** when near; tooltip via `GameHUD.drawTooltip`. Shrine clears on purchase, next wave, or reset. Single-player + co-op; multiplayer gated. Key files: `js/entities/ScrapShrine.js`, `js/systems/ScrapShopSystem.js`, `js/systems/GameLoopSystem.js`, `js/core/constants.js`.
+- **Wave Chaos Escalation (2026-06-25)** — Dynamic shrinking wave breaks, faster burst spawns, five wave mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), boss minions, brief-break UI, music intensity scaling. Key file: `js/systems/WaveChaosSystem.js`.
+- **Zombie Visual AI Polish** — Procedural organic motion in `js/entities/Zombie.js`:
+  - **Gaze-tracking eyes** — Smoothed `gazeX`/`gazeY` offset pupil glow toward nearest player; variant-specific colors via `getEyeDrawOptions()`.
+  - **Organic body motion** — Per-zombie `walkPhase`, `bodyLean`, desynced arm/foot sway; velocity-based torso/head lean via `getPoseOffsets()` / `getDrawPosition()`.
+  - **Micro-behaviors** — Cosmetic pose states (`lurch`, `stagger`, `hesitate`, `reach`, `chase`) cycled on deterministic timers; no pathfinding or speed changes.
+  - **Hit reactions** — `hitReactUntil` recoil offset + `drawHitReactFlash()` additive flash on damage.
+  - **Variant motion profiles** — `getMotionProfile()` overrides: fast (aggressive lean), armored (heavy slow bob), exploding (low-HP tremor), spitter (throat acid pulse + organic motion in custom `update()`).
+- **Phase 4 — GameLoopSystem** — Extracted `updateGame()` and `drawGame()` from `main.js` into `js/systems/GameLoopSystem.js`. Handles gameplay simulation, world rendering, HUD draw routing, music intensity updates, and touch-control activation. `main.js` now focuses on init, DOM input, and menu actions (~1,183 lines).
+- **Phase 4b — bulletZombieCollisions.js** — Extracted `handleBulletZombieCollisions()` (~550 lines) from `combatUtils.js` into `js/utils/bulletZombieCollisions.js` with `syncBulletCollisionQuadtree()` and `handleBulletPropCollision()` helpers. Re-export from `combatUtils.js` preserved for backward compatibility.
+- **gameUtils UI/mode helpers** — `isSinglePlayerArcadeMode()`, `isGameplayBlocked()`, `isUICanvasInteractive()`, `isHTMLOverlayActive()`, `isMenuOrOverlayScreen()`, `isMobileDevice()` (shared mobile UA gate for HUD + touch controls).
+- **PickupSpawnSystem.updateScrapPickups()** — Magnetic scrap pull logic moved out of game loop into pickup system.
+- **In-Game MP3 Soundtrack** — Replaced procedural oscillator arcade music with licensed MP3 tracks: two-track gameplay playlist (`the_mountain-game-game-music-508018.mp3`, `viacheslavstarostin-game-gaming-video-game-music-471936.mp3`) that alternates and loops; menu music remains `Shadows of the Wasteland.mp3`. Per-track preloaded `Audio` elements, pause/resume support, random start track on game begin.
+- **Scavenger Update — Scrap System (v0.8.2.2)** — Scrap currency drops from zombie deaths (bosses always, regular zombies 20% chance). Bronze/gold `ScrapPickup` entities with glint sparkle and magnetic pull toward players. Collected via walk-over in `handlePickupCollisions`. Scrap counter HUD stat (desktop bottom bar + mobile sidebar) with bronze/silver/gold accent tiers. Session `scrapCollected` + per-player `scrap` tracked in `gameState`. Key files: `js/entities/ScrapPickup.js`, `js/systems/PickupSpawnSystem.js`, `js/systems/EntityRenderSystem.js`, `js/utils/bulletZombieCollisions.js`, `js/systems/MeleeSystem.js`, `js/ui/GameHUD.js`, `js/core/constants.js`.
 - **Molotov Cocktail Throwable** — Added a new throwable weapon class that detonates instantly on impact with the ground or directly colliding with zombies. Spawns a fiery pool (orange/red glow and crackling embers) that damages players and zombies alike. Applies a lingering 3-second burn DoT effect to zombies.
 - **Throwable Cycling & Inventory** — Mapped `Q` (keyboard) and `D-pad Down` (gamepad) to swap equipped throwables between Grenades and Molotovs. Upgraded the HUD to render the correct active icon and count dynamically, complete with a satisfying visual scale bounce animation upon switching.
 - **Perfect Dodge Visual Feedback** — Added a floating "DODGED!" combat text popup when a player uses dodge i-frames to successfully evade an attack that would have otherwise hit them (works for zombie melee, exploding barrels, exploding zombies, and acid pools).
@@ -29,6 +78,10 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Laser Gun HUD Keybind** — Added Laser Gun (key 8) to the in-game HUD instructions panel, completing the weapon keybind display for all 8 weapons.
 
 ### Fixed
+- **Mobile Touch Controls on Desktop** — Touch overlay (virtual sticks/buttons) no longer appears on desktop PCs that report `maxTouchPoints > 0`. Removed constructor auto-enable in `TouchControlSystem`; activation now requires `isMobileDevice()` (Android/iPhone/iPad/iPod UA). `InputSystem.getAnyGamepad()` ignores virtual gamepad on desktop.
+- **GameLoopSystem Syntax Error** — Missing closing brace on `_updateMusicIntensity()` caused `Unexpected token '{'` at `draw()` and blocked game load.
+- **Index Load Hitch / Black Screen** — Deferred WebGPU init (idle), ZombobsFX + flashlight lazy init on first gameplay frame, blood-grid allocation on first sim tick, ground texture on game start, game loop + leaderboard fetch staggered. Guard `updateFlashlight()` until GPU buffers exist (fixed `GPUQueue.writeBuffer` crash and black screen). Removed `willReadFrequently` from HUD canvas context.
+- **Local Dev Cookie Warning** — `SERVER_URL` auto-resolves to `window.location.origin` on `localhost` / `127.0.0.1`; local `/health` sets `zombobs_user_id` cookie; health checks use `credentials: 'same-origin'`.
 - **combatUtils.js Syntax Error** — Extra closing brace in `handleBulletZombieCollisions()` quadtree init block closed the function early, causing `Unexpected token '}'` at load time and breaking all bullet–zombie collision logic.
 - **Co-op HUD Crash** — `drawCoopHUD()` referenced `xpBarWidth` without defining it (`ReferenceError` on co-op / multiplayer HUD draw). Added `const xpBarWidth = 280 * scale` to match single-player and desktop layouts.
 - **Deprecated PWA Meta Tag** — Added `<meta name="mobile-web-app-capable" content="yes">` alongside existing Apple tag in `index.html` to satisfy modern browser PWA hints.
@@ -42,12 +95,26 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **AI Player Name Font** — Fixed AI player name rendering using wrong font (`Consolas` → `Roboto Mono`) for consistency with game's typography system.
 
 ### Changed
+- **In-Game Controls Overlay Removed (2026-06-25)** — Deleted `GameHUD.drawInstructions()` bottom HUD panel; bottom stat/weapon row reclaimed via `getBottomHudRowY()`. All bindings now live in **Settings → Controls**: fixed mouse reference (aim, shoot, melee, scroll wheel), keyboard rebinds including **Cycle Throwable** (`Q`) and **Dodge Roll** (`SPACE`), renamed **Throw Throwable** label, gamepad stick reference + `cycleThrowable`/`dodge` entries. Mobile `SettingsManager` defaults synced.
+- **combatUtils.js size** — Reduced from ~1,417 to ~887 lines after bullet–zombie collision extraction; shooting, explosions, player/pickup collisions remain.
+- **Startup Audio Preload** — Menu music only preloads on idle; gameplay tracks load when a run starts (avoids ~12 MB decode spike on index load).
+- **WebGPU Menu Idle** — Skips GPU render pass on non-gameplay screens; gameplay effects init deferred until arcade/co-op session.
 - **Laser Gun Aiming Raycast** — Raycast checks now intersect with active explosive barrels, allowing instant-hit laser beam damage and detonation.
 - **Quadtree Boundary Update** — Refactored mode check comparisons from hardcoded size checks to clean boolean properties (`collisionQuadtree.isArcade`) for efficiency.
 - **GameHUD UI Performance** — Cached `isMobile()` regex check and UI scale calculations to prevent redundant computations on frame ticks.
 - **Zombie Aura Math** — Replaced `Math.sqrt` distance calculations in toxic/orange/green aura drawing with fast squared distance comparisons.
 - **Laser Gun Damage Rebalance** — Reduced damage from 5 → 3 (DPS ~83 → ~50). Previous value was ~4× Rifle DPS, making other weapons obsolete. New value maintains Laser's role as high-DPS precision weapon while preserving weapon diversity.
 - **Updated `DOCS/guns.md`** — Complete rewrite with all 8 weapons, corrected statistics table, weapon-specific muzzle flash colors, updated controls section, and marked completed future enhancements.
+
+### Version Bump
+- All version displays updated to **V0.8.4 ALPHA** (`MainMenuScreen`, `AboutScreen`, `landing.html`, `NEWS_UPDATES`, `launch.ps1`, server `package.json` files, itch copy).
+
+### Update Modality (player-facing)
+- **In-game news reel** (`NEWS_UPDATES` in `constants.js`): Scrolling main-menu ticker — primary live announcement channel.
+- **Landing version bubbles** (`landing.html`, `mobile/www/landing.html`): Nine bullets under *The Chaos & Horde Update* — web marketing mirror.
+- [AMENDED 2026-06-25]: Controls overlay removal + Settings → Controls hub added to news reel, landing bubble, and itch V0.8.4 block.
+- **Itch page** (`ITCH/page_description.md`): Dedicated V0.8.4 section + gameplay-system bullets; audio copy updated from procedural to MP3.
+- [AMENDED 2026-06-25]: Expanded modality with scrap economy loop, Phase 4 engine, touch fix, dynamic music intensity, shrine **E** key and 45% spawn detail.
 
 ## [v0.8.3.10] - 2026-04-06
 

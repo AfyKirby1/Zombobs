@@ -98,6 +98,10 @@ export function createPlayer(x, y, colorIndex = 0) {
         dodgeKeyReleased: true,
         positionHistory: [],
 
+        // Scrap resource (v0.8.2.2: The Scrapen Update)
+        scrap: 0, // Scrap currency collected from zombies
+        scrapMultiplier: 1.0, // Multiplier for scrap gains (from skills)
+
         // Input
         inputSource: 'mouse', // 'mouse', 'keyboard_arrow', 'gamepad'
         gamepadIndex: null
@@ -149,6 +153,7 @@ export const gameState = {
     zombiesKilled: 0,
     pickupsCollected: 0, // v0.8.3.5: Tracks pickups in current session
     headshots: 0, // v0.8.3.5: Tracks headshots in current session
+    scrapCollected: 0, // v0.8.2.2: Scrap resource collected in current session
     zombiesPerWave: 5,
     zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
     highScore: 0,
@@ -167,6 +172,8 @@ export const gameState = {
     isSpawningWave: false,
     waveBreakActive: false,
     waveBreakEndTime: 0,
+    waveMutator: null,       // Active mutator for current wave (swarm, elites, etc.)
+    waveStartTime: 0,        // When current wave spawns began (for fast-clear bonus)
 
     // Boss State
     bossActive: false,
@@ -187,6 +194,8 @@ export const gameState = {
     shieldPickups: [],
     adrenalinePickups: [],
     frostPickups: [],
+    scrapPickups: [], // v0.8.2.2: Scrap resource pickup
+    scrapShrines: [], // Wave-break scrap shop shrines
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -298,9 +307,14 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesKilled = 0;
     gameState.pickupsCollected = 0;
     gameState.headshots = 0;
+    gameState.scrapCollected = 0;
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
     gameState.isSpawningWave = false;
+    gameState.waveBreakActive = false;
+    gameState.waveBreakEndTime = 0;
+    gameState.waveMutator = null;
+    gameState.waveStartTime = 0;
 
     // Reset XP & Skills
     gameState.xp = 0;
@@ -340,6 +354,29 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.ammoMultiplier = 1.0;
             player.critChance = 0;
             player.hasRegeneration = false;
+            player.scrap = 0;
+            player.scrapMultiplier = 1.0;
+            player.fireRateSkillMultiplier = 1.0;
+            player.damageSkillMultiplier = 1.0;
+            player.pierceChance = 0;
+            player.pickupMagnetBonus = 0;
+            player.pickupSpawnRateMultiplier = 1.0;
+            player.bulletRangeMultiplier = 1.0;
+            player.bulletSpreadReduction = 1.0;
+            player.luckyStrikeChance = 0;
+            player.weaponSwitchSpeedMultiplier = 1.0;
+            player.damageReduction = 1.0;
+            player.hasAdrenaline = false;
+            player.hasBloodlust = false;
+            player.bloodlustHealAmount = 2;
+            player.adrenalineDurationMs = 3000;
+            player.adrenalineBoostMultiplier = 1.2;
+            player.adrenalineBoostActive = false;
+            player.adrenalineBoostEndTime = null;
+            player.hasExecutioner = false;
+            player.hasBerserker = false;
+            player.hasSecondWind = false;
+            player.secondWindUsed = false;
 
             // Reset weapon states
             player.weaponStates = {
@@ -378,6 +415,8 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.shieldPickups = [];
     gameState.adrenalinePickups = [];
     gameState.frostPickups = [];
+    gameState.scrapPickups = [];
+    gameState.scrapShrines = [];
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];

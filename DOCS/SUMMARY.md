@@ -1,16 +1,32 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Project Summary
 
 ## Overview
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+**Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), **smooth game entry** (idle GPU/ground warm-up, async `startGame()`, session prep overlay, `gpuCanvas` fade-in), v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata. **Audio balance (2026-06-26)**: default music volume halved (`0.5` → `0.25`, settings v3 migration) so gunshots cut through MP3 tracks without raising SFX gain.
+
+✅ **Smooth Game Entry (2026-06-26)** — WebGPU no longer hitch-pops on first Play: idle menu warm-up starts GPU module/init + ground texture preload; async `startGame()` shows a brief **PREPARING WORLD** canvas overlay only when GPU is not ready; `#gpuCanvas` fades in over 450ms. Key files: `js/main.js` (`warmSessionResourcesInBackground`, `prepareGameSession`), `js/ui/GameHUD.js` (session prep overlay), `css/style.css`.
+
+**Release: V0.8.4 ALPHA (2026-06-25)** — *The Chaos & Horde Update*. Wave Chaos mutators, Scrap Shop shrine + kill-drop economy, **Class Tree System (hybrid 3×5)**, zombie torso overlays + organic motion, MP3 gameplay soundtrack (intensity scaling), controls moved to Settings → Controls (in-game overlay removed), Phase 4 `GameLoopSystem` refactor, mobile touch gate fix. Player-facing modality: `NEWS_UPDATES` news reel, landing version bubbles (9 items), itch V0.8.4 section.
+
+✅ **Class Tree System — hybrid 3×5 (2026-06-25)** — Nation Red-style build paths alongside existing 16 flat skills. Three linear trees (Gunner, Survivor, Scavenger) × 5 tier-exclusive skills with prereqs; tree picks weighted 35% vs flat pool. Capstones: Coup de Grace, Revenant, Killing Spree. UI: tree badges on level-up cards, tree accent on HUD. Achievement **Tree Master** + profile `unlockedTreeSkillIds`. Key files: `js/core/skillTreeDefinitions.js`, `js/systems/SkillSystem.js`, `js/utils/combatUtils.js`, `js/utils/bulletZombieCollisions.js`, `js/ui/LevelUpScreen.js`.
+
+✅ **Scrap Shop — Wave-Break Shrine (2026-06-25)** — Spend session scrap during wave breaks (45% spawn after wave 4). Random offer per shrine: Ammo Cache (20), Armor Plate (30), Overclock (40). **E** to buy near pedestal; tooltip prompt; shrine clears on purchase or next wave. Files: `js/entities/ScrapShrine.js`, `js/systems/ScrapShopSystem.js`.
+✅ **Zombie Visual Polish — Torso Overlays + Organic Motion (2026-06-25)** — Procedural additive torso overlays (`goreWetness`, `decayMold`, `tornRemnants`, `infectionPulse`, `slimeFilm`) on upright zombie types; gaze-tracking eyes; velocity lean/bob; cosmetic micro-behaviors (`lurch`/`stagger`/`hesitate`/`reach`); hit recoil flash; per-type motion profiles (fast/armored/exploding/spitter). All cosmetic — no combat or multiplayer packet changes. Key file: `js/entities/Zombie.js`.
+✅ **Phase 4 Refactor — GameLoopSystem + Combat Split (2026-06-25)** — `updateGame()` / `drawGame()` extracted to `js/systems/GameLoopSystem.js` (~715 lines). Bullet–zombie collision handler moved to `js/utils/bulletZombieCollisions.js` (~550 lines). `main.js` ~1,183 lines (was ~1,977 pre-Phase-4); `combatUtils.js` ~887 lines (was ~1,417). Shared helpers in `gameUtils.js`: `isSinglePlayerArcadeMode()`, `isGameplayBlocked()`, `isMobileDevice()`, UI overlay gates. Scrap magnetic update in `PickupSpawnSystem.updateScrapPickups()`. Touch controls gated to mobile UA only (fixes desktop overlay on touch-capable PCs).
+✅ **Wave Chaos Escalation (2026-06-25)** — Dynamic wave breaks, scaled spawn stagger/bursts, five wave mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), boss minions, music intensity scaling via `WaveChaosSystem` + `GameLoopSystem._updateMusicIntensity()`.
+✅ **Scavenger Update — Scrap System (2026-06-25)** — Scrap drops from zombie deaths (bosses 100%, regular 20%). `ScrapPickup` entity with bronze glint + magnetic pull (250px). Collected via `handlePickupCollisions`; session `scrapCollected` + per-player `scrap` in `gameState`. HUD scrap stat on desktop bottom bar and mobile sidebar. Files: `js/entities/ScrapPickup.js`, `js/systems/PickupSpawnSystem.js`, `js/utils/bulletZombieCollisions.js`, `js/ui/GameHUD.js`.
+✅ **In-game MP3 soundtrack (2026-06-25)** — Gameplay uses a two-track MP3 playlist (mountain + viacheslavstarostin); menu uses `Shadows of the Wasteland`. Procedural `ArcadeMusicSystem` no longer drives gameplay. Startup deferrals reduce index load hitch; flashlight lazy-init guard fixes black-screen crash.
 ✅ **Itch.io HTML build (2026-04-06)** - Verified working on itch after fixing Windows zip entry paths. **Always** run `ITCH/build-itch.ps1` from repo root; it enforces forward-slash paths and required files (build fails otherwise). See `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md` § Itch.io.
 ✅ **Playable** - Core gameplay loop is functional
 ✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
 ✅ **Explosion Effects** - Grenade and rocket explosions with particle trails (Fixed 2025-11-24)
 ✅ **Audio System** - Advanced Web Audio API implementation
-  - **Procedural Music**: Dynamic 4-layer Arcade soundtrack (808 Bass, Pads, Arpeggio, Percussion)
-  - **Granular Mixer**: Independent volume controls for Master, Music, SFX, Footsteps, Gunshots, Hit Markers, and Multipliers
+  - **In-Game Music**: Two-track MP3 playlist (loops track A → B → A) with pause/resume; replaces procedural arcade oscillators
+  - **Menu Music**: `Shadows of the Wasteland.mp3` (loop)
+  - **Granular Mixer**: Independent volume controls for Master, Music (default 25%), SFX, Footsteps, Gunshots, Hit Markers, and Multipliers
   - **High-Fidelity SFX**: Multi-layered visceral impacts, noise-based "ticks", crystal shimmer multipliers, and **Laser "Zaps"**
   - **UI Sound**: Procedural "Pip" (click) and "Tick" (hover) sounds for full menu feedback
   - **Interactive**: Fully adjustable via the in-game Settings Panel
@@ -18,6 +34,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - **Stacked Design**: High-density info boxes separating labels from values (no text overlap)
   - **Visual Dynamics**: Vertical color-coded accent bars and glowing status indicators
   - **Consistent Layout**: Unified 50px height for all bottom-UI elements (XP, Stats, Weapons)
+  - **Scrap Counter**: Bronze/silver/gold accent stat showing per-run scrap total (desktop + mobile)
 ✅ **Homepage Theme** - Landing page now defaults to **Dark Mode** with optimized early loading (anti-FOUC)
 ✅ **Weapon System** - 8 weapon slots (Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG, **Laser**)
 ✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts, persistent ammo tracking
@@ -87,16 +104,17 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - System message support for future join/leave notifications
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **System Refactoring** - Large systems extracted from main.js into dedicated modules
+  - **Phase 4 (2026-06-25)**: `GameLoopSystem` — per-frame update + render (~715 lines); `bulletZombieCollisions.js` — bullet–zombie quadtree collisions (~550 lines)
   - ZombieUpdateSystem: Zombie AI, multiplayer sync, interpolation (~173 lines extracted)
   - EntityRenderSystem: Entity rendering with viewport culling (~102 lines extracted)
-  - PickupSpawnSystem: Pickup spawning logic (~52 lines extracted)
+  - PickupSpawnSystem: Pickup spawning + scrap magnetic update
   - MultiplayerSystem: Multiplayer networking, player sync, zombie sync (~545 lines extracted)
   - ZombieSpawnSystem: Zombie and boss spawning logic (~155 lines extracted)
   - PlayerSystem: Player updates, rendering, co-op lobby (~520 lines extracted)
   - GameStateManager: Game lifecycle (start, restart, game over) (~83 lines extracted)
   - MeleeSystem: Melee attack logic and range checking (~131 lines extracted)
   - drawingUtils: Drawing utilities (crosshair, wave UI, FPS counter) (~263 lines extracted)
-  - main.js reduced from ~2,536 to ~1,241 lines (51% reduction)
+  - main.js reduced from ~2,536 → ~1,183 lines (cumulative ~53% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
 ✅ **Enemy Variety** - 8 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Crawler)
@@ -169,7 +187,8 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Settings organized in logical sections (UI ELEMENTS, CROSSHAIR, etc.)
   - All settings persist across game sessions via localStorage
 ✅ **Skill System Expansion** - 10 new basic skills added with full effect integration
-  - Total skills now: 16 (6 original + 10 new)
+  - Total flat skills: 16 (6 original + 10 new)
+  - [AMENDED 2026-06-25]: **Class Tree System (hybrid)** — +15 tree-exclusive skills in 3 linear paths (Gunner / Survivor / Scavenger × 5 tiers). Flat pool unchanged; tree skills gated by prereqs, rarer at level-up. See `DOCS/XP_AND_SKILLS_SYSTEM.md` § Class Tree System.
   - New skills: Thick Skin, Lucky Strike, Quick Hands, Scavenger, Adrenaline, Armor Plating, Long Range, Fast Fingers, Bloodlust, Steady Aim
   - All skills have proper icons, descriptions, and functional effects
   - Skills integrated into combat system, player movement, pickup spawning, and bullet mechanics
@@ -190,6 +209,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Rank XP and rank-up notifications on game over screen
 ✅ **Achievement System** - 30+ unlockable achievements across 5 categories
   - Categories: Combat, Survival, Collection, Skill, Social
+  - [AMENDED 2026-06-25]: **Tree Master** — unlock all 15 class tree skills lifetime (title: Specialist, 2500 rank XP)
   - Achievement unlock notifications during gameplay (non-intrusive popup)
   - Achievement gallery screen with category filtering and progress tracking
   - Rank XP rewards (100-10,000 XP) and unlockable titles
@@ -247,9 +267,10 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ├── css/
 │   └── style.css                 # Game styles
 ├── js/
-│   ├── main.js                   # Main game loop and initialization
+│   ├── main.js                   # Init, input events, menu actions, engine wiring (~1,183 lines)
 │   ├── core/
 │   │   ├── constants.js          # Game constants and configuration
+│   │   ├── skillTreeDefinitions.js  # Class tree skills (Gunner/Survivor/Scavenger)
 │   │   ├── canvas.js             # Canvas initialization and management
 │   │   ├── gameState.js          # Centralized game state management
 │   ├── companions/
@@ -276,14 +297,17 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── ZombieSpawnSystem.js  # Zombie and boss spawning logic
 │   │   ├── PlayerSystem.js       # Player updates, rendering, co-op lobby
 │   │   ├── GameStateManager.js   # Game lifecycle (start, restart, game over)
+│   │   ├── GameLoopSystem.js     # Per-frame gameplay update + world/HUD render (Phase 4)
+│   │   ├── WaveChaosSystem.js    # Dynamic wave breaks, mutators, spawn pacing
 │   │   └── MeleeSystem.js        # Melee attack logic and range checking
 │   ├── ui/
 │   │   ├── GameHUD.js            # In-game HUD component
 │   │   └── SettingsPanel.js      # Settings UI panel
 │   └── utils/
 │       ├── arrayUtils.js         # Zero-allocation array operations (in-place compaction)
-│       ├── combatUtils.js        # Combat functions (shooting, explosions, collisions)
-│       ├── gameUtils.js          # General game utilities
+│       ├── combatUtils.js        # Combat functions (shooting, explosions, player/pickup collisions)
+│       ├── bulletZombieCollisions.js  # Bullet–zombie quadtree collisions, kill rewards (Phase 4b)
+│       ├── gameUtils.js          # General game utilities + UI/mode/mobile helpers
 │       └── drawingUtils.js       # Drawing utilities (crosshair, wave UI, FPS counter)
 ├── LOCAL_SERVER/
 │   ├── server.js                 # Express + socket.io server
@@ -389,6 +413,23 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Fix: Added state reset in `gameover_lobby` button handler: `isGameStarting = false` and `gameStartTime = 0`
   - Location: `js/main.js` - lines 1394-1396
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
+
+## Recent Updates (2026-06-25)
+- **Scrap Shop — Wave-Break Shrine**: Mid-run scrap spending tied to wave breaks.
+  - `ScrapShrine` golden pedestal spawns near player (45% chance, wave 4+)
+  - One random offer: Ammo Cache (20), Armor Plate (+25 shield, 30), Overclock (10s rapid fire, 40)
+  - **E** to purchase when in range; `GameHUD.drawTooltip` prompt; floating feedback via `DamageNumber`
+  - `gameState.scrapShrines[]`; cleared on purchase, wave advance, coop/single reset
+  - Multiplayer gated (`gameState.multiplayer.active`); co-op + arcade supported
+  - Constants: `SCRAP_SHRINE_*`, `SCRAP_SHOP_*` in `js/core/constants.js`
+- **Scavenger Update — Scrap System**: Wired end-to-end scrap currency from zombie kills.
+  - `ScrapPickup` bronze coins spawn at death position via `PickupSpawnSystem.tryDropScrapFromZombie`
+  - Magnetic pull toward nearest living player; walk-over collection in `handlePickupCollisions`
+  - Boss drops always (30 scrap); regular zombies 20% chance (10 scrap); max 8 active pickups
+  - HUD: Left | Score | Scrap on desktop; three-stat mobile sidebar
+  - `gameState.scrapCollected`, `player.scrap`, `scrapPickups[]` reset on new game
+  - Constants: `SCRAP_VALUE`, `SCRAP_DROP_CHANCE`, `SCRAP_BOSS_VALUE`, `MAX_SCRAP_PICKUPS`, `SCRAP_MAGNETIC_RANGE` in `js/core/constants.js`
+- **In-Game MP3 Soundtrack**: Two-track gameplay playlist replaces procedural arcade music; menu track unchanged.
 
 ## Recent Updates (v0.8.2.1)
 - **WebGPU Screen Shake Sync**: Fixed immersion-breaking static particles during screen shake.

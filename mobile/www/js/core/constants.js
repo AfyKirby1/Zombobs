@@ -106,7 +106,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.3.3 ALPHA: UI Interaction Audio 🔊 | Improved HUD Visuals 🎨 | V0.8.3.2 ALPHA: Laser Gun Weapon ⚡ | Menu Click Sounds 🎵 | V0.8.3.1 ALPHA: Arcade Music System 🎵 | Normal Zombie Variants with Animated Arms 👕 | Doubled Spawn Rate 💀 | V0.8.3.0 ALPHA: Campaign Mode Intro 🎬 | Flashlight System 🔦 | Audio Mixer 🎚️ | Improved Impact SFX 💥 | V0.8.2.1 ALPHA: WebGPU Screen Shake Sync 🫨 | Particle Sync Fix 🎨 | V0.8.2.0 ALPHA: Visual Polish Update ✨ | V0.8.0: Major Refactor 🚀 | And More...";
+export const NEWS_UPDATES = "NEW: V0.9.0 ALPHA — Performance & Systems Update: Main Menu Smoothness ⚡ | Lazy WebGPU Init 🧮 | Lazy Socket.IO Load 🌐 | Startup Metrics 📊 | Cached Menu Scores 💾 | Optimized Horror Background 🎨 | Class Tree Skills 🌳 | V0.8.4 ALPHA: Wave Chaos 🌊 | Scrap Shop Shrine 💰 | MP3 Soundtrack 🎵 | Controls in Settings ⚙️ | Phase 4 Engine 🔧 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

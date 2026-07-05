@@ -41,6 +41,8 @@ export class EntityRenderSystem {
         this.drawEntityArray(gameState.shieldPickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.adrenalinePickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.frostPickups, ctx, viewport, false, false);
+        this.drawEntityArray(gameState.scrapPickups, ctx, viewport, false, false);
+        this.drawEntityArray(gameState.scrapShrines, ctx, viewport, false, false);
 
         // Post-draw: render name tags above each zombie
         this.drawEntityArray(gameState.zombies, ctx, viewport, false, false, (entity, context) => {

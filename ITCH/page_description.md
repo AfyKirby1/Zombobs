@@ -8,6 +8,17 @@
 
 ---
 
+### **🆕 V0.9.0 ALPHA — Performance & Systems Update**
+
+*   **Main Menu Smoothness** — Cached score reads, prebaked horror-background layers, and throttled static noise reduce menu lag spikes
+*   **Lazy WebGPU Init** — GPU renderer module loads on first gameplay or WebGPU re-enable instead of menu boot
+*   **Lazy Socket.IO Load** — Multiplayer client script loads only when online lobby/networking starts
+*   **Startup Metrics** — `zombobs:*` performance marks measure bootstrap, first draw, loop start, WebGPU module load, and GPU init
+*   **Class Tree Skills** — Gunner, Survivor, and Scavenger build paths augment the flat skill pool
+*   **V0.8.4 Systems Still Live** — Wave Chaos, Scrap Shop Shrine, MP3 soundtrack, controls-in-settings, and Phase 4 engine split remain active
+
+---
+
 ### **✨ Features**
 
 #### **🔫 Arsenal of Destruction**
@@ -38,6 +49,8 @@
 *   Real-time HUD timers for active power-ups
 *   Kill streak combos with visual feedback
 *   Sprint system with stamina management
+*   Scrap currency from kills + wave-break Scrap Shop shrines (V0.8.4+)
+*   Wave Chaos mutators and escalating spawn pacing (V0.8.4+)
 *   16-skills progression system with 3-choice level-ups
 *   XP gain from zombie kills with kill streak multipliers
 
@@ -64,7 +77,8 @@
 *   Horror atmosphere with animated backgrounds
 
 **Audio:**
-*   Procedural dynamic arcade soundtrack (Web Audio API)
+*   Licensed MP3 gameplay playlist (two-track rotation) + menu theme
+*   Dynamic music intensity during combat (wave + horde pressure)
 *   Procedurally generated sound effects
 *   Granular audio mixer (Master, Music, SFX, Footsteps, Gunshots, Hit Markers, Multiplier)
 *   UI interaction sounds (hover tick, click pip)
@@ -119,7 +133,7 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.8.3.3 ALPHA (Vanilla JS + HTML5 Canvas)
+*   **Engine:** ZOMBS-XFX-NGIN V0.9.0 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
@@ -129,6 +143,6 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.8.3.3 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.0 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*

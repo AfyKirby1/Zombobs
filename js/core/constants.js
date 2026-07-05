@@ -29,6 +29,29 @@ export const AMMO_PICKUP_AMOUNT = 15; // Ammo restored per pickup
 export const AMMO_PICKUP_SPAWN_INTERVAL = 20000; // ms between spawns
 export const MAX_AMMO_PICKUPS = 2;
 
+// Scrap pickups (v0.8.2.2: Scavenger Update)
+export const SCRAP_VALUE = 10;
+export const SCRAP_DROP_CHANCE = 0.2; // Regular zombies
+export const SCRAP_BOSS_VALUE = 30;
+export const MAX_SCRAP_PICKUPS = 8;
+export const SCRAP_MAGNETIC_RANGE = 250;
+
+// Scrap Shrine / mid-run shop (wave-break upgrades)
+export const SCRAP_SHRINE_SPAWN_CHANCE = 0.45;
+export const SCRAP_SHRINE_MIN_WAVE = 4;
+export const SCRAP_SHRINE_INTERACT_RANGE = 70;
+export const SCRAP_SHOP_AMMO_COST = 20;
+export const SCRAP_SHOP_SHIELD_COST = 30;
+export const SCRAP_SHOP_OVERCLOCK_COST = 40;
+export const SCRAP_SHOP_OVERCLOCK_DURATION_MS = 10000;
+export const SCRAP_SHOP_SHIELD_AMOUNT = 25;
+
+export const SCRAP_SHOP_OFFERS = [
+    { id: 'ammo', label: 'Ammo Cache', cost: SCRAP_SHOP_AMMO_COST, icon: '📦' },
+    { id: 'shield', label: 'Armor Plate', cost: SCRAP_SHOP_SHIELD_COST, icon: '🛡' },
+    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' }
+];
+
 // Low ammo threshold (25% of max ammo)
 export const LOW_AMMO_FRACTION = 0.25;
 
@@ -39,7 +62,8 @@ export const MELEE_DAMAGE = 3; // damage per hit
 export const MELEE_SWIPE_DURATION = 200; // ms for swipe animation
 
 // Wave settings
-export const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves
+export const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves (base; shrinks with wave via WaveChaosSystem)
+export const WAVE_MUTATOR_MIN_WAVE = 5;
 
 // Grenade system
 export const MAX_GRENADES = 3; // Maximum grenades player can carry
@@ -117,10 +141,21 @@ export const ZOMBIE_BASE_SCORES = {
 
 // Multiplayer settings
 export const MAX_LOCAL_PLAYERS = 4;
-export const SERVER_URL = "https://ottertondays-zombs.hf.space";
+
+function resolveServerUrl() {
+    if (typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') {
+            return window.location.origin;
+        }
+    }
+    return 'https://ottertondays-zombs.hf.space';
+}
+
+export const SERVER_URL = resolveServerUrl();
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.3.3 ALPHA: UI Interaction Audio 🔊 | Improved HUD Visuals 🎨 | V0.8.3.2 ALPHA: Laser Gun Weapon ⚡ | Menu Click Sounds 🎵 | V0.8.3.1 ALPHA: Arcade Music System 🎵 | Normal Zombie Variants with Animated Arms 👕 | Doubled Spawn Rate 💀 | V0.8.3.0 ALPHA: Campaign Mode Intro 🎬 | Flashlight System 🔦 | Audio Mixer 🎚️ | Improved Impact SFX 💥 | V0.8.2.1 ALPHA: WebGPU Screen Shake Sync 🫨 | Particle Sync Fix 🎨 | V0.8.2.0 ALPHA: Visual Polish Update ✨ | V0.8.0: Major Refactor 🚀 | And More...";
+export const NEWS_UPDATES = "NEW: V0.9.0 ALPHA — Performance & Systems Update: Main Menu Smoothness ⚡ | Lazy WebGPU Init 🧮 | Lazy Socket.IO Load 🌐 | Startup Metrics 📊 | Cached Menu Scores 💾 | Optimized Horror Background 🎨 | Class Tree Skills 🌳 | V0.8.4 ALPHA: Wave Chaos 🌊 | Scrap Shop Shrine 💰 | MP3 Soundtrack 🎵 | Controls in Settings ⚙️ | Phase 4 Engine 🔧 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {
