@@ -11,7 +11,7 @@ The game has been refactored into a modular ES6 architecture:
 - `js/companions/`: AI NPC companion system (CompanionSystem)
 - `js/entities/`: Game entity classes (Bullet, Zombie, Particle, etc.)
 - `js/systems/`: Game systems (Audio, Graphics, Particle, Settings, Input)
-- `js/ui/`: User interface components (HUD, Settings Panel, LeaderboardDisplay, RankDisplay, BossHealthBar)
+- `js/ui/`: User interface components (HUD, Settings Panel, LeaderboardDisplay, RankDisplay, BossHealthBar, VersionModal)
 - `js/utils/`: Utility functions (combat, game utilities, array operations)
 
 This modular structure improves maintainability, testability, and scalability.
@@ -78,6 +78,9 @@ This modular structure improves maintainability, testability, and scalability.
   - Timing constants (ZOMBIE_PULSE_PERIOD, BURN_TICK_INTERVAL, zombie pulse periods)
   - Viewport culling (CULL_MARGIN)
   - Cache thresholds (CANVAS_SIZE_CHANGE_THRESHOLD, PLAYER_POSITION_CHANGE_THRESHOLD)
+- `GAME_VERSION`, `ENGINE_NAME`, `ENGINE_VERSION` - **Single source of truth** for in-game version strings (badge, About, VersionModal)
+- `VERSION_HISTORY` - Patch-notes modal changelog array (newest first); bump workflow in `DOCS/VERSION_UPDATE_CHECKLIST.md`
+- `NEWS_UPDATES` - Main-menu news ticker one-liner
 
 #### canvas.js
 **Purpose**: Canvas initialization and management
@@ -1445,7 +1448,10 @@ This hybrid approach provides:
   - Reduced from ~4,715 lines to ~1,757 lines (63% reduction)
   - 9 screen classes handle full-screen UI rendering and interaction
 - **Screen Classes**:
-  - `MainMenuScreen.js` - Main menu with leaderboard, news ticker, version display, username input modal
+  - `MainMenuScreen.js` - Main menu with leaderboard, news ticker, clickable version badge + patch-notes modal, username input modal
+    - **Version Modal** (`VersionModal.js`): arcade-cabinet PATCH NOTES; content from `VERSION_HISTORY` in `constants.js`; opened via top-left version badge
+      - Halloween neon frame, flickering marquee bulbs, cobwebs, blood drips
+      - Dismiss: CLOSE button, backdrop click, or ESC (`gameState.showVersionModal`)
     - **Username Modal**: Custom UI dialog for username selection (replaces browser prompt)
       - Styled to match game aesthetic (dark theme, red/orange accents, Roboto Mono font)
       - Input field with focus state and blinking cursor

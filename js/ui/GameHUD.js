@@ -383,6 +383,7 @@ export class GameHUD {
             gameState.showAILobby || gameState.showAbout || gameState.showGallery ||
             gameState.showProfile || gameState.showAchievements || gameState.showBadges ||
             gameState.showBattlepass || gameState.showUsernameModal ||
+            gameState.showVersionModal ||
             gameState.showSettingsPanel ||
             this.paused || gameState.gamePaused || gameState.showLevelUp || this.gameOver) {
             this.drawCursor();

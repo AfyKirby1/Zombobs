@@ -123,6 +123,7 @@ export const gameState = {
     showProfile: false,
     showAchievements: false,
     showUsernameModal: false,
+    showVersionModal: false,
     showBattlepass: false,
     showBadges: false,
 

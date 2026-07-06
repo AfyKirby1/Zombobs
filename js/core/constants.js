@@ -157,6 +157,61 @@ function resolveServerUrl() {
 
 export const SERVER_URL = resolveServerUrl();
 
+// Version control — single source of truth for all in-game version displays
+export const GAME_VERSION = 'V0.9.1 ALPHA';
+export const ENGINE_NAME = 'ZOMBS-XFX-NGIN';
+export const ENGINE_VERSION = `${ENGINE_NAME} ${GAME_VERSION}`;
+
+/** Patch notes shown in the main-menu version modal (newest first) */
+export const VERSION_HISTORY = [
+    {
+        version: 'V0.9.1 ALPHA',
+        codename: 'Skills & Survivability',
+        date: '2026-07-06',
+        tag: 'CURRENT',
+        highlights: [
+            '93 skills, 15 synergies, 6 class trees',
+            'Corrupted wildcards & level-up reroll',
+            'Splitter & Siren zombies',
+            'Mobile 2×2 level-up grid',
+            'Boot loader & startup hardening'
+        ]
+    },
+    {
+        version: 'V0.9.0 ALPHA',
+        codename: 'Performance & Systems',
+        date: '2026-06-26',
+        highlights: [
+            'Lazy WebGPU & Socket.IO startup',
+            'Smooth game-entry overlay',
+            'Class tree system (Gunner / Survivor / Scavenger)',
+            'Startup perf metrics (?perf=1)'
+        ]
+    },
+    {
+        version: 'V0.8.4 ALPHA',
+        codename: 'Chaos & Horde',
+        date: '2026-06-25',
+        highlights: [
+            'Wave chaos mutators & scrap shrine',
+            'Zombie visual AI polish',
+            'MP3 arcade soundtrack',
+            'GameLoopSystem engine refactor'
+        ]
+    },
+    {
+        version: 'V0.8.3 ALPHA',
+        codename: 'Survival Polish',
+        date: '2026-06-20',
+        highlights: [
+            'Rank & achievement systems',
+            'Battlepass season overhaul',
+            'Dodge roll & explosive barrels',
+            'Molotov throwable weapon'
+        ]
+    }
+];
+
 // News ticker updates for main menu
 export const NEWS_UPDATES = "NEW: V0.9.1 ALPHA — Skills & Survivability Update: 93 Skills & 15 Synergies 🌳 | 6 Class Trees | Corrupted Wildcards ☠ | Reroll + MP Sync 🔄 | Splitter & Siren 🧟 | Zombie Face QoL 👁 | Mobile 2×2 Level-Up 📱 | Boot Hardening 🛡 | 34K+ LOC Audit 📊 | V0.9.0: Performance ⚡ | V0.8.4: Wave Chaos 🌊 | And More...";
 

@@ -7,6 +7,8 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ## Current Status
 **Release: V0.9.1 ALPHA (2026-07-06)** — *Skills & Survivability Update*. **93 skills** (63 flat + 30 tree) across **6 class trees** (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow), **15 synergies** with HUD toasts, corrupted wildcards (~14%), 4 cards / 10 slots / reroll (+ MP sync), **Splitter & Siren** zombies, **zombie face QoL** (procedural faces + gaze eyes), **mobile 2×2 level-up grid**, boot **localStorage** hardening, **BootLoader** gated startup overlay (menu + WebGPU ready before dismiss), **34,773 LOC** audit + landing copy, v0.9.1 modality sweep. Prior **V0.9.0** performance (lazy WebGPU/Socket.IO, startup metrics, smooth game entry, 3 class trees, music balance) and **V0.8.4** horde/scrap systems remain live.
 
+✅ **Clickable Version Modal — Patch Notes (2026-07-06)** — Main-menu `🎃` version badge opens spooky arcade **PATCH NOTES** modal (`js/ui/VersionModal.js`). Content driven by `VERSION_HISTORY` in `js/core/constants.js` alongside `GAME_VERSION` / `ENGINE_VERSION`. About screen + badge auto-read constants. Version-bump workflow: `DOCS/VERSION_UPDATE_CHECKLIST.md` §1–§2.
+
 ✅ **Boot Loader — Gated Startup Overlay (2026-07-06)** — `#boot-overlay` on `index.html` stays visible until first main-menu frame **and** WebGPU init complete (gate skipped when GPU off/unavailable). `js/core/BootLoader.js` manages status text + fade-out; inline critical CSS shows ZOMBOBS spinner before `style.css` loads; WebGPU init starts at bootstrap behind overlay. Key files: `BootLoader.js`, `main.js`, `index.html`, `css/style.css`.
 
 ✅ **Mobile UX & Performance (2026-07-06)** — Phones and Capacitor builds: level-up **2×2 grid** on narrow screens, touch hover for cards/reroll, scroll lock (`touch-action: none`), improved **`isMobileDevice()`** (UA + coarse pointer + ≤900px), first-run **low video preset** on mobile, `mobile/www` synced. Run `cd mobile && npm run sync:web` before Android builds.
@@ -60,7 +62,8 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Leader System** - First player designated as lobby leader with game start control
 ✅ **Ready System** - Players can toggle ready status; all must be ready to start
 ✅ **Synchronized Game Start** - All players enter game simultaneously in same session
-✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights
+✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights (`NEWS_UPDATES` in `constants.js`)
+✅ **Version Patch Notes Modal** - Clickable version badge (top-left) opens arcade-style **PATCH NOTES** cabinet (`VersionModal.js`; content from `VERSION_HISTORY` in `constants.js`). See `DOCS/VERSION_UPDATE_CHECKLIST.md`.
 ✅ **Gallery Screen** - Full showcase gallery displaying zombies, weapons, and pickups
   - Gallery button on main menu (row 4)
   - Three sections: Zombies (8 gallery cards / 10 playable types), Weapons (8 types), Pickups (8 types)

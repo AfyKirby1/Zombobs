@@ -129,7 +129,7 @@ Both serve static files from the project root and handle lobby management, playe
 - **Object pooling**: `ObjectPool` in `js/utils/ObjectPool.js` for particles and other frequently created/destroyed entities.
 - **Viewport culling**: All entity rendering checks against viewport bounds (`getViewportBounds()`, `isInViewport()`). Update culling uses a larger 300px margin.
 - **World-space camera** (single player arcade only): `cameraSystem` follows the player; ground texture, props, and entity rendering offset by camera position. Co-op and multiplayer use screen-space.
-- **Version strings**: Update in `LOCAL_SERVER/package.json`, `launch.ps1`, `constants.js` (NEWS_UPDATES), and `huggingface-space-SERVER/package.json` together.
+- **Version strings**: Update `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` (prepend), and `NEWS_UPDATES` in `js/core/constants.js` together with `LOCAL_SERVER/package.json`, `launch.ps1`, and `huggingface-space-SERVER/package.json`. Main-menu badge, About screen, and `VersionModal` read from constants — do not hardcode. Full checklist: `DOCS/VERSION_UPDATE_CHECKLIST.md`.
 - **Global exposure**: Systems needing cross-module access are assigned to `window.*` in `main.js`. This is intentional — don't refactor to remove these without a replacement pattern.
 
 ## Agent Behavior Charter (META v2.0)

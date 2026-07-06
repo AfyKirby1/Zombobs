@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-06 - Clickable Version Modal (Patch Notes)
+
+Centralized version control in `js/core/constants.js` (`GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY`) so badge, About, and modal stay in sync. **VersionModal** is the third in-game announcement modality alongside the news ticker (`NEWS_UPDATES`) and About screen — click the top-left badge for the full arcade cabinet changelog. On bump: prepend `VERSION_HISTORY`, move `tag: 'CURRENT'`, update constants + landing/itch/server per `VERSION_UPDATE_CHECKLIST.md`. No more hunting hardcoded strings in `MainMenuScreen` / `AboutScreen`.
+
 ## 2026-07-06 - Boot Loader (Gated Startup Overlay)
 
 v0.9.0 deferred WebGPU to idle warm-up — fixed menu hitch but overlay dismissed on **first draw** while GPU still ~1s behind → blank flash before main menu felt ready. **BootLoader** keeps `#boot-overlay` up until **two gates** pass: first menu frame drawn + WebGPU init (skipped when off). Eager `scheduleWebGPUInit()` at bootstrap runs GPU work **behind** overlay; inline critical CSS in `index.html` shows ZOMBOBS spinner before `style.css`. Play-path **PREPARING WORLD** overlay unchanged for cold immediate-Play edge case.

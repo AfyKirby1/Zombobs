@@ -776,8 +776,8 @@ function handleMenuInteraction(clickX, clickY) {
 
     // Main Menu
     if (gameState.showMainMenu) {
-        // Check for news ticker drag first
-        if (gameHUD.startNewsTickerDrag(clickX, clickY)) {
+        // Check for news ticker drag first (skip while version modal is open)
+        if (!gameState.showVersionModal && gameHUD.startNewsTickerDrag(clickX, clickY)) {
             return; // Don't process button clicks if starting drag
         }
 
@@ -819,6 +819,10 @@ function handleMenuInteraction(clickX, clickY) {
             playerProfileSystem.trackSettingsVisit();
         } else if (clickedButton === 'username') {
             if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.openUsernameModal();
+        } else if (clickedButton === 'version') {
+            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.openVersionModal();
+        } else if (clickedButton === 'version_close' || clickedButton === 'version_background') {
+            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.closeVersionModal();
         } else if (clickedButton === 'username_ok') {
             if (gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
                 gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
@@ -1071,6 +1075,10 @@ document.addEventListener('keydown', (e) => {
     }
 
     if (e.key === 'Escape') {
+        if (gameState.showVersionModal) {
+            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.closeVersionModal();
+            return;
+        }
         if (gameState.showSettingsPanel) {
             if (settingsPanel.rebindingAction) {
                 settingsPanel.cancelRebind();

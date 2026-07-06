@@ -497,6 +497,7 @@ export function isUICanvasInteractive(state, hud) {
         state.showBadges ||
         state.showLevelUp ||
         state.showUsernameModal ||
+        state.showVersionModal ||
         hud.gameOver ||
         state.gamePaused;
 }

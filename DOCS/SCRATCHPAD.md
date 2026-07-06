@@ -2,6 +2,12 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Clickable Version Modal (2026-07-06) ✅ COMPLETE
+- **Done**: Main-menu version badge opens spooky arcade **PATCH NOTES** modal (`js/ui/VersionModal.js`).
+- **Done**: Centralized `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` in `js/core/constants.js`; About screen + version badge read from constants.
+- **Docs**: `VERSION_UPDATE_CHECKLIST.md` §1–§2 (hub + modalities), `SUMMARY`, `CHANGELOG`, `ARCHITECTURE`, `AGENTS.md`, `My_Thoughts`.
+- **Verify**: Click 🎃 version plaque top-left on main menu; ESC / CLOSE / backdrop dismiss. On next version bump: prepend `VERSION_HISTORY` per checklist.
+
 ### Boot Loader — Gated Startup Overlay (2026-07-06) ✅ COMPLETE
 - **Done**: New `js/core/BootLoader.js` — gates `#boot-overlay` dismiss on **first menu frame** + **WebGPU init** (skipped when WebGPU off/unsupported).
 - **Done**: WebGPU init starts at bootstrap (parallel with game loop) instead of idle-only warm-up; status text `Loading game` → `Initializing GPU`.

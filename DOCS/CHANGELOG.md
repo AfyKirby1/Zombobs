@@ -6,6 +6,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Clickable Version Modal — Patch Notes (2026-07-06)** — Main-menu version badge (`🎃 GAME_VERSION`) opens spooky arcade **PATCH NOTES** cabinet (`js/ui/VersionModal.js`): flickering marquee, Halloween neon frame, cobwebs, blood drips, scrollable `VERSION_HISTORY`. Centralized `GAME_VERSION`, `ENGINE_NAME`, `ENGINE_VERSION`, and `VERSION_HISTORY` in `js/core/constants.js`; `AboutScreen` and badge read from constants. Dismiss via CLOSE, backdrop, or ESC. Version-bump workflow documented in `DOCS/VERSION_UPDATE_CHECKLIST.md` §1–§2.
 - **Boot Loader — Gated Startup Overlay (2026-07-06)** — New `js/core/BootLoader.js` coordinates `#boot-overlay` on `index.html`. Overlay stays up until **first main-menu frame** is drawn **and** WebGPU init completes (gate skipped when WebGPU disabled or unavailable). Status text: `Loading game` → `Initializing GPU`. Inline critical boot CSS in `index.html` (ZOMBOBS title + spinner) renders before `style.css` loads. Key files: `js/core/BootLoader.js`, `js/main.js`, `index.html`, `css/style.css`.
 
 ### Changed
