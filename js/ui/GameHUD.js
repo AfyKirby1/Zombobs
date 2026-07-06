@@ -1388,17 +1388,24 @@ export class GameHUD {
         this._creepyBgVignetteCanvas = vigCanvas;
     }
 
-    drawCreepyBackground() {
+    drawCreepyBackground(bgOffsetY = 0) {
         this._ensureCreepyBgStaticLayers();
         this._creepyBgFrame++;
 
         const time = Date.now();
         const mouseX = this.mouseX || this.canvas.width / 2;
         const mouseY = this.mouseY || this.canvas.height / 2;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        this.ctx.save();
+        if (bgOffsetY > 0) {
+            this.ctx.translate(0, bgOffsetY);
+        }
 
         // Base black
         this.ctx.fillStyle = '#000000';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(0, -bgOffsetY, width, height + bgOffsetY);
 
         // Pulsing red gradient center
         const pulseSpeed = 0.002;
@@ -1514,8 +1521,10 @@ export class GameHUD {
 
         this.ctx.globalCompositeOperation = 'screen';
         this.ctx.fillStyle = flashlight;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(0, -bgOffsetY, width, height + bgOffsetY);
         this.ctx.globalCompositeOperation = 'source-over';
+
+        this.ctx.restore();
     }
 
 
@@ -1841,7 +1850,10 @@ export class GameHUD {
         });
     }
 
-    showMainMenu() { this.mainMenu = true; }
+    showMainMenu() {
+        this.mainMenu = true;
+        this.mainMenuScreen.handHorror.reset();
+    }
     hideMainMenu() { this.mainMenu = false; this.hoveredButton = null; }
 
     drawLowHealthVignette(player) {

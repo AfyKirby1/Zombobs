@@ -5,6 +5,7 @@ import { getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
 import { NEWS_UPDATES } from '../core/constants.js';
 import { RankDisplay } from './RankDisplay.js';
 import { LeaderboardDisplay } from './LeaderboardDisplay.js';
+import { MenuHandHorrorEffect } from './MenuHandHorrorEffect.js';
 
 export class MainMenuScreen {
     constructor(canvas, ctx, hud) {
@@ -45,6 +46,8 @@ export class MainMenuScreen {
         this.particles = [];
         this.lastEyeSpawn = 0;
         this.lastExplosionSpawn = 0;
+
+        this.handHorror = new MenuHandHorrorEffect(() => this.canvas);
     }
 
     getUIScale() {
@@ -180,6 +183,8 @@ export class MainMenuScreen {
             p.vy *= 0.95;
             if (p.life <= 0) this.particles.splice(i, 1);
         }
+
+        this.handHorror.update(this.isMobileDevice);
     }
 
     isWebGPUActive() {
@@ -264,8 +269,20 @@ export class MainMenuScreen {
 
     draw() {
         this.updateEffects();
-        this.hud.drawCreepyBackground();
+
+        const horror = this.handHorror.getRenderState();
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        this.hud.drawCreepyBackground(horror.bgDragY);
+        this.handHorror.drawTearZone(this.ctx, width, height, horror);
         this.drawEffects();
+        this.handHorror.drawHand(this.ctx, horror);
+
+        this.ctx.save();
+        if (horror.shakeX || horror.shakeY) {
+            this.ctx.translate(horror.shakeX, horror.shakeY);
+        }
 
         const scale = this.getMenuScale();
         const isMobile = this.isMobileDevice;
@@ -516,6 +533,8 @@ export class MainMenuScreen {
         if (gameState.showUsernameModal) {
             this.drawUsernameModal();
         }
+
+        this.ctx.restore();
     }
 
     drawRankBadge() {
