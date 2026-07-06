@@ -1,0 +1,87 @@
+# Deploy only the playable web game (not mobile/, servers/, DOCS/, etc.)
+# Settings → Pages → Build and deployment → Source: GitHub Actions
+
+name: Deploy Zombobs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare static site artifact
+        run: |
+          mkdir -p _site
+          cp index.html landing.html _site/
+          cp -r css js assets _site/
+          cp .nojekyll _site/.nojekyll 2>/dev/null || touch _site/.nojekyll
+          echo "Files in artifact:"
+          find _site -type f | wc -l
+          du -sh _site
+
+      - name: Validate required entry points
+        run: |
+          test -f _site/index.html
+          test -f _site/js/main.js
+          test -f _site/js/systems/TouchControlSystem.js
+          test -f _site/js/ui/MenuHandHorrorEffect.js
+          test -f _site/css/fonts.css
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Deploy to GitHub Pages (retry)
+        id: deployment-retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      - name: Poll Pages build status
+        if: steps.deployment.outcome == 'success' || steps.deployment-retry.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          repo="${{ github.repository }}"
+          for i in $(seq 1 18); do
+            status=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$repo/pages/builds/latest" | jq -r '.status // empty')
+            echo "Attempt $i: latest Pages build status = ${status:-unknown}"
+            if [ "$status" = "built" ]; then
+              echo "Pages deployment is live."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Deploy action finished but Pages build not 'built' yet — check Settings → Pages → deployments."
