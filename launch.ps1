@@ -2,7 +2,7 @@
 $Host.UI.RawUI.WindowTitle = "Zombobs Server"
 
 $SERVER_PORT = 3000
-$SERVER_VERSION = "0.9.0-ALPHA"
+$SERVER_VERSION = "0.9.1-ALPHA"
 
 function Write-Info {
     param([string]$Message, [string]$Color = "Cyan")

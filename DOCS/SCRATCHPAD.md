@@ -2,6 +2,10 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### V0.9.1 Modality (2026-07-06) ✅ COMPLETE
+- **Done**: Version bump to **V0.9.1 ALPHA** — *Skills & Survivability Update* across `NEWS_UPDATES`, `MainMenuScreen`, `AboutScreen`, `landing.html`, itch copy, `launch.ps1`, server packages, `CHANGELOG`, `SUMMARY`, `AGENTS.md`; `mobile/www` synced.
+- **Verify**: Menu version box + news ticker; About screen; landing tagline + V0.9.1 bubble.
+
 ### Mobile UX & Performance (2026-07-05) ✅ COMPLETE
 - **Done**: Level-up **2×2 grid** on narrow viewports; touch hover/reroll fixes; `isMobileDevice()` detects coarse pointer + narrow width; mobile **low preset** defaults on first run; `touch-action: none`; synergy toast width clamp; **`mobile/www` synced**.
 - **Verify**: DevTools ~390px width level-up; Capacitor `npm run sync:web` before Android builds.

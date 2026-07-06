@@ -893,7 +893,7 @@ export class MainMenuScreen {
 
     drawVersionBox() {
         if (this.isMobileLayout) return;
-        const version = "V0.9.0 ALPHA";
+        const version = "V0.9.1 ALPHA";
         const padding = 15;
         const boxHeight = 24;
         const x = this.getMenuTopLeftContentX();
@@ -956,7 +956,7 @@ export class MainMenuScreen {
         const panelHeight = lines.length * lineHeight + textPadding * 2;
 
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
-        const versionTextWidth = this.ctx.measureText("V0.9.0 ALPHA").width;
+        const versionTextWidth = this.ctx.measureText("V0.9.1 ALPHA").width;
         const versionBoxWidth = versionTextWidth + 24;
         const panelX = this.getMenuTopLeftContentX() + versionBoxWidth + spacing;
         const panelY = padding;

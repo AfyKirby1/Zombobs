@@ -5,25 +5,19 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+## [v0.9.1] - 2026-07-06
+
+> **Skills & Survivability Update** — Mega skill expansion, synergies, corrupted wildcards, mobile UX, new enemies, and synchronized v0.9.1 public modalities.
+
 ### Added
-- **Mobile UX & Performance (2026-07-06)** — Level-up **2×2 card grid** on narrow viewports; touch hover/highlight during level-up; enlarged tap targets for skill cards and reroll; `touch-action: none` on body/canvas to prevent scroll/zoom; synergy toast width clamped to viewport. **`isMobileDevice()`** extended with coarse-pointer + narrow-width detection (not UA-only). First-run mobile video defaults use **low preset** (0.75× resolution, WebGPU off, reduced effects). Capacitor **`mobile/www`** synced via `npm run sync:web`. Key files: `LevelUpScreen.js`, `main.js`, `gameUtils.js`, `SettingsManager.js`, `css/style.css`.
-- **Skill System Wave 3 (2026-07-05)** — **16 new flat skills**, **Shadow** class tree (6th tree), **4 cards per level-up**, **10 max skill slots**, **5 new synergies** (15 total). Highlights: Wave Rider, Vengeance, Guardian Angel, Nova Core, Gold Rush, Bullet Storm, Ammo Echo, Ricochet, Boss Hunter, Cold Snap. Docs: `DOCS/XP_AND_SKILLS_SYSTEM.md` § Skills Expansion.
-- **Skill System Expansion Wave 2 (2026-07-05)** — 14 more unique skills, 10 **skill synergies** (combo unlock popups), **corrupted wildcard** level-up choices (~14% chance, +35% effect / -12% HP), and **Pyromancer** class tree (fire/molotov/immolation). New mechanics: Static Charge, Kill Switch, Phantom Decoy, Toxic DOT, Overkill splash, Combo King grace hits, headhunter rewards, fire-pool healing.
-- **Skill System Expansion (2026-07-05)** — 13 new flat level-up skills (Magnetism, Grenadier, Vampiric Rounds, Glass Cannon, Last Stand, Chain Lightning, Kill Momentum, etc.), 4th **Brawler** class tree (5 tiers), max skill slots raised to **8**, and **1 reroll** per level-up. New combat hooks: weapon lifesteal, chain lightning arcs, kill-streak fire rate, melee damage/reach/lifesteal, explosion radius/damage scaling, Last Stand damage halving. Key files: `SkillSystem.js`, `skillTreeDefinitions.js`, `combatUtils.js`, `bulletZombieCollisions.js`, `MeleeSystem.js`, `LevelUpScreen.js`.
-- **Functional LOC Audit + Website Copy (2026-07-05)** — Added `tools/count_functional_loc.py` and audited the maintained functional codebase at **34,773 LOC** across **125 source files** (`30,237` JS LOC across `88` JS files). Updated the landing website and docs to mention the large vanilla codebase.
-- **Splitter Zombie (2026-07-05)** — Bloated carrier (wave 6+, ~3% / ~5.5% VOLATILE) cracks into **2 fast Shard minions** on death via `spawnSplitterShards()`. Splitter: 125% HP, amber crack VFX; Shards: 35% HP, 1.45× speed. Crack SFX; kill hooks in bullet/melee collisions; MP shard sync via `zombie:spawn`. See `DOCS/ENEMY_TYPES.md`.
+- **V0.9.1 Public Modalities** — Main-menu version/news ticker, About screen, landing page, mobile web mirror, itch page description, launcher banner, and server package metadata now present **V0.9.1 ALPHA**.
+- **Mobile UX & Performance (2026-07-06)** — Level-up **2×2 card grid** on narrow viewports; touch hover/highlight during level-up; enlarged tap targets; `touch-action: none`; first-run mobile **low video preset**. Capacitor **`mobile/www`** synced via `npm run sync:web`.
+- **Skill System Wave 3 (2026-07-05)** — **16 new flat skills**, **Shadow** class tree (6th), **4 cards per level-up**, **10 max skill slots**, **5 new synergies** (15 total).
+- **Skill System Expansion Wave 2 (2026-07-05)** — 14 unique skills, **10 skill synergies**, **corrupted wildcard** choices (~14%), **Pyromancer** class tree.
+- **Skill System Expansion (2026-07-05)** — 13 new flat skills, **Brawler** tree, max slots **8→10**, **1 reroll** per level-up.
+- **Functional LOC Audit + Website Copy (2026-07-05)** — **34,773 functional LOC** across **125 source files**; landing website updated.
+- **Splitter Zombie (2026-07-05)** — Carrier cracks into **2 Shard minions** on death. See `DOCS/ENEMY_TYPES.md`.
 - **Siren Zombie (2026-07-05)** — New rare support enemy (wave 8+).
-- **Smooth Game Entry (2026-06-26)** — Idle menu warm-up (`requestIdleCallback`, ~2–3.5s) preloads WebGPU module/init and ground texture while the main menu is visible. Async `startGame()` awaits `prepareGameSession()` when GPU is not ready; `GameHUD` draws a brief **PREPARING WORLD** canvas overlay (fade in/out). `#gpuCanvas` uses a 450ms opacity transition instead of popping in. Key files: `js/main.js`, `js/ui/GameHUD.js`, `css/style.css`.
-- **Startup Performance Metrics (2026-06-26)** — Added `zombobs:*` performance marks/measures for bootstrap, loop start, first draw, WebGPU module load, and WebGPU init. Console logging can be enabled with `?perf=1` or `localStorage.zombobs_perf='1'`; `window.zombobsPerf.entries()` returns captured measures.
-- **Class Tree System (hybrid 3×5)** — Nation Red-style build paths alongside existing 16 flat skills. Three trees (Gunner, Survivor, Scavenger) with 5 tiered tree-exclusive skills each, linear prereqs, rarer level-up weight (35%). New file `js/core/skillTreeDefinitions.js`. Combat hooks: fire rate, pierce, damage mult, Executioner, Second Wind, scrap magnet, Feeding Frenzy heal, Killing Spree adrenaline. UI: tree badges on level-up cards, tree color accent on HUD active skills. Achievement **Tree Master** (15 tree skills lifetime). Profile tracks `unlockedTreeSkillIds`.
-
-### Changed
-- **Game Start Flow (2026-06-26)** — `startGame()` in `js/main.js` is async: waits for WebGPU when needed before `GameStateManager.startGame()`. Multiplayer lobby host start routes through the same path. Session prep overlay skipped when idle warm-up already completed GPU init.
-- **Default Music Volume (2026-06-26)** — Halved default `audio.musicVolume` from `0.5` to `0.25` so MP3 menu/gameplay tracks sit below gunfire without boosting SFX. Settings schema bumped to v3; saves still on the legacy default auto-migrate. Custom music levels are preserved. Key files: `js/systems/SettingsManager.js`, `js/systems/AudioSystem.js`, `js/systems/ArcadeMusicSystem.js`.
-- **Main Menu Startup Deferrals (2026-06-26)** — WebGPU renderer code now loads dynamically on first gameplay/WebGPU re-enable instead of during menu boot. Vendored Socket.IO client now lazy-loads only when multiplayer networking initializes.
-
-### Fixed
-- **Main Menu Lag Spike (2026-06-26)** — Removed per-frame localStorage scoreboard parsing, prerendered static creepy-background layers, throttled noise draw, and moved WebGPU/Socket.IO startup work off the initial menu path.
 
 ## [v0.9.0] - 2026-06-26
 

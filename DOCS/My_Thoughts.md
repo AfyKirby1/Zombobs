@@ -9,9 +9,9 @@ Horde games need **priority targets** that aren't just bigger/fast chasers. Sire
 
 Lazy WebGPU fixed menu boot but moved the hitch to **Play** — module parse, shader compile, and `gpuCanvas` pop-in all landed at once with no feedback. Split the fix into two paths: **idle warm-up** on menu (`requestIdleCallback` ~2–3.5s) starts GPU + ground texture quietly; **async `startGame()`** only shows the **PREPARING WORLD** overlay when Play beats warm-up. `gpuCanvas` gets a CSS opacity fade so the GPU layer doesn't snap in. Keeps fast path instant when user reads menu a few seconds; cold immediate-Play still feels intentional, not broken.
 
-## 2026-06-26 - V0.9.0 ALPHA Modality Pass
+## 2026-07-06 - V0.9.1 ALPHA Modality Pass
 
-V0.9.0 is positioned as **Performance & Systems Update** because the player-facing win is feel: menu stops hitching, WebGPU/Sockets no longer punish first paint, and perf marks make future startup regressions visible. Kept V0.8.4 horde/scrap content in copy as "still live" rather than pretending all gameplay systems changed today. Updated all major modalities together: `NEWS_UPDATES`, menu/About version boxes, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`, `SCRATCHPAD`, and this checklist trail.
+V0.9.1 is **Skills & Survivability Update**: the player-facing story is build depth (93 skills, synergies, corrupted risk/reward) plus mobile polish and two new zombie types. Kept V0.9.0 performance and V0.8.4 horde content in copy as "still live." Updated all major modalities together per checklist.
 
 ## 2026-06-25 - Class Tree System (hybrid 3×5)
 

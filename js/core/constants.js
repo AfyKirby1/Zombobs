@@ -158,7 +158,7 @@ function resolveServerUrl() {
 export const SERVER_URL = resolveServerUrl();
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.9.0 ALPHA — Performance & Systems Update: Main Menu Smoothness ⚡ | Lazy WebGPU Init 🧮 | Lazy Socket.IO Load 🌐 | Startup Metrics 📊 | Cached Menu Scores 💾 | Optimized Horror Background 🎨 | Class Tree Skills 🌳 | V0.8.4 ALPHA: Wave Chaos 🌊 | Scrap Shop Shrine 💰 | MP3 Soundtrack 🎵 | Controls in Settings ⚙️ | Phase 4 Engine 🔧 | And More...";
+export const NEWS_UPDATES = "NEW: V0.9.1 ALPHA — Skills & Survivability Update: 93 Skills & 15 Synergies 🌳 | 6 Class Trees | Corrupted Wildcards ☠ | 4 Cards / 10 Slots / Reroll 🔄 | Mobile 2×2 Level-Up 📱 | Splitter & Siren Zombies 🧟 | V0.9.0: Performance ⚡ | V0.8.4: Wave Chaos 🌊 | Scrap Shop 💰 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

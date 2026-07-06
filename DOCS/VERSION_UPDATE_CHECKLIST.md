@@ -49,7 +49,9 @@ Use consistent format: `V0.X.Y.Z ALPHA` (with space before ALPHA)
 
 Example: `V0.8.4 ALPHA`
 
-[AMENDED 2026-06-26]: Current release example: `V0.9.0 ALPHA`
+[AMENDED 2026-06-26]: Current release example: `V0.9.1 ALPHA`
+
+[AMENDED 2026-07-06 — V0.9.1 modality pass]: Updated `NEWS_UPDATES`, main-menu/About version boxes, landing bubbles (new V0.9.1 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.1 public copy leads with *Skills & Survivability Update* (93 skills, 15 synergies, corrupted wildcards, mobile 2×2 level-up, Splitter/Siren).
 
 ## Quick Reference
 

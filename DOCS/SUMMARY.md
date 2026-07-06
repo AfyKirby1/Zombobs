@@ -5,13 +5,13 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+**Release: V0.9.1 ALPHA (2026-07-06)** — *Skills & Survivability Update*. **93 skills** (63 flat + 30 tree) across **6 class trees**, **15 synergies**, corrupted wildcards, 4 cards / 10 slots / reroll, **mobile 2×2 level-up grid**, Splitter & Siren zombies, v0.9.1 public modality sweep (menu, about, landing, itch, launcher, server packages). Prior **V0.9.0** performance work (lazy WebGPU/Socket.IO, startup metrics, smooth game entry) remains live.
+
 ✅ **Mobile UX & Performance (2026-07-06)** — Phones and Capacitor builds: level-up **2×2 grid** on narrow screens, touch hover for cards/reroll, scroll lock (`touch-action: none`), improved **`isMobileDevice()`** (UA + coarse pointer + ≤900px), first-run **low video preset** on mobile, `mobile/www` synced. Run `cd mobile && npm run sync:web` before Android builds.
 
 ✅ **Functional Codebase Audit (2026-07-05)** — `tools/count_functional_loc.py` reports **34,773 functional LOC** across **125 maintained source files** after excluding docs, assets, generated mobile `www`, dependencies, IDE metadata, vendored/minified bundles, and duplicate snapshots. JavaScript accounts for **30,237 LOC** across **88 files**. The landing website now advertises the large vanilla codebase.
 
 **Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), **smooth game entry** (idle GPU/ground warm-up, async `startGame()`, session prep overlay, `gpuCanvas` fade-in), v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata. **Audio balance (2026-06-26)**: default music volume halved (`0.5` → `0.25`, settings v3 migration) so gunshots cut through MP3 tracks without raising SFX gain.
-
-✅ **Smooth Game Entry (2026-06-26)** — WebGPU no longer hitch-pops on first Play: idle menu warm-up starts GPU module/init + ground texture preload; async `startGame()` shows a brief **PREPARING WORLD** canvas overlay only when GPU is not ready; `#gpuCanvas` fades in over 450ms. Key files: `js/main.js` (`warmSessionResourcesInBackground`, `prepareGameSession`), `js/ui/GameHUD.js` (session prep overlay), `css/style.css`.
 
 **Release: V0.8.4 ALPHA (2026-06-25)** — *The Chaos & Horde Update*. Wave Chaos mutators, Scrap Shop shrine + kill-drop economy, **Class Tree System (hybrid 3×5)**, zombie torso overlays + organic motion, MP3 gameplay soundtrack (intensity scaling), controls moved to Settings → Controls (in-game overlay removed), Phase 4 `GameLoopSystem` refactor, mobile touch gate fix. Player-facing modality: `NEWS_UPDATES` news reel, landing version bubbles (9 items), itch V0.8.4 section.
 

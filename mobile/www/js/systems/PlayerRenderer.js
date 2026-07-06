@@ -7,7 +7,7 @@
  * - Procedural body rendering with head, torso, and limbs
  * - Smooth direction transitions
  * 
- * @version 0.9.0
+ * @version 0.9.1
  */
 
 import { ctx } from '../core/canvas.js';

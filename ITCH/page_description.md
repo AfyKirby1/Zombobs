@@ -8,7 +8,19 @@
 
 ---
 
-### **🆕 V0.9.0 ALPHA — Performance & Systems Update**
+### **🆕 V0.9.1 ALPHA — Skills & Survivability Update**
+
+*   **Mega Skill Expansion** — 93 total skills: 63 flat picks + 30 tree skills across 6 class paths (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow)
+*   **15 Skill Synergies** — Combo unlock popups when skill pairs meet (e.g. Frozen Fury, Midnight Reaper)
+*   **Corrupted Wildcards** — ~14% chance for purple level-up cards (+35% effect, −12% max HP)
+*   **Build Depth** — 4 cards per level-up, 10 active skill slots, 1 free reroll per level
+*   **Mobile UX** — 2×2 level-up grid on phones, touch hover, scroll lock, performance-friendly first-run defaults
+*   **New Enemies** — Splitter carrier (Shard minions on death) and Siren support zombie (wave 8+)
+*   **V0.9.0 Systems Still Live** — Main-menu smoothness, lazy WebGPU/Socket.IO, startup metrics, class trees
+
+---
+
+### **V0.9.0 ALPHA — Performance & Systems Update**
 
 *   **Main Menu Smoothness** — Cached score reads, prebaked horror-background layers, and throttled static noise reduce menu lag spikes
 *   **Lazy WebGPU Init** — GPU renderer module loads on first gameplay or WebGPU re-enable instead of menu boot
@@ -133,7 +145,7 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.9.0 ALPHA (Vanilla JS + HTML5 Canvas)
+*   **Engine:** ZOMBS-XFX-NGIN V0.9.1 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
@@ -143,6 +155,6 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.0 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.1 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*
