@@ -98,6 +98,28 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `constants.js`, `systems/SettingsManager.js`
 
+#### BootLoader.js
+**Purpose**: Gated HTML boot overlay until main menu and WebGPU are ready
+
+**Exports**:
+- `initBootLoader()` — Bind `#boot-overlay` DOM refs
+- `setBootStatus(text)` — Update status label (`Loading game`, `Initializing GPU`)
+- `requireWebGPUBootGate()` / `skipWebGPUBootGate()` / `notifyWebGPUBootReady()` — WebGPU readiness gate
+- `notifyBootFirstFrame()` — Mark first engine draw complete
+- `tryDismissBootOverlay()` — Fade out and remove overlay when all gates pass
+- `isBootOverlayDismissed()` — Query dismiss state
+
+**Boot Gates**:
+1. **First frame** — `gameEngine.draw()` calls `notifyBootFirstFrame()` after menu render
+2. **WebGPU** — Required when `video.webgpuEnabled` and `navigator.gpu` exist; skipped otherwise
+
+**Integration**:
+- `#boot-overlay` in `index.html` with inline critical CSS (spinner + ZOMBOBS title before `style.css`)
+- `js/main.js` starts `scheduleWebGPUInit()` at bootstrap (parallel with game loop)
+- Perf marks: `zombobs:init-to-first-draw` measured on dismiss
+
+**Dependencies**: `#boot-overlay` DOM in `index.html`, `css/style.css` fade transition (`.boot-overlay--done`)
+
 #### WebGPURenderer.js
 **Purpose**: GPU-accelerated background rendering and compute-driven particles
 
@@ -162,6 +184,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - Consolidated checks via `isWebGPUActive()` helper in main.js
 - ZombobsFX initialized during WebGPURenderer.init() and rendered in render() loop
 - **[AMENDED 2026-06-26] Lazy load + warm-up**: `WebGPURenderer` module loads via dynamic `import()` — not at menu boot. `scheduleWebGPUInit()` runs during idle menu warm-up (`requestIdleCallback`) or on first Play via `prepareGameSession()`. `#gpuCanvas` visibility toggled in `updateGpuCanvasVisibility()` with 450ms CSS opacity fade-in (`css/style.css`).
+- **[AMENDED 2026-07-06] Boot overlay gate**: `scheduleWebGPUInit()` also starts at bootstrap (behind `#boot-overlay` via `BootLoader.js`). Overlay dismisses only after first menu frame **and** WebGPU init (or gate skipped when disabled/unavailable). Idle warm-up retains ground-texture preload only.
 
 #### ZombobsFX.js
 **Purpose**: 100k particle spore cloud background effect with mouse interaction
@@ -1839,8 +1862,32 @@ This hybrid approach provides:
 - Assign `gameEngine.update` / `gameEngine.draw` callbacks
 - Handle menu button routing (`handleMenuInteraction`)
 - WebGPU boot and settings change listeners
+- **Boot overlay (2026-07-06)**: `BootLoader.js` gates `#boot-overlay` until first menu frame + WebGPU ready
 - Thin delegates: `updatePlayers()`, `drawPlayers()`, pause/restart/start
-- **Game session entry (2026-06-26)**: `warmSessionResourcesInBackground()` (idle menu warm-up), `prepareGameSession()` + async `startGame()` (await GPU when needed), `updateGpuCanvasVisibility()` with opacity fade-in
+- **Game session entry (2026-06-26)**: `warmSessionResourcesInBackground()` (idle ground-texture warm-up), `prepareGameSession()` + async `startGame()` (await GPU when needed), `updateGpuCanvasVisibility()` with opacity fade-in
+
+**Boot + Game Session Entry Flow** [2026-07-06]:
+
+```mermaid
+flowchart TD
+    A[index.html boot overlay visible] --> B[main.js bootstrap]
+    B --> C[scheduleWebGPUInit parallel]
+    B --> D[gameEngine.start]
+    D --> E[draw main menu behind overlay]
+    E --> F{first frame + WebGPU ready?}
+    C --> F
+    F -->|yes| G[BootLoader dismiss overlay fade]
+    F -->|WebGPU off| G
+    G --> H[Main menu interactive]
+    H --> I{User clicks Play}
+    I --> J{isWebGPUActive?}
+    J -->|yes| K[GameStateManager.startGame]
+    J -->|no| L[GameHUD.beginSessionPrep overlay]
+    L --> M[await scheduleWebGPUInit]
+    M --> K
+    B --> N{requestIdleCallback}
+    N --> O[warmSessionResourcesInBackground ground texture]
+```
 
 **Game Session Entry Flow** [2026-06-26]:
 

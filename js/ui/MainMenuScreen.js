@@ -1084,14 +1084,17 @@ export class MainMenuScreen {
     }
 
     checkNewsTickerHit(x, y) {
-        return x >= this.newsTickerBoxX &&
-            x <= this.newsTickerBoxX + this.newsTickerBoxWidth &&
-            y >= this.newsTickerBoxY &&
-            y <= this.newsTickerBoxY + this.newsTickerBoxHeight;
+        if (!this.newsTickerBoxWidth || !this.newsTickerBoxHeight) return false;
+        const padX = 4;
+        const padY = 6;
+        return x >= this.newsTickerBoxX - padX &&
+            x <= this.newsTickerBoxX + this.newsTickerBoxWidth + padX &&
+            y >= this.newsTickerBoxY - padY &&
+            y <= this.newsTickerBoxY + this.newsTickerBoxHeight + padY;
     }
 
     startNewsTickerDrag(x, y) {
-        if (!this.checkNewsTickerHit(x, y)) return false;
+        if (this.isMobileLayout || !this.checkNewsTickerHit(x, y)) return false;
         this.newsTickerDragging = true;
         this.newsTickerDragStartX = x;
         this.newsTickerDragStartOffset = this.newsTickerOffset;
@@ -1101,14 +1104,19 @@ export class MainMenuScreen {
     updateNewsTickerDrag(x) {
         if (!this.newsTickerDragging) return;
         const dragDistance = this.newsTickerDragStartX - x;
+        const loopLength = this.newsTickerTextWidth + this.newsTickerBoxWidth;
+        if (loopLength <= 0) return;
         const newOffset = this.newsTickerDragStartOffset + dragDistance;
-        const maxOffset = this.newsTickerTextWidth + this.newsTickerBoxWidth;
-        // Clamp offset to valid range
-        this.newsTickerOffset = Math.max(0, Math.min(maxOffset, newOffset));
+        this.newsTickerOffset = ((newOffset % loopLength) + loopLength) % loopLength;
     }
 
     endNewsTickerDrag() {
+        if (!this.newsTickerDragging) return;
         this.newsTickerDragging = false;
+        const loopLength = this.newsTickerTextWidth + this.newsTickerBoxWidth;
+        if (loopLength > 0) {
+            this.newsTickerOffset = ((this.newsTickerOffset % loopLength) + loopLength) % loopLength;
+        }
     }
 
     drawUsernameModal() {

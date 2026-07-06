@@ -360,13 +360,7 @@ export class GameLoopSystem {
 
         if (gameState.showMainMenu) {
             gameHUD.mainMenu = true;
-            if (gameHUD.newsTickerDragging) {
-                uiCanvas.style.cursor = 'grabbing';
-            } else if (gameHUD.checkNewsTickerHit(mouse.x, mouse.y)) {
-                uiCanvas.style.cursor = 'grab';
-            } else {
-                uiCanvas.style.cursor = 'none';
-            }
+            uiCanvas.style.cursor = 'none';
             gameHUD.draw();
             return;
         }

@@ -2,6 +2,13 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Boot Loader — Gated Startup Overlay (2026-07-06) ✅ COMPLETE
+- **Done**: New `js/core/BootLoader.js` — gates `#boot-overlay` dismiss on **first menu frame** + **WebGPU init** (skipped when WebGPU off/unsupported).
+- **Done**: WebGPU init starts at bootstrap (parallel with game loop) instead of idle-only warm-up; status text `Loading game` → `Initializing GPU`.
+- **Done**: Inline critical boot CSS in `index.html` (ZOMBOBS title + spinner before `style.css` loads); overlay fades out only when menu + GPU ready.
+- **Docs**: `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `My_Thoughts`.
+- **Verify**: Cold reload `index.html` with WebGPU on — branded loader until main menu fully ready, no blank flash.
+
 ### V0.9.1 Modality (2026-07-06) ✅ COMPLETE
 - **Done**: Version bump to **V0.9.1 ALPHA** — *Skills & Survivability Update* across all public modalities; **backfilled** v0.9.1 CHANGELOG with zombie face QoL, startup hardening, full skill-wave mechanics, Splitter/Siren detail, and v0.9.0 smooth-entry/class-tree items previously only in amended notes.
 

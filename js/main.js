@@ -57,6 +57,15 @@ import { BadgeScreen } from './ui/BadgeScreen.js';
 import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
 import { TouchControlSystem } from './systems/TouchControlSystem.js';
 import { groundTextureSystem } from './systems/GroundTextureSystem.js';
+import {
+    initBootLoader,
+    setBootStatus,
+    requireWebGPUBootGate,
+    notifyWebGPUBootReady,
+    skipWebGPUBootGate,
+    notifyBootFirstFrame,
+    tryDismissBootOverlay
+} from './core/BootLoader.js';
 
 const perfEnabled = (() => {
     try {
@@ -94,6 +103,8 @@ window.zombobsPerf = {
 };
 
 perfMark('zombobs:main:init:start');
+initBootLoader();
+setBootStatus('Loading game');
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -638,25 +649,7 @@ gameEngine.update = (dt) => {
     }
 };
 
-let bootOverlayDismissed = false;
-function dismissBootOverlayOnce() {
-    if (bootOverlayDismissed) return;
-    bootOverlayDismissed = true;
-    perfMark('zombobs:first-draw');
-    perfMeasure('zombobs:init-to-first-draw', 'zombobs:main:init:start', 'zombobs:first-draw');
-    const el = document.getElementById('boot-overlay');
-    if (!el) return;
-    el.setAttribute('aria-busy', 'false');
-    el.classList.add('boot-overlay--done');
-    const removeEl = () => {
-        if (el.parentNode) el.remove();
-    };
-    el.addEventListener('transitionend', removeEl, { once: true });
-    window.setTimeout(removeEl, 450);
-}
-
 gameEngine.draw = () => {
-    dismissBootOverlayOnce();
     const now = performance.now();
     gameState.framesSinceFpsUpdate++;
     if (now - gameState.lastFpsUpdateTime >= 500) {
@@ -751,6 +744,9 @@ gameEngine.draw = () => {
 
         webgpuRenderer.render(dt, shakeCamera, isGameplay);
     }
+
+    notifyBootFirstFrame();
+    tryDismissBootOverlay();
 };
 
 // Event Listeners
@@ -1190,9 +1186,13 @@ window.addEventListener('mousemove', (e) => {
         gameHUD.mouseY = mouse.y;
     }
 
-    // Handle news ticker dragging
+    // Handle news ticker dragging (end if button released without mouseup, e.g. alt-tab)
     if (gameHUD.newsTickerDragging) {
-        gameHUD.updateNewsTickerDrag(mouse.x);
+        if (e.buttons === 0) {
+            gameHUD.endNewsTickerDrag();
+        } else {
+            gameHUD.updateNewsTickerDrag(mouse.x);
+        }
     }
 
     if (gameState.showSettingsPanel) {
@@ -1245,7 +1245,18 @@ window.addEventListener('mouseup', (e) => {
 });
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
-window.addEventListener('mouseleave', () => mouse.isDown = false);
+window.addEventListener('blur', () => {
+    if (gameHUD?.newsTickerDragging) {
+        gameHUD.endNewsTickerDrag();
+    }
+});
+
+window.addEventListener('mouseleave', () => {
+    mouse.isDown = false;
+    if (gameHUD?.newsTickerDragging) {
+        gameHUD.endNewsTickerDrag();
+    }
+});
 
 window.addEventListener('wheel', (e) => {
     if (gameState.showSettingsPanel) {
@@ -1533,6 +1544,18 @@ window.clearScoreboard = clearScoreboard;
 
 perfMark('zombobs:bootstrap:end');
 perfMeasure('zombobs:bootstrap', 'zombobs:bootstrap:start', 'zombobs:bootstrap:end');
+
+const bootWebgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+if (bootWebgpuEnabled && hasNativeWebGPU()) {
+    requireWebGPUBootGate();
+    setBootStatus('Initializing GPU');
+    webgpuInitStarted = true;
+    scheduleWebGPUInit()
+        .then(() => notifyWebGPUBootReady())
+        .catch(() => notifyWebGPUBootReady());
+} else {
+    skipWebGPUBootGate();
+}
 
 requestAnimationFrame(() => {
     perfMark('zombobs:game-loop:start');

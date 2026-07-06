@@ -84,7 +84,7 @@ All JS uses native `import`/`export`. No webpack, no vite, no transpilation. Fil
 
 | Directory | Purpose |
 |---|---|
-| `js/core/` | Constants, canvas init, gameState, GameEngine, WebGPURenderer, ZombobsFX |
+| `js/core/` | Constants, canvas init, gameState, GameEngine, BootLoader, WebGPURenderer, ZombobsFX |
 | `js/entities/` | Entity classes: Zombie (11 variants + Shard minions + Boss; see `DOCS/ENEMY_TYPES.md`), Bullet, Particle, Pickup, Grenade, Shell, AcidProjectile, AcidPool, Prop |
 | `js/systems/` | Self-contained systems: Audio, Particle, Camera, Input, Settings, Skill, Rank, Achievement, Battlepass, Multiplayer, ZombieSpawn, ZombieUpdate, PlayerSystem, EntityRender, PropSpawn, PropRender, GroundTexture, BloodSimulation, Melee, PickupSpawn, GameStateManager, ArcadeMusic, TouchControl |
 | `js/ui/` | Canvas-drawn UI screens: GameHUD, SettingsPanel, MainMenuScreen, LobbyScreen, GameOverScreen, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, etc. |

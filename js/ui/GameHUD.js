@@ -1201,50 +1201,133 @@ export class GameHUD {
 
 
 
+    getCursorMode() {
+        if (gameState.showMainMenu && !this.mainMenuScreen?.isMobileLayout) {
+            if (this.newsTickerDragging) return 'grabbing';
+            if (this.checkNewsTickerHit(this.mouseX, this.mouseY)) return 'grab';
+        }
+        return 'pointer';
+    }
+
     drawCursor() {
-        // Get mouse position (from tracked position or return if not available)
         const x = this.mouseX;
         const y = this.mouseY;
 
-        // Only draw if mouse position is tracked and valid
         if (x === undefined || y === undefined ||
             x < 0 || x > this.canvas.width ||
             y < 0 || y > this.canvas.height) return;
 
+        const mode = this.getCursorMode();
+        if (mode === 'grab') {
+            this.drawGrabCursor(false);
+        } else if (mode === 'grabbing') {
+            this.drawGrabCursor(true);
+        } else {
+            this.drawPointerCursor();
+        }
+    }
+
+    drawPointerCursor() {
+        const x = this.mouseX;
+        const y = this.mouseY;
         const scale = this.getUIScale();
         const size = 18 * scale;
 
         this.ctx.save();
 
-        // Draw classic pointer cursor (simple triangle pointing up-left)
-        // Outline (black for contrast)
         this.ctx.strokeStyle = '#000000';
         this.ctx.fillStyle = '#000000';
         this.ctx.lineWidth = 3;
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
 
-        // Simple triangle pointer
         this.ctx.beginPath();
-        this.ctx.moveTo(x, y); // Tip at top-left
-        this.ctx.lineTo(x + size * 0.5, y + size * 0.5); // Bottom-right of arrow head
-        this.ctx.lineTo(x + size * 0.2, y + size * 0.85); // Bottom of arrow shaft
-        this.ctx.lineTo(x + size * 0.05, y + size * 0.7); // Left side of shaft
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(x + size * 0.5, y + size * 0.5);
+        this.ctx.lineTo(x + size * 0.2, y + size * 0.85);
+        this.ctx.lineTo(x + size * 0.05, y + size * 0.7);
         this.ctx.closePath();
         this.ctx.stroke();
 
-        // Fill (white for visibility)
         this.ctx.fillStyle = '#ffffff';
         this.ctx.lineWidth = 2;
 
         this.ctx.beginPath();
-        this.ctx.moveTo(x, y); // Tip at top-left
-        this.ctx.lineTo(x + size * 0.5, y + size * 0.5); // Bottom-right of arrow head
-        this.ctx.lineTo(x + size * 0.2, y + size * 0.85); // Bottom of arrow shaft
-        this.ctx.lineTo(x + size * 0.05, y + size * 0.7); // Left side of shaft
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(x + size * 0.5, y + size * 0.5);
+        this.ctx.lineTo(x + size * 0.2, y + size * 0.85);
+        this.ctx.lineTo(x + size * 0.05, y + size * 0.7);
         this.ctx.closePath();
         this.ctx.fill();
         this.ctx.stroke();
+
+        this.ctx.restore();
+    }
+
+    drawGrabCursor(grabbing) {
+        const x = this.mouseX;
+        const y = this.mouseY;
+        const scale = this.getUIScale();
+        const s = scale;
+
+        this.ctx.save();
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
+        const strokeHand = (fill, stroke, lineWidth) => {
+            this.ctx.fillStyle = fill;
+            this.ctx.strokeStyle = stroke;
+            this.ctx.lineWidth = lineWidth;
+
+            if (grabbing) {
+                this.ctx.beginPath();
+                this.ctx.roundRect(x - 7 * s, y - 3 * s, 14 * s, 15 * s, 4 * s);
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                this.ctx.beginPath();
+                this.ctx.arc(x - 9 * s, y + 5 * s, 3 * s, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                this.ctx.strokeStyle = stroke;
+                this.ctx.lineWidth = Math.max(1, 1.2 * s);
+                for (let i = 0; i < 3; i++) {
+                    const ky = y + 1 * s + i * 3.2 * s;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x - 5 * s, ky);
+                    this.ctx.lineTo(x + 5 * s, ky);
+                    this.ctx.stroke();
+                }
+            } else {
+                const fingerW = 2.6 * s;
+                const fingerH = 7.5 * s;
+                const gap = 0.9 * s;
+                const fingersW = fingerW * 4 + gap * 3;
+                const startX = x - fingersW / 2;
+
+                this.ctx.beginPath();
+                this.ctx.roundRect(x - 7 * s, y, 14 * s, 11 * s, 3 * s);
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                for (let i = 0; i < 4; i++) {
+                    const fx = startX + i * (fingerW + gap);
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(fx, y - fingerH + 1 * s, fingerW, fingerH, fingerW * 0.45);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+
+                this.ctx.beginPath();
+                this.ctx.roundRect(x - 10.5 * s, y + 2 * s, 3.2 * s, 6 * s, 1.5 * s);
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
+        };
+
+        strokeHand('#000000', '#000000', 3.5 * s);
+        strokeHand('#ffffff', '#000000', 2 * s);
 
         this.ctx.restore();
     }

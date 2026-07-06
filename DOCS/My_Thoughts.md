@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-06 - Boot Loader (Gated Startup Overlay)
+
+v0.9.0 deferred WebGPU to idle warm-up — fixed menu hitch but overlay dismissed on **first draw** while GPU still ~1s behind → blank flash before main menu felt ready. **BootLoader** keeps `#boot-overlay` up until **two gates** pass: first menu frame drawn + WebGPU init (skipped when off). Eager `scheduleWebGPUInit()` at bootstrap runs GPU work **behind** overlay; inline critical CSS in `index.html` shows ZOMBOBS spinner before `style.css`. Play-path **PREPARING WORLD** overlay unchanged for cold immediate-Play edge case.
+
 ## 2026-07-05 - Siren Zombie (Support Screamer)
 
 Horde games need **priority targets** that aren't just bigger/fast chasers. Siren fills the gap Spitter (ranged DOT) and Blight (ground denial) don't: **force target selection** under pressure. 600ms interruptible windup rewards aim discipline; scream buff is horde-wide but short (2.5s) so it's panic, not permanent snowball. Aim jitter is light (~0.12 rad) — enough to feel the scream, not enough to feel unfair. Cyan palette separates Siren from toxic green (Spitter) and purple (Blight) at a glance. Full reference: `DOCS/ENEMY_TYPES.md`.

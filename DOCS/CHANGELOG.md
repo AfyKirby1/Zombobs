@@ -5,6 +5,12 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+### Added
+- **Boot Loader — Gated Startup Overlay (2026-07-06)** — New `js/core/BootLoader.js` coordinates `#boot-overlay` on `index.html`. Overlay stays up until **first main-menu frame** is drawn **and** WebGPU init completes (gate skipped when WebGPU disabled or unavailable). Status text: `Loading game` → `Initializing GPU`. Inline critical boot CSS in `index.html` (ZOMBOBS title + spinner) renders before `style.css` loads. Key files: `js/core/BootLoader.js`, `js/main.js`, `index.html`, `css/style.css`.
+
+### Changed
+- **WebGPU Boot Timing (2026-07-06)** — `scheduleWebGPUInit()` now starts at bootstrap (parallel with game loop) so GPU work runs behind the boot overlay instead of after first draw. Idle `warmSessionResourcesInBackground()` still handles ground texture warm-up only when WebGPU already started.
+
 ## [v0.9.1] - 2026-07-06
 
 > **Skills & Survivability Update** — Mega skill expansion (93 skills, 15 synergies, 6 class trees), corrupted wildcards, new enemies, zombie face polish, mobile UX, startup hardening, and synchronized v0.9.1 public modalities.

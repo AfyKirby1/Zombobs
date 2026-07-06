@@ -5,7 +5,9 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
-**Release: V0.9.1 ALPHA (2026-07-06)** — *Skills & Survivability Update*. **93 skills** (63 flat + 30 tree) across **6 class trees** (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow), **15 synergies** with HUD toasts, corrupted wildcards (~14%), 4 cards / 10 slots / reroll (+ MP sync), **Splitter & Siren** zombies, **zombie face QoL** (procedural faces + gaze eyes), **mobile 2×2 level-up grid**, boot **localStorage** hardening, **34,773 LOC** audit + landing copy, v0.9.1 modality sweep. Prior **V0.9.0** performance (lazy WebGPU/Socket.IO, startup metrics, smooth game entry, 3 class trees, music balance) and **V0.8.4** horde/scrap systems remain live.
+**Release: V0.9.1 ALPHA (2026-07-06)** — *Skills & Survivability Update*. **93 skills** (63 flat + 30 tree) across **6 class trees** (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow), **15 synergies** with HUD toasts, corrupted wildcards (~14%), 4 cards / 10 slots / reroll (+ MP sync), **Splitter & Siren** zombies, **zombie face QoL** (procedural faces + gaze eyes), **mobile 2×2 level-up grid**, boot **localStorage** hardening, **BootLoader** gated startup overlay (menu + WebGPU ready before dismiss), **34,773 LOC** audit + landing copy, v0.9.1 modality sweep. Prior **V0.9.0** performance (lazy WebGPU/Socket.IO, startup metrics, smooth game entry, 3 class trees, music balance) and **V0.8.4** horde/scrap systems remain live.
+
+✅ **Boot Loader — Gated Startup Overlay (2026-07-06)** — `#boot-overlay` on `index.html` stays visible until first main-menu frame **and** WebGPU init complete (gate skipped when GPU off/unavailable). `js/core/BootLoader.js` manages status text + fade-out; inline critical CSS shows ZOMBOBS spinner before `style.css` loads; WebGPU init starts at bootstrap behind overlay. Key files: `BootLoader.js`, `main.js`, `index.html`, `css/style.css`.
 
 ✅ **Mobile UX & Performance (2026-07-06)** — Phones and Capacitor builds: level-up **2×2 grid** on narrow screens, touch hover for cards/reroll, scroll lock (`touch-action: none`), improved **`isMobileDevice()`** (UA + coarse pointer + ≤900px), first-run **low video preset** on mobile, `mobile/www` synced. Run `cd mobile && npm run sync:web` before Android builds.
 
@@ -278,6 +280,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── constants.js          # Game constants and configuration
 │   │   ├── skillTreeDefinitions.js  # Class tree skills (Gunner/Survivor/Scavenger)
 │   │   ├── canvas.js             # Canvas initialization and management
+│   │   ├── BootLoader.js         # Gated boot overlay (menu + WebGPU ready before dismiss)
 │   │   ├── gameState.js          # Centralized game state management
 │   ├── companions/
 │   │   └── CompanionSystem.js   # AI NPC companion behavior and lifecycle
