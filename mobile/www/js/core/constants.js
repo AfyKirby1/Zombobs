@@ -158,7 +158,7 @@ function resolveServerUrl() {
 export const SERVER_URL = resolveServerUrl();
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.9.1 ALPHA — Skills & Survivability Update: 93 Skills & 15 Synergies 🌳 | 6 Class Trees | Corrupted Wildcards ☠ | 4 Cards / 10 Slots / Reroll 🔄 | Mobile 2×2 Level-Up 📱 | Splitter & Siren Zombies 🧟 | V0.9.0: Performance ⚡ | V0.8.4: Wave Chaos 🌊 | Scrap Shop 💰 | And More...";
+export const NEWS_UPDATES = "NEW: V0.9.1 ALPHA — Skills & Survivability Update: 93 Skills & 15 Synergies 🌳 | 6 Class Trees | Corrupted Wildcards ☠ | Reroll + MP Sync 🔄 | Splitter & Siren 🧟 | Zombie Face QoL 👁 | Mobile 2×2 Level-Up 📱 | Boot Hardening 🛡 | 34K+ LOC Audit 📊 | V0.9.0: Performance ⚡ | V0.8.4: Wave Chaos 🌊 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

@@ -15,8 +15,12 @@
 *   **Corrupted Wildcards** — ~14% chance for purple level-up cards (+35% effect, −12% max HP)
 *   **Build Depth** — 4 cards per level-up, 10 active skill slots, 1 free reroll per level
 *   **Mobile UX** — 2×2 level-up grid on phones, touch hover, scroll lock, performance-friendly first-run defaults
-*   **New Enemies** — Splitter carrier (Shard minions on death) and Siren support zombie (wave 8+)
-*   **V0.9.0 Systems Still Live** — Main-menu smoothness, lazy WebGPU/Socket.IO, startup metrics, class trees
+*   **New Enemies** — Splitter carrier (2 fast Shard minions on death, wave 6+) and Siren support zombie (wave 8+ horde scream + aim jitter)
+*   **Zombie Face QoL** — Procedural face profiles, pupil styles, gaze-tracking eyes, wounds/drool across major zombie variants
+*   **Boot Hardening** — Safe `localStorage` reads on startup; repaired `test-syntax.ps1` for all JS modules
+*   **Codebase Audit** — 34,773 functional LOC across 125 maintained files (`tools/count_functional_loc.py`)
+*   **V0.9.0 Systems Still Live** — Main-menu smoothness, lazy WebGPU/Socket.IO, startup metrics, smooth game entry, original 3 class trees, music balance (default 25%)
+*   **V0.8.4 Systems Still Live** — Wave Chaos mutators, Scrap Shop Shrine, MP3 soundtrack, Phase 4 `GameLoopSystem`, controls-in-settings
 
 ---
 

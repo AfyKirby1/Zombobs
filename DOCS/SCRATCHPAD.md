@@ -3,8 +3,7 @@
 
 ## Active Tasks
 ### V0.9.1 Modality (2026-07-06) ✅ COMPLETE
-- **Done**: Version bump to **V0.9.1 ALPHA** — *Skills & Survivability Update* across `NEWS_UPDATES`, `MainMenuScreen`, `AboutScreen`, `landing.html`, itch copy, `launch.ps1`, server packages, `CHANGELOG`, `SUMMARY`, `AGENTS.md`; `mobile/www` synced.
-- **Verify**: Menu version box + news ticker; About screen; landing tagline + V0.9.1 bubble.
+- **Done**: Version bump to **V0.9.1 ALPHA** — *Skills & Survivability Update* across all public modalities; **backfilled** v0.9.1 CHANGELOG with zombie face QoL, startup hardening, full skill-wave mechanics, Splitter/Siren detail, and v0.9.0 smooth-entry/class-tree items previously only in amended notes.
 
 ### Mobile UX & Performance (2026-07-05) ✅ COMPLETE
 - **Done**: Level-up **2×2 grid** on narrow viewports; touch hover/reroll fixes; `isMobileDevice()` detects coarse pointer + narrow width; mobile **low preset** defaults on first run; `touch-action: none`; synergy toast width clamp; **`mobile/www` synced**.
