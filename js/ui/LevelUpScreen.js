@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
-import { SKILL_RARITY, SKILL_TREES, MAX_SKILL_SLOTS } from '../systems/SkillSystem.js';
+import { SKILL_RARITY, SKILL_TREES, MAX_SKILL_SLOTS, LEVEL_UP_CHOICE_COUNT } from '../systems/SkillSystem.js';
 
 export class LevelUpScreen {
     constructor(canvas, ctx, hud) {
@@ -65,6 +65,19 @@ export class LevelUpScreen {
         return gradient;
     }
 
+    getCardLayout() {
+        const canvas = this.canvas;
+        const scale = this.getUIScale();
+        const choiceCount = Math.max(1, gameState.levelUpChoices?.length || LEVEL_UP_CHOICE_COUNT);
+        const cardWidth = Math.min(240 * scale, (canvas.width - 80 * scale - 25 * scale * (choiceCount - 1)) / choiceCount);
+        const cardHeight = 360 * scale;
+        const cardSpacing = 25 * scale;
+        const totalWidth = (cardWidth * choiceCount) + (cardSpacing * (choiceCount - 1));
+        const startX = (canvas.width - totalWidth) / 2;
+        const cardY = canvas.height / 2 - cardHeight / 2 + 30 * scale;
+        return { cardWidth, cardHeight, cardSpacing, startX, cardY, choiceCount };
+    }
+
     draw() {
         const canvas = this.canvas;
         const ctx = this.ctx;
@@ -125,12 +138,7 @@ export class LevelUpScreen {
         ctx.restore();
 
         // Draw skill cards with rarity styling
-        const cardWidth = 280 * scale;
-        const cardHeight = 380 * scale;
-        const cardSpacing = 35 * scale;
-        const totalWidth = (cardWidth * 3) + (cardSpacing * 2);
-        const startX = (canvas.width - totalWidth) / 2;
-        const cardY = canvas.height / 2 - cardHeight / 2 + 30 * scale;
+        const { cardWidth, cardHeight, cardSpacing, startX, cardY } = this.getCardLayout();
 
         gameState.levelUpChoices.forEach((skill, index) => {
             const cardX = startX + (index * (cardWidth + cardSpacing));
@@ -363,14 +371,7 @@ export class LevelUpScreen {
             return null;
         }
 
-        const canvas = this.canvas;
-        const scale = this.getUIScale();
-        const cardWidth = 280 * scale;
-        const cardHeight = 380 * scale;
-        const cardSpacing = 35 * scale;
-        const totalWidth = (cardWidth * 3) + (cardSpacing * 2);
-        const startX = (canvas.width - totalWidth) / 2;
-        const cardY = canvas.height / 2 - cardHeight / 2 + 30 * scale;
+        const { cardWidth, cardHeight, cardSpacing, startX, cardY } = this.getCardLayout();
 
         for (let i = 0; i < gameState.levelUpChoices.length; i++) {
             const cardX = startX + (i * (cardWidth + cardSpacing));

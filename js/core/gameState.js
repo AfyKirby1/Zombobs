@@ -441,6 +441,34 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.hasRiposte = false;
             player.riposteDamage = 0;
             player.scrapHealOnPickup = 0;
+            player.scoreGainMultiplier = 1.0;
+            player.bossDamageMult = 1.0;
+            player.freeShotChance = 0;
+            player.instantReloadChance = 0;
+            player.ricochetChance = 0;
+            player.hasWaveRider = false;
+            player.waveRiderEndTime = 0;
+            player.waveRiderDurationMs = 0;
+            player.waveRiderSpeedMult = 1.0;
+            player.hasVengeance = false;
+            player.vengeanceDamageMult = 1.0;
+            player.vengeanceDurationMs = 0;
+            player.vengeanceEndTime = 0;
+            player.hasColdSnap = false;
+            player.coldSnapCounter = 0;
+            player.coldSnapThreshold = 8;
+            player.hasGuardianAngel = false;
+            player.guardianAngelUsedThisWave = false;
+            player.frostNovaOnKillChance = 0;
+            player.hasGoldRush = false;
+            player.goldRushEndTime = 0;
+            player.goldRushDurationMs = 0;
+            player.hasBulletStorm = false;
+            player.bulletStormRefundPercent = 0;
+            player.dodgeDurationMult = 1.0;
+            player.hasNightfall = false;
+            player.hasGrimReaper = false;
+            player.grimReaperHeal = 0;
 
             // Reset weapon states
             player.weaponStates = {

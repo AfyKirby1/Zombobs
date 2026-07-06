@@ -169,7 +169,12 @@ export class PlayerSystem {
                 feralRageSpeedMult = 1.15;
             }
 
-            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult;
+            let waveRiderMult = 1.0;
+            if (player.hasWaveRider && player.waveRiderEndTime && player.waveRiderEndTime > Date.now()) {
+                waveRiderMult = player.waveRiderSpeedMult || 1.2;
+            }
+
+            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult * waveRiderMult;
 
             // autoSprint: Check settings, but force enable on mobile for better ergonomics
             const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -222,7 +227,7 @@ export class PlayerSystem {
             const effectiveDodgeStaminaCost = PLAYER_DODGE_STAMINA_COST * dodgeStaminaMult;
             if (dodgeInput && !player.isDodging && player.dodgeCooldown <= 0 && player.stamina >= effectiveDodgeStaminaCost) {
                 player.isDodging = true;
-                player.dodgeTimeRemaining = PLAYER_DODGE_DURATION;
+                player.dodgeTimeRemaining = PLAYER_DODGE_DURATION * (player.dodgeDurationMult || 1.0);
                 player.dodgeCooldown = PLAYER_DODGE_COOLDOWN * dodgeCooldownMult;
                 player.stamina = Math.max(0, player.stamina - effectiveDodgeStaminaCost);
                 player.lastSprintTime = Date.now();

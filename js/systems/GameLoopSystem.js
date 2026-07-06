@@ -16,6 +16,7 @@ import {
     isMobileDevice
 } from '../utils/gameUtils.js';
 import { getWaveBreakDuration, wasFastWaveClear } from './WaveChaosSystem.js';
+import { applyWaveRiderBoost } from '../utils/combatUtils.js';
 import { setGameMusicIntensity } from './AudioSystem.js';
 import { shootBullet, handlePlayerZombieCollisions, handlePickupCollisions } from '../utils/combatUtils.js';
 import { handleBulletZombieCollisions } from '../utils/bulletZombieCollisions.js';
@@ -289,6 +290,7 @@ export class GameLoopSystem {
                 scrapShopSystem.clearShrines();
                 gameState.wave++;
                 gameState.zombiesPerWave += 2;
+                applyWaveRiderBoost(gameState.players);
                 this.spawnZombies(gameState.zombiesPerWave);
             }
         }

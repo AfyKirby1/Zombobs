@@ -2,7 +2,13 @@
 # SCRATCHPAD
 
 ## Active Tasks
-### Skill System Expansion (2026-07-05) ✅ COMPLETE
+### Skill System Wave 3 (2026-07-05) ✅ COMPLETE
+- **Done**: +16 flat skills, **Shadow** tree (6th), **4 cards**/level-up, **10 slots**, +5 synergies (**15 total**).
+- **Highlights**: Wave Rider, Vengeance, Guardian Angel, Nova Core, Gold Rush, Bullet Storm, Ammo Echo, Ricochet, Cold Snap.
+- **Docs**: `XP_AND_SKILLS_SYSTEM.md` § Skills Expansion, `CHANGELOG`, `SUMMARY`.
+- **Verify**: `powershell -NoProfile -ExecutionPolicy Bypass -File .\test-syntax.ps1`.
+
+### Skill System Expansion (2026-07-05) — Wave 2 ✅ COMPLETE
 - **Wave 2**: 14 unique skills, **10 skill synergies**, corrupted wildcards (~14%), **Pyromancer** tree (5 tiers).
 - **Highlights**: Headhunter, Corpse Bloom, Static Charge, Kill Switch, Phantom Decoy, Riposte, Combo King, Toxic Rounds, etc.
 - **Synergies**: e.g. Glass Cannon + Berserker → Death Wish; Toxic + Corpse Bloom → Plague Doctor.

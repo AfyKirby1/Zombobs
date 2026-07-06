@@ -4,6 +4,8 @@
 
 The XP (Experience Points) and Skills System is a core progression mechanic in Zombobs that allows players to level up by defeating zombies and choose skills to enhance their combat effectiveness. The system features 16 flat skills plus 15 class-tree skills (hybrid 3×5), a 3-choice level-up selection screen, and linear XP scaling.
 
+[AMENDED 2026-07-05]: Expanded to **63 flat + 30 tree skills**, **6 class trees**, **15 synergies**, **4 cards**/level-up, **10 slots**, corrupted wildcards + reroll. **See § Skills Expansion** at document end for current reference.
+
 [AMENDED 2026-06-25]: Added hybrid **Class Tree System** — see § Class Tree System at document end.
 
 ---
@@ -467,5 +469,115 @@ Definitions: `js/core/skillTreeDefinitions.js` (`SKILL_TREES`, `TREE_SKILLS_POOL
 
 - Re-exports: `SKILL_TREES`, `TREE_SKILLS_POOL`
 - Methods: `getSkillById()`, `isTreeSkillUnlocked()`, `getAvailableSkills()`
+
+---
+
+## Skills Expansion [AMENDED 2026-07-05]
+
+Major expansion to the level-up / skill system. **Do not use the legacy counts below** (16 flat + 15 tree) for current builds — see updated totals.
+
+### Current totals (v0.8.4+ skill pass)
+
+| Category | Count |
+|----------|------:|
+| **Flat skills** (`SKILLS_POOL`) | **63** |
+| **Class-tree skills** (`TREE_SKILLS_POOL`) | **30** (6 trees × 5 tiers) |
+| **Skill synergies** | **15** combo unlocks |
+| **Max active slots** | **10** |
+| **Choices per level-up** | **4** cards |
+| **Rerolls per level-up** | **1** free reroll |
+| **Corrupted wildcards** | ~**14%** chance one card is ☠ CORRUPTED (+35% effect, −12% max HP) |
+
+### Class trees (6)
+
+| Tree | Theme | Capstone |
+|------|-------|----------|
+| **Gunner** 🔫 | Firepower | Coup de Grace |
+| **Survivor** 🛡️ | Durability | Revenant (Second Wind) |
+| **Scavenger** 🔍 | Economy | Killing Spree |
+| **Brawler** 👊 | Melee / dodge | Feral Rage |
+| **Pyromancer** 🔥 | Fire / molotovs | Inferno (burning kills explode) |
+| **Shadow** 🌑 | Stealth / lifesteal | Grim Reaper (execute heals) |
+
+Definitions: `js/core/skillTreeDefinitions.js`. Synergies: `js/core/skillSynergies.js`.
+
+### Level-up UI (2026-07-05)
+
+- **4 skill cards** per level (was 3) — responsive card width in `LevelUpScreen.getCardLayout()`.
+- **Reroll button** — `SkillSystem.rerollChoices()`, 1 reroll per level.
+- **Corrupted cards** — purple border, `☠ CORRUPTED` label; `activateSkill(id, { corrupted: true })`.
+- **Skill slot counter** — `Skills: N/10` on level-up overlay.
+- **Synergy toasts** — `GameHUD.drawSynergyNotifications()` when combo unlocks.
+
+### Notable flat skills (sample — full list in `SkillSystem.js`)
+
+**Wave 3 additions (2026-07-05):** Deep Pockets, Fortified, Score Hunter, Boss Hunter, Ammo Echo, Lucky Reload, Ricochet, Wave Rider, Vengeance, Juggernaut, Cold Snap, Guardian Angel, Nova Core, Gold Rush, Bullet Storm.
+
+**Earlier expansion:** Magnetism, Grenadier, Vampiric Rounds, Glass Cannon, Last Stand, Chain Lightning, Kill Momentum, Headhunter, Corpse Bloom, Static Charge, Toxic Rounds, Phantom Decoy, Riposte, etc.
+
+### Skill synergies (15)
+
+Pair owned skills to unlock a bonus + HUD toast. Examples:
+
+| Synergy | Requires |
+|---------|----------|
+| Death Wish | Glass Cannon + Berserker |
+| Plague Doctor | Toxic Rounds + Corpse Bloom |
+| Frozen Fury | Cold Snap + Nova Core |
+| Bounty Hunter | Score Hunter + XP Hunter |
+| Ghost Blade | Phantom Decoy + Riposte |
+| War Economy | Ammo Echo + Lucky Reload |
+| Midnight Reaper | Nightfall + Grim Reaper (tree) |
+
+Full list: `js/core/skillSynergies.js` → `SKILL_SYNERGIES`.
+
+### Combat hooks (new / expanded)
+
+| Mechanic | Player fields | Integration |
+|----------|---------------|-------------|
+| Lifesteal | `lifestealPercent` | `applyLifesteal()` in bullet/melee |
+| Chain lightning | `chainLightningChance` | `tryChainLightning()` |
+| Ricochet | `ricochetChance` | `tryRicochet()` |
+| Static charge | `staticCharge`, `staticChargeMax` | `PlayerSystem` build; `shootBullet()` damage |
+| Kill switch | `killSwitchCounter`, `killSwitchArmed` | `consumeKillSwitch()` on shot |
+| Cold snap | `coldSnapCounter`, `coldSnapThreshold` | `tickColdSnap()` → mini frost |
+| Nova core | `frostNovaOnKillChance` | `tryFrostNovaOnKill()` |
+| Vengeance | `vengeanceEndTime`, `vengeanceDamageMult` | `applyPlayerDamage()` / `applySkillDamageModifiers()` |
+| Guardian Angel | `guardianAngelUsedThisWave` | `applyPlayerDamage()`; reset each wave |
+| Wave Rider | `waveRiderEndTime` | `applyWaveRiderBoost()` on new wave |
+| Gold Rush | `goldRushEndTime` | double scrap; triggers on level-up |
+| Bullet Storm | `bulletStormRefundPercent` | multi-kill ammo refund |
+| Grim Reaper | `grimReaperHeal` | `processGrimReaperKill()` |
+| Nightfall | `hasNightfall` | +dmg / −dmg taken at night |
+| Combo King | `multiplierGraceHits` | `tryResetMultiplier()` |
+| Corrupted pick | `entry.corrupted` | +35% `damageSkillMultiplier`, −12% HP |
+
+Central damage: `applyPlayerDamage()` in `combatUtils.js`.
+
+### Constants (`SkillSystem.js`)
+
+```javascript
+export const MAX_SKILL_SLOTS = 10;
+export const LEVEL_UP_CHOICE_COUNT = 4;
+export const LEVEL_UP_REROLLS = 1;
+export const CORRUPTED_CHOICE_CHANCE = 0.14;
+export const TREE_SKILL_WEIGHT_MULT = 0.35;
+```
+
+### Files touched (expansion)
+
+| File | Role |
+|------|------|
+| `js/systems/SkillSystem.js` | Pool, choices, reroll, activate |
+| `js/core/skillTreeDefinitions.js` | 6 class trees |
+| `js/core/skillSynergies.js` | Combo unlocks |
+| `js/utils/combatUtils.js` | Damage, frost, scrap, ammo hooks |
+| `js/utils/bulletZombieCollisions.js` | On-hit / on-kill skill procs |
+| `js/systems/MeleeSystem.js` | Melee skill hooks |
+| `js/systems/PlayerSystem.js` | Dodge, static charge, wave rider speed |
+| `js/systems/GameLoopSystem.js` | Wave-start boosts |
+| `js/ui/LevelUpScreen.js` | 4-card layout, corrupted styling |
+| `js/ui/GameHUD.js` | Synergy notifications |
+| `js/core/gameState.js` | Skill field resets, synergies set |
 
 ---

@@ -6,8 +6,8 @@ import { checkSkillSynergies } from '../core/skillSynergies.js';
 export { SKILL_TREES, TREE_SKILLS_POOL };
 
 // Constants
-export const MAX_SKILL_SLOTS = 8;
-export const LEVEL_UP_CHOICE_COUNT = 3;
+export const MAX_SKILL_SLOTS = 10;
+export const LEVEL_UP_CHOICE_COUNT = 4;
 export const LEVEL_UP_REROLLS = 1;
 export const CORRUPTED_CHOICE_CHANCE = 0.14;
 export const TREE_SKILL_WEIGHT_MULT = 0.35;
@@ -618,6 +618,203 @@ export const SKILLS_POOL = [
             player.hasPhantomDecoy = true;
         },
         upgradeable: false
+    },
+
+    // === WAVE 3 SKILLS — COMMON ===
+    {
+        id: 'deep_pockets',
+        name: 'Deep Pockets',
+        icon: '🎒',
+        description: '+18% max stamina',
+        rarity: 'COMMON',
+        effect: (player) => {
+            const bonus = Math.floor(player.maxStamina * 0.18);
+            player.maxStamina += bonus;
+            player.stamina = Math.min(player.maxStamina, player.stamina + bonus);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'fortified',
+        name: 'Fortified',
+        icon: '🔰',
+        description: '+10 shield points',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.shield = Math.min(100, (player.shield || 0) + 10);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'steady_hands',
+        name: 'Steady Hands',
+        icon: '🤲',
+        description: '15% faster weapon swap',
+        rarity: 'COMMON',
+        effect: (player) => {
+            if (!player.weaponSwitchSpeedMultiplier) player.weaponSwitchSpeedMultiplier = 1.0;
+            player.weaponSwitchSpeedMultiplier *= 0.85;
+        },
+        upgradeable: true
+    },
+
+    // === WAVE 3 SKILLS — RARE ===
+    {
+        id: 'score_hunter',
+        name: 'Score Hunter',
+        icon: '🏆',
+        description: '+22% score from kills',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.scoreGainMultiplier) player.scoreGainMultiplier = 1.0;
+            player.scoreGainMultiplier *= 1.22;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'boss_hunter',
+        name: 'Boss Hunter',
+        icon: '👑',
+        description: '+30% damage vs bosses',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.bossDamageMult = (player.bossDamageMult || 1.0) * 1.30;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'ammo_echo',
+        name: 'Ammo Echo',
+        icon: '🔁',
+        description: '12% chance shots cost no ammo',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.freeShotChance = Math.min(0.4, (player.freeShotChance || 0) + 0.12);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'lucky_reload',
+        name: 'Lucky Reload',
+        icon: '🍀',
+        description: '18% chance instant reload when empty',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.instantReloadChance = Math.min(0.5, (player.instantReloadChance || 0) + 0.18);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'ricochet',
+        name: 'Ricochet',
+        icon: '↩️',
+        description: '14% chance hits bounce to a 2nd zombie (50% dmg)',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.ricochetChance = Math.min(0.45, (player.ricochetChance || 0) + 0.14);
+        },
+        upgradeable: true
+    },
+
+    // === WAVE 3 SKILLS — EPIC ===
+    {
+        id: 'wave_rider',
+        name: 'Wave Rider',
+        icon: '🌊',
+        description: '+20% speed for 8s at each new wave',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasWaveRider = true;
+            player.waveRiderDurationMs = (player.waveRiderDurationMs || 0) + 8000;
+            player.waveRiderSpeedMult = (player.waveRiderSpeedMult || 1.0) * 1.20;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'vengeance',
+        name: 'Vengeance',
+        icon: '😤',
+        description: '+45% damage for 3s after taking a hit',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasVengeance = true;
+            player.vengeanceDamageMult = (player.vengeanceDamageMult || 1.0) * 1.45;
+            player.vengeanceDurationMs = (player.vengeanceDurationMs || 0) + 3000;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'juggernaut',
+        name: 'Juggernaut',
+        icon: '🚛',
+        description: 'Sprint drains 50% less stamina',
+        rarity: 'EPIC',
+        effect: (player) => {
+            if (!player.staminaDrainMultiplier) player.staminaDrainMultiplier = 1.0;
+            player.staminaDrainMultiplier *= 0.5;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'cold_snap',
+        name: 'Cold Snap',
+        icon: '❄️',
+        description: 'Every 8 kills: mini frost nova (2s freeze)',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasColdSnap = true;
+            player.coldSnapThreshold = Math.max(4, (player.coldSnapThreshold || 8) - 1);
+        },
+        upgradeable: true
+    },
+
+    // === WAVE 3 SKILLS — LEGENDARY ===
+    {
+        id: 'guardian_angel',
+        name: 'Guardian Angel',
+        icon: '😇',
+        description: 'Once per wave: below 15% HP heals 25%',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasGuardianAngel = true;
+            player.guardianAngelUsedThisWave = false;
+        },
+        upgradeable: false
+    },
+    {
+        id: 'nova_core',
+        name: 'Nova Core',
+        icon: '💠',
+        description: '6% kill chance triggers frost nova',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.frostNovaOnKillChance = Math.min(0.2, (player.frostNovaOnKillChance || 0) + 0.06);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'gold_rush',
+        name: 'Gold Rush',
+        icon: '✨',
+        description: 'Double scrap gains for 6s after each level-up',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasGoldRush = true;
+            player.goldRushDurationMs = (player.goldRushDurationMs || 0) + 6000;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'bullet_storm',
+        name: 'Bullet Storm',
+        icon: '🌪️',
+        description: 'Multi-kills (3+) refund 30% magazine',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasBulletStorm = true;
+            player.bulletStormRefundPercent = (player.bulletStormRefundPercent || 0) + 0.30;
+        },
+        upgradeable: true
     }
 ];
 
@@ -956,6 +1153,12 @@ class SkillSystem {
         });
 
         checkSkillSynergies(gameState.activeSkills, gameState.players);
+
+        gameState.players.forEach(p => {
+            if (p.hasGoldRush) {
+                p.goldRushEndTime = Date.now() + (p.goldRushDurationMs || 6000);
+            }
+        });
 
         if (isNewUnlock) {
             playerProfileSystem.recordSkillUnlock(skillId, !!skill.treeExclusive);

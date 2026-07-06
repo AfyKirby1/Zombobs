@@ -27,7 +27,12 @@ import {
     processHeadhunterKill,
     tickKillSwitch,
     tryInfernoExplosion,
-    getBorrowedTimeCritBonus
+    getBorrowedTimeCritBonus,
+    tickColdSnap,
+    tryFrostNovaOnKill,
+    tryRicochet,
+    applyBulletStormRefund,
+    processGrimReaperKill
 } from './combatUtils.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
@@ -521,8 +526,11 @@ export function handleBulletZombieCollisions() {
                     tryCorpseBloom(zombieX, zombieY, shootingPlayer);
                     tryInfernoExplosion(zombieX, zombieY, shootingPlayer, wasBurning);
                     tickKillSwitch(shootingPlayer);
+                    tickColdSnap(shootingPlayer, zombieX, zombieY);
+                    tryFrostNovaOnKill(shootingPlayer, zombieX, zombieY);
 
                     const headhunterXpMult = processHeadhunterKill(shootingPlayer, isHeadshot);
+                    processGrimReaperKill(shootingPlayer, hitZombieRef, preHealth);
 
                     // Award XP for kill (with multiplier)
                     const zombieType = zombie.type || 'normal';
@@ -559,6 +567,7 @@ export function handleBulletZombieCollisions() {
 
                     // Check for multi-kill (3+ kills in 0.5 seconds)
                     if (gameState.recentKills.length >= 3) {
+                        applyBulletStormRefund(shootingPlayer, gameState.recentKills.length);
                         const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                         if (damageNumberStyle !== 'off') {
                             const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
@@ -673,6 +682,7 @@ export function handleBulletZombieCollisions() {
                 if (shootingPlayer.lifestealPercent) {
                     applyLifesteal(shootingPlayer, dealtDamage, shootingPlayer.lifestealPercent);
                 }
+                tryRicochet(hitZombieRef, dealtDamage, shootingPlayer);
 
                 // Trigger hit marker
                 gameState.hitMarker.active = true;

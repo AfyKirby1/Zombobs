@@ -119,6 +119,64 @@ export const SKILL_SYNERGIES = [
             if (!player.firePoolDurationMult) player.firePoolDurationMult = 1.0;
             player.firePoolDurationMult *= 1.25;
         }
+    },
+    {
+        id: 'frozen_fury',
+        requires: ['cold_snap', 'nova_core'],
+        name: 'Frozen Fury',
+        icon: '🧊',
+        tagline: 'Winter never ends',
+        bonus: (player) => {
+            player.coldSnapThreshold = Math.max(3, (player.coldSnapThreshold || 8) - 2);
+            player.frostNovaOnKillChance = Math.min(0.25, (player.frostNovaOnKillChance || 0) + 0.04);
+        }
+    },
+    {
+        id: 'bounty_hunter',
+        requires: ['score_hunter', 'xp_hunter'],
+        name: 'Bounty Hunter',
+        icon: '🎯',
+        tagline: 'Everything pays',
+        bonus: (player) => {
+            if (!player.scoreGainMultiplier) player.scoreGainMultiplier = 1.0;
+            player.scoreGainMultiplier *= 1.15;
+            if (!player.xpGainMultiplier) player.xpGainMultiplier = 1.0;
+            player.xpGainMultiplier *= 1.15;
+        }
+    },
+    {
+        id: 'ghost_blade',
+        requires: ['phantom_decoy', 'riposte'],
+        name: 'Ghost Blade',
+        icon: '👻',
+        tagline: 'Strike from nowhere',
+        bonus: (player) => {
+            player.riposteDamage = (player.riposteDamage || 35) + 25;
+            player.hasPhantomDecoy = true;
+        }
+    },
+    {
+        id: 'war_economy',
+        requires: ['ammo_echo', 'lucky_reload'],
+        name: 'War Economy',
+        icon: '♻️',
+        tagline: 'Ammo is infinite-ish',
+        bonus: (player) => {
+            player.freeShotChance = Math.min(0.45, (player.freeShotChance || 0) + 0.08);
+            player.instantReloadChance = Math.min(0.55, (player.instantReloadChance || 0) + 0.1);
+        }
+    },
+    {
+        id: 'midnight_reaper',
+        requires: ['shadow_t4_nightfall', 'shadow_t5_reaper'],
+        name: 'Midnight Reaper',
+        icon: '🌑',
+        tagline: 'Darkness collects',
+        bonus: (player) => {
+            player.hasGrimReaper = true;
+            player.grimReaperHeal = (player.grimReaperHeal || 6) + 4;
+            player.hasNightfall = true;
+        }
     }
 ];
 

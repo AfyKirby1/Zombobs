@@ -35,6 +35,13 @@ export const SKILL_TREES = {
         accent: '#bf360c',
         icon: '🔥',
         tagline: 'Ash & ember'
+    },
+    shadow: {
+        name: 'Shadow',
+        color: '#7e57c2',
+        accent: '#4527a0',
+        icon: '🌑',
+        tagline: 'From the dark'
     }
 };
 
@@ -502,6 +509,95 @@ export const TREE_SKILLS_POOL = [
         upgradeable: false,
         effect: (player) => {
             player.hasInferno = true;
+        }
+    },
+
+    // === SHADOW — From the Dark ===
+    {
+        id: 'shadow_t1_veil',
+        tree: 'shadow',
+        tier: 1,
+        requires: null,
+        treeExclusive: true,
+        name: 'Veil Step',
+        icon: '🌫️',
+        tagline: 'Stay in the shadows',
+        description: '25% longer dodge duration per level',
+        rarity: tierRarity(1),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.dodgeDurationMult) player.dodgeDurationMult = 1.0;
+            player.dodgeDurationMult *= 1.25;
+        }
+    },
+    {
+        id: 'shadow_t2_whisper',
+        tree: 'shadow',
+        tier: 2,
+        requires: 'shadow_t1_veil',
+        treeExclusive: true,
+        name: 'Whisper',
+        icon: '👁️',
+        tagline: 'They never see you',
+        description: '+8% crit chance per level',
+        rarity: tierRarity(2),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            player.critChance = Math.min(1.0, (player.critChance || 0) + 0.08);
+        }
+    },
+    {
+        id: 'shadow_t3_siphon',
+        tree: 'shadow',
+        tier: 3,
+        requires: 'shadow_t2_whisper',
+        treeExclusive: true,
+        name: 'Void Siphon',
+        icon: '🕳️',
+        tagline: 'Steal their life',
+        description: '+4% lifesteal per level',
+        rarity: tierRarity(3),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            player.lifestealPercent = Math.min(0.5, (player.lifestealPercent || 0) + 0.04);
+        }
+    },
+    {
+        id: 'shadow_t4_nightfall',
+        tree: 'shadow',
+        tier: 4,
+        requires: 'shadow_t3_siphon',
+        treeExclusive: true,
+        name: 'Nightfall',
+        icon: '🌙',
+        tagline: 'Darkness is armor',
+        description: 'At night: +15% damage & -10% damage taken',
+        rarity: tierRarity(4),
+        maxLevel: 1,
+        upgradeable: false,
+        effect: (player) => {
+            player.hasNightfall = true;
+        }
+    },
+    {
+        id: 'shadow_t5_reaper',
+        tree: 'shadow',
+        tier: 5,
+        requires: 'shadow_t4_nightfall',
+        treeExclusive: true,
+        name: 'Grim Reaper',
+        icon: '⚰️',
+        tagline: 'Harvest the weak',
+        description: 'Kills on enemies below 20% HP heal 6 HP',
+        rarity: tierRarity(5),
+        maxLevel: 1,
+        upgradeable: false,
+        effect: (player) => {
+            player.hasGrimReaper = true;
+            player.grimReaperHeal = 6;
         }
     }
 ];

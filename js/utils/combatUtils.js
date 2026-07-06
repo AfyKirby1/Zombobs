@@ -222,12 +222,22 @@ export function shootBullet(target, canvas, player) {
         gameState.bullets.push(bullet);
     }
 
-    // Consume ammo
-    player.currentAmmo--;
+    // Consume ammo (Ammo Echo may refund)
+    const freeShot = player.freeShotChance && Math.random() < player.freeShotChance;
+    if (!freeShot) {
+        player.currentAmmo--;
+    }
 
     // Auto-reload if ammo is empty after this shot
     if (player.currentAmmo === 0) {
-        reloadWeapon(player);
+        const ammoMultiplier = player.ammoMultiplier || 1.0;
+        const maxAmmoWithMultiplier = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+        if (player.instantReloadChance && Math.random() < player.instantReloadChance) {
+            player.currentAmmo = maxAmmoWithMultiplier;
+            player.isReloading = false;
+        } else {
+            reloadWeapon(player);
+        }
     }
 
     // Update last shot time
@@ -879,7 +889,10 @@ export function handlePickupCollisions() {
                 if (checkCollision(player, scrap)) {
                     const scrapValue = scrap.value || SCRAP_VALUE;
                     const multiplier = player.scrapMultiplier || 1.0;
-                    const gained = Math.floor(scrapValue * multiplier);
+                    let gained = Math.floor(scrapValue * multiplier);
+                    if (player.goldRushEndTime && player.goldRushEndTime > Date.now()) {
+                        gained *= 2;
+                    }
                     player.scrap = (player.scrap || 0) + gained;
                     gameState.scrapCollected += gained;
                     gameState.score += gained;
@@ -1024,7 +1037,8 @@ export function updateScoreMultiplier(player) {
  * @returns {number} Final score awarded
  */
 export function awardScore(player, baseScore, zombieType) {
-    const multipliedScore = Math.floor(baseScore * player.scoreMultiplier);
+    const scoreMult = player.scoreGainMultiplier || 1.0;
+    const multipliedScore = Math.floor(baseScore * player.scoreMultiplier * scoreMult);
     gameState.score += multipliedScore;
 
     // Track bonus
@@ -1112,6 +1126,15 @@ export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
         if (shootingPlayer.health / shootingPlayer.maxHealth < 0.25) {
             d *= 1.4;
         }
+    }
+    if (shootingPlayer.bossDamageMult && (zombie.type === 'boss' || zombie === gameState.boss)) {
+        d *= shootingPlayer.bossDamageMult;
+    }
+    if (shootingPlayer.hasVengeance && shootingPlayer.vengeanceEndTime && shootingPlayer.vengeanceEndTime > Date.now()) {
+        d *= shootingPlayer.vengeanceDamageMult || 1.45;
+    }
+    if (shootingPlayer.hasNightfall && gameState.isNight) {
+        d *= 1.15;
     }
     return d;
 }
@@ -1324,6 +1347,114 @@ export function consumeKillSwitch(player) {
     return 3.0;
 }
 
+export function triggerMiniFrostNova(x, y, durationMs = 2000) {
+    gameState.frostNovaEndTime = Date.now() + durationMs;
+    gameState.frostNovaEffect = {
+        active: true,
+        x,
+        y,
+        startTime: Date.now(),
+        duration: 600,
+        maxRadius: 320
+    };
+    createParticles(x, y, '#b3e5fc', 16);
+}
+
+export function tickColdSnap(player, x, y) {
+    if (!player?.hasColdSnap) return;
+    player.coldSnapCounter = (player.coldSnapCounter || 0) + 1;
+    const threshold = player.coldSnapThreshold || 8;
+    if (player.coldSnapCounter >= threshold) {
+        player.coldSnapCounter = 0;
+        triggerMiniFrostNova(x, y, 2000);
+    }
+}
+
+export function tryFrostNovaOnKill(player, x, y) {
+    const chance = player?.frostNovaOnKillChance || 0;
+    if (chance && Math.random() < chance) {
+        triggerFrostNovaAt(x, y);
+    }
+}
+
+export function triggerFrostNovaAt(x, y) {
+    const FROST_DURATION = 6000;
+    gameState.frostNovaEndTime = Date.now() + FROST_DURATION;
+    gameState.shakeAmount = Math.max(gameState.shakeAmount, 10);
+    gameState.damageNumbers.push(new DamageNumber(x, y - 40, 'FROST NOVA!', false, '#80deea'));
+    gameState.frostNovaEffect = {
+        active: true,
+        x,
+        y,
+        startTime: Date.now(),
+        duration: 900,
+        maxRadius: Math.max(canvas.width, canvas.height) * 0.9
+    };
+    createParticles(x, y, '#e1f5fe', 28);
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const zombie = gameState.zombies[i];
+        createParticles(zombie.x, zombie.y, '#b3e5fc', 3);
+    }
+}
+
+export function tryRicochet(sourceZombie, damage, shootingPlayer, excludeZombie = null) {
+    const chance = shootingPlayer?.ricochetChance || 0;
+    if (!chance || Math.random() >= chance) return;
+
+    const range = 140;
+    const rangeSq = range * range;
+    let nearest = null;
+    let nearestDistSq = rangeSq;
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        if (z === sourceZombie || z === excludeZombie) continue;
+        const dx = z.x - sourceZombie.x;
+        const dy = z.y - sourceZombie.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nearestDistSq) {
+            nearestDistSq = distSq;
+            nearest = z;
+        }
+    }
+    if (!nearest) return;
+
+    const ricochetDmg = Math.max(1, Math.floor(damage * 0.5));
+    const idx = gameState.zombies.indexOf(nearest);
+    if (nearest.takeDamage(ricochetDmg) && idx !== -1) {
+        gameState.zombies.splice(idx, 1);
+        gameState.zombiesKilled++;
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, nearest, nearest.x, nearest.y);
+    }
+    createParticles(nearest.x, nearest.y, '#ffeb3b', 4);
+}
+
+export function processGrimReaperKill(player, zombie, preHealth) {
+    if (!player?.hasGrimReaper || !zombie?.maxHealth) return;
+    if (preHealth / zombie.maxHealth > 0.2) return;
+    const heal = player.grimReaperHeal || 6;
+    player.health = Math.min(player.maxHealth, player.health + heal);
+}
+
+export function applyWaveRiderBoost(players) {
+    for (let i = 0; i < players.length; i++) {
+        const p = players[i];
+        if (p.hasWaveRider) {
+            p.waveRiderEndTime = Date.now() + (p.waveRiderDurationMs || 8000);
+        }
+        p.guardianAngelUsedThisWave = false;
+    }
+}
+
+export function applyBulletStormRefund(player, killCount) {
+    if (!player?.hasBulletStorm || killCount < 3) return;
+    const pct = player.bulletStormRefundPercent || 0.3;
+    const ammoMult = player.ammoMultiplier || 1.0;
+    const maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMult);
+    const refund = Math.max(1, Math.floor(maxAmmo * pct));
+    player.currentAmmo = Math.min(maxAmmo, player.currentAmmo + refund);
+}
+
 /**
  * Get effective max grenades for a player (base + skill bonus)
  */
@@ -1345,6 +1476,9 @@ export function applyPlayerDamage(player, rawDamage) {
     }
     if (player.damageTakenMultiplier && player.damageTakenMultiplier > 1.0) {
         damage *= player.damageTakenMultiplier;
+    }
+    if (player.hasNightfall && gameState.isNight) {
+        damage *= 0.9;
     }
 
     const healthRatio = player.maxHealth > 0 ? player.health / player.maxHealth : 1;
@@ -1388,6 +1522,25 @@ export function applyPlayerDamage(player, rawDamage) {
             ));
         }
         createParticles(player.x, player.y, '#66bb6a', 8);
+    }
+
+    if (player.hasVengeance && player.health < previousHealth) {
+        player.vengeanceEndTime = Date.now() + (player.vengeanceDurationMs || 3000);
+    }
+
+    if (player.hasGuardianAngel && !player.guardianAngelUsedThisWave && player.maxHealth > 0) {
+        const ratio = player.health / player.maxHealth;
+        if (ratio > 0 && ratio <= 0.15) {
+            const heal = Math.floor(player.maxHealth * 0.25);
+            player.health = Math.min(player.maxHealth, player.health + heal);
+            player.guardianAngelUsedThisWave = true;
+            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+            if (damageNumberStyle !== 'off') {
+                gameState.damageNumbers.push(new DamageNumber(
+                    player.x, player.y - 40, 'GUARDIAN ANGEL', false, '#e1bee7', 18
+                ));
+            }
+        }
     }
 
     return Math.max(0, previousHealth - player.health);
