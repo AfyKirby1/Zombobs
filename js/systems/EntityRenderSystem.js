@@ -52,6 +52,7 @@ export class EntityRenderSystem {
         });
 
         this.drawFrostNovaEffect(gameState, ctx);
+        this.drawSirenScreamEffects(gameState, ctx);
     }
 
     /**
@@ -126,6 +127,44 @@ export class EntityRenderSystem {
         ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
+    }
+
+    drawSirenScreamEffects(gameState, ctx) {
+        const effects = gameState.sirenScreamEffects;
+        if (!effects || effects.length === 0) return;
+
+        const now = Date.now();
+        let writeIndex = 0;
+
+        for (let i = 0; i < effects.length; i++) {
+            const fx = effects[i];
+            const elapsed = now - fx.startTime;
+            if (elapsed >= fx.duration) continue;
+
+            const t = elapsed / fx.duration;
+            const radius = fx.maxRadius * t;
+            const alpha = (1 - t) * 0.55;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
+            ctx.lineWidth = 4 * (1 - t * 0.4);
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const fillGradient = ctx.createRadialGradient(fx.x, fx.y, radius * 0.85, fx.x, fx.y, radius);
+            fillGradient.addColorStop(0, 'rgba(0, 229, 255, 0)');
+            fillGradient.addColorStop(1, `rgba(0, 188, 212, ${alpha * 0.3})`);
+            ctx.fillStyle = fillGradient;
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            effects[writeIndex++] = fx;
+        }
+
+        effects.length = writeIndex;
     }
 }
 

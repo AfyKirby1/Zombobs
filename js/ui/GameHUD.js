@@ -207,7 +207,7 @@ export class GameHUD {
         // 7. Value (Bottom-right stacked, prominent)
         this.ctx.textAlign = 'right';
         this.ctx.textBaseline = 'bottom';
-        const valueFontSize = Math.max(16, Math.round(24 * scale));
+        const valueFontSize = Math.max(14, Math.min(Math.round(24 * scale), Math.round(statHeight * 0.42)));
         this.ctx.font = `bold ${valueFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = color;
 
@@ -480,63 +480,45 @@ export class GameHUD {
         const webgpuHeight = 32;
         const webgpuSpacing = 8;
         let startY = this.padding + webgpuHeight + webgpuSpacing;
+        const combatRowY = startY;
 
-        // ===== DRAW WAVE AND KILLS NEXT TO DIRECTIONAL COMPASS =====
-        // Directional compass is at top: Y=10, height=30, width=40% of canvas
-        const compassHeight = 30;
-        const compassY = 10;
-        const compassWidth = this.canvas.width * 0.4;
-        const compassX = (this.canvas.width - compassWidth) / 2;
+        const topHud = this.getTopCompassLayout();
+        const {
+            compassWidth,
+            compassX,
+            statWidth,
+            statHeight,
+            compassSpacing,
+            statY,
+            compassHeight,
+            compassY
+        } = topHud;
 
-        const statWidth = 140 * scale;
-        const statHeight = 50 * scale;
-        const compassSpacing = 10 * scale;
-
-        // Position stats vertically centered with compass
-        const statY = compassY + (compassHeight / 2) - (statHeight / 2);
-
-        // WAVE box - LEFT of directional compass
         const waveX = compassX - compassSpacing - statWidth;
-        this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', waveX, statY, statWidth);
+        this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', waveX, statY, statWidth, statHeight);
 
-        // Kills box - RIGHT of directional compass
         const killsX = compassX + compassWidth + compassSpacing;
-        this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth);
-        // ===== END DIRECTIONAL COMPASS STATS =====
-
-        // Scrap stat will be drawn in mobile layout (handled separately)
-
-        // Draw centralized multiplier indicator at top center (if active or building up)
-        // Show if multiplier > 1.0 OR if player has any consecutive kills (progress bar)
-        if (player.scoreMultiplier > 1.0 || player.consecutiveKills > 0) {
-            const centerX = this.canvas.width / 2;
-            const multiplierY = 100 * scale; // Moved back up to be just below compass
-            this.drawMultiplierIndicator(player, centerX, multiplierY);
-        }
+        this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth, statHeight);
 
         this.drawPlayerStats(player, startX, startY);
 
-        // Draw shared stats below player stats for single player
-        // Health and Shield only now (removed Ammo/Grenades)
         const sharedStatHeight = 50 * scale;
-        startY += (sharedStatHeight + itemSpacing) * 2 + itemSpacing; // Health + Shield (or just Health if no shield)
-        const finalY = this.drawSharedStats(startX, startY);
+        startY += (sharedStatHeight + itemSpacing) * 2 + itemSpacing;
+        this.drawSharedStats(startX, startY);
 
-        // Calculate bottom UI positions (bottom stat / weapon row)
         const isMobile = this.isMobile();
-        const xpBarWidth = 280 * scale;
-        const xpBarHeight = 50 * scale;
-        const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        const xpBarY = this.getBottomHudRowY(xpBarHeight);
-        this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
-
-        // Calculate Data
         const remainingZombies = gameState.zombies.length;
         const totalZombies = gameState.zombiesSpawnedThisWave || gameState.zombiesPerWave;
         const waveProgressText = `${remainingZombies}/${totalZombies}`;
         const waveProgressColor = remainingZombies <= totalZombies * 0.3 ? '#76ff03' : '#ffc107';
 
         if (isMobile) {
+            const xpBarWidth = 280 * scale;
+            const xpBarHeight = 50 * scale;
+            const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
+            const xpBarY = this.getBottomHudRowY(xpBarHeight);
+            this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
+
             // === MOBILE LAYOUT: SIDEBARS ===
 
             // Left Sidebar (Center Vertical): Zombies Left, Score
@@ -610,29 +592,28 @@ export class GameHUD {
             }
 
         } else {
-            // === DESKTOP LAYOUT: BOTTOM BAR ===
-
-            const bottomWidth = 160 * scale;
-            const leftStatWidth = 160 * scale;
-            const leftStatHeight = 50 * scale;
-            const bottomSpacing = 8 * scale;
-
-            const leftX = this.padding;
-            const scoreX = leftX + leftStatWidth + bottomSpacing;
-            const scrapX = scoreX + leftStatWidth + bottomSpacing;
-
-            this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, xpBarY, leftStatWidth, leftStatHeight);
-            this.drawStat('Score', gameState.score, '🏆', '#ffd700', scoreX, xpBarY, leftStatWidth, leftStatHeight);
-            this.drawScrapStat(player.scrap || 0, scrapX, xpBarY, leftStatWidth, leftStatHeight, scale);
-
-            const weaponWidth = 200 * scale;
-            const weaponHeight = 50 * scale;
+            // === DESKTOP LAYOUT: top-right combat + bottom dock ===
+            const weaponWidth = 175 * scale;
+            const weaponHeight = 44 * scale;
             const weaponSpacing = 8 * scale;
-
             const grenadeX = this.canvas.width - weaponWidth - this.padding;
             const weaponX = grenadeX - weaponWidth - weaponSpacing;
+            this.drawWeaponInfoHorizontal(player, weaponX, grenadeX, combatRowY, weaponWidth, weaponHeight);
 
-            this.drawWeaponInfoHorizontal(player, weaponX, grenadeX, xpBarY, weaponWidth, weaponHeight);
+            const metaWidth = 132 * scale;
+            const metaHeight = 50 * scale;
+            const metaSpacing = 8 * scale;
+            const xpBarWidth = Math.min(420 * scale, this.canvas.width * 0.38);
+            const xpBarHeight = 44 * scale;
+            const xpBarY = this.getBottomHudRowY(xpBarHeight);
+            const xpBarX = (this.canvas.width - xpBarWidth) / 2;
+            const metaRowY = xpBarY - metaHeight - metaSpacing;
+
+            const leftX = this.padding;
+            this.drawStat('Score', gameState.score, '🏆', '#ffd700', leftX, metaRowY, metaWidth, metaHeight);
+            this.drawScrapStat(player.scrap || 0, leftX + metaWidth + metaSpacing, metaRowY, metaWidth, metaHeight, scale);
+            this.drawStat('Zombies', waveProgressText, '🧟', waveProgressColor, leftX + (metaWidth + metaSpacing) * 2, metaRowY, metaWidth, metaHeight);
+            this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
         }
     }
 
@@ -660,14 +641,6 @@ export class GameHUD {
 
         // Get local player (mouse input) or first player
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
-
-        // Draw centralized multiplier indicator at top center (if active or building up)
-        // Use local player or first player for multiplier display
-        if (localPlayer && (localPlayer.scoreMultiplier > 1.0 || localPlayer.consecutiveKills > 0)) {
-            const centerX = this.canvas.width / 2;
-            const multiplierY = 100 * scale; // Moved back up
-            this.drawMultiplierIndicator(localPlayer, centerX, multiplierY);
-        }
 
         // Draw players in grid positions
         if (gameState.players.length >= 1) {
@@ -722,6 +695,30 @@ export class GameHUD {
         const scale = this.getUIScale();
         const bottomInset = 6 * scale; // small gutter above screen edge / OS taskbar
         return this.canvas.height - rowHeight - bottomInset;
+    }
+
+    getTopCompassLayout() {
+        const scale = this.getUIScale();
+        const compassHeight = 30;
+        const compassY = 10;
+        const compassWidth = this.canvas.width * 0.28;
+        const compassX = (this.canvas.width - compassWidth) / 2;
+        const statWidth = 115 * scale;
+        const statHeight = 44 * scale;
+        const compassSpacing = 8 * scale;
+        const statY = compassY + (compassHeight / 2) - (statHeight / 2);
+
+        return {
+            scale,
+            compassHeight,
+            compassY,
+            compassWidth,
+            compassX,
+            statWidth,
+            statHeight,
+            compassSpacing,
+            statY
+        };
     }
 
     drawPlayerStats(player, x, y, labelPrefix = "") {
@@ -861,7 +858,7 @@ export class GameHUD {
         // Value (Bottom-right stacked, prominent)
         this.ctx.textAlign = 'right';
         this.ctx.textBaseline = 'bottom';
-        const valueFontSize = Math.max(16, Math.round(24 * scale));
+        const valueFontSize = Math.max(14, Math.min(Math.round(24 * scale), Math.round(height * 0.42)));
         this.ctx.font = `bold ${valueFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = scrapColor;
 
@@ -1794,10 +1791,13 @@ export class GameHUD {
         if (gameState.players.length === 0) return;
 
         const player = gameState.players[0];
-        const compassHeight = 30;
-        const compassY = 10;
-        const compassWidth = this.canvas.width * 0.4;
-        const compassX = (this.canvas.width - compassWidth) / 2;
+        const {
+            compassHeight,
+            compassY,
+            compassWidth,
+            compassX,
+            scale
+        } = this.getTopCompassLayout();
 
         this.ctx.save();
 
@@ -1818,7 +1818,6 @@ export class GameHUD {
         const directions = ['N', 'E', 'S', 'W'];
         const directionAngles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
 
-        const scale = this.getUIScale();
         const compassFontSize = Math.max(10, Math.round(14 * scale));
         this.ctx.font = `bold ${compassFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
@@ -1858,6 +1857,22 @@ export class GameHUD {
         });
 
         this.ctx.restore();
+
+        this.drawMultiplierOverlay();
+    }
+
+    drawMultiplierOverlay() {
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+        if (gameState.players.length === 0) return;
+
+        const player = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
+        if (!player || (player.scoreMultiplier <= 1.0 && player.consecutiveKills === 0)) return;
+
+        const { compassY, compassHeight, scale } = this.getTopCompassLayout();
+        const boxHeight = 70 * scale;
+        const centerX = this.canvas.width / 2;
+        const multiplierY = compassY + compassHeight + 10 * scale + boxHeight / 2;
+        this.drawMultiplierIndicator(player, centerX, multiplierY);
     }
 
 

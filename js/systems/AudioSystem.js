@@ -22,6 +22,15 @@ const GAME_MUSIC_TRACKS = [
     'assets/the_mountain-game-game-music-508018.mp3',
     'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3'
 ];
+// Code-level music attenuation (settings slider unchanged)
+const MUSIC_OUTPUT_SCALE = 0.5;
+
+function getMusicGainVolume(settingsMusicVol) {
+    const vol = settingsMusicVol !== undefined
+        ? settingsMusicVol
+        : (settingsManager.getSetting('audio', 'musicVolume') ?? 0.25);
+    return vol * MUSIC_OUTPUT_SCALE;
+}
 
 function scheduleGunshotBufferCreation() {
     if (gunshotBuffer || gunshotBufferScheduled) return;
@@ -81,8 +90,7 @@ function ensureGameMusicGain() {
     if (!audioContext || gameMusicGain) return;
 
     gameMusicGain = audioContext.createGain();
-    const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-    gameMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.25;
+    gameMusicGain.gain.value = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
     gameMusicGain.connect(masterGainNode || audioContext.destination);
 }
 
@@ -147,8 +155,7 @@ export function initAudio() {
             scheduleGunshotBufferCreation();
 
             // Update music volume if it exists
-            const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-            const resolvedMusicVol = musicVol !== undefined ? musicVol : 0.25;
+            const resolvedMusicVol = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
             if (menuMusicGain) {
                 menuMusicGain.gain.value = resolvedMusicVol;
             }
@@ -187,7 +194,7 @@ export function updateAudioSettings() {
         sfxGainNode.gain.value = sfxVol;
     }
 
-    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
+    const musicVol = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
     if (menuMusicGain) {
         menuMusicGain.gain.value = musicVol;
     } else if (menuMusic) {
@@ -216,8 +223,7 @@ export function playMenuMusic() {
         try {
             menuMusicSource = audioContext.createMediaElementSource(menuMusic);
             menuMusicGain = audioContext.createGain();
-            const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.25;
+            menuMusicGain.gain.value = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
             menuMusicSource.connect(menuMusicGain);
             menuMusicGain.connect(masterGainNode || audioContext.destination);
         } catch (e) {
@@ -281,7 +287,7 @@ export function setGameMusicIntensity(intensity) {
     gameMusicIntensity = Math.max(0, Math.min(1, intensity));
     if (!gameMusicGain) return;
 
-    const baseVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
+    const baseVol = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
     const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
     const scale = 0.72 + gameMusicIntensity * 0.28;
     gameMusicGain.gain.value = baseVol * masterVol * scale;
@@ -626,8 +632,47 @@ export function playDodgeSound() {
     }
 }
 
+// Piercing siren scream — horde buff + aim disruption telegraph
+export function playSirenScreamSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return;
+    }
+
+    try {
+        const duration = 0.45;
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+
+            const freq = 520 + Math.sin(t * 40) * 90 + t * 180;
+            sample += Math.sin(t * freq * 2 * Math.PI) * 0.35;
+
+            const noise = Math.random() * 2 - 1;
+            sample += noise * 0.25 * Math.exp(-t * 6);
+
+            const envelope = Math.sin((t / duration) * Math.PI);
+            data[i] = sample * envelope * 0.42;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.55;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
 // Generate kill confirmed sound using Web Audio API
-// zombieType: 'normal', 'fast', 'armored', 'exploding', 'ghost', 'spitter', 'boss'
+// zombieType: 'normal', 'fast', 'armored', 'exploding', 'ghost', 'spitter', 'siren', 'boss'
 export function playKillSound(zombieType = 'normal') {
     if (!audioContext) {
         initAudio();
@@ -643,6 +688,7 @@ export function playKillSound(zombieType = 'normal') {
             'exploding': 0.9,   // Slightly lower (exploding = heavier)
             'ghost': 1.2,       // Higher pitch (ghost = lighter)
             'spitter': 1.1,     // Slightly higher
+            'siren': 1.4,       // High-pitched screech kill
             'boss': 0.5         // Much lower pitch (boss = very heavy)
         };
         const pitchMultiplier = pitchMultipliers[zombieType] || 1.0;

@@ -94,6 +94,7 @@ A global grain effect applied to the viewport to reduce banding and add texture.
 
 - **Zombies**: Radial gradients for "toxic aura" and body.
   - [AMENDED 2026-06-25]: Upright zombies use additive torso overlay layers (`screen`/`lighter`, clipped to torso ellipse) and procedural organic motion (gaze-offset eyes, velocity lean, per-id `walkPhase`). Extra glow layers respect `graphicsSettings.getQualityValues('aura'|'eyeGlow')`.
+  - [AMENDED 2026-07-05]: **Siren** — cyan palette (`#00e5ff` / `#00bcd4`), throat-sac pulse, radio-static halo arcs during scream windup; shock rings rendered by `EntityRenderSystem.drawSirenScreamEffects`.
 - **Projectiles**: High contrast cores (white/yellow) with colored outer glows.
 - **Lighting**: Additive blending (implicit in some particle effects) and radial gradient overlays for vignettes.
 - **Shadows**: Dark ellipses offset below entities (zombies and players) when shadows enabled.

@@ -1,7 +1,7 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { MAX_PARTICLES, RENDERING } from '../core/constants.js';
-import { playDamageSound, playKillSound, playExplosionSound } from '../systems/AudioSystem.js';
+import { playDamageSound, playKillSound, playExplosionSound, playSirenScreamSound } from '../systems/AudioSystem.js';
 import { triggerDamageIndicator } from '../utils/gameUtils.js';
 import { createExplosion, createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
 import { settingsManager } from '../systems/SettingsManager.js';
@@ -736,6 +736,7 @@ export class Zombie {
             'flying':    { label: 'Flyer',   color: '#9c64c8' },
             'blight':    { label: 'Blight',  color: '#e040fb' },
             'crawler':   { label: 'Crawler', color: '#8d6e63' },
+            'siren':     { label: 'Siren',   color: '#00e5ff' },
             'boss':      { label: 'BOSS',    color: '#ff1744' }
         };
 
@@ -3004,6 +3005,296 @@ export class CrawlerZombie extends Zombie {
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
         this.lastDamageTime = Date.now();
+        return this.health <= 0;
+    }
+}
+
+// Siren Zombie - Support screamer that buffs nearby zombies and disrupts player aim
+export class SirenZombie extends Zombie {
+    constructor(canvasWidth, canvasHeight) {
+        super(canvasWidth, canvasHeight);
+        this.type = 'siren';
+        this.speed *= 0.85;
+        this.health = Math.floor(this.health * 0.9);
+        this.maxHealth = this.health;
+        this.radius *= 1.05;
+        this.lastScreamTime = -8000;
+        this.screamCooldown = 5000;
+        this.screamWindupStart = 0;
+        this.screamWindupMs = 600;
+        this.screamRange = 260;
+        this.screamRadius = 220;
+        this.screamEffectRadius = 280;
+        this.staticHaloOffset = Math.random() * 1000;
+    }
+
+    getMotionProfile() {
+        return {
+            leanScale: 0.7,
+            bobScale: 1.1,
+            swayScale: 1.25,
+            gazeScale: 1.2,
+            walkPeriod: 190,
+            armPeriod: 280,
+            tremorScale: 0.4
+        };
+    }
+
+    getEyeDrawOptions() {
+        return {
+            leftX: -5,
+            rightX: 5,
+            y: -4,
+            size: 3,
+            shadowColor: '#00e5ff',
+            glowRgb: '0, 229, 255'
+        };
+    }
+
+    performScream() {
+        const now = Date.now();
+        const radiusSq = this.screamRadius * this.screamRadius;
+
+        for (let i = 0; i < gameState.zombies.length; i++) {
+            const z = gameState.zombies[i];
+            if (z === this || z.type === 'boss') continue;
+            const ddx = z.x - this.x;
+            const ddy = z.y - this.y;
+            if (ddx * ddx + ddy * ddy <= radiusSq) {
+                z.sirenBoostUntil = now + 2500;
+            }
+        }
+
+        for (let i = 0; i < gameState.players.length; i++) {
+            const p = gameState.players[i];
+            if (p.health <= 0) continue;
+            const ddx = p.x - this.x;
+            const ddy = p.y - this.y;
+            if (ddx * ddx + ddy * ddy <= radiusSq) {
+                p.sirenJitterUntil = now + 750;
+            }
+        }
+
+        gameState.sirenScreamEffects.push({
+            x: this.x,
+            y: this.y,
+            startTime: now,
+            duration: 500,
+            maxRadius: this.screamEffectRadius
+        });
+
+        playSirenScreamSound();
+    }
+
+    update(player) {
+        if (!this.baseSpeed) {
+            this.baseSpeed = this.speed;
+        }
+
+        if (this.slowedUntil && Date.now() > this.slowedUntil) {
+            this.speed = this.originalSpeed;
+            this.slowedUntil = undefined;
+            this.originalSpeed = undefined;
+        }
+
+        if (this.burnTimer > 0) {
+            const now = Date.now();
+            if (!this.lastBurnTick || now - this.lastBurnTick >= RENDERING.BURN_TICK_INTERVAL) {
+                this.health -= this.burnDamage;
+                this.lastBurnTick = now;
+
+                if (gameState.particles.length < MAX_PARTICLES - 10) {
+                    const fireColor = `rgba(255, ${Math.floor(Math.random() * 100 + 100)}, 0, 0.8)`;
+                    createParticles(this.x, this.y, fireColor, 2);
+                }
+            }
+            this.burnTimer -= 16;
+            if (this.burnTimer <= 0) {
+                this.burnTimer = 0;
+                this.burnDamage = 0;
+                this.lastBurnTick = undefined;
+            }
+        }
+
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq) || 1;
+        const now = Date.now();
+
+        this.lastX = this.x;
+        this.lastY = this.y;
+
+        const inScreamRange = dist <= this.screamRange;
+        const cooldownReady = now - this.lastScreamTime >= this.screamCooldown;
+
+        if (this.screamWindupStart > 0) {
+            if (now - this.screamWindupStart >= this.screamWindupMs) {
+                this.performScream();
+                this.screamWindupStart = 0;
+                this.lastScreamTime = now;
+            }
+        } else if (inScreamRange && cooldownReady) {
+            this.screamWindupStart = now;
+        } else if (!inScreamRange) {
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+        }
+
+        this.vx = this.x - this.lastX;
+        this.vy = this.y - this.lastY;
+        this.lowerBodyHitbox.x = this.x;
+        this.lowerBodyHitbox.y = this.y + 15;
+        this.updateOrganicMotion(player, dx, dy, dist);
+    }
+
+    drawStaticBody(ctx, x, y, radius, pose = null) {
+        const armReach = pose ? pose.armReach : 0;
+
+        const bodyGradient = ctx.createRadialGradient(x - 4, y - 6, 0, x, y, radius);
+        bodyGradient.addColorStop(0, '#4dd0e1');
+        bodyGradient.addColorStop(0.35, '#26c6da');
+        bodyGradient.addColorStop(0.65, '#00838f');
+        bodyGradient.addColorStop(1, '#004d57');
+        ctx.fillStyle = bodyGradient;
+
+        ctx.beginPath();
+        ctx.ellipse(x, y + 18, radius * 0.95, radius * 1.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        this.drawTorsoOverlayLayer(ctx, x, y, radius);
+
+        ctx.beginPath();
+        ctx.ellipse(x, y - 2, radius * 0.85, radius * 1.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - radius * 0.35, y + 2);
+        ctx.lineTo(x, y + 6);
+        ctx.lineTo(x + radius * 0.35, y + 2);
+        ctx.stroke();
+
+        const throatPulse = Math.sin(this.walkPhase * 2) * 0.2 + 0.8;
+        const windup = this.screamWindupStart > 0
+            ? Math.min(1, (Date.now() - this.screamWindupStart) / this.screamWindupMs)
+            : 0;
+        const sacAlpha = 0.45 + windup * 0.45;
+        ctx.fillStyle = `rgba(0, 229, 255, ${sacAlpha * throatPulse})`;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 12, radius * 0.42 * (1 + windup * 0.25), radius * 0.55 * (1 + windup * 0.35), 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#004d57';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        const armSwing = Math.sin(this.walkPhase) * 4;
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y + 8);
+        ctx.lineTo(x - 20 + armSwing, y + 28 + armReach);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + 8, y + 8);
+        ctx.lineTo(x + 20 - armSwing, y + 28 + armReach);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#003840';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.ellipse(x, y, radius * 0.9, radius * 1.1, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    draw(context = ctx) {
+        const { x: drawX, y: drawY, pose } = this.getDrawPosition();
+        const windup = this.screamWindupStart > 0
+            ? Math.min(1, (Date.now() - this.screamWindupStart) / this.screamWindupMs)
+            : 0;
+
+        context.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        context.beginPath();
+        context.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2);
+        context.fill();
+
+        const haloTime = (Date.now() + this.staticHaloOffset) / 120;
+        const haloPulse = Math.sin(haloTime) * 0.25 + 0.75;
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const baseOpacity = (0.35 + windup * 0.35) * auraQuality.opacity * haloPulse;
+            const haloGradient = context.createRadialGradient(drawX, drawY, this.radius * 0.4, drawX, drawY, this.radius * 2.6);
+            haloGradient.addColorStop(0, `rgba(0, 229, 255, ${baseOpacity})`);
+            haloGradient.addColorStop(0.45, `rgba(0, 188, 212, ${baseOpacity * 0.5})`);
+            haloGradient.addColorStop(1, 'rgba(0, 77, 87, 0)');
+            context.fillStyle = haloGradient;
+            context.beginPath();
+            context.arc(drawX, drawY, this.radius * 2.6, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        if (windup > 0.2) {
+            context.save();
+            context.translate(drawX, drawY);
+            context.strokeStyle = `rgba(0, 229, 255, ${0.25 + windup * 0.45})`;
+            context.lineWidth = 1.5;
+            for (let i = 0; i < 8; i++) {
+                const angle = haloTime + (Math.PI * 2 * i / 8);
+                context.beginPath();
+                context.moveTo(Math.cos(angle) * this.radius * 1.4, Math.sin(angle) * this.radius * 1.4);
+                context.lineTo(Math.cos(angle) * this.radius * (1.7 + windup * 0.4), Math.sin(angle) * this.radius * (1.7 + windup * 0.4));
+                context.stroke();
+            }
+            context.restore();
+        }
+
+        this.drawStaticBody(context, drawX, drawY, this.radius, pose);
+        this.drawHitReactFlash(context, drawX, drawY, this.radius);
+        this.drawEyes(context, drawX, drawY, this.radius);
+
+        if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
+            const timeSinceDamage = Date.now() - this.lastDamageTime;
+            if (timeSinceDamage < 2000 && this.maxHealth) {
+                const barWidth = this.radius * 2.5;
+                const barHeight = 3;
+                const barX = this.x - barWidth / 2;
+                const barY = this.y - this.radius - 8;
+
+                context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                context.fillRect(barX, barY, barWidth, barHeight);
+
+                const healthPercent = Math.max(0, this.health / this.maxHealth);
+                const fillWidth = barWidth * healthPercent;
+                const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+
+                if (healthBarStyle === 'gradient') {
+                    const gradient = context.createLinearGradient(barX, barY, barX + barWidth, barY);
+                    gradient.addColorStop(0, '#00bcd4');
+                    gradient.addColorStop(1, '#00e5ff');
+                    context.fillStyle = gradient;
+                } else if (healthBarStyle === 'solid') {
+                    context.fillStyle = '#00bcd4';
+                } else {
+                    context.fillStyle = '#ffffff';
+                }
+
+                context.fillRect(barX, barY, fillWidth, barHeight);
+
+                if (healthBarStyle !== 'simple') {
+                    context.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    context.lineWidth = 1;
+                    context.strokeRect(barX, barY, barWidth, barHeight);
+                }
+            }
+        }
+    }
+
+    takeDamage(bulletDamage) {
+        this.screamWindupStart = 0;
+        this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
+        this.hitReactUntil = Date.now() + 180;
         return this.health <= 0;
     }
 }

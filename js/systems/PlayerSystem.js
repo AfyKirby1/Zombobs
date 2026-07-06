@@ -127,6 +127,16 @@ export class PlayerSystem {
                 };
             }
 
+            // Siren scream aim disruption
+            if (player.sirenJitterUntil && player.sirenJitterUntil > Date.now()) {
+                const jitterStrength = 0.12;
+                const jitter = (Math.random() - 0.5) * jitterStrength * 2;
+                player.angle += jitter;
+                const aimDist = Math.sqrt((target.x - player.x) ** 2 + (target.y - player.y) ** 2) || 200;
+                target.x = player.x + Math.cos(player.angle) * aimDist;
+                target.y = player.y + Math.sin(player.angle) * aimDist;
+            }
+
             // Normalize movement vector
             const len = Math.sqrt(moveX * moveX + moveY * moveY);
             if (len > 1) {

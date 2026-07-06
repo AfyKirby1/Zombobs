@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
-import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie, BlightZombie, CrawlerZombie } from '../entities/Zombie.js';
+import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie, BlightZombie, CrawlerZombie, SirenZombie } from '../entities/Zombie.js';
 import { BossZombie } from '../entities/BossZombie.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 import {
@@ -24,6 +24,7 @@ const ZOMBIE_CLASS_MAP = {
     flying: FlyingZombie,
     blight: BlightZombie,
     crawler: CrawlerZombie,
+    siren: SirenZombie,
     boss: BossZombie
 };
 

@@ -55,7 +55,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights
 ✅ **Gallery Screen** - Full showcase gallery displaying zombies, weapons, and pickups
   - Gallery button on main menu (row 4)
-  - Three sections: Zombies (7 types), Weapons (8 types), Pickups (8 types)
+  - Three sections: Zombies (8 gallery cards / 10 playable types), Weapons (8 types), Pickups (8 types)
   - Visual icons with stats, descriptions, and animations
   - Card-based layout with scrolling support
   - Glassmorphism styling matching lobby design
@@ -117,7 +117,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - main.js reduced from ~2,536 → ~1,183 lines (cumulative ~53% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
-✅ **Enemy Variety** - 8 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Crawler)
+✅ **Enemy Variety** - 10 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Blight, Crawler, **Siren**) + Boss. [AMENDED 2026-07-05]: **Siren** — wave 8+ support screamer; buffs horde speed, disrupts aim, interruptible windup. See `DOCS/ENEMY_TYPES.md`.
 ✅ **Day/Night Cycle** - Dynamic time-based atmosphere with difficulty scaling
 ✅ **Flamethrower Weapon** - Short-range weapon with burning damage over time
 ✅ **Environmental Hazards** - Acid pools from Spitter Zombie attacks
@@ -327,6 +327,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   ├── SUMMARY.md                # This file
 │   ├── SCRATCHPAD.md             # Development notes
 │   ├── STYLE_GUIDE.md            # Design system documentation
+│   ├── ENEMY_TYPES.md            # Zombie variant stats, spawn rules, counterplay
 │   ├── SBOM.md                   # Software Bill of Materials
 │   ├── REFACTOR_PLAN.md          # Refactoring strategy
 │   └── ...                       # Other docs
@@ -338,7 +339,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ### Game Classes
 - **Bullet** - Projectile physics and rendering (weapon-specific damage, visual trails)
 - **FlameBullet** - Short-range flame projectile with burn effect
-- **Zombie** - Enemy AI, pathfinding, visual design (6 variants: Normal, Fast, Exploding, Armored, Ghost, Spitter)
+- **Zombie** - Enemy AI, pathfinding, visual design (10 variants + Boss; see `DOCS/ENEMY_TYPES.md`)
 - **Player** - Supports multiple player instances (P1/P2) with independent input and state
 - **Particle** - Visual effects system (supports custom blood particles)
 - **Pickup** - Power-up system (Health, Ammo, Damage Buff, Nuke)

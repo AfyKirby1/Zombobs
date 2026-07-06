@@ -212,6 +212,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
     - `showBadges` - Badge screen visibility flag
 - `pickupsCollected` - Total pickups gathered in the current session (v0.8.3.5)
 - `headshots` - Total headshots (upper-body hits) in the current session (v0.8.3.5)
+- `sirenScreamEffects[]` - Active siren scream shock-ring VFX `{ x, y, startTime, duration, maxRadius }` [AMENDED 2026-07-05]
 - `achievementNotifications[]` - Array of achievement notifications to display
     - `sessionResults` - Session results from profile system (rank XP, achievements, badges, battlepass progress)
 
@@ -304,7 +305,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 #### Zombie.js
 **Purpose**: Zombie enemy classes
 
-**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `BlightZombie`, `CrawlerZombie`
+**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `BlightZombie`, `CrawlerZombie`, `SirenZombie`
 
 **Zombie Variants**:
 - **NormalZombie**: Default enemy type with **8 randomized visual variants**:
@@ -354,16 +355,17 @@ flowchart TD
 - **FlyingZombie**: Flies with wings, 1.2x speed, 70% health, smaller hitbox, subtle floating animation, Wave 5+
 - **BlightZombie**: Fungal support zombie, 0.75x speed, 1.3x health (tanky), 1.1x radius. Leaves toxic slime trail (acid pools every 900ms, smaller radius, lower damage). Explodes into a damaging spore cloud on death (70px radius, 20 AOE damage) plus a lingering slime pool. Deep purple/magenta appearance with mushroom growths and pulsing fungal nodules, Wave 7+
 - **CrawlerZombie**: Low-profile crawler, 1.3x speed, 60% health, 0.7x radius (smaller hitbox), dark brown/gray appearance, crawling pose, Wave 4+
+- **SirenZombie** [AMENDED 2026-07-05]: Support screamer, 0.85x speed, 90% health, 1.05x radius. Stops at 260px, 600ms scream windup (interruptible on hit), 5s cooldown. Scream (220px): +35% zombie speed (2.5s via `sirenBoostUntil`), player aim/crosshair jitter (0.75s via `sirenJitterUntil`), cyan shock ring (`gameState.sirenScreamEffects[]`), procedural screech. Cyan throat sac + radio-static halo. Wave 8+; rare (~3.5%), ENCIRCLE ~7%, ELITES 5th slot. See `DOCS/ENEMY_TYPES.md`.
 
 **Methods**:
-- `update(player)` - AI pathfinding (kiting for SpitterZombie, slime trail dropping for BlightZombie); calls `updateOrganicMotion()` for gaze/pose state
+- `update(player)` - AI pathfinding (kiting for SpitterZombie, slime trail for BlightZombie, scream cycle for SirenZombie); calls `updateOrganicMotion()` for gaze/pose state
 - `drawStaticBody(ctx, x, y, radius, pose)` - Layered body render (torso → overlay → limbs → head)
 - `draw()` - Aura, posed body, hit flash, gaze eyes, health bar
   - Health bar rendering with configurable styles (gradient, solid, simple)
   - Health bar shown for 2 seconds after taking damage (if enabled)
   - Style controlled by `enemyHealthBarStyle` setting
 - `drawNameTag(context, yOffset)` - Renders a color-coded type label pill above the zombie
-  - Display names: Zombie, Runner, Tank, Bomber, Ghost, Spitter, Flyer, Blight, Crawler, BOSS
+  - Display names: Zombie, Runner, Tank, Bomber, Ghost, Spitter, Flyer, Blight, Crawler, Siren, BOSS
   - Each type has a unique color matching its visual theme
   - Controlled by `video.enemyNameTags` setting (default: on)
   - Called automatically by `EntityRenderSystem` post-draw hook (no per-subclass integration needed)
@@ -978,6 +980,7 @@ flowchart TD
 - Spawn pack bursts; indicators fade after wave 8
 - Five mutators: SWARM, ELITES, VOLATILE, ENCIRCLE, RUSH
 - Boss waves spawn `floor(wave/2)` minions (cap 12)
+- [AMENDED 2026-07-05]: `selectZombieClass()` — **Siren** at wave 8+ (~3.5% roll; ~7% ENCIRCLE; ELITES 5th slot when wave ≥ 8)
 
 **Dependencies**: `core/constants.js` (`WAVE_BREAK_DURATION`)
 
@@ -1009,6 +1012,7 @@ flowchart TD
 **Features**:
 - Multi-input source support (mouse, keyboard, gamepad, AI, remote)
 - Player movement and sprint logic with stamina system
+- Siren scream aim disruption (`sirenJitterUntil` on angle + shoot target) [AMENDED 2026-07-05]
 - Footstep sound system
 - Player rendering with shadows, glow, muzzle flash, melee swipe
 - Co-op lobby player joining/leaving logic
@@ -1075,6 +1079,7 @@ flowchart TD
 **Features**:
 - Viewport culling for performance (only updates zombies near viewport)
 - Night speed multiplier (20% speed increase during night)
+- Siren horde buff multiplier (`sirenBoostUntil` → 1.35× speed while active) [AMENDED 2026-07-05]
 - Adaptive update rate based on zombie count and network latency
 - Delta compression (only sends changed zombies)
 - Velocity-based extrapolation for smooth movement
@@ -1103,6 +1108,7 @@ flowchart TD
 - All pickup types (health, ammo, damage, nuke, speed, rapidfire, shield, adrenaline, scrap)
 - Scrap shrines (`scrapShrines`)
 - Zombies (with automatic name tag post-draw via `drawNameTag`)
+- Frost nova ring (`drawFrostNovaEffect`) and **siren scream rings** (`drawSirenScreamEffects` — compacts expired entries from `gameState.sirenScreamEffects[]`)
 
 **Dependencies**: `utils/gameUtils.js` (isInViewport, isVisibleOnScreen), `core/canvas.js` (ctx fallback)
 
@@ -2158,6 +2164,7 @@ All game state is managed through the `gameState` object:
 - `grenades[]` - Active grenades array
 - `acidProjectiles[]` - Active acid projectiles from spitter zombies
 - `acidPools[]` - Active acid pool hazards
+- `sirenScreamEffects[]` - Siren scream shock-ring VFX instances [AMENDED 2026-07-05]
 - `healthPickups[]` - Active health pickups
 - `ammoPickups[]` - Active ammo pickups
 - `damagePickups[]` - Active damage buff pickups

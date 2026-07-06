@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-05 - Siren Zombie (Support Screamer)
+
+Horde games need **priority targets** that aren't just bigger/fast chasers. Siren fills the gap Spitter (ranged DOT) and Blight (ground denial) don't: **force target selection** under pressure. 600ms interruptible windup rewards aim discipline; scream buff is horde-wide but short (2.5s) so it's panic, not permanent snowball. Aim jitter is light (~0.12 rad) — enough to feel the scream, not enough to feel unfair. Cyan palette separates Siren from toxic green (Spitter) and purple (Blight) at a glance. Full reference: `DOCS/ENEMY_TYPES.md`.
+
 ## 2026-06-26 - Smooth Game Entry
 
 Lazy WebGPU fixed menu boot but moved the hitch to **Play** — module parse, shader compile, and `gpuCanvas` pop-in all landed at once with no feedback. Split the fix into two paths: **idle warm-up** on menu (`requestIdleCallback` ~2–3.5s) starts GPU + ground texture quietly; **async `startGame()`** only shows the **PREPARING WORLD** overlay when Play beats warm-up. `gpuCanvas` gets a CSS opacity fade so the GPU layer doesn't snap in. Keeps fast path instant when user reads menu a few seconds; cold immediate-Play still feels intentional, not broken.

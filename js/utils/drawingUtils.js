@@ -74,6 +74,13 @@ export function drawCrosshair(mouse) {
 
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
 
+    let crosshairX = mouse.x;
+    let crosshairY = mouse.y;
+    if (localPlayer.sirenJitterUntil && localPlayer.sirenJitterUntil > Date.now()) {
+        crosshairX += (Math.random() - 0.5) * 18;
+        crosshairY += (Math.random() - 0.5) * 18;
+    }
+
     ctx.save();
     
     // Get crosshair settings
@@ -126,7 +133,7 @@ export function drawCrosshair(mouse) {
         // Simple dot crosshair
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 3, 0, Math.PI * 2);
         ctx.fill();
 
         // Outline
@@ -138,19 +145,19 @@ export function drawCrosshair(mouse) {
         ctx.strokeStyle = crosshairOutlineColor;
         ctx.lineWidth = crosshairLineWidth + 2;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
 
         // Center dot
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 1.5, 0, Math.PI * 2);
         ctx.fill();
     } else if (crosshairStyle === 'cross') {
         // Simple cross (no center dot)
@@ -159,26 +166,26 @@ export function drawCrosshair(mouse) {
         ctx.lineCap = 'round';
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
 
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
     } else {
         // Default: cross with center dot
@@ -187,31 +194,31 @@ export function drawCrosshair(mouse) {
         ctx.lineCap = 'round';
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
 
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
 
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 1.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -227,10 +234,10 @@ export function drawCrosshair(mouse) {
 
         // Draw X
         ctx.beginPath();
-        ctx.moveTo(mouse.x - markerSize, mouse.y - markerSize);
-        ctx.lineTo(mouse.x + markerSize, mouse.y + markerSize);
-        ctx.moveTo(mouse.x + markerSize, mouse.y - markerSize);
-        ctx.lineTo(mouse.x - markerSize, mouse.y + markerSize);
+        ctx.moveTo(crosshairX - markerSize, crosshairY - markerSize);
+        ctx.lineTo(crosshairX + markerSize, crosshairY + markerSize);
+        ctx.moveTo(crosshairX + markerSize, crosshairY - markerSize);
+        ctx.lineTo(crosshairX - markerSize, crosshairY + markerSize);
         ctx.stroke();
     }
 

@@ -229,6 +229,7 @@ export const gameState = {
     adrenalineEndTime: 0,
     frostNovaEndTime: 0,
     frostNovaEffect: { active: false, x: 0, y: 0, startTime: 0, duration: 0, maxRadius: 0 },
+    sirenScreamEffects: [],
     killStreak: 0,
     lastKillTime: 0,
     // Multi-kill tracking (V0.7.1)
@@ -437,6 +438,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.adrenalineEndTime = 0;
     gameState.frostNovaEndTime = 0;
     gameState.frostNovaEffect = { active: false, x: 0, y: 0, startTime: 0, duration: 0, maxRadius: 0 };
+    gameState.sirenScreamEffects = [];
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
     gameState.maxKillStreak = 0; // V0.7.1: Track highest streak in session

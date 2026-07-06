@@ -1111,6 +1111,8 @@ export function getZombieBaseScore(zombie) {
         return ZOMBIE_BASE_SCORES.ghost;
     } else if (zombieType.includes('spitter')) {
         return ZOMBIE_BASE_SCORES.spitter;
+    } else if (zombieType.includes('siren')) {
+        return ZOMBIE_BASE_SCORES.siren;
     } else {
         return ZOMBIE_BASE_SCORES.normal;
     }

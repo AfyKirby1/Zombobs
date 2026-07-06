@@ -2,6 +2,20 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Startup Audit Repairs (2026-07-05) ✅ COMPLETE
+- **Done**: Hardened startup `localStorage` reads in `gameUtils.js` (`loadHighScore`, `loadUsername`, `loadMenuMusicMuted`) so blocked/corrupt storage cannot strand the boot overlay.
+- **Done**: `loadUsername()` now returns the effective username, fixing first-profile creation fallback in `PlayerProfileSystem`.
+- **Done**: Repaired `test-syntax.ps1` to use `node --check` across `js/**/*.js` without executing browser modules.
+- **Verified**: `powershell -NoProfile -ExecutionPolicy Bypass -File .\test-syntax.ps1` passes; no IDE diagnostics on edited files.
+
+### Siren Zombie — Support Screamer (2026-07-05) ✅ COMPLETE
+- **Done**: `SirenZombie` in `Zombie.js` — windup/scream AI, cyan visuals, horde speed buff, aim jitter, shock ring VFX, interrupt on hit.
+- **Done**: Spawn weights in `WaveChaosSystem` (wave 8+, ELITES/ENCIRCLE bias); `ZombieSpawnSystem` class map.
+- **Done**: `ZombieUpdateSystem` siren boost; `PlayerSystem` + `drawingUtils` aim/crosshair jitter; `EntityRenderSystem.drawSirenScreamEffects`.
+- **Done**: `playSirenScreamSound`, score (24), XP (19), Gallery card + icon.
+- **Docs**: `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `ENEMY_TYPES.md` (new), `STYLE_GUIDE`, `My_Thoughts`.
+- **Next**: Browser QA wave 8+ — verify windup interrupt, horde speed spike, crosshair jitter, ENCIRCLE/ELITES spawn bias.
+
 ### Audio Balance — Music vs Gunshots (2026-06-26) ✅ COMPLETE
 - **Done**: Halved default `audio.musicVolume` (`0.5` → `0.25`) so MP3 menu/gameplay tracks sit under gunfire without boosting SFX.
 - **Done**: Settings schema v3 migration — existing saves still on legacy default `0.5` auto-migrate to `0.25`; custom music levels untouched.
@@ -144,7 +158,8 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
+1. **Siren Zombie shipped (2026-07-05)**: Support screamer mob — horde buff, aim jitter, cyan VFX/audio; docs in `ENEMY_TYPES.md`.
+2. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
 2. **Class Tree System shipped (2026-06-25)**: `skillTreeDefinitions.js`, SkillSystem hybrid pool, combat hooks, LevelUp/HUD tree UI, Tree Master achievement.
 3. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
 4. **Desktop touch-control fix (2026-06-25)**: Gated `TouchControlSystem` + virtual gamepad behind `isMobileDevice()`.

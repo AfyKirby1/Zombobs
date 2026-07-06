@@ -154,9 +154,14 @@ export function triggerMuzzleFlash(x, y, angle) {
 }
 
 export function loadHighScore() {
-    const savedHighScore = localStorage.getItem('zombieSurvivalHighScore');
-    if (savedHighScore !== null) {
-        gameState.highScore = parseInt(savedHighScore);
+    try {
+        const savedHighScore = localStorage.getItem('zombieSurvivalHighScore');
+        if (savedHighScore !== null) {
+            const parsedScore = parseInt(savedHighScore, 10);
+            gameState.highScore = Number.isFinite(parsedScore) ? parsedScore : 0;
+        }
+    } catch (error) {
+        console.warn('[Startup] Failed to load high score:', error.message);
     }
 }
 
@@ -168,10 +173,16 @@ export function saveHighScore() {
 }
 
 export function loadUsername() {
-    const savedUsername = localStorage.getItem('zombobs_username');
-    if (savedUsername !== null && savedUsername.trim() !== '') {
-        gameState.username = savedUsername.trim();
+    try {
+        const savedUsername = localStorage.getItem('zombobs_username');
+        if (savedUsername !== null && savedUsername.trim() !== '') {
+            gameState.username = savedUsername.trim();
+            return gameState.username;
+        }
+    } catch (error) {
+        console.warn('[Startup] Failed to load username:', error.message);
     }
+    return gameState.username;
 }
 
 export function saveUsername() {
@@ -181,9 +192,13 @@ export function saveUsername() {
 }
 
 export function loadMenuMusicMuted() {
-    const savedMuted = localStorage.getItem('zombobs_menuMusicMuted');
-    if (savedMuted !== null) {
-        gameState.menuMusicMuted = savedMuted === 'true';
+    try {
+        const savedMuted = localStorage.getItem('zombobs_menuMusicMuted');
+        if (savedMuted !== null) {
+            gameState.menuMusicMuted = savedMuted === 'true';
+        }
+    } catch (error) {
+        console.warn('[Startup] Failed to load menu music preference:', error.message);
     }
 }
 

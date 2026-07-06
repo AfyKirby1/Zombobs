@@ -87,11 +87,19 @@ export function getSpawnTiming(wave, mutator, index) {
  */
 export function selectZombieClass(wave, mutator, rand) {
     if (mutator === 'elites') {
-        const slot = Math.floor(rand * 4);
+        const eliteSlots = wave >= 8 ? 5 : 4;
+        const slot = Math.floor(rand * eliteSlots);
         if (slot === 0 && wave >= 3) return 'fast';
         if (slot === 1 && wave >= 3) return 'armored';
         if (slot === 2 && wave >= 5) return 'exploding';
         if (slot === 3 && wave >= 6) return 'spitter';
+        if (slot === 4 && wave >= 8) return 'siren';
+    }
+
+    if (wave >= 8) {
+        let sirenChance = 0.035;
+        if (mutator === 'encircle') sirenChance = 0.07;
+        if (Math.random() < sirenChance) return 'siren';
     }
 
     const volatileBoost = mutator === 'volatile' ? 0.12 : 0;

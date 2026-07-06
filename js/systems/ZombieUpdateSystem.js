@@ -87,7 +87,16 @@ export class ZombieUpdateSystem {
                 zombie.baseSpeed = zombie.speed;
             }
             const bossFrostSlow = frostActive && zombie.type === 'boss' ? 0.3 : 1.0;
-            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow;
+            const now = Date.now();
+            let sirenBoost = 1.0;
+            if (zombie.sirenBoostUntil) {
+                if (now < zombie.sirenBoostUntil) {
+                    sirenBoost = 1.35;
+                } else {
+                    zombie.sirenBoostUntil = undefined;
+                }
+            }
+            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow * sirenBoost;
             zombie.update(closestPlayer);
         }
     }

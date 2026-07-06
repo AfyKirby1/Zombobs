@@ -73,6 +73,7 @@ export class GalleryScreen {
             { type: 'armored', name: 'Armored Zombie', health: '2x', speed: '0.8x', desc: 'The Tank - heavily armored', spawn: 'Wave 4+' },
             { type: 'ghost', name: 'Ghost Zombie', health: '80%', speed: '1.3x', desc: 'Semi-transparent spectral enemy', spawn: 'Wave 4+' },
             { type: 'spitter', name: 'Spitter Zombie', health: '80%', speed: '1.2x', desc: 'Ranged acid projectile attacks', spawn: 'Wave 6+' },
+            { type: 'siren', name: 'Siren Zombie', health: '90%', speed: '0.85x', desc: 'Screams to buff horde and disrupt aim', spawn: 'Wave 8+' },
             { type: 'boss', name: 'Boss Zombie', health: 'Massive', speed: '1.2x', desc: 'Epic boss with devastating attacks', spawn: 'Every 5 waves' }
         ], 'zombie');
 
@@ -340,6 +341,24 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'siren':
+                const sirenGradient = ctx.createRadialGradient(-3, -4, 0, 0, 0, radius);
+                sirenGradient.addColorStop(0, '#4dd0e1');
+                sirenGradient.addColorStop(1, '#004d57');
+                ctx.fillStyle = sirenGradient;
+                ctx.beginPath();
+                ctx.ellipse(0, 2, radius * 0.85, radius * 1.1, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = `rgba(0, 229, 255, ${0.6 + Math.sin(time / 120) * 0.3})`;
+                ctx.beginPath();
+                ctx.ellipse(0, radius * 0.35, radius * 0.35, radius * 0.25, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#00e5ff';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
+                ctx.arc(radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 'boss':
