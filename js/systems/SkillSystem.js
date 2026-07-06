@@ -267,6 +267,8 @@ class SkillSystem {
             flying: 15,     // Reduced from 18 (15% reduction)
             crawler: 14,    // Reduced from 16 (15% reduction)
             siren: 19,
+            splitter: 17,
+            shard: 5,
             boss: 287       // Reduced from 338 (15% reduction)
         };
 

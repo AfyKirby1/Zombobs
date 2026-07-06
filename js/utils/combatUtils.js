@@ -1113,6 +1113,10 @@ export function getZombieBaseScore(zombie) {
         return ZOMBIE_BASE_SCORES.spitter;
     } else if (zombieType.includes('siren')) {
         return ZOMBIE_BASE_SCORES.siren;
+    } else if (zombieType.includes('splitter')) {
+        return ZOMBIE_BASE_SCORES.splitter;
+    } else if (zombieType.includes('shard')) {
+        return ZOMBIE_BASE_SCORES.shard;
     } else {
         return ZOMBIE_BASE_SCORES.normal;
     }

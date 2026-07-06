@@ -137,6 +137,8 @@ export const ZOMBIE_BASE_SCORES = {
     ghost: 18,
     spitter: 22,
     siren: 24,
+    splitter: 21,
+    shard: 8,
     boss: 100
 };
 

@@ -21,6 +21,7 @@ Quick-reference for all zombie variants in Zombobs — stats, spawn rules, abili
 | Spitter | Ranged acid + kiting | 6 | Uncommon |
 | Blight | Slime trail + death burst | 1* | Uncommon |
 | **Siren** | **Horde buff + aim disrupt** | **8** | **Rare** |
+| **Splitter** | **Death → 2 fast shards** | **6** | **Rare** |
 | Boss | Wave climax | Every 5 waves | Guaranteed |
 
 \*Blight has a wide spawn band early; treat as a persistent rare support type rather than a late-game exclusive.
@@ -43,13 +44,56 @@ Quick-reference for all zombie variants in Zombobs — stats, spawn rules, abili
 | Crawler | — | 14 |
 | Blight | — | (falls through to normal XP) |
 | **Siren** | **24** | **19** |
+| **Splitter** | **21** | **17** |
+| **Shard** | **8** | **5** |
 | Boss | 100 | 287 |
 
 Sources: `js/core/constants.js` (`ZOMBIE_BASE_SCORES`), `js/systems/SkillSystem.js` (`xpValues`).
 
 ---
 
-## Siren Zombie (new)
+## Splitter Zombie (new)
+
+**Design intent**: Multi-kill trap — killing one enemy spawns two faster ones. Rewards focus fire and burst damage over chip-away kills.
+
+### Stats — Splitter
+- **Speed**: 0.85× base (slow, lumbering)
+- **Health**: 125% of wave-scaled base (you pay for the split)
+- **Hitbox**: 1.15× radius (bloated silhouette)
+- **On death**: Spawns **2 ShardZombie** minions via `spawnSplitterShards(x, y)`
+
+### Stats — Shard (minion)
+- **Speed**: 1.45× base
+- **Health**: 35% of wave-scaled base
+- **Hitbox**: 0.62× radius
+- **Does not split again**
+
+### Visual identity
+- Bloated green body with **amber crack lines** that pulse faster below 60% HP
+- Orange inner glow when wounded; amber aura under 75% HP
+- Shards: small, jagged, orange crack marks, twitchy motion
+- Name tags: **Splitter** (`#ffab40`), **Shard** (`#ffd54f`)
+
+### Counterplay
+- **Burst it down** — shotgun, grenade, or nuke the Splitter before shards spawn
+- **Budget ammo** — treat a kill as **3 targets** (1 splitter + 2 shards)
+- **Don't melee without room** — shards spawn offset ±20px from corpse
+
+### Spawn weights (wave 6+)
+- **Default**: ~3% independent roll
+- **VOLATILE** mutator: ~5.5%
+
+### Systems touched
+| System | Responsibility |
+|--------|----------------|
+| `SplitterZombie` / `ShardZombie` | Visuals + stats |
+| `spawnSplitterShards()` | Death burst, particles, crack SFX, push shards |
+| `bulletZombieCollisions.js` / `MeleeSystem.js` | `isSplitter` death hook |
+| Multiplayer leader | `zombie:spawn` per shard; clients must not double-spawn on `zombie:die` |
+
+---
+
+## Siren Zombie
 
 **Design intent**: Panic amplifier — a priority support target that makes the horde more dangerous without adding another fast chaser or ranged spitter.
 

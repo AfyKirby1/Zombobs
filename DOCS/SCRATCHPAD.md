@@ -2,6 +2,24 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Zombie Face QoL — Expanded Features (2026-07-05) ✅ COMPLETE
+- **Done**: Shared `getFaceProfile()` + `drawFaceFeatures()` on base `Zombie` — layered sockets, brows, nose, mouth styles, missing/chipped teeth, ears, wounds, drool, jaw line.
+- **Done**: Enhanced `drawEyes()` — pupil styles (round/slit/pin), lazy-eye offset, gaze-tracking cores, specular highlights.
+- **Done**: Wired into base, Normal, Fast, Exploding, Spitter, Siren, Splitter, and Shard variants.
+- **Verify**: `powershell -NoProfile -ExecutionPolicy Bypass -File .\test-syntax.ps1`.
+
+### Splitter Zombie — Shard Carrier (2026-07-05) ✅ COMPLETE
+- **Done**: `SplitterZombie` + `ShardZombie`; `spawnSplitterShards()` on death with crack SFX/particles.
+- **Done**: Kill hooks in `bulletZombieCollisions.js`, `MeleeSystem.js`; MP shard sync via `zombie:spawn` from leader.
+- **Done**: Spawn wave 6+ (~3%, VOLATILE ~5.5%); score/XP/gallery/audio.
+- **Docs**: `CHANGELOG`, `ENEMY_TYPES.md`, `SCRATCHPAD`.
+
+### Functional LOC Audit Tool (2026-07-05) ✅ COMPLETE
+- **Done**: Added `tools/count_functional_loc.py` to count maintained functional source lines while excluding docs, assets, generated mobile `www`, dependencies, IDE folders, vendored/minified bundles, and duplicate `Zombobs/` snapshots.
+- **Result**: `34,773` functional LOC across `125` files (`30,237` JS LOC across `88` JS files).
+- **Docs/Website**: Updated `landing.html`, `README.md`, `SUMMARY.md`, and `CHANGELOG.md` to mention the audited large vanilla codebase.
+- **Verify**: `python tools/count_functional_loc.py`.
+
 ### Startup Audit Repairs (2026-07-05) ✅ COMPLETE
 - **Done**: Hardened startup `localStorage` reads in `gameUtils.js` (`loadHighScore`, `loadUsername`, `loadMenuMusicMuted`) so blocked/corrupt storage cannot strand the boot overlay.
 - **Done**: `loadUsername()` now returns the effective username, fixing first-profile creation fallback in `PlayerProfileSystem`.

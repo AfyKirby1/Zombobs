@@ -74,6 +74,7 @@ export class GalleryScreen {
             { type: 'ghost', name: 'Ghost Zombie', health: '80%', speed: '1.3x', desc: 'Semi-transparent spectral enemy', spawn: 'Wave 4+' },
             { type: 'spitter', name: 'Spitter Zombie', health: '80%', speed: '1.2x', desc: 'Ranged acid projectile attacks', spawn: 'Wave 6+' },
             { type: 'siren', name: 'Siren Zombie', health: '90%', speed: '0.85x', desc: 'Screams to buff horde and disrupt aim', spawn: 'Wave 8+' },
+            { type: 'splitter', name: 'Splitter Zombie', health: '125%', speed: '0.85x', desc: 'Cracks into 2 fast shards on death', spawn: 'Wave 6+' },
             { type: 'boss', name: 'Boss Zombie', health: 'Massive', speed: '1.2x', desc: 'Epic boss with devastating attacks', spawn: 'Every 5 waves' }
         ], 'zombie');
 
@@ -360,6 +361,22 @@ export class GalleryScreen {
                 ctx.arc(-radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
                 ctx.arc(radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
                 ctx.fill();
+                break;
+            case 'splitter':
+                const splitGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius * 1.1);
+                splitGradient.addColorStop(0, '#c5e1a5');
+                splitGradient.addColorStop(1, '#33691e');
+                ctx.fillStyle = splitGradient;
+                ctx.beginPath();
+                ctx.ellipse(0, 3, radius * 1.05, radius * 1.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = `rgba(255, 171, 64, ${0.7 + Math.sin(time / 150) * 0.3})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.5, -radius * 0.2);
+                ctx.lineTo(0, radius * 0.5);
+                ctx.lineTo(radius * 0.4, radius * 0.8);
+                ctx.stroke();
                 break;
             case 'boss':
                 // Large dark red zombie

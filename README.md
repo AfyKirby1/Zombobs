@@ -721,6 +721,7 @@ We believe in the power of the platform.
 
 ### Frontend Core
 - **100% Vanilla JavaScript (ES6+)** - No frameworks, no libraries, no bloat
+- **34,773 Functional LOC** - Audited with `tools/count_functional_loc.py`; large custom codebase across gameplay, UI, rendering, networking, and tooling
 - **HTML5 Canvas API (2D Context)** - Hand-optimized rendering pipeline for gameplay/UI
 - **WebGPU** - Next-generation graphics API for GPU-accelerated background shaders and post-processing (automatic Canvas 2D fallback)
 - **Web Audio API** - Procedurally generated sound effects (Oscillators & Gain Nodes)

@@ -3,6 +3,7 @@ import { MELEE_RANGE, MELEE_DAMAGE, MELEE_COOLDOWN, TWO_PI } from '../core/const
 import { playDamageSound, playKillSound } from '../systems/AudioSystem.js';
 import { createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
 import { triggerExplosion } from '../utils/combatUtils.js';
+import { spawnSplitterShards } from '../entities/Zombie.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from './SettingsManager.js';
 import { skillSystem } from './SkillSystem.js';
@@ -52,6 +53,7 @@ export class MeleeSystem {
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
+                const isSplitter = zombie.type === 'splitter';
 
                 // Check if zombie dies
                 if (zombie.takeDamage(MELEE_DAMAGE)) {
@@ -72,6 +74,10 @@ export class MeleeSystem {
                         triggerExplosion(zombieX, zombieY, 60, 30, false);
                     }
 
+                    if (isSplitter) {
+                        spawnSplitterShards(zombieX, zombieY, gameState.multiplayer.socket);
+                    }
+
                     pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
 
                     gameState.score += 10;
@@ -82,7 +88,7 @@ export class MeleeSystem {
                     xpAmount4 = Math.floor(xpAmount4 * player.scoreMultiplier);
                     skillSystem.gainXP(xpAmount4);
                     // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
-                    if (!isExploding) {
+                    if (!isExploding && !isSplitter) {
                         playKillSound();
                     }
                     const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';

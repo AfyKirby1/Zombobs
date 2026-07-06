@@ -632,6 +632,42 @@ export function playDodgeSound() {
     }
 }
 
+// Crunchy crack when a Splitter bursts into shards
+export function playSplitterCrackSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return;
+    }
+
+    try {
+        const duration = 0.22;
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+            const noise = Math.random() * 2 - 1;
+            sample += noise * 0.55 * Math.exp(-t * 18);
+            const freq = 90 + t * 120;
+            sample += Math.sin(t * freq * 2 * Math.PI) * 0.35 * Math.exp(-t * 12);
+            const envelope = Math.sin((t / duration) * Math.PI);
+            data[i] = sample * envelope * 0.5;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.5;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
 // Piercing siren scream — horde buff + aim disruption telegraph
 export function playSirenScreamSound() {
     if (!audioContext) {
@@ -689,6 +725,8 @@ export function playKillSound(zombieType = 'normal') {
             'ghost': 1.2,       // Higher pitch (ghost = lighter)
             'spitter': 1.1,     // Slightly higher
             'siren': 1.4,       // High-pitched screech kill
+            'splitter': 0.95,
+            'shard': 1.55,
             'boss': 0.5         // Much lower pitch (boss = very heavy)
         };
         const pitchMultiplier = pitchMultipliers[zombieType] || 1.0;

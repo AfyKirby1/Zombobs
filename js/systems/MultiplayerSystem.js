@@ -549,6 +549,8 @@ export class MultiplayerSystem {
                         triggerExplosion(zombie.x, zombie.y, 100, 50, false);
                     }
 
+                    // Shards sync via zombie:spawn from leader — do not spawn here
+
                     // Remove zombie
                     gameState.zombies.splice(zombieIndex, 1);
                     gameState.zombiesKilled++;

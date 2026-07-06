@@ -5,6 +5,8 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+✅ **Functional Codebase Audit (2026-07-05)** — `tools/count_functional_loc.py` reports **34,773 functional LOC** across **125 maintained source files** after excluding docs, assets, generated mobile `www`, dependencies, IDE metadata, vendored/minified bundles, and duplicate snapshots. JavaScript accounts for **30,237 LOC** across **88 files**. The landing website now advertises the large vanilla codebase.
+
 **Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), **smooth game entry** (idle GPU/ground warm-up, async `startGame()`, session prep overlay, `gpuCanvas` fade-in), v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata. **Audio balance (2026-06-26)**: default music volume halved (`0.5` → `0.25`, settings v3 migration) so gunshots cut through MP3 tracks without raising SFX gain.
 
 ✅ **Smooth Game Entry (2026-06-26)** — WebGPU no longer hitch-pops on first Play: idle menu warm-up starts GPU module/init + ground texture preload; async `startGame()` shows a brief **PREPARING WORLD** canvas overlay only when GPU is not ready; `#gpuCanvas` fades in over 450ms. Key files: `js/main.js` (`warmSessionResourcesInBackground`, `prepareGameSession`), `js/ui/GameHUD.js` (session prep overlay), `css/style.css`.
@@ -117,7 +119,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - main.js reduced from ~2,536 → ~1,183 lines (cumulative ~53% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
-✅ **Enemy Variety** - 10 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Blight, Crawler, **Siren**) + Boss. [AMENDED 2026-07-05]: **Siren** — wave 8+ support screamer; buffs horde speed, disrupts aim, interruptible windup. See `DOCS/ENEMY_TYPES.md`.
+✅ **Enemy Variety** - 11 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Blight, Crawler, Siren, **Splitter**) + Shard minions + Boss. [AMENDED 2026-07-05]: **Splitter** — wave 6+ death-split carrier. See `DOCS/ENEMY_TYPES.md`.
 ✅ **Day/Night Cycle** - Dynamic time-based atmosphere with difficulty scaling
 ✅ **Flamethrower Weapon** - Short-range weapon with burning damage over time
 ✅ **Environmental Hazards** - Acid pools from Spitter Zombie attacks

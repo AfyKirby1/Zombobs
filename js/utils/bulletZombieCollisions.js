@@ -7,6 +7,7 @@ import { playKillSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSo
 import { createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { Prop } from '../entities/Prop.js';
+import { spawnSplitterShards } from '../entities/Zombie.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
@@ -173,6 +174,7 @@ export function handleBulletZombieCollisions() {
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
+                const isSplitter = zombie.type === 'splitter';
 
                 // Handle flame bullets (apply burn effect)
                 if (bullet.type === 'flame') {
@@ -192,6 +194,10 @@ export function handleBulletZombieCollisions() {
                         if (zombie.type === 'boss' || zombie === gameState.boss) {
                             gameState.bossActive = false;
                             gameState.boss = null;
+                        }
+
+                        if (isSplitter) {
+                            spawnSplitterShards(zombieX, zombieY, gameState.multiplayer.socket);
                         }
 
                         // Get the player who fired the bullet
@@ -319,7 +325,9 @@ export function handleBulletZombieCollisions() {
                             ));
                         }
 
-                        playKillSound(zombieType);
+                        if (!isExploding && !isSplitter) {
+                            playKillSound(zombieType);
+                        }
 
                         // Show score with multiplier if active
                         if (shootingPlayer.scoreMultiplier > 1.0) {
@@ -420,12 +428,17 @@ export function handleBulletZombieCollisions() {
                         triggerExplosion(zombieX, zombieY, 60, 30, false);
                     }
 
+                    if (isSplitter) {
+                        spawnSplitterShards(zombieX, zombieY, gameState.multiplayer.socket);
+                    }
+
                     // Broadcast zombie death to other clients (leader only)
                     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
                         gameState.multiplayer.socket.emit('zombie:die', {
                             zombieId: zombie.id,
                             angle: impactAngle,
-                            isExploding: isExploding
+                            isExploding: isExploding,
+                            isSplitter: isSplitter
                         });
                     }
 
@@ -573,7 +586,7 @@ export function handleBulletZombieCollisions() {
                     }
 
                     // Play kill confirmed sound with zombie type (unless it was exploding zombie, explosion sound plays)
-                    if (!isExploding) {
+                    if (!isExploding && !isSplitter) {
                         playKillSound(zombieType);
                     }
                     // Create floating damage number (with crit styling if crit)

@@ -96,6 +96,11 @@ export function selectZombieClass(wave, mutator, rand) {
         if (slot === 4 && wave >= 8) return 'siren';
     }
 
+    if (wave >= 6) {
+        let splitterChance = mutator === 'volatile' ? 0.055 : 0.03;
+        if (Math.random() < splitterChance) return 'splitter';
+    }
+
     if (wave >= 8) {
         let sirenChance = 0.035;
         if (mutator === 'encircle') sirenChance = 0.07;
