@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
-import { SKILL_RARITY, SKILL_TREES } from '../systems/SkillSystem.js';
+import { SKILL_RARITY, SKILL_TREES, MAX_SKILL_SLOTS } from '../systems/SkillSystem.js';
 
 export class LevelUpScreen {
     constructor(canvas, ctx, hud) {
@@ -8,6 +8,7 @@ export class LevelUpScreen {
         this.ctx = ctx;
         this.hud = hud;
         this.hoveredSkillIndex = null;
+        this.hoveredReroll = false;
         this.animationStart = 0;
     }
 
@@ -115,6 +116,12 @@ export class LevelUpScreen {
         const subFontSize = Math.max(12, 16 * scale);
         ctx.font = `${subFontSize}px "Roboto Mono", monospace`;
         ctx.fillText('Choose a skill to enhance your abilities', canvas.width / 2, 150 * scale);
+
+        // Active skill slots indicator
+        const slotsUsed = gameState.activeSkills.length;
+        ctx.fillStyle = slotsUsed >= MAX_SKILL_SLOTS ? '#ff7043' : 'rgba(255, 255, 255, 0.5)';
+        ctx.font = `${Math.max(11, 14 * scale)}px "Roboto Mono", monospace`;
+        ctx.fillText(`Skills: ${slotsUsed}/${MAX_SKILL_SLOTS}`, canvas.width / 2, 172 * scale);
         ctx.restore();
 
         // Draw skill cards with rarity styling
@@ -264,6 +271,27 @@ export class LevelUpScreen {
         ctx.textAlign = 'center';
         ctx.fillText('Click a skill card to select', canvas.width / 2, canvas.height - 50 * scale);
 
+        // Reroll button
+        const rerollsLeft = gameState.levelUpRerollsLeft || 0;
+        if (rerollsLeft > 0) {
+            const btnW = 200 * scale;
+            const btnH = 44 * scale;
+            const btnX = canvas.width / 2 - btnW / 2;
+            const btnY = canvas.height - 110 * scale;
+            const isRerollHovered = this.hoveredReroll;
+
+            ctx.fillStyle = isRerollHovered ? 'rgba(255, 193, 7, 0.35)' : 'rgba(255, 193, 7, 0.15)';
+            this.roundRect(ctx, btnX, btnY, btnW, btnH, 8 * scale);
+            ctx.fill();
+            ctx.strokeStyle = '#ffc107';
+            ctx.lineWidth = 2 * scale;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffc107';
+            ctx.font = `bold ${Math.max(12, 15 * scale)}px "Roboto Mono", monospace`;
+            ctx.fillText(`🔄 Reroll (${rerollsLeft})`, canvas.width / 2, btnY + btnH / 2);
+        }
+
         // Kill streak bonus info if applicable
         if (gameState.killStreak >= 5) {
             ctx.fillStyle = '#ffc107';
@@ -308,6 +336,18 @@ export class LevelUpScreen {
         return lines;
     }
 
+    checkRerollClick(x, y) {
+        if (!gameState.showLevelUp || (gameState.levelUpRerollsLeft || 0) <= 0) {
+            return false;
+        }
+        const scale = this.getUIScale();
+        const btnW = 200 * scale;
+        const btnH = 44 * scale;
+        const btnX = this.canvas.width / 2 - btnW / 2;
+        const btnY = this.canvas.height - 110 * scale;
+        return x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH;
+    }
+
     checkClick(x, y) {
         if (!gameState.showLevelUp || !gameState.levelUpChoices || gameState.levelUpChoices.length === 0) {
             return null;
@@ -333,6 +373,11 @@ export class LevelUpScreen {
     }
 
     updateHover(x, y) {
+        this.hoveredReroll = this.checkRerollClick(x, y);
+        if (this.hoveredReroll) {
+            this.hoveredSkillIndex = null;
+            return null;
+        }
         this.hoveredSkillIndex = this.checkClick(x, y);
         return this.hoveredSkillIndex;
     }
@@ -343,5 +388,6 @@ export class LevelUpScreen {
     reset() {
         this.animationStart = 0;
         this.hoveredSkillIndex = null;
+        this.hoveredReroll = false;
     }
 }

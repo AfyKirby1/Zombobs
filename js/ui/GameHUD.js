@@ -2094,6 +2094,10 @@ export class GameHUD {
         return this.levelUpScreen.checkClick(x, y);
     }
 
+    checkLevelUpRerollClick(x, y) {
+        return this.levelUpScreen.checkRerollClick(x, y);
+    }
+
     updateLevelUpHover(x, y) {
         this.mouseX = x;
         this.mouseY = y;

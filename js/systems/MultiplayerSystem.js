@@ -569,7 +569,14 @@ export class MultiplayerSystem {
                 gameState.level = data.level;
                 gameState.nextLevelXP = data.nextLevelXP;
                 gameState.levelUpChoices = data.choices;
+                gameState.levelUpRerollsLeft = data.rerollsLeft ?? 0;
                 gameState.showLevelUp = true;
+            });
+
+            socket.on('game:levelup_reroll', (data) => {
+                if (gameState.multiplayer.isLeader) return;
+                gameState.levelUpChoices = data.choices;
+                gameState.levelUpRerollsLeft = data.rerollsLeft ?? 0;
             });
 
             socket.on('game:skill', (skillId) => {

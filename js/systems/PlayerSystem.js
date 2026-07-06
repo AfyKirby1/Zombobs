@@ -158,7 +158,12 @@ export class PlayerSystem {
                 player.adrenalineBoostEndTime = null;
             }
 
-            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier;
+            let feralRageSpeedMult = 1.0;
+            if (player.hasFeralRage && player.maxHealth > 0 && player.health / player.maxHealth < 0.25) {
+                feralRageSpeedMult = 1.15;
+            }
+
+            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult;
 
             // autoSprint: Check settings, but force enable on mobile for better ergonomics
             const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -206,11 +211,14 @@ export class PlayerSystem {
             }
 
             // Trigger dodge roll
-            if (dodgeInput && !player.isDodging && player.dodgeCooldown <= 0 && player.stamina >= PLAYER_DODGE_STAMINA_COST) {
+            const dodgeCooldownMult = player.dodgeCooldownMultiplier || 1.0;
+            const dodgeStaminaMult = player.dodgeStaminaMultiplier || 1.0;
+            const effectiveDodgeStaminaCost = PLAYER_DODGE_STAMINA_COST * dodgeStaminaMult;
+            if (dodgeInput && !player.isDodging && player.dodgeCooldown <= 0 && player.stamina >= effectiveDodgeStaminaCost) {
                 player.isDodging = true;
                 player.dodgeTimeRemaining = PLAYER_DODGE_DURATION;
-                player.dodgeCooldown = PLAYER_DODGE_COOLDOWN;
-                player.stamina = Math.max(0, player.stamina - PLAYER_DODGE_STAMINA_COST);
+                player.dodgeCooldown = PLAYER_DODGE_COOLDOWN * dodgeCooldownMult;
+                player.stamina = Math.max(0, player.stamina - effectiveDodgeStaminaCost);
                 player.lastSprintTime = Date.now(); // Delay stamina regen
                 
                 // Play dodge sound
@@ -255,7 +263,8 @@ export class PlayerSystem {
                 if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
                     player.isSprinting = true;
                     player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
-                    player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
+                    const staminaDrain = PLAYER_STAMINA_DRAIN * (player.staminaDrainMultiplier || 1.0);
+                    player.stamina = Math.max(0, player.stamina - staminaDrain);
                     player.lastSprintTime = Date.now();
                 } else {
                     player.isSprinting = false;

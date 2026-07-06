@@ -2,6 +2,13 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Skill System Expansion (2026-07-05) ✅ COMPLETE
+- **Done**: +13 flat skills (Magnetism, Grenadier, Vampiric Rounds, Glass Cannon, Last Stand, Chain Lightning, etc.) — **29 total** in `SKILLS_POOL`.
+- **Done**: 4th class tree **Brawler** (5 tier skills) in `skillTreeDefinitions.js` — **20 tree skills** across 4 trees.
+- **Done**: Max active skill slots **6 → 8**; 1 free **reroll** per level-up on `LevelUpScreen`.
+- **Done**: Combat hooks — lifesteal, chain lightning, kill momentum fire rate, melee multipliers, explosion radius/damage, Last Stand damage reduction, `applyPlayerDamage()` centralization.
+- **Verify**: `powershell -NoProfile -ExecutionPolicy Bypass -File .\test-syntax.ps1`.
+
 ### Zombie Face QoL — Expanded Features (2026-07-05) ✅ COMPLETE
 - **Done**: Shared `getFaceProfile()` + `drawFaceFeatures()` on base `Zombie` — layered sockets, brows, nose, mouth styles, missing/chipped teeth, ears, wounds, drool, jaw line.
 - **Done**: Enhanced `drawEyes()` — pupil styles (round/slit/pin), lazy-eye offset, gaze-tracking cores, specular highlights.

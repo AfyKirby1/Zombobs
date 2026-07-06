@@ -50,7 +50,14 @@ export function shootBullet(target, canvas, player) {
     // Check fire rate cooldown (with rapid fire buff + skill fire rate)
     const fireRateMultiplier = (gameState.rapidFireEndTime > now) ? 0.5 : 1;
     const skillFireRate = player.fireRateSkillMultiplier || 1.0;
-    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier * skillFireRate) {
+    let killMomentumRate = 1.0;
+    if (player.hasKillMomentum && player.killMomentumEndTime > now) {
+        const stacks = player.killMomentumStacks || 0;
+        killMomentumRate = Math.max(0.55, 1 - (player.killMomentumPerStack || 0.08) * stacks);
+    } else if (player.hasKillMomentum) {
+        player.killMomentumStacks = 0;
+    }
+    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier * skillFireRate * killMomentumRate) {
         return;
     }
 
@@ -441,6 +448,13 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
         return;
     }
 
+    if (sourceIsPlayer && sourcePlayer) {
+        const radiusMult = sourcePlayer.grenadeRadiusMultiplier || 1.0;
+        const damageMult = sourcePlayer.explosionDamageMultiplier || 1.0;
+        radius = Math.floor(radius * radiusMult);
+        damage = Math.floor(damage * damageMult);
+    }
+
     // Calculate explosion size based on radius
     // Grenade radius is 80, rocket is 150
     // Normalize: grenade = 1.0, rocket = 1.875 (150/80)
@@ -633,43 +647,14 @@ export function handlePlayerZombieCollisions() {
                     continue;
                 }
                 let damage = 0.5;
-                const previousHealth = player.health;
 
-                // Apply Thick Skin damage reduction
-                if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
-                    damage *= player.damageReduction;
-                }
+                const healthLost = applyPlayerDamage(player, damage);
 
-                // Apply damage to shield first, then health
-                if (player.shield > 0) {
-                    player.shield -= damage;
-                    if (player.shield < 0) {
-                        player.health += player.shield; // Apply overflow damage to health
-                        player.shield = 0;
-                    }
-                    createParticles(player.x, player.y, '#03a9f4', 3); // Blue for shield hit
-                } else {
-                    player.health -= damage;
-                    createParticles(player.x, player.y, '#ff0000', 3); // Red for health hit
-                }
-
-                if (player.health <= 0 && trySecondWind(player)) {
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
-                        gameState.damageNumbers.push(new DamageNumber(
-                            player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
-                        ));
-                    }
-                    createParticles(player.x, player.y, '#66bb6a', 8);
-                }
-
-                // Reset multiplier if health was reduced (shield didn't fully absorb)
-                if (player.health < previousHealth && player.shield === 0) {
+                if (healthLost > 0 && player.shield === 0) {
                     resetMultiplier(player);
                 }
 
                 if (player === gameState.players[0]) {
-                    // Add screen shake on damage (mostly for P1 or global)
                     gameState.shakeAmount = 8;
                     triggerDamageIndicator();
                 }
@@ -716,11 +701,11 @@ export function handlePickupCollisions() {
         gameState.ammoPickups = gameState.ammoPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if ((player.currentAmmo < player.maxAmmo || player.grenadeCount < MAX_GRENADES) && checkPickupCollision(player, pickup)) {
+                if ((player.currentAmmo < player.maxAmmo || player.grenadeCount < getPlayerMaxGrenades(player)) && checkPickupCollision(player, pickup)) {
                     // Restore ammo for current weapon
                     player.currentAmmo = Math.min(player.maxAmmo, player.currentAmmo + AMMO_PICKUP_AMOUNT);
                     // Also refill grenades
-                    player.grenadeCount = MAX_GRENADES;
+                    player.grenadeCount = getPlayerMaxGrenades(player);
                     createParticles(pickup.x, pickup.y, '#ff9800', 8);
                     if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(pickup.x, pickup.y - 20, `+${AMMO_PICKUP_AMOUNT} AMMO`, false, '#00ffff'));
@@ -1072,7 +1057,137 @@ export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
             d *= 1.3;
         }
     }
+    if (shootingPlayer.hasFeralRage && shootingPlayer.maxHealth > 0) {
+        if (shootingPlayer.health / shootingPlayer.maxHealth < 0.25) {
+            d *= 1.4;
+        }
+    }
     return d;
+}
+
+/**
+ * Apply lifesteal from weapon or melee hits
+ */
+export function applyLifesteal(player, damageDealt, percent) {
+    if (!player || !percent || percent <= 0 || damageDealt <= 0) return;
+    const heal = Math.max(1, Math.floor(damageDealt * percent));
+    player.health = Math.min(player.maxHealth, player.health + heal);
+}
+
+export function applyKillMomentum(player) {
+    if (!player?.hasKillMomentum) return;
+    const maxStacks = player.killMomentumMaxStacks || 5;
+    player.killMomentumStacks = Math.min(maxStacks, (player.killMomentumStacks || 0) + 1);
+    player.killMomentumEndTime = Date.now() + 2000;
+}
+
+/**
+ * Chain lightning — arc damage to nearest zombie in range
+ */
+export function tryChainLightning(sourceZombie, damage, shootingPlayer) {
+    const chance = shootingPlayer?.chainLightningChance || 0;
+    if (!chance || Math.random() >= chance) return;
+
+    const chainRange = 150;
+    const chainRangeSq = chainRange * chainRange;
+    let nearest = null;
+    let nearestDistSq = chainRangeSq;
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        if (z === sourceZombie) continue;
+        const dx = z.x - sourceZombie.x;
+        const dy = z.y - sourceZombie.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nearestDistSq) {
+            nearestDistSq = distSq;
+            nearest = z;
+        }
+    }
+
+    if (!nearest) return;
+
+    const chainDamage = Math.max(1, Math.floor(damage * 0.5));
+    const idx = gameState.zombies.indexOf(nearest);
+    if (nearest.takeDamage(chainDamage) && idx !== -1) {
+        gameState.zombies.splice(idx, 1);
+        gameState.zombiesKilled++;
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, nearest, nearest.x, nearest.y);
+    }
+    createParticles(nearest.x, nearest.y, '#81d4fa', 6);
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    if (damageNumberStyle !== 'off') {
+        gameState.damageNumbers.push(new DamageNumber(nearest.x, nearest.y - 20, '⚡', false, '#81d4fa', 16));
+    }
+}
+
+/**
+ * Get effective max grenades for a player (base + skill bonus)
+ */
+export function getPlayerMaxGrenades(player) {
+    return MAX_GRENADES + (player?.maxGrenadeBonus || 0);
+}
+
+/**
+ * Centralized incoming damage — shield, reduction, last stand, second wind
+ * @returns {number} actual health lost (0 if shield absorbed all)
+ */
+export function applyPlayerDamage(player, rawDamage) {
+    if (player.health <= 0 || rawDamage <= 0) return 0;
+
+    let damage = rawDamage;
+
+    if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
+        damage *= player.damageReduction;
+    }
+    if (player.damageTakenMultiplier && player.damageTakenMultiplier > 1.0) {
+        damage *= player.damageTakenMultiplier;
+    }
+
+    const healthRatio = player.maxHealth > 0 ? player.health / player.maxHealth : 1;
+    const projectedRatio = player.maxHealth > 0 ? Math.max(0, player.health - damage) / player.maxHealth : 0;
+    if (player.hasLastStand && !player.lastStandUsed && (healthRatio <= 0.1 || projectedRatio <= 0.1)) {
+        player.lastStandActiveUntil = Date.now() + 5000;
+        player.lastStandUsed = true;
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 30, 'LAST STAND!', false, '#ff7043', 18
+            ));
+        }
+        createParticles(player.x, player.y, '#ff7043', 8);
+    }
+    if (player.lastStandActiveUntil && Date.now() < player.lastStandActiveUntil) {
+        damage *= 0.5;
+    } else if (player.lastStandActiveUntil && Date.now() >= player.lastStandActiveUntil) {
+        player.lastStandActiveUntil = 0;
+    }
+
+    const previousHealth = player.health;
+
+    if (player.shield > 0) {
+        player.shield -= damage;
+        if (player.shield < 0) {
+            player.health += player.shield;
+            player.shield = 0;
+        }
+        createParticles(player.x, player.y, '#03a9f4', 3);
+    } else {
+        player.health -= damage;
+        createParticles(player.x, player.y, '#ff0000', 3);
+    }
+
+    if (player.health <= 0 && trySecondWind(player)) {
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
+            ));
+        }
+        createParticles(player.x, player.y, '#66bb6a', 8);
+    }
+
+    return Math.max(0, previousHealth - player.health);
 }
 
 /**

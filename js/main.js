@@ -762,12 +762,17 @@ function handleMenuInteraction(clickX, clickY) {
 
     // Level Up Screen
     if (gameState.showLevelUp) {
+        if (gameHUD.checkLevelUpRerollClick(clickX, clickY)) {
+            skillSystem.rerollChoices();
+            return;
+        }
         const selectedIndex = gameHUD.checkLevelUpClick(clickX, clickY);
         if (selectedIndex !== null && gameState.levelUpChoices[selectedIndex]) {
             const selectedSkill = gameState.levelUpChoices[selectedIndex];
             skillSystem.activateSkill(selectedSkill.id);
             gameState.showLevelUp = false;
             gameState.levelUpChoices = [];
+            gameState.levelUpRerollsLeft = 0;
         }
         return;
     }

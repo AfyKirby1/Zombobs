@@ -21,6 +21,13 @@ export const SKILL_TREES = {
         accent: '#ff8f00',
         icon: '🔍',
         tagline: 'Rust & ruin'
+    },
+    brawler: {
+        name: 'Brawler',
+        color: '#ff7043',
+        accent: '#e64a19',
+        icon: '👊',
+        tagline: 'Up close & personal'
     }
 };
 
@@ -307,6 +314,97 @@ export const TREE_SKILLS_POOL = [
             player.hasAdrenaline = true;
             player.adrenalineDurationMs = 4000;
             player.adrenalineBoostMultiplier = 1.25;
+        }
+    },
+
+    // === BRAWLER — Up Close & Personal ===
+    {
+        id: 'brawler_t1_knuckles',
+        tree: 'brawler',
+        tier: 1,
+        requires: null,
+        treeExclusive: true,
+        name: 'Brass Knuckles',
+        icon: '👊',
+        tagline: 'Hit harder up close',
+        description: '+15% melee damage per level',
+        rarity: tierRarity(1),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.meleeDamageMultiplier) player.meleeDamageMultiplier = 1.0;
+            player.meleeDamageMultiplier *= 1.15;
+        }
+    },
+    {
+        id: 'brawler_t2_footwork',
+        tree: 'brawler',
+        tier: 2,
+        requires: 'brawler_t1_knuckles',
+        treeExclusive: true,
+        name: 'Footwork',
+        icon: '🌀',
+        tagline: 'Slip the claws',
+        description: '20% faster dodge cooldown per level',
+        rarity: tierRarity(2),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.dodgeCooldownMultiplier) player.dodgeCooldownMultiplier = 1.0;
+            player.dodgeCooldownMultiplier *= 0.8;
+        }
+    },
+    {
+        id: 'brawler_t3_reach',
+        tree: 'brawler',
+        tier: 3,
+        requires: 'brawler_t2_footwork',
+        treeExclusive: true,
+        name: 'Sweeping Strikes',
+        icon: '🌊',
+        tagline: 'Wider kill arc',
+        description: '+25% melee reach per level',
+        rarity: tierRarity(3),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.meleeRangeMultiplier) player.meleeRangeMultiplier = 1.0;
+            player.meleeRangeMultiplier *= 1.25;
+        }
+    },
+    {
+        id: 'brawler_t4_siphon',
+        tree: 'brawler',
+        tier: 4,
+        requires: 'brawler_t3_reach',
+        treeExclusive: true,
+        name: 'Life Siphon',
+        icon: '🩸',
+        tagline: 'Steal their strength',
+        description: '+10% melee lifesteal per level',
+        rarity: tierRarity(4),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.meleeLifestealPercent) player.meleeLifestealPercent = 0;
+            player.meleeLifestealPercent = Math.min(0.5, player.meleeLifestealPercent + 0.10);
+        }
+    },
+    {
+        id: 'brawler_t5_feral',
+        tree: 'brawler',
+        tier: 5,
+        requires: 'brawler_t4_siphon',
+        treeExclusive: true,
+        name: 'Feral Rage',
+        icon: '🐺',
+        tagline: 'Cornered beast',
+        description: 'Below 25% HP: +40% melee damage & +15% speed',
+        rarity: tierRarity(5),
+        maxLevel: 1,
+        upgradeable: false,
+        effect: (player) => {
+            player.hasFeralRage = true;
         }
     }
 ];

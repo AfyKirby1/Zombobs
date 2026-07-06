@@ -6,6 +6,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Skill System Expansion (2026-07-05)** — 13 new flat level-up skills (Magnetism, Grenadier, Vampiric Rounds, Glass Cannon, Last Stand, Chain Lightning, Kill Momentum, etc.), 4th **Brawler** class tree (5 tiers), max skill slots raised to **8**, and **1 reroll** per level-up. New combat hooks: weapon lifesteal, chain lightning arcs, kill-streak fire rate, melee damage/reach/lifesteal, explosion radius/damage scaling, Last Stand damage halving. Key files: `SkillSystem.js`, `skillTreeDefinitions.js`, `combatUtils.js`, `bulletZombieCollisions.js`, `MeleeSystem.js`, `LevelUpScreen.js`.
 - **Functional LOC Audit + Website Copy (2026-07-05)** — Added `tools/count_functional_loc.py` and audited the maintained functional codebase at **34,773 LOC** across **125 source files** (`30,237` JS LOC across `88` JS files). Updated the landing website and docs to mention the large vanilla codebase.
 - **Splitter Zombie (2026-07-05)** — Bloated carrier (wave 6+, ~3% / ~5.5% VOLATILE) cracks into **2 fast Shard minions** on death via `spawnSplitterShards()`. Splitter: 125% HP, amber crack VFX; Shards: 35% HP, 1.45× speed. Crack SFX; kill hooks in bullet/melee collisions; MP shard sync via `zombie:spawn`. See `DOCS/ENEMY_TYPES.md`.
 - **Siren Zombie (2026-07-05)** — New rare support enemy (wave 8+).

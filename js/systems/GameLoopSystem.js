@@ -115,7 +115,8 @@ export class GameLoopSystem {
         for (let i = 0; i < gameState.players.length; i++) {
             const player = gameState.players[i];
             if (player.health > 0 && player.hasRegeneration) {
-                player.health = Math.min(player.maxHealth, player.health + (1 / 60));
+                const regenRate = 1 + (player.regenRate || 0);
+                player.health = Math.min(player.maxHealth, player.health + (regenRate / 60));
             }
         }
 

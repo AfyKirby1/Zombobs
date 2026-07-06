@@ -17,7 +17,10 @@ import {
     updateScoreMultiplier,
     awardScore,
     getZombieBaseScore,
-    applySkillDamageModifiers
+    applySkillDamageModifiers,
+    applyLifesteal,
+    applyKillMomentum,
+    tryChainLightning
 } from './combatUtils.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
@@ -391,6 +394,9 @@ export function handleBulletZombieCollisions() {
                     finalDamage *= 2;
                 }
 
+                const hitZombieRef = zombie;
+                const dealtDamage = finalDamage;
+
                 // Check if zombie dies from this hit
                 if (zombie.takeDamage(finalDamage)) {
                     // Clean up state tracking for dead zombie (multiplayer sync)
@@ -497,6 +503,9 @@ export function handleBulletZombieCollisions() {
                         shootingPlayer.adrenalineBoostEndTime = Date.now() + duration;
                         shootingPlayer.adrenalineBoostActive = true;
                     }
+
+                    applyKillMomentum(shootingPlayer);
+                    tryChainLightning(hitZombieRef, dealtDamage, shootingPlayer);
 
                     // Award XP for kill (with multiplier)
                     const zombieType = zombie.type || 'normal';
@@ -632,6 +641,8 @@ export function handleBulletZombieCollisions() {
                     // Add volumetric blood on hit (less blood)
                     bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
 
+                    tryChainLightning(hitZombieRef, dealtDamage, shootingPlayer);
+
                     // --- START: Apply Slow-on-Hit ---
                     if (zombie.originalSpeed === undefined) {
                         zombie.originalSpeed = zombie.speed;
@@ -639,6 +650,10 @@ export function handleBulletZombieCollisions() {
                     zombie.speed = zombie.originalSpeed * 0.70; // 30% slow
                     zombie.slowedUntil = Date.now() + 500; // for 0.5 seconds
                     // --- END: Apply Slow-on-Hit ---
+                }
+
+                if (shootingPlayer.lifestealPercent) {
+                    applyLifesteal(shootingPlayer, dealtDamage, shootingPlayer.lifestealPercent);
                 }
 
                 // Trigger hit marker

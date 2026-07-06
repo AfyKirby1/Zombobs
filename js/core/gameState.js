@@ -168,6 +168,7 @@ export const gameState = {
     activeSkills: [],
     showLevelUp: false,
     levelUpChoices: [],
+    levelUpRerollsLeft: 0,
 
     isSpawningWave: false,
     waveBreakActive: false,
@@ -324,6 +325,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.activeSkills = [];
     gameState.showLevelUp = false;
     gameState.levelUpChoices = [];
+    gameState.levelUpRerollsLeft = 0;
 
     gameState.bossActive = false;
     gameState.boss = null;
@@ -378,6 +380,29 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.hasBerserker = false;
             player.hasSecondWind = false;
             player.secondWindUsed = false;
+            player.meleeDamageMultiplier = 1.0;
+            player.meleeRangeMultiplier = 1.0;
+            player.meleeLifestealPercent = 0;
+            player.lifestealPercent = 0;
+            player.explosionDamageMultiplier = 1.0;
+            player.grenadeRadiusMultiplier = 1.0;
+            player.maxGrenadeBonus = 0;
+            player.damageTakenMultiplier = 1.0;
+            player.xpGainMultiplier = 1.0;
+            player.staminaDrainMultiplier = 1.0;
+            player.dodgeCooldownMultiplier = 1.0;
+            player.dodgeStaminaMultiplier = 1.0;
+            player.regenRate = 0;
+            player.hasLastStand = false;
+            player.lastStandUsed = false;
+            player.lastStandActiveUntil = 0;
+            player.hasKillMomentum = false;
+            player.killMomentumPerStack = 0.08;
+            player.killMomentumMaxStacks = 5;
+            player.killMomentumStacks = 0;
+            player.killMomentumEndTime = 0;
+            player.chainLightningChance = 0;
+            player.hasFeralRage = false;
 
             // Reset weapon states
             player.weaponStates = {
