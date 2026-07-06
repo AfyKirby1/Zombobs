@@ -2,11 +2,12 @@ import { gameState, resetGameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
 import { PLAYER_MAX_HEALTH, PLAYER_STAMINA_MAX, SERVER_URL } from '../core/constants.js';
 import { playRestartSound, playMenuMusic, stopMenuMusic, playGameMusic, stopGameMusic } from '../systems/AudioSystem.js';
-import { saveHighScore, saveMultiplierStats, saveScoreboardEntry } from '../utils/gameUtils.js';
+import { saveHighScore, saveMultiplierStats, saveScoreboardEntry, isCampaignMode } from '../utils/gameUtils.js';
 import { playerProfileSystem } from './PlayerProfileSystem.js';
 import { propSpawnSystem } from './PropSpawnSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
 import { cameraSystem } from './CameraSystem.js';
+import { mapLoader } from './MapLoader.js';
 
 /**
  * GameStateManager - Handles game lifecycle (start, restart, game over)
@@ -41,8 +42,9 @@ export class GameStateManager {
         if (gameState.gameStartTime > 0) {
             const timeSurvived = (Date.now() - gameState.gameStartTime) / 1000; // in seconds
             // Determine game mode: arcade if not coop and not multiplayer
-            const gameMode = (!gameState.isCoop && !gameState.multiplayer.active) ? 'arcade' :
-                (gameState.isCoop ? 'coop' : 'multiplayer');
+            const gameMode = gameState.gameMode ||
+                ((!gameState.isCoop && !gameState.multiplayer.active) ? 'arcade' :
+                (gameState.isCoop ? 'coop' : 'multiplayer'));
             saveScoreboardEntry({
                 score: gameState.score,
                 wave: gameState.wave,
@@ -116,6 +118,8 @@ export class GameStateManager {
         gameState.showCoopLobby = false;
         gameState.showLobby = false;
         gameState.showAILobby = false;
+        gameState.gameMode = 'arcade';
+        mapLoader.unload();
         this.gameHUD.hidePauseMenu();
         this.gameHUD.hideGameOver();
         resetGameState(canvas.width, canvas.height);
@@ -138,10 +142,20 @@ export class GameStateManager {
         // Do NOT reset players here for coop, we want to keep the lobby configuration
         if (!gameState.isCoop) {
             resetGameState(canvas.width, canvas.height);
-            // v0.8.1.2: Reset living world systems for single player arcade
             propSpawnSystem.reset();
             groundTextureSystem.reset();
             cameraSystem.reset();
+            mapLoader.unload();
+
+            if (isCampaignMode(gameState)) {
+                mapLoader.load('crash_site');
+                const spawn = mapLoader.getSpawn();
+                gameState.players[0].x = spawn.x;
+                gameState.players[0].y = spawn.y;
+                mapLoader.spawnMapProps();
+                mapLoader.applyAmbiance();
+                cameraSystem.initialize(gameState.players[0]);
+            }
         } else {
             // Just reset game objects, keep players
             gameState.score = 0;

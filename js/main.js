@@ -792,6 +792,7 @@ function handleMenuInteraction(clickX, clickY) {
         if (clickedButton === 'single') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false;
+            gameState.gameMode = 'arcade';
             if (isWebGPUActive() && webgpuRenderer.resetSnow) {
                 webgpuRenderer.resetSnow();
             }
@@ -799,6 +800,7 @@ function handleMenuInteraction(clickX, clickY) {
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false;
+            gameState.gameMode = 'campaign';
             gameState.showCampaignIntro = true;
             if (isAudioInitialized()) {
                 stopMenuMusic();

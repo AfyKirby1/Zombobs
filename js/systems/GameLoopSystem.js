@@ -9,6 +9,7 @@ import {
     getViewportBounds,
     shouldUpdateEntity,
     isSinglePlayerArcadeMode,
+    isCampaignMode,
     isGameplayBlocked,
     isUICanvasInteractive,
     isHTMLOverlayActive,
@@ -28,10 +29,11 @@ import { propSpawnSystem } from './PropSpawnSystem.js';
 import { propRenderSystem } from './PropRenderSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
 import { cameraSystem } from './CameraSystem.js';
+import { mapLoader } from './MapLoader.js';
 import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
-import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawFpsCounter } from '../utils/drawingUtils.js';
+import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
  * GameLoopSystem — per-frame gameplay update and world/HUD rendering.
@@ -99,7 +101,11 @@ export class GameLoopSystem {
             if (localPlayer) {
                 cameraSystem.update(localPlayer);
                 groundTextureSystem.updateFromCamera(cameraSystem);
-                propSpawnSystem.update(gameState, localPlayer);
+                if (!isCampaignMode(gameState)) {
+                    propSpawnSystem.update(gameState, localPlayer);
+                } else if (mapLoader.isLoaded()) {
+                    mapLoader.updateTriggers();
+                }
 
                 if (gameState.props && gameState.props.length > 0) {
                     for (const prop of gameState.props) {
@@ -587,6 +593,9 @@ export class GameLoopSystem {
         const viewport = gameState.cachedViewport || getViewportBounds(canvas);
 
         if (isSinglePlayerArcade) {
+            if (isCampaignMode(gameState) && mapLoader.isLoaded()) {
+                mapLoader.render(viewport);
+            }
             propRenderSystem.render(gameState, viewport);
         }
 
@@ -728,6 +737,7 @@ export class GameLoopSystem {
             gameHUD.drawCompass();
         }
         drawWaveNotification();
+        drawCampaignObjective();
         drawWaveBreak();
         drawFpsCounter();
 

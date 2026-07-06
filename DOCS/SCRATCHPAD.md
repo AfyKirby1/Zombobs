@@ -111,10 +111,13 @@
 ### Campaign Zone: The Railyard [Active]
 - **Objective**: Build the first campaign map based on `CAMPAIGN_DESIGN.md`.
 - **Tasks**:
-  - [ ] Create `MapLoader` system for static zone geometry (JSON).
-  - [ ] Define "The Crash Site" zone geometry.
-  - [ ] Implement collision for static map walls/props.
-- **Current Status**: ⏳ Planning
+  - [x] Create `MapLoader` system for static zone geometry (`js/systems/MapLoader.js` + `js/maps/crashSite.js`).
+  - [x] Define "The Crash Site" zone geometry (2400×1800, debris rings, heli wreck, props).
+  - [x] Implement collision for static map walls (player + zombie resolve via `mapCollisionUtils.js`).
+  - [ ] Trigger system for zone events / dialogue (stub: start trigger + objective banner).
+  - [ ] Zone 2 — Maintenance Tunnels.
+- **Current Status**: ⏳ Zone 1 playable — browser QA Campaign → intro → crash site walls/objective HUD.
+- **Verify**: Main menu Campaign; walk into debris ring; zombies spawn on map edge; objective banner top-center.
 
 ### Android WebView Wrapper (Capacitor) [Active]
 - **Objective**: Ship Android APK using Capacitor WebView wrapper.
@@ -209,18 +212,18 @@
 ## Backlog
 - [ ] Implement "Boss Rush" mode
 - [ ] Add rest of weapon placeholders (Flamethrower is done, Laser is done)
-- [ ] Build "The Crash Site" zone geometry for Railyard zone.
+- [ ] Campaign Zone 2 — Maintenance Tunnels (narrow layout + steam hazards)
+- [ ] Campaign trigger/dialogue system (debris-clear scripted event)
 
 ## Blocked Items
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Siren Zombie shipped (2026-07-05)**: Support screamer mob — horde buff, aim jitter, cyan VFX/audio; docs in `ENEMY_TYPES.md`.
-2. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
-2. **Class Tree System shipped (2026-06-25)**: `skillTreeDefinitions.js`, SkillSystem hybrid pool, combat hooks, LevelUp/HUD tree UI, Tree Master achievement.
-3. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
-4. **Desktop touch-control fix (2026-06-25)**: Gated `TouchControlSystem` + virtual gamepad behind `isMobileDevice()`.
-5. **GameLoopSystem syntax fix (2026-06-25)**: Added missing `}` on `_updateMusicIntensity()` — fixed load crash at `draw()`.
+1. **Campaign Zone 1 — Crash Site (2026-07-06)**: `MapLoader`, `crashSite.js`, wall collision, objective HUD, campaign `gameMode` wiring; docs in `CAMPAIGN_DESIGN.md`, `ARCHITECTURE.md`, `CHANGELOG`, `SUMMARY`.
+2. **Siren Zombie shipped (2026-07-05)**: Support screamer mob — horde buff, aim jitter, cyan VFX/audio; docs in `ENEMY_TYPES.md`.
+3. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
+4. **Class Tree System shipped (2026-06-25)**: `skillTreeDefinitions.js`, SkillSystem hybrid pool, combat hooks, LevelUp/HUD tree UI, Tree Master achievement.
+5. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

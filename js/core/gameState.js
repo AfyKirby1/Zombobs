@@ -113,6 +113,10 @@ export const gameState = {
     gamePaused: false,
     showMainMenu: true,
     showCampaignIntro: false,
+    gameMode: 'arcade', // 'arcade' | 'campaign' | 'coop' | 'multiplayer'
+    campaignMapId: null,
+    campaignObjective: '',
+    campaignZone: 0,
     showSettingsPanel: false,
     showLobby: false,
     isCoop: false,
@@ -550,4 +554,11 @@ export function resetGameState(canvasWidth, canvasHeight) {
     // Clear session results
     gameState.sessionResults = null;
     gameState.achievementNotifications = [];
+
+    if (!gameState.isCoop) {
+        gameState.gameMode = gameState.gameMode === 'campaign' ? 'campaign' : 'arcade';
+        gameState.campaignMapId = null;
+        gameState.campaignObjective = '';
+        gameState.campaignZone = 0;
+    }
 }

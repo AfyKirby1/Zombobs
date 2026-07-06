@@ -2,6 +2,7 @@ import { canvas } from '../core/canvas.js';
 import { CHUNK_SIZE, PROP_SPAWN_DENSITY, PROP_MIN_DISTANCE, PROP_SPAWN_MARGIN } from '../core/constants.js';
 import { chunkManager } from '../utils/ChunkManager.js';
 import { Prop } from '../entities/Prop.js';
+import { isCampaignMode } from '../utils/gameUtils.js';
 
 /**
  * PropSpawnSystem - Handles chunk-based spawning of world props
@@ -21,7 +22,7 @@ export class PropSpawnSystem {
     update(gameState, player) {
         // Only spawn in single player arcade mode
         const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
-        if (!isSinglePlayerArcade) return;
+        if (!isSinglePlayerArcade || isCampaignMode(gameState)) return;
 
         if (!player || player.health <= 0) return;
 

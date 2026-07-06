@@ -16,7 +16,8 @@ import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
 import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
-import { isMobileDevice } from '../utils/gameUtils.js';
+import { isMobileDevice, isCampaignMode } from '../utils/gameUtils.js';
+import { mapLoader } from './MapLoader.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -297,7 +298,14 @@ export class PlayerSystem {
             player.x += moveX * player.speed;
             player.y += moveY * player.speed;
 
-            // Bounds (skip in single player arcade mode - camera system allows free movement)
+            // Campaign map collision + bounds
+            if (isCampaignMode(gameState) && mapLoader.isLoaded()) {
+                const resolved = mapLoader.resolvePosition(player.x, player.y, player.radius);
+                player.x = resolved.x;
+                player.y = resolved.y;
+            }
+
+            // Bounds (skip in single player arcade/campaign world-space modes)
             const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
             if (!isSinglePlayerArcade) {
                 player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));

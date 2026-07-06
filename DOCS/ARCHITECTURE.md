@@ -1181,8 +1181,32 @@ flowchart TD
 - Minimum distance enforcement between props and from player spawn
 - Prop type distribution: Rock (30%), Debris (25%), Burnt Car (10%), Skull (15%), Zombie Arms (8%), Zombie Legs (5%), Trash Can (7%)
 - Only active in single player arcade mode (`!gameState.isCoop && !gameState.multiplayer.active`)
+- **Skipped in campaign mode** (`gameState.gameMode === 'campaign'`) — static map props come from `MapLoader.spawnMapProps()` instead
 
 **Dependencies**: `core/constants.js` (CHUNK_SIZE, PROP_SPAWN_DENSITY, etc.), `utils/ChunkManager.js`, `entities/Prop.js`
+
+#### MapLoader.js (v0.9.1+ campaign)
+**Purpose**: Loads static campaign zone geometry (walls, decals, props, triggers) for constrained maps vs infinite arcade world
+
+**Exports**: `MapLoader` class, `mapLoader` singleton
+
+**Methods**:
+- `load(mapId)` / `unload()` — activate or clear campaign map (`crash_site` registry in `js/maps/crashSite.js`)
+- `getSpawn()` / `getBounds()` / `getWalls()` — map metadata and collision data
+- `spawnMapProps(gameState)` — place hand-authored `Prop` instances from map definition
+- `applyAmbiance()` — force night / zone mood flags on `gameState`
+- `resolvePosition(x, y, radius)` — clamp to map bounds + resolve circle-vs-AABB walls
+- `updateTriggers()` — fire objective volumes when player enters
+- `render(viewport)` — draw walls and environmental decals (fire, smoke, craters)
+- `getEdgeSpawnPosition(localPlayer)` — campaign zombie spawn points on map perimeter
+
+**Features**:
+- ES module map data (no fetch/build step) — works on `file://` and itch.io
+- Shared collision via `js/utils/mapCollisionUtils.js` (player + zombie resolve)
+- Campaign objective banner via `drawCampaignObjective()` in `drawingUtils.js`
+- Wired from `GameStateManager.startGame()` when `gameMode === 'campaign'`
+
+**Dependencies**: `js/maps/crashSite.js`, `utils/mapCollisionUtils.js`, `entities/Prop.js`, `core/gameState.js`
 
 #### PropRenderSystem.js (v0.8.1.2)
 **Purpose**: Handles rendering of world props with viewport culling

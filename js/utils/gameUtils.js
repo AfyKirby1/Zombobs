@@ -467,6 +467,14 @@ export function isSinglePlayerArcadeMode(state) {
     return !state.isCoop && !state.multiplayer.active;
 }
 
+export function isCampaignMode(state) {
+    return state.gameMode === 'campaign';
+}
+
+export function isWorldSpaceSinglePlayer(state) {
+    return isSinglePlayerArcadeMode(state);
+}
+
 /** True when gameplay simulation should not run (menus/overlays active) */
 export function isGameplayBlocked(state) {
     return !state.gameRunning ||

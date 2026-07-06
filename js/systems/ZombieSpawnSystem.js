@@ -13,6 +13,8 @@ import {
     applyMutatorHealth,
     getBossMinionCount
 } from './WaveChaosSystem.js';
+import { isCampaignMode } from '../utils/gameUtils.js';
+import { mapLoader } from './MapLoader.js';
 
 const ZOMBIE_CLASS_MAP = {
     normal: NormalZombie,
@@ -48,6 +50,11 @@ export class ZombieSpawnSystem {
     }
 
     _computeSpawnPosition(isSinglePlayerArcade, localPlayer, side) {
+        if (isCampaignMode(gameState) && mapLoader.isLoaded() && localPlayer) {
+            const edgeSpawn = mapLoader.getEdgeSpawnPosition(localPlayer);
+            if (edgeSpawn) return edgeSpawn;
+        }
+
         if (isSinglePlayerArcade && localPlayer) {
             const spawnDistance = Math.max(canvas.width, canvas.height) * 0.6;
             switch (side) {

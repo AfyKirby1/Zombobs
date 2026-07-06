@@ -1,3 +1,4 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Campaign Design: "Echoes of Silence"
 
 ## 1. Narrative Overview
@@ -23,11 +24,12 @@ Unlike the Arcade mode's open arena, the Campaign map is a **linear progression*
 
 ### Map Layout: "The Railyard"
 
-**Zone 1: The Crash Site (Tutorial/Start)**
+**Zone 1: The Crash Site (Tutorial/Start)** — ✅ **PLAYABLE (2026-07-06)**
 *   **Visuals:** Burning helicopter wreckage, smoldering craters, night time.
 *   **Layout:** Circular defensive area surrounded by debris.
-*   **Gameplay:** Survive initial wave until "debris clears" (scripted event).
+*   **Gameplay:** Survive initial wave until "debris clears" (scripted event — **not yet implemented**).
 *   **Objective:** "Secure the Perimeter."
+*   **Implementation:** `js/maps/crashSite.js` (2400×1800), `js/systems/MapLoader.js`, wall collision, static props, objective HUD, edge spawns. North ring gap reserved for Zone 2 transition.
 
 **Zone 2: The Maintenance Tunnels (Transition)**
 *   **Visuals:** Claustrophobic concrete hallways, flickering emergency lights.
@@ -47,9 +49,9 @@ Unlike the Arcade mode's open arena, the Campaign map is a **linear progression*
 *   **Gameplay:** Defend the point while hacking the terminal. Boss fight (The Warden).
 
 ### Technical Requirements
-1.  **Map Loader:** System to load static geometry (walls, collision boxes) from a JSON definition.
-2.  **Trigger System:** Invisible volumes that trigger events (waves, dialogue, objectives) when players enter.
-3.  **NavMesh:** Pathfinding needs to respect complex static geometry (not just open field).
+1.  **Map Loader:** ✅ **Implemented (2026-07-06)** — `MapLoader` + `js/maps/crashSite.js` (ES module map defs; circle-vs-AABB collision). JSON fetch deferred — no bundler.
+2.  **Trigger System:** ⏳ **Stub** — `updateTriggers()` fires objective text / wave notification on volume enter; dialogue and scripted waves pending.
+3.  **NavMesh:** ❌ **Not started** — zombies use direct chase + wall resolve; no pathfinding around complex geometry yet.
 
 ---
 

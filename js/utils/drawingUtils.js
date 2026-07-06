@@ -2,6 +2,7 @@ import { gameState } from '../core/gameState.js';
 import { canvas, ctx } from '../core/canvas.js';
 import { MELEE_RANGE } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { isCampaignMode } from './gameUtils.js';
 
 /**
  * Drawing utility functions for UI elements and visual effects
@@ -308,6 +309,44 @@ export function drawWaveNotification() {
     ctx.fillText('Get ready...', canvas.width / 2, canvas.height / 2 + 10);
 
     ctx.shadowBlur = 0;
+    ctx.restore();
+}
+
+/**
+ * Persistent campaign objective banner (top-center).
+ */
+export function drawCampaignObjective() {
+    if (!isCampaignMode(gameState) || !gameState.campaignObjective || !gameState.gameRunning || gameState.gamePaused) {
+        return;
+    }
+
+    const zoneLabel = gameState.campaignZone > 0 ? `ZONE ${gameState.campaignZone}` : 'CAMPAIGN';
+    const text = gameState.campaignObjective;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const bannerY = 18;
+    const bannerWidth = Math.min(canvas.width - 40, Math.max(280, text.length * 9 + 120));
+    const bannerX = (canvas.width - bannerWidth) * 0.5;
+
+    ctx.fillStyle = 'rgba(8, 10, 14, 0.72)';
+    ctx.strokeStyle = 'rgba(255, 107, 53, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(bannerX, bannerY, bannerWidth, 52, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 140, 80, 0.95)';
+    ctx.font = 'bold 11px "Roboto Mono", monospace';
+    ctx.fillText(zoneLabel, canvas.width / 2, bannerY + 10);
+
+    ctx.fillStyle = 'rgba(245, 245, 245, 0.95)';
+    ctx.font = 'bold 14px "Roboto Mono", monospace';
+    ctx.fillText(text, canvas.width / 2, bannerY + 28);
+
     ctx.restore();
 }
 

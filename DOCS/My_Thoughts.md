@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-06 - Campaign Zone 1 (The Crash Site)
+
+Campaign was intro-only until now — arcade infinite world doesn't fit *Constrained Chaos* thesis. Shipped **MapLoader** + first zone as ES module (`crashSite.js`) not JSON fetch: zero build step, works on itch `file://`. Reuses arcade camera/world-space pipeline; only differences are bounded map, static walls, hand-placed props, edge spawns, `gameMode: 'campaign'`. Collision is circle-vs-AABB (good enough for top-down). Triggers stubbed — full dialogue/scripted debris-clear is next. Zone 2 tunnels = narrow AABB maze + steam hazard volumes.
+
 ## 2026-07-06 - Clickable Version Modal (Patch Notes)
 
 Centralized version control in `js/core/constants.js` (`GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY`) so badge, About, and modal stay in sync. **VersionModal** is the third in-game announcement modality alongside the news ticker (`NEWS_UPDATES`) and About screen — click the top-left badge for the full arcade cabinet changelog. On bump: prepend `VERSION_HISTORY`, move `tag: 'CURRENT'`, update constants + landing/itch/server per `VERSION_UPDATE_CHECKLIST.md`. No more hunting hardcoded strings in `MainMenuScreen` / `AboutScreen`.
