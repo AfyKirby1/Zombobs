@@ -1,3 +1,5 @@
+import { isMobileDevice } from '../utils/gameUtils.js';
+
 export class GamepadState {
     constructor() {
         this.buttons = {
@@ -11,6 +13,8 @@ export class GamepadState {
             sprint: { pressed: false, justPressed: false, value: 0 },
             melee: { pressed: false, justPressed: false, value: 0 },
             flashlight: { pressed: false, justPressed: false, value: 0 },
+            dodge: { pressed: false, justPressed: false, value: 0 },
+            cycleThrowable: { pressed: false, justPressed: false, value: 0 },
             // Menu/Navigation
             select: { pressed: false, justPressed: false, value: 0 }, // A
             back: { pressed: false, justPressed: false, value: 0 },   // B
@@ -110,9 +114,9 @@ export class InputSystem {
             pause: 9, // Start
             prevWeapon: 14, // D-Left
             nextWeapon: 15, // D-Right
-            sprint: 10, // L-Stick Click
+            sprint: { pressed: false, justPressed: false, value: 0 }, // Handled as axis or button 10
             melee: 5, // RB
-
+            dodge: 1, // B
             select: 0, // A
             back: 1,   // B
             up: 12, down: 13, left: 14, right: 15
@@ -159,7 +163,7 @@ export class InputSystem {
 
     getAnyGamepad() {
         if (this.gamepadStates.size > 0) return this.gamepadStates.values().next().value;
-        if (this.virtualState) return this.virtualState;
+        if (this.virtualState && isMobileDevice()) return this.virtualState;
         return null;
     }
     // New helper to get all active indices

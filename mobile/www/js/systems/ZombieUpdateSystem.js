@@ -1,4 +1,5 @@
 import { shouldUpdateEntity } from '../utils/gameUtils.js';
+import { gameState } from '../core/gameState.js';
 
 /**
  * ZombieUpdateSystem handles zombie AI updates, multiplayer interpolation,
@@ -59,9 +60,25 @@ export class ZombieUpdateSystem {
      * @param {number} nightSpeedMultiplier - Speed multiplier for night time
      */
     updateZombieAI(zombie, players, nightSpeedMultiplier) {
-        // Find closest living player
+        const frostActive = gameState.frostNovaEndTime > Date.now();
+        if (frostActive && zombie.type !== 'boss') {
+            return;
+        }
+
+        // Find closest living player or phantom decoy
         let closestPlayer = null;
         let minDist = Infinity;
+
+        if (gameState.phantomDecoys && gameState.phantomDecoys.length > 0) {
+            for (let d = 0; d < gameState.phantomDecoys.length; d++) {
+                const decoy = gameState.phantomDecoys[d];
+                const distSq = (decoy.x - zombie.x) ** 2 + (decoy.y - zombie.y) ** 2;
+                if (distSq < minDist) {
+                    minDist = distSq;
+                    closestPlayer = decoy;
+                }
+            }
+        }
 
         // Optimized player search loop
         for (let j = 0; j < players.length; j++) {
@@ -80,8 +97,17 @@ export class ZombieUpdateSystem {
             if (!zombie.baseSpeed) {
                 zombie.baseSpeed = zombie.speed;
             }
-            // Apply night speed boost
-            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier;
+            const bossFrostSlow = frostActive && zombie.type === 'boss' ? 0.3 : 1.0;
+            const now = Date.now();
+            let sirenBoost = 1.0;
+            if (zombie.sirenBoostUntil) {
+                if (now < zombie.sirenBoostUntil) {
+                    sirenBoost = 1.35;
+                } else {
+                    zombie.sirenBoostUntil = undefined;
+                }
+            }
+            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow * sirenBoost;
             zombie.update(closestPlayer);
         }
     }

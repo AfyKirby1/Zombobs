@@ -24,6 +24,7 @@ export class MultiplayerSystem {
         this.throwGrenadeCallback = throwGrenadeCallback;
         this.switchWeaponCallback = switchWeaponCallback;
         this.getZombieClassByTypeCallback = getZombieClassByTypeCallback;
+        this.socketIOLoadPromise = null;
     }
 
     /**
@@ -35,7 +36,9 @@ export class MultiplayerSystem {
         gameState.multiplayer.serverStatus = 'checking';
 
 
-        fetch(`${SERVER_URL}/health`, { credentials: 'include' })
+        fetch(`${SERVER_URL}/health`, {
+            credentials: 'same-origin'
+        })
             .then(response => {
                 if (response.ok) {
                     return response.json();
@@ -114,31 +117,58 @@ export class MultiplayerSystem {
      */
     initializeNetwork(gameHUD) {
         if (gameState.multiplayer.socket) return; // Already initialized
+        gameState.multiplayer.status = 'connecting';
 
-        // Initialize socket.io connection to Hugging Face Space
-        if (typeof io !== 'undefined') {
-            gameState.multiplayer.status = 'connecting';
-
-            // CRITICAL FIX: Ensure cookie is set BEFORE Socket.io connection
-            // Fetch /health endpoint first to get/set the user ID cookie
-            fetch(`${SERVER_URL}/health`, { 
-                credentials: 'include',
-                method: 'GET'
+        this.loadSocketIOClient()
+            .then(() => {
+                // CRITICAL FIX: Ensure cookie is set BEFORE Socket.io connection
+                // Fetch /health endpoint first to get/set the user ID cookie
+                return fetch(`${SERVER_URL}/health`, {
+                    credentials: 'same-origin',
+                    method: 'GET'
+                });
             })
             .then(() => {
                 // Cookie is now set, proceed with Socket.io connection
                 this.connectSocketIO(gameHUD);
             })
             .catch(error => {
-                console.warn('Failed to set cookie before Socket.io connection, connecting anyway:', error);
-                // Still try to connect, but cookie might not be set
-                this.connectSocketIO(gameHUD);
+                if (typeof io !== 'undefined') {
+                    console.warn('Failed to set cookie before Socket.io connection, connecting anyway:', error);
+                    this.connectSocketIO(gameHUD);
+                    return;
+                }
+
+                console.error('Socket.io not found. Make sure the vendored script loads.', error);
+                gameState.multiplayer.status = 'error';
+                gameState.multiplayer.connected = false;
             });
-        } else {
-            console.error('Socket.io not found. Make sure the CDN script is loaded.');
-            gameState.multiplayer.status = 'error';
-            gameState.multiplayer.connected = false;
+    }
+
+    loadSocketIOClient() {
+        if (typeof io !== 'undefined') {
+            return Promise.resolve();
         }
+        if (this.socketIOLoadPromise) {
+            return this.socketIOLoadPromise;
+        }
+
+        this.socketIOLoadPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'js/vendor/socket.io.min.js';
+            script.async = true;
+            script.onload = () => {
+                if (typeof io !== 'undefined') {
+                    resolve();
+                } else {
+                    reject(new Error('Socket.io client loaded without global io'));
+                }
+            };
+            script.onerror = () => reject(new Error('Failed to load Socket.io client'));
+            document.head.appendChild(script);
+        });
+
+        return this.socketIOLoadPromise;
     }
 
     /**
@@ -519,6 +549,8 @@ export class MultiplayerSystem {
                         triggerExplosion(zombie.x, zombie.y, 100, 50, false);
                     }
 
+                    // Shards sync via zombie:spawn from leader — do not spawn here
+
                     // Remove zombie
                     gameState.zombies.splice(zombieIndex, 1);
                     gameState.zombiesKilled++;
@@ -537,7 +569,14 @@ export class MultiplayerSystem {
                 gameState.level = data.level;
                 gameState.nextLevelXP = data.nextLevelXP;
                 gameState.levelUpChoices = data.choices;
+                gameState.levelUpRerollsLeft = data.rerollsLeft ?? 0;
                 gameState.showLevelUp = true;
+            });
+
+            socket.on('game:levelup_reroll', (data) => {
+                if (gameState.multiplayer.isLeader) return;
+                gameState.levelUpChoices = data.choices;
+                gameState.levelUpRerollsLeft = data.rerollsLeft ?? 0;
             });
 
             socket.on('game:skill', (skillId) => {

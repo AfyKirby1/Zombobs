@@ -13,6 +13,12 @@ export const PLAYER_STAMINA_DRAIN = 1.0; // Stamina cost per frame while sprinti
 export const PLAYER_STAMINA_REGEN = 0.5; // Stamina recovery per frame
 export const PLAYER_STAMINA_REGEN_DELAY = 1000; // ms to wait before regenerating
 
+// Dodge roll / dash stats
+export const PLAYER_DODGE_COOLDOWN = 1000; // ms between dodges
+export const PLAYER_DODGE_DURATION = 250; // ms active dodge state
+export const PLAYER_DODGE_SPEED_MULT = 3.0; // speed multiplier while dodging
+export const PLAYER_DODGE_STAMINA_COST = 30;
+
 // Health pickup settings
 export const HEALTH_PICKUP_HEAL_AMOUNT = 25;
 export const HEALTH_PICKUP_SPAWN_INTERVAL = 15000; // ms between spawns
@@ -22,6 +28,29 @@ export const MAX_HEALTH_PICKUPS = 3;
 export const AMMO_PICKUP_AMOUNT = 15; // Ammo restored per pickup
 export const AMMO_PICKUP_SPAWN_INTERVAL = 20000; // ms between spawns
 export const MAX_AMMO_PICKUPS = 2;
+
+// Scrap pickups (v0.8.2.2: Scavenger Update)
+export const SCRAP_VALUE = 10;
+export const SCRAP_DROP_CHANCE = 0.2; // Regular zombies
+export const SCRAP_BOSS_VALUE = 30;
+export const MAX_SCRAP_PICKUPS = 8;
+export const SCRAP_MAGNETIC_RANGE = 250;
+
+// Scrap Shrine / mid-run shop (wave-break upgrades)
+export const SCRAP_SHRINE_SPAWN_CHANCE = 0.45;
+export const SCRAP_SHRINE_MIN_WAVE = 4;
+export const SCRAP_SHRINE_INTERACT_RANGE = 70;
+export const SCRAP_SHOP_AMMO_COST = 20;
+export const SCRAP_SHOP_SHIELD_COST = 30;
+export const SCRAP_SHOP_OVERCLOCK_COST = 40;
+export const SCRAP_SHOP_OVERCLOCK_DURATION_MS = 10000;
+export const SCRAP_SHOP_SHIELD_AMOUNT = 25;
+
+export const SCRAP_SHOP_OFFERS = [
+    { id: 'ammo', label: 'Ammo Cache', cost: SCRAP_SHOP_AMMO_COST, icon: '📦' },
+    { id: 'shield', label: 'Armor Plate', cost: SCRAP_SHOP_SHIELD_COST, icon: '🛡' },
+    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' }
+];
 
 // Low ammo threshold (25% of max ammo)
 export const LOW_AMMO_FRACTION = 0.25;
@@ -33,7 +62,8 @@ export const MELEE_DAMAGE = 3; // damage per hit
 export const MELEE_SWIPE_DURATION = 200; // ms for swipe animation
 
 // Wave settings
-export const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves
+export const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves (base; shrinks with wave via WaveChaosSystem)
+export const WAVE_MUTATOR_MIN_WAVE = 5;
 
 // Grenade system
 export const MAX_GRENADES = 3; // Maximum grenades player can carry
@@ -41,6 +71,14 @@ export const GRENADE_COOLDOWN = 2000; // 2 seconds between throws
 export const GRENADE_EXPLOSION_RADIUS = 80; // AOE damage radius
 export const GRENADE_DAMAGE = 50; // High damage for AOE
 export const GRENADE_FUSE_TIME = 1500; // 1.5 seconds before explosion
+
+// Molotov system
+export const MAX_MOLOTOVS = 2; // Maximum molotovs player can carry
+export const MOLOTOV_COOLDOWN = 2000; // 2 seconds between throws
+export const MOLOTOV_EXPLOSION_RADIUS = 70; // Fire spread radius
+export const MOLOTOV_DAMAGE = 15; // Low initial explosion damage
+export const MOLOTOV_FIRE_TICK_DAMAGE = 0.5; // Burn damage per 200ms tick
+export const MOLOTOV_FIRE_DURATION = 5000; // 5 seconds of burning ground
 
 // Particle limit
 export const MAX_PARTICLES = 500;
@@ -98,12 +136,26 @@ export const ZOMBIE_BASE_SCORES = {
     exploding: 20,
     ghost: 18,
     spitter: 22,
+    siren: 24,
+    splitter: 21,
+    shard: 8,
     boss: 100
 };
 
 // Multiplayer settings
 export const MAX_LOCAL_PLAYERS = 4;
-export const SERVER_URL = "https://ottertondays-zombs.hf.space";
+
+function resolveServerUrl() {
+    if (typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') {
+            return window.location.origin;
+        }
+    }
+    return 'https://ottertondays-zombs.hf.space';
+}
+
+export const SERVER_URL = resolveServerUrl();
 
 // News ticker updates for main menu
 export const NEWS_UPDATES = "NEW: V0.9.0 ALPHA — Performance & Systems Update: Main Menu Smoothness ⚡ | Lazy WebGPU Init 🧮 | Lazy Socket.IO Load 🌐 | Startup Metrics 📊 | Cached Menu Scores 💾 | Optimized Horror Background 🎨 | Class Tree Skills 🌳 | V0.8.4 ALPHA: Wave Chaos 🌊 | Scrap Shop Shrine 💰 | MP3 Soundtrack 🎵 | Controls in Settings ⚙️ | Phase 4 Engine 🔧 | And More...";
@@ -193,7 +245,7 @@ export const WEAPONS = {
     },
     laser: {
         name: "Laser Gun",
-        damage: 5,
+        damage: 3, // Rebalanced from 5 — was ~83 DPS, now ~50 DPS (still top-tier sustained)
         fireRate: 60, // Very fast
         ammo: 60,
         maxAmmo: 60,
@@ -201,4 +253,27 @@ export const WEAPONS = {
         range: 800,
         type: 'laser'
     }
+};
+
+// Weapon-specific muzzle flash color palettes (RGB arrays: [core, mid, outer])
+// Used by PlayerSystem.js to tint the flash gradient per weapon type
+export const MUZZLE_FLASH_COLORS = {
+    pistol:         { core: [255, 255, 255], mid: [255, 255, 200], outer: [255, 200, 0]   },
+    shotgun:        { core: [255, 255, 220], mid: [255, 200, 100], outer: [255, 120, 0]   },
+    rifle:          { core: [255, 255, 255], mid: [200, 220, 255], outer: [100, 150, 255] },
+    flamethrower:   { core: [255, 255, 200], mid: [255, 160, 50],  outer: [255, 80, 0]    },
+    smg:            { core: [255, 255, 240], mid: [255, 240, 180], outer: [255, 180, 50]  },
+    sniper:         { core: [220, 255, 255], mid: [100, 220, 255], outer: [0, 180, 255]   },
+    rocketLauncher: { core: [255, 255, 200], mid: [255, 180, 80],  outer: [255, 100, 0]   },
+    laser:          { core: [255, 220, 240], mid: [255, 50, 120],  outer: [200, 0, 80]    }
+};
+
+// Per-weapon bullet trail color (used by Bullet.draw)
+export const BULLET_TRAIL_COLORS = {
+    pistol:   '#ffff00',
+    shotgun:  '#ff8c00',
+    rifle:    '#88ccff',
+    smg:      '#ffe066',
+    sniper:   '#00e5ff',
+    laser:    '#ff0055'
 };

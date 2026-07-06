@@ -1,5 +1,5 @@
 // Current settings version - increment when schema changes
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 export class SettingsManager {
     constructor() {
@@ -8,7 +8,7 @@ export class SettingsManager {
             _version: SETTINGS_VERSION, // Track settings schema version
             audio: {
                 masterVolume: 1.0,
-                musicVolume: 0.5,
+                musicVolume: 0.25,
                 sfxVolume: 1.0,
                 spatialAudio: false, // Stereo panning based on position
                 muted: false, // Master mute toggle
@@ -36,6 +36,7 @@ export class SettingsManager {
                 floatingText: true,
                 dynamicCrosshair: true,
                 enemyHealthBars: true,
+                enemyNameTags: true, // Show zombie type name tags above enemies
                 reloadBar: true,
                 crosshairStyle: 'default', // default, dot, cross, circle
                 crosshairColor: '#00ff00', // Hex color code
@@ -111,12 +112,49 @@ export class SettingsManager {
         if (typeof window !== 'undefined') {
             const width = window.innerWidth || 0;
             const ua = (navigator && navigator.userAgent) || '';
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+            const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+                || (typeof window.matchMedia === 'function'
+                    && window.matchMedia('(pointer: coarse)').matches
+                    && navigator.maxTouchPoints > 0
+                    && width > 0 && width <= 900);
             if (isMobile) {
                 this.defaultSettings.video.uiScale = width >= 900 ? 1.4 : 1.2;
+                // Performance-friendly first-run defaults (only when no saved settings exist)
+                this.defaultSettings.video.qualityPreset = 'low';
+                this.defaultSettings.video.particleCount = 'low';
+                this.defaultSettings.video.resolutionScale = 0.75;
+                this.defaultSettings.video.webgpuEnabled = false;
+                this.defaultSettings.video.bloomIntensity = 0;
+                this.defaultSettings.video.vignette = false;
+                this.defaultSettings.video.shadows = false;
+                this.defaultSettings.video.lighting = false;
+                this.defaultSettings.video.lightingQuality = 'off';
+                this.defaultSettings.video.distortionEffects = false;
             }
         }
         this.settings = this.loadSettings();
+        this.applySettingsMigrations();
+    }
+
+    applySettingsMigrations() {
+        const savedVersion = this.settings._version ?? 1;
+        let changed = false;
+
+        if (savedVersion < 3) {
+            if (this.settings.audio?.musicVolume === 0.5) {
+                this.settings.audio.musicVolume = 0.25;
+                changed = true;
+            }
+        }
+
+        if (this.settings._version !== SETTINGS_VERSION) {
+            this.settings._version = SETTINGS_VERSION;
+            changed = true;
+        }
+
+        if (changed) {
+            this.saveSettings();
+        }
     }
 
     loadSettings() {

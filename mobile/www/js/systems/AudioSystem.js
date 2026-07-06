@@ -10,6 +10,129 @@ let sfxGainNode = null; // SFX volume control
 let menuMusic = null; // HTMLAudioElement for menu music
 let menuMusicSource = null; // MediaElementSourceNode
 let menuMusicGain = null; // Gain node for menu music
+let gameMusicGain = null; // Shared gain node for in-game music
+let gameMusicTracks = []; // { audio, source } per playlist track
+let activeGameTrackIndex = -1;
+let gameMusicActive = false;
+let gameMusicIntensity = 0.5;
+let gunshotBufferScheduled = false;
+
+const MENU_MUSIC_SRC = 'assets/Shadows of the Wasteland.mp3';
+const GAME_MUSIC_TRACKS = [
+    'assets/the_mountain-game-game-music-508018.mp3',
+    'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3'
+];
+// Code-level music attenuation (settings slider unchanged)
+const MUSIC_OUTPUT_SCALE = 0.5;
+
+function getMusicGainVolume(settingsMusicVol) {
+    const vol = settingsMusicVol !== undefined
+        ? settingsMusicVol
+        : (settingsManager.getSetting('audio', 'musicVolume') ?? 0.25);
+    return vol * MUSIC_OUTPUT_SCALE;
+}
+
+function scheduleGunshotBufferCreation() {
+    if (gunshotBuffer || gunshotBufferScheduled) return;
+    gunshotBufferScheduled = true;
+
+    const create = () => createGunshotBuffer();
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(create, { timeout: 2000 });
+    } else {
+        setTimeout(create, 0);
+    }
+}
+
+export function preloadMenuMusicAsset() {
+    if (menuMusic) return;
+    menuMusic = new Audio(MENU_MUSIC_SRC);
+    menuMusic.loop = true;
+    menuMusic.preload = 'auto';
+}
+
+function ensureGameMusicTracks() {
+    if (gameMusicTracks.length > 0) return;
+
+    for (let i = 0; i < GAME_MUSIC_TRACKS.length; i++) {
+        const audio = new Audio(GAME_MUSIC_TRACKS[i]);
+        audio.preload = 'auto';
+        audio.loop = false;
+        audio.addEventListener('ended', () => {
+            if (!gameMusicActive || activeGameTrackIndex !== i) return;
+            playGameTrackAt(i + 1);
+        });
+        gameMusicTracks.push({ audio, source: null });
+    }
+}
+
+/** @deprecated Use preloadMenuMusicAsset — kept for callers that prewarm audio. */
+export function preloadMusicAssets() {
+    preloadMenuMusicAsset();
+}
+
+function pauseAllGameTracks() {
+    for (let i = 0; i < gameMusicTracks.length; i++) {
+        const audio = gameMusicTracks[i].audio;
+        if (!audio.paused) {
+            audio.pause();
+        }
+        audio.currentTime = 0;
+    }
+}
+
+function getActiveGameAudio() {
+    if (activeGameTrackIndex < 0 || activeGameTrackIndex >= gameMusicTracks.length) return null;
+    return gameMusicTracks[activeGameTrackIndex].audio;
+}
+
+function ensureGameMusicGain() {
+    if (!audioContext || gameMusicGain) return;
+
+    gameMusicGain = audioContext.createGain();
+    gameMusicGain.gain.value = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
+    gameMusicGain.connect(masterGainNode || audioContext.destination);
+}
+
+function playGameTrackAt(index) {
+    preloadMenuMusicAsset();
+    ensureGameMusicTracks();
+
+    if (!audioContext) {
+        initAudio();
+    }
+    ensureGameMusicGain();
+
+    const trackCount = GAME_MUSIC_TRACKS.length;
+    const nextIndex = ((index % trackCount) + trackCount) % trackCount;
+    pauseAllGameTracks();
+
+    activeGameTrackIndex = nextIndex;
+    const track = gameMusicTracks[nextIndex];
+
+    if (audioContext && !track.source) {
+        try {
+            track.source = audioContext.createMediaElementSource(track.audio);
+            track.source.connect(gameMusicGain);
+        } catch (e) {
+            // Could not connect game music track to audio context
+        }
+    }
+
+    track.audio.currentTime = 0;
+    track.audio.play().catch(() => {
+        // Ignore AbortError (happens when restarting quickly)
+    });
+}
+
+if (typeof window !== 'undefined') {
+    const schedulePreload = () => preloadMenuMusicAsset();
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(schedulePreload, { timeout: 5000 });
+    } else {
+        setTimeout(schedulePreload, 500);
+    }
+}
 
 // Initialize audio context (needs user interaction first)
 export function initAudio() {
@@ -29,13 +152,15 @@ export function initAudio() {
             sfxGainNode.gain.value = sfxVol !== undefined ? sfxVol : 1.0;
             sfxGainNode.connect(masterGainNode);
 
-            // Pre-create the gunshot buffer once for performance
-            createGunshotBuffer();
+            scheduleGunshotBufferCreation();
 
             // Update music volume if it exists
+            const resolvedMusicVol = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
             if (menuMusicGain) {
-                const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-                menuMusicGain.gain.value = (musicVol !== undefined ? musicVol : 0.5);
+                menuMusicGain.gain.value = resolvedMusicVol;
+            }
+            if (gameMusicGain) {
+                gameMusicGain.gain.value = resolvedMusicVol;
             }
 
         } catch (error) {
@@ -69,20 +194,25 @@ export function updateAudioSettings() {
         sfxGainNode.gain.value = sfxVol;
     }
 
-    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+    const musicVol = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
     if (menuMusicGain) {
         menuMusicGain.gain.value = musicVol;
     } else if (menuMusic) {
         // Fallback if Web Audio API isn't fully connected for music
         menuMusic.volume = musicVol * masterVol;
     }
+    if (gameMusicGain) {
+        gameMusicGain.gain.value = musicVol;
+    } else {
+        const activeAudio = getActiveGameAudio();
+        if (activeAudio) {
+            activeAudio.volume = musicVol * masterVol;
+        }
+    }
 }
 
 export function playMenuMusic() {
-    if (!menuMusic) {
-        menuMusic = new Audio('assets/Shadows of the Wasteland.mp3');
-        menuMusic.loop = true;
-    }
+    preloadMenuMusicAsset();
 
     if (!audioContext) {
         initAudio();
@@ -93,8 +223,7 @@ export function playMenuMusic() {
         try {
             menuMusicSource = audioContext.createMediaElementSource(menuMusic);
             menuMusicGain = audioContext.createGain();
-            const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
+            menuMusicGain.gain.value = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
             menuMusicSource.connect(menuMusicGain);
             menuMusicGain.connect(masterGainNode || audioContext.destination);
         } catch (e) {
@@ -115,6 +244,57 @@ export function stopMenuMusic() {
         menuMusic.pause();
         menuMusic.currentTime = 0;
     }
+}
+
+export function playGameMusic() {
+    ensureGameMusicTracks();
+    gameMusicActive = true;
+
+    const activeAudio = getActiveGameAudio();
+    if (activeGameTrackIndex < 0) {
+        playGameTrackAt(Math.floor(Math.random() * GAME_MUSIC_TRACKS.length));
+    } else if (activeAudio && activeAudio.paused) {
+        activeAudio.play().catch(() => {
+            // Ignore AbortError (happens when restarting quickly)
+        });
+    }
+}
+
+export function stopGameMusic() {
+    gameMusicActive = false;
+    activeGameTrackIndex = -1;
+    pauseAllGameTracks();
+}
+
+export function pauseGameMusic() {
+    const activeAudio = getActiveGameAudio();
+    if (activeAudio && !activeAudio.paused) {
+        activeAudio.pause();
+    }
+}
+
+export function resumeGameMusic() {
+    const activeAudio = getActiveGameAudio();
+    if (activeAudio && activeAudio.paused) {
+        activeAudio.play().catch(() => {
+            // Ignore AbortError (happens when restarting quickly)
+        });
+    }
+}
+
+/** Scale in-game music volume by chaos intensity (0–1). */
+export function setGameMusicIntensity(intensity) {
+    gameMusicIntensity = Math.max(0, Math.min(1, intensity));
+    if (!gameMusicGain) return;
+
+    const baseVol = getMusicGainVolume(settingsManager.getSetting('audio', 'musicVolume'));
+    const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
+    const scale = 0.72 + gameMusicIntensity * 0.28;
+    gameMusicGain.gain.value = baseVol * masterVol * scale;
+}
+
+export function getGameMusicIntensity() {
+    return gameMusicIntensity;
 }
 
 // Create and cache the gunshot sound buffer (called once)
@@ -410,8 +590,125 @@ export function playDamageSound() {
     }
 }
 
+// Generate dodge whoosh sound using Web Audio API
+export function playDodgeSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return; // Still can't create, skip sound
+    }
+
+    try {
+        const duration = 0.15; // 150ms whoosh
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+
+            // Pitch drop: 300Hz down to 80Hz
+            const freq = 300 - (t * 1200);
+            if (freq > 0) sample += Math.sin(t * freq * 2 * Math.PI) * 0.4;
+
+            // Soft noise for wind/whoosh texture, decayed quickly
+            const noise = Math.random() * 2 - 1;
+            sample += noise * 0.3 * Math.exp(-t * 20);
+
+            // Envelope: hump-shaped for smooth entry and exit
+            const envelope = Math.sin((t / duration) * Math.PI);
+            data[i] = sample * envelope * 0.35;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.4;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
+// Crunchy crack when a Splitter bursts into shards
+export function playSplitterCrackSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return;
+    }
+
+    try {
+        const duration = 0.22;
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+            const noise = Math.random() * 2 - 1;
+            sample += noise * 0.55 * Math.exp(-t * 18);
+            const freq = 90 + t * 120;
+            sample += Math.sin(t * freq * 2 * Math.PI) * 0.35 * Math.exp(-t * 12);
+            const envelope = Math.sin((t / duration) * Math.PI);
+            data[i] = sample * envelope * 0.5;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.5;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
+// Piercing siren scream — horde buff + aim disruption telegraph
+export function playSirenScreamSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return;
+    }
+
+    try {
+        const duration = 0.45;
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+
+            const freq = 520 + Math.sin(t * 40) * 90 + t * 180;
+            sample += Math.sin(t * freq * 2 * Math.PI) * 0.35;
+
+            const noise = Math.random() * 2 - 1;
+            sample += noise * 0.25 * Math.exp(-t * 6);
+
+            const envelope = Math.sin((t / duration) * Math.PI);
+            data[i] = sample * envelope * 0.42;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.55;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
 // Generate kill confirmed sound using Web Audio API
-// zombieType: 'normal', 'fast', 'armored', 'exploding', 'ghost', 'spitter', 'boss'
+// zombieType: 'normal', 'fast', 'armored', 'exploding', 'ghost', 'spitter', 'siren', 'boss'
 export function playKillSound(zombieType = 'normal') {
     if (!audioContext) {
         initAudio();
@@ -427,6 +724,9 @@ export function playKillSound(zombieType = 'normal') {
             'exploding': 0.9,   // Slightly lower (exploding = heavier)
             'ghost': 1.2,       // Higher pitch (ghost = lighter)
             'spitter': 1.1,     // Slightly higher
+            'siren': 1.4,       // High-pitched screech kill
+            'splitter': 0.95,
+            'shard': 1.55,
             'boss': 0.5         // Much lower pitch (boss = very heavy)
         };
         const pitchMultiplier = pitchMultipliers[zombieType] || 1.0;

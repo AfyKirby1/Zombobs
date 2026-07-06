@@ -15,6 +15,7 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="ZOMBOBS - Zombie Apocalypse with Friends">
     <meta name="twitter:description" content="Top-down zombie survival shooter. Solo, co-op, and multiplayer.">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</title>
@@ -37,7 +38,8 @@
                     message.includes('monetization') ||
                     message.includes('xr-spatial-tracking') ||
                     message.includes('Permissions-Policy') ||
-                    message.includes('allowfullscreen')) {
+                    message.includes('allowfullscreen') ||
+                    message.includes('downloadable font:')) {
                     return; // Silently ignore
                 }
                 originalWarn.apply(console, args);
@@ -64,8 +66,6 @@
     </div>
     <canvas id="uiCanvas"></canvas>
 
-    <!-- Vendored: avoids itch.io iframe CSP blocking third-party script CDNs -->
-    <script src="js/vendor/socket.io.min.js"></script>
     <!-- Use clean relative path for module entry point without crossorigin -->
     <script type="module" src="js/main.js"></script>
 </body>

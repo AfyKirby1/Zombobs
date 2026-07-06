@@ -1,5 +1,5 @@
 import {
-    WEAPONS, PLAYER_MAX_HEALTH, MAX_GRENADES,
+    WEAPONS, PLAYER_MAX_HEALTH, MAX_GRENADES, MAX_MOLOTOVS,
     PLAYER_BASE_SPEED, PLAYER_STAMINA_MAX
 } from './constants.js';
 
@@ -48,7 +48,11 @@ export function createPlayer(x, y, colorIndex = 0) {
             pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
             shotgun: { ammo: WEAPONS.shotgun.ammo, lastHolsteredTime: 0 },
             rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
-            flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
+            flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 },
+            smg: { ammo: WEAPONS.smg.ammo, lastHolsteredTime: 0 },
+            sniper: { ammo: WEAPONS.sniper.ammo, lastHolsteredTime: 0 },
+            rocketLauncher: { ammo: WEAPONS.rocketLauncher.ammo, lastHolsteredTime: 0 },
+            laser: { ammo: WEAPONS.laser.ammo, lastHolsteredTime: 0 }
         },
 
         // Melee state
@@ -57,7 +61,10 @@ export function createPlayer(x, y, colorIndex = 0) {
 
         // Grenade state
         grenadeCount: MAX_GRENADES,
+        molotovCount: MAX_MOLOTOVS,
+        activeThrowable: 'grenade',
         lastGrenadeThrowTime: 0,
+        lastThrowableCycleTime: 0,
 
         // Shield
         shield: 0,
@@ -82,6 +89,18 @@ export function createPlayer(x, y, colorIndex = 0) {
             x: 0, y: 0, angle: 0,
             life: 0, maxLife: 5
         },
+
+        // Dodge roll state
+        isDodging: false,
+        dodgeTimeRemaining: 0,
+        dodgeCooldown: 0,
+        dodgeDirection: { x: 0, y: 0 },
+        dodgeKeyReleased: true,
+        positionHistory: [],
+
+        // Scrap resource (v0.8.2.2: The Scrapen Update)
+        scrap: 0, // Scrap currency collected from zombies
+        scrapMultiplier: 1.0, // Multiplier for scrap gains (from skills)
 
         // Input
         inputSource: 'mouse', // 'mouse', 'keyboard_arrow', 'gamepad'
@@ -134,6 +153,7 @@ export const gameState = {
     zombiesKilled: 0,
     pickupsCollected: 0, // v0.8.3.5: Tracks pickups in current session
     headshots: 0, // v0.8.3.5: Tracks headshots in current session
+    scrapCollected: 0, // v0.8.2.2: Scrap resource collected in current session
     zombiesPerWave: 5,
     zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
     highScore: 0,
@@ -148,10 +168,16 @@ export const gameState = {
     activeSkills: [],
     showLevelUp: false,
     levelUpChoices: [],
+    levelUpRerollsLeft: 0,
+    unlockedSynergies: null,
+    synergyNotifications: [],
+    phantomDecoys: [],
 
     isSpawningWave: false,
     waveBreakActive: false,
     waveBreakEndTime: 0,
+    waveMutator: null,       // Active mutator for current wave (swarm, elites, etc.)
+    waveStartTime: 0,        // When current wave spawns began (for fast-clear bonus)
 
     // Boss State
     bossActive: false,
@@ -171,6 +197,9 @@ export const gameState = {
     rapidFirePickups: [],
     shieldPickups: [],
     adrenalinePickups: [],
+    frostPickups: [],
+    scrapPickups: [], // v0.8.2.2: Scrap resource pickup
+    scrapShrines: [], // Wave-break scrap shop shrines
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -202,6 +231,9 @@ export const gameState = {
     speedBoostEndTime: 0,
     rapidFireEndTime: 0,
     adrenalineEndTime: 0,
+    frostNovaEndTime: 0,
+    frostNovaEffect: { active: false, x: 0, y: 0, startTime: 0, duration: 0, maxRadius: 0 },
+    sirenScreamEffects: [],
     killStreak: 0,
     lastKillTime: 0,
     // Multi-kill tracking (V0.7.1)
@@ -280,9 +312,14 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesKilled = 0;
     gameState.pickupsCollected = 0;
     gameState.headshots = 0;
+    gameState.scrapCollected = 0;
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
     gameState.isSpawningWave = false;
+    gameState.waveBreakActive = false;
+    gameState.waveBreakEndTime = 0;
+    gameState.waveMutator = null;
+    gameState.waveStartTime = 0;
 
     // Reset XP & Skills
     gameState.xp = 0;
@@ -291,6 +328,10 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.activeSkills = [];
     gameState.showLevelUp = false;
     gameState.levelUpChoices = [];
+    gameState.levelUpRerollsLeft = 0;
+    gameState.unlockedSynergies = new Set();
+    gameState.synergyNotifications = [];
+    gameState.phantomDecoys = [];
 
     gameState.bossActive = false;
     gameState.boss = null;
@@ -322,13 +363,123 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.ammoMultiplier = 1.0;
             player.critChance = 0;
             player.hasRegeneration = false;
+            player.scrap = 0;
+            player.scrapMultiplier = 1.0;
+            player.fireRateSkillMultiplier = 1.0;
+            player.damageSkillMultiplier = 1.0;
+            player.pierceChance = 0;
+            player.pickupMagnetBonus = 0;
+            player.pickupSpawnRateMultiplier = 1.0;
+            player.bulletRangeMultiplier = 1.0;
+            player.bulletSpreadReduction = 1.0;
+            player.luckyStrikeChance = 0;
+            player.weaponSwitchSpeedMultiplier = 1.0;
+            player.damageReduction = 1.0;
+            player.hasAdrenaline = false;
+            player.hasBloodlust = false;
+            player.bloodlustHealAmount = 2;
+            player.adrenalineDurationMs = 3000;
+            player.adrenalineBoostMultiplier = 1.2;
+            player.adrenalineBoostActive = false;
+            player.adrenalineBoostEndTime = null;
+            player.hasExecutioner = false;
+            player.hasBerserker = false;
+            player.hasSecondWind = false;
+            player.secondWindUsed = false;
+            player.meleeDamageMultiplier = 1.0;
+            player.meleeRangeMultiplier = 1.0;
+            player.meleeLifestealPercent = 0;
+            player.lifestealPercent = 0;
+            player.explosionDamageMultiplier = 1.0;
+            player.grenadeRadiusMultiplier = 1.0;
+            player.maxGrenadeBonus = 0;
+            player.damageTakenMultiplier = 1.0;
+            player.xpGainMultiplier = 1.0;
+            player.staminaDrainMultiplier = 1.0;
+            player.dodgeCooldownMultiplier = 1.0;
+            player.dodgeStaminaMultiplier = 1.0;
+            player.regenRate = 0;
+            player.hasLastStand = false;
+            player.lastStandUsed = false;
+            player.lastStandActiveUntil = 0;
+            player.hasKillMomentum = false;
+            player.killMomentumPerStack = 0.08;
+            player.killMomentumMaxStacks = 5;
+            player.killMomentumStacks = 0;
+            player.killMomentumEndTime = 0;
+            player.chainLightningChance = 0;
+            player.hasFeralRage = false;
+            player.hasHeadhunter = false;
+            player.headhunterHeal = 0;
+            player.headhunterXpBonus = 0;
+            player.hasThornSkin = false;
+            player.thornDamage = 0;
+            player.maxMolotovBonus = 0;
+            player.firePoolDurationMult = 1.0;
+            player.firePoolRadiusMult = 1.0;
+            player.fireHealPerTick = 0;
+            player.burnDurationMult = 1.0;
+            player.hasInferno = false;
+            player.hordeSlayerBonus = 0;
+            player.hordeSlayerRange = 200;
+            player.corpseBloomChance = 0;
+            player.overkillSplashPercent = 0;
+            player.multiplierGraceHits = 0;
+            player.hasStaticCharge = false;
+            player.staticCharge = 0;
+            player.staticChargeMax = 100;
+            player.hasToxicRounds = false;
+            player.toxicDamagePerTick = 0;
+            player.toxicDurationMs = 0;
+            player.hasBorrowedTime = false;
+            player.borrowedTimeCritBonus = 0;
+            player.hasKillSwitch = false;
+            player.killSwitchThreshold = 7;
+            player.killSwitchCounter = 0;
+            player.killSwitchArmed = false;
+            player.hasPhantomDecoy = false;
+            player.hasRiposte = false;
+            player.riposteDamage = 0;
+            player.scrapHealOnPickup = 0;
+            player.scoreGainMultiplier = 1.0;
+            player.bossDamageMult = 1.0;
+            player.freeShotChance = 0;
+            player.instantReloadChance = 0;
+            player.ricochetChance = 0;
+            player.hasWaveRider = false;
+            player.waveRiderEndTime = 0;
+            player.waveRiderDurationMs = 0;
+            player.waveRiderSpeedMult = 1.0;
+            player.hasVengeance = false;
+            player.vengeanceDamageMult = 1.0;
+            player.vengeanceDurationMs = 0;
+            player.vengeanceEndTime = 0;
+            player.hasColdSnap = false;
+            player.coldSnapCounter = 0;
+            player.coldSnapThreshold = 8;
+            player.hasGuardianAngel = false;
+            player.guardianAngelUsedThisWave = false;
+            player.frostNovaOnKillChance = 0;
+            player.hasGoldRush = false;
+            player.goldRushEndTime = 0;
+            player.goldRushDurationMs = 0;
+            player.hasBulletStorm = false;
+            player.bulletStormRefundPercent = 0;
+            player.dodgeDurationMult = 1.0;
+            player.hasNightfall = false;
+            player.hasGrimReaper = false;
+            player.grimReaperHeal = 0;
 
             // Reset weapon states
             player.weaponStates = {
                 pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
                 shotgun: { ammo: WEAPONS.shotgun.ammo, lastHolsteredTime: 0 },
                 rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
-                flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
+                flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 },
+                smg: { ammo: WEAPONS.smg.ammo, lastHolsteredTime: 0 },
+                sniper: { ammo: WEAPONS.sniper.ammo, lastHolsteredTime: 0 },
+                rocketLauncher: { ammo: WEAPONS.rocketLauncher.ammo, lastHolsteredTime: 0 },
+                laser: { ammo: WEAPONS.laser.ammo, lastHolsteredTime: 0 }
             };
 
             // Position players in a circle around center
@@ -355,9 +506,10 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.rapidFirePickups = [];
     gameState.shieldPickups = [];
     gameState.adrenalinePickups = [];
+    gameState.frostPickups = [];
+    gameState.scrapPickups = [];
+    gameState.scrapShrines = [];
     gameState.grenades = [];
-    gameState.acidProjectiles = [];
-    gameState.acidPools = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
     gameState.spawnIndicators = [];
@@ -375,6 +527,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.speedBoostEndTime = 0;
     gameState.rapidFireEndTime = 0;
     gameState.adrenalineEndTime = 0;
+    gameState.frostNovaEndTime = 0;
+    gameState.frostNovaEffect = { active: false, x: 0, y: 0, startTime: 0, duration: 0, maxRadius: 0 };
+    gameState.sirenScreamEffects = [];
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
     gameState.maxKillStreak = 0; // V0.7.1: Track highest streak in session

@@ -1,4 +1,5 @@
 import { isInViewport, isVisibleOnScreen } from '../utils/gameUtils.js';
+import { ctx as canvasCtx } from '../core/canvas.js';
 
 /**
  * EntityRenderSystem handles rendering of all game entities with viewport culling
@@ -39,9 +40,19 @@ export class EntityRenderSystem {
         this.drawEntityArray(gameState.rapidFirePickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.shieldPickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.adrenalinePickups, ctx, viewport, false, false);
-        
-        // Zombies with culling (most important for performance) - optimized loop, no ctx parameter
-        this.drawEntityArray(gameState.zombies, ctx, viewport, false, false);
+        this.drawEntityArray(gameState.frostPickups, ctx, viewport, false, false);
+        this.drawEntityArray(gameState.scrapPickups, ctx, viewport, false, false);
+        this.drawEntityArray(gameState.scrapShrines, ctx, viewport, false, false);
+
+        // Post-draw: render name tags above each zombie
+        this.drawEntityArray(gameState.zombies, ctx, viewport, false, false, (entity, context) => {
+            if (typeof entity.drawNameTag === 'function') {
+                entity.drawNameTag(context);
+            }
+        });
+
+        this.drawFrostNovaEffect(gameState, ctx);
+        this.drawSirenScreamEffects(gameState, ctx);
     }
 
     /**
@@ -51,8 +62,9 @@ export class EntityRenderSystem {
      * @param {Object} viewport - Viewport bounds {left, top, right, bottom}
      * @param {boolean} checkVisibility - Whether to also check visibility (for small entities like shells/bullets)
      * @param {boolean} needsCtx - Whether the entity's draw method requires ctx as a parameter
+     * @param {Function} [postDraw] - Optional callback(entity, ctx) called after each entity draw
      */
-    drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx) {
+    drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx, postDraw) {
         const viewportLeft = viewport.left;
         const viewportTop = viewport.top;
         const viewportRight = viewport.right;
@@ -78,10 +90,83 @@ export class EntityRenderSystem {
             } else {
                 entity.draw();
             }
+
+            // Post-draw hook (e.g. zombie name tags)
+            if (postDraw) {
+                postDraw(entity, ctx || canvasCtx);
+            }
         }
+    }
+
+    drawFrostNovaEffect(gameState, ctx) {
+        const fx = gameState.frostNovaEffect;
+        if (!fx || !fx.active) return;
+
+        const elapsed = Date.now() - fx.startTime;
+        if (elapsed >= fx.duration) {
+            fx.active = false;
+            return;
+        }
+
+        const t = elapsed / fx.duration;
+        const radius = fx.maxRadius * t;
+        const alpha = (1 - t) * 0.5;
+
+        ctx.save();
+        ctx.strokeStyle = `rgba(176, 224, 230, ${alpha})`;
+        ctx.lineWidth = 4 * (1 - t * 0.5);
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const fillGradient = ctx.createRadialGradient(fx.x, fx.y, radius * 0.85, fx.x, fx.y, radius);
+        fillGradient.addColorStop(0, 'rgba(224, 247, 250, 0)');
+        fillGradient.addColorStop(1, `rgba(129, 212, 250, ${alpha * 0.35})`);
+        ctx.fillStyle = fillGradient;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawSirenScreamEffects(gameState, ctx) {
+        const effects = gameState.sirenScreamEffects;
+        if (!effects || effects.length === 0) return;
+
+        const now = Date.now();
+        let writeIndex = 0;
+
+        for (let i = 0; i < effects.length; i++) {
+            const fx = effects[i];
+            const elapsed = now - fx.startTime;
+            if (elapsed >= fx.duration) continue;
+
+            const t = elapsed / fx.duration;
+            const radius = fx.maxRadius * t;
+            const alpha = (1 - t) * 0.55;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
+            ctx.lineWidth = 4 * (1 - t * 0.4);
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const fillGradient = ctx.createRadialGradient(fx.x, fx.y, radius * 0.85, fx.x, fx.y, radius);
+            fillGradient.addColorStop(0, 'rgba(0, 229, 255, 0)');
+            fillGradient.addColorStop(1, `rgba(0, 188, 212, ${alpha * 0.3})`);
+            ctx.fillStyle = fillGradient;
+            ctx.beginPath();
+            ctx.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            effects[writeIndex++] = fx;
+        }
+
+        effects.length = writeIndex;
     }
 }
 
 // Export singleton instance
 export const entityRenderSystem = new EntityRenderSystem();
-

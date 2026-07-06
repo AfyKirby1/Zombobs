@@ -2,6 +2,10 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Mobile UX & Performance (2026-07-05) ✅ COMPLETE
+- **Done**: Level-up **2×2 grid** on narrow viewports; touch hover/reroll fixes; `isMobileDevice()` detects coarse pointer + narrow width; mobile **low preset** defaults on first run; `touch-action: none`; synergy toast width clamp; **`mobile/www` synced**.
+- **Verify**: DevTools ~390px width level-up; Capacitor `npm run sync:web` before Android builds.
+
 ### Skill System Wave 3 (2026-07-05) ✅ COMPLETE
 - **Done**: +16 flat skills, **Shadow** tree (6th), **4 cards**/level-up, **10 slots**, +5 synergies (**15 total**).
 - **Highlights**: Wave Rider, Vengeance, Guardian Angel, Nova Core, Gold Rush, Bullet Storm, Ammo Echo, Ricochet, Cold Snap.

@@ -10,6 +10,13 @@ export function checkCollision(obj1, obj2) {
     return distSquared < radiusSum * radiusSum;
 }
 
+export function checkPickupCollision(player, pickup, bonusRadius = 12) {
+    const dx = player.x - pickup.x;
+    const dy = player.y - pickup.y;
+    const radiusSum = player.radius + pickup.radius + bonusRadius;
+    return dx * dx + dy * dy < radiusSum * radiusSum;
+}
+
 /**
  * Check collision between a bullet and a zombie, including secondary lower body hitbox
  * @param {Object} bullet - Bullet object with x, y, radius properties
@@ -117,10 +124,24 @@ export function triggerDamageIndicator() {
     gameState.damageIndicator.intensity = 1.0;
 }
 
-export function triggerWaveNotification() {
+export function triggerWaveNotification(customText = null, customLife = null) {
     gameState.waveNotification.active = true;
-    gameState.waveNotification.text = `Wave ${gameState.wave} Starting!`;
-    gameState.waveNotification.life = gameState.waveNotification.maxLife;
+    if (customText) {
+        gameState.waveNotification.text = customText;
+    } else if (gameState.waveMutator) {
+        const labels = {
+            swarm: 'SWARM',
+            elites: 'ELITES',
+            volatile: 'VOLATILE',
+            encircle: 'ENCIRCLE',
+            rush: 'RUSH'
+        };
+        const tag = labels[gameState.waveMutator] || gameState.waveMutator.toUpperCase();
+        gameState.waveNotification.text = `Wave ${gameState.wave} — ${tag}`;
+    } else {
+        gameState.waveNotification.text = `Wave ${gameState.wave} Starting!`;
+    }
+    gameState.waveNotification.life = customLife ?? gameState.waveNotification.maxLife;
 }
 
 export function triggerMuzzleFlash(x, y, angle) {
@@ -133,9 +154,14 @@ export function triggerMuzzleFlash(x, y, angle) {
 }
 
 export function loadHighScore() {
-    const savedHighScore = localStorage.getItem('zombieSurvivalHighScore');
-    if (savedHighScore !== null) {
-        gameState.highScore = parseInt(savedHighScore);
+    try {
+        const savedHighScore = localStorage.getItem('zombieSurvivalHighScore');
+        if (savedHighScore !== null) {
+            const parsedScore = parseInt(savedHighScore, 10);
+            gameState.highScore = Number.isFinite(parsedScore) ? parsedScore : 0;
+        }
+    } catch (error) {
+        console.warn('[Startup] Failed to load high score:', error.message);
     }
 }
 
@@ -147,10 +173,16 @@ export function saveHighScore() {
 }
 
 export function loadUsername() {
-    const savedUsername = localStorage.getItem('zombobs_username');
-    if (savedUsername !== null && savedUsername.trim() !== '') {
-        gameState.username = savedUsername.trim();
+    try {
+        const savedUsername = localStorage.getItem('zombobs_username');
+        if (savedUsername !== null && savedUsername.trim() !== '') {
+            gameState.username = savedUsername.trim();
+            return gameState.username;
+        }
+    } catch (error) {
+        console.warn('[Startup] Failed to load username:', error.message);
     }
+    return gameState.username;
 }
 
 export function saveUsername() {
@@ -160,9 +192,13 @@ export function saveUsername() {
 }
 
 export function loadMenuMusicMuted() {
-    const savedMuted = localStorage.getItem('zombobs_menuMusicMuted');
-    if (savedMuted !== null) {
-        gameState.menuMusicMuted = savedMuted === 'true';
+    try {
+        const savedMuted = localStorage.getItem('zombobs_menuMusicMuted');
+        if (savedMuted !== null) {
+            gameState.menuMusicMuted = savedMuted === 'true';
+        }
+    } catch (error) {
+        console.warn('[Startup] Failed to load menu music preference:', error.message);
     }
 }
 
@@ -201,18 +237,15 @@ export function loadMultiplierStats() {
     }
 }
 
-// Scoreboard System
+// Scoreboard System — in-memory cache avoids localStorage parse every menu frame
+let _scoreboardCache = null;
+let _recentRunsCache = null;
 
-/**
- * Load scoreboard from localStorage
- * @returns {Array} Array of scoreboard entries (max 10), sorted by score descending
- */
-export function loadScoreboard() {
+function readScoreboardFromStorage() {
     try {
         const saved = localStorage.getItem('zombobs_scoreboard');
         if (saved) {
             const scoreboard = JSON.parse(saved);
-            // Ensure it's an array and sort by score descending
             if (Array.isArray(scoreboard)) {
                 return scoreboard.sort((a, b) => b.score - a.score).slice(0, 10);
             }
@@ -223,12 +256,44 @@ export function loadScoreboard() {
     return [];
 }
 
+function readRecentRunsFromStorage() {
+    try {
+        const saved = localStorage.getItem('zombobs_recent_runs');
+        if (saved) {
+            const recentRuns = JSON.parse(saved);
+            if (Array.isArray(recentRuns)) {
+                return recentRuns;
+            }
+        }
+    } catch (error) {
+        // Failed to load recent runs
+    }
+    return [];
+}
+
+export function invalidateMenuScoreCaches() {
+    _scoreboardCache = null;
+    _recentRunsCache = null;
+}
+
+/**
+ * Load scoreboard from localStorage
+ * @returns {Array} Array of scoreboard entries (max 10), sorted by score descending
+ */
+export function loadScoreboard() {
+    if (_scoreboardCache === null) {
+        _scoreboardCache = readScoreboardFromStorage();
+    }
+    return _scoreboardCache;
+}
+
 /**
  * Clear the scoreboard from localStorage
  */
 export function clearScoreboard() {
     try {
         localStorage.removeItem('zombobs_scoreboard');
+        _scoreboardCache = [];
         return true;
     } catch (error) {
         return false;
@@ -255,6 +320,7 @@ function saveToRecentRuns(entry) {
         const recentRunsToSave = recentRuns.slice(0, 10);
 
         localStorage.setItem('zombobs_recent_runs', JSON.stringify(recentRunsToSave));
+        _recentRunsCache = recentRunsToSave;
     } catch (error) {
         // Failed to save to recent runs
     }
@@ -318,6 +384,7 @@ export function saveScoreboardEntry(entry) {
 
         // Save to localStorage
         localStorage.setItem('zombobs_scoreboard', JSON.stringify(top10));
+        _scoreboardCache = top10;
 
         return entryQualified;
     } catch (error) {
@@ -332,30 +399,22 @@ export function saveScoreboardEntry(entry) {
  * @returns {Array} Array of scoreboard entries sorted by dateTime descending
  */
 export function getLastRuns(count, gameMode = null) {
-    try {
-        const saved = localStorage.getItem('zombobs_recent_runs');
-        if (saved) {
-            const recentRuns = JSON.parse(saved);
-            if (Array.isArray(recentRuns)) {
-                // The list is already sorted by date (most recent first)
-                let filtered = recentRuns;
-                if (gameMode) {
-                    if (gameMode === 'arcade') {
-                        filtered = recentRuns.filter(entry => {
-                            const mode = entry.gameMode || 'arcade';
-                            return mode === 'arcade';
-                        });
-                    } else {
-                        filtered = recentRuns.filter(entry => entry.gameMode === gameMode);
-                    }
-                }
-                return filtered.slice(0, count);
-            }
-        }
-    } catch (error) {
-        // Failed to load last runs
+    if (_recentRunsCache === null) {
+        _recentRunsCache = readRecentRunsFromStorage();
     }
-    return [];
+
+    let filtered = _recentRunsCache;
+    if (gameMode) {
+        if (gameMode === 'arcade') {
+            filtered = _recentRunsCache.filter(entry => {
+                const mode = entry.gameMode || 'arcade';
+                return mode === 'arcade';
+            });
+        } else {
+            filtered = _recentRunsCache.filter(entry => entry.gameMode === gameMode);
+        }
+    }
+    return filtered.slice(0, count);
 }
 
 /**
@@ -384,5 +443,87 @@ export function formatTime(seconds) {
     }
 
     return parts.join(' ');
+}
+
+/** True on phone/tablet — UA, coarse pointer, or touch-first narrow viewport */
+export function isMobileDevice() {
+    if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+
+    const ua = navigator.userAgent || '';
+    if (/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+        return true;
+    }
+
+    const coarsePointer = typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches;
+    const touchPoints = navigator.maxTouchPoints > 0;
+    const narrow = window.innerWidth > 0 && window.innerWidth <= 900;
+
+    return coarsePointer && touchPoints && narrow;
+}
+
+/** Single-player arcade: world-space camera, infinite ground, prop spawning */
+export function isSinglePlayerArcadeMode(state) {
+    return !state.isCoop && !state.multiplayer.active;
+}
+
+/** True when gameplay simulation should not run (menus/overlays active) */
+export function isGameplayBlocked(state) {
+    return !state.gameRunning ||
+        state.showMainMenu ||
+        state.showLobby ||
+        state.showCoopLobby ||
+        state.showAILobby ||
+        state.showGallery ||
+        state.showAbout ||
+        state.showProfile ||
+        state.showAchievements ||
+        state.showBattlepass ||
+        state.showBadges;
+}
+
+/** True when uiCanvas should capture pointer events */
+export function isUICanvasInteractive(state, hud) {
+    return state.showSettingsPanel ||
+        state.showMainMenu ||
+        state.showLobby ||
+        state.showCoopLobby ||
+        state.showAILobby ||
+        state.showGallery ||
+        state.showAbout ||
+        state.showProfile ||
+        state.showAchievements ||
+        state.showBattlepass ||
+        state.showBadges ||
+        state.showLevelUp ||
+        state.showUsernameModal ||
+        hud.gameOver ||
+        state.gamePaused;
+}
+
+/** HTML overlay screens that need clicks to pass through to DOM */
+export function isHTMLOverlayActive(state) {
+    return state.showProfile ||
+        state.showAchievements ||
+        state.showBattlepass ||
+        state.showBadges;
+}
+
+/** Menus/lobbies where touch controls should be hidden */
+export function isMenuOrOverlayScreen(state, hud) {
+    return state.showMainMenu ||
+        state.showLobby ||
+        state.showCoopLobby ||
+        state.showAILobby ||
+        state.showGallery ||
+        state.showAbout ||
+        state.showProfile ||
+        state.showAchievements ||
+        state.showBadges ||
+        state.showBattlepass ||
+        state.showSettingsPanel ||
+        state.gamePaused ||
+        hud.gameOver ||
+        state.showLevelUp;
 }
 

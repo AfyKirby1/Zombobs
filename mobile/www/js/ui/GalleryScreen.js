@@ -73,6 +73,8 @@ export class GalleryScreen {
             { type: 'armored', name: 'Armored Zombie', health: '2x', speed: '0.8x', desc: 'The Tank - heavily armored', spawn: 'Wave 4+' },
             { type: 'ghost', name: 'Ghost Zombie', health: '80%', speed: '1.3x', desc: 'Semi-transparent spectral enemy', spawn: 'Wave 4+' },
             { type: 'spitter', name: 'Spitter Zombie', health: '80%', speed: '1.2x', desc: 'Ranged acid projectile attacks', spawn: 'Wave 6+' },
+            { type: 'siren', name: 'Siren Zombie', health: '90%', speed: '0.85x', desc: 'Screams to buff horde and disrupt aim', spawn: 'Wave 8+' },
+            { type: 'splitter', name: 'Splitter Zombie', health: '125%', speed: '0.85x', desc: 'Cracks into 2 fast shards on death', spawn: 'Wave 6+' },
             { type: 'boss', name: 'Boss Zombie', health: 'Massive', speed: '1.2x', desc: 'Epic boss with devastating attacks', spawn: 'Every 5 waves' }
         ], 'zombie');
 
@@ -100,7 +102,8 @@ export class GalleryScreen {
             { type: 'speed', name: 'Speed Boost', effect: '1.5x Speed (8s)', desc: 'Increased movement speed' },
             { type: 'rapidfire', name: 'Rapid Fire', effect: '2x Fire Rate (10s)', desc: 'Faster weapon firing' },
             { type: 'shield', name: 'Shield', effect: '+50 Shield', desc: 'Absorbs damage before health' },
-            { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects' }
+            { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects' },
+            { type: 'frost', name: 'Frost Nova', effect: 'Freeze All (6s)', desc: 'Rare - stops zombies cold, slows bosses' }
         ], 'pickup');
 
         const totalContentHeight = currentY + this.galleryScrollY - contentStartY;
@@ -340,6 +343,40 @@ export class GalleryScreen {
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
+                break;
+            case 'siren':
+                const sirenGradient = ctx.createRadialGradient(-3, -4, 0, 0, 0, radius);
+                sirenGradient.addColorStop(0, '#4dd0e1');
+                sirenGradient.addColorStop(1, '#004d57');
+                ctx.fillStyle = sirenGradient;
+                ctx.beginPath();
+                ctx.ellipse(0, 2, radius * 0.85, radius * 1.1, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = `rgba(0, 229, 255, ${0.6 + Math.sin(time / 120) * 0.3})`;
+                ctx.beginPath();
+                ctx.ellipse(0, radius * 0.35, radius * 0.35, radius * 0.25, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#00e5ff';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
+                ctx.arc(radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'splitter':
+                const splitGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius * 1.1);
+                splitGradient.addColorStop(0, '#c5e1a5');
+                splitGradient.addColorStop(1, '#33691e');
+                ctx.fillStyle = splitGradient;
+                ctx.beginPath();
+                ctx.ellipse(0, 3, radius * 1.05, radius * 1.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = `rgba(255, 171, 64, ${0.7 + Math.sin(time / 150) * 0.3})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.5, -radius * 0.2);
+                ctx.lineTo(0, radius * 0.5);
+                ctx.lineTo(radius * 0.4, radius * 0.8);
+                ctx.stroke();
                 break;
             case 'boss':
                 // Large dark red zombie
@@ -650,6 +687,31 @@ export class GalleryScreen {
                 ctx.moveTo(0, -radius/2);
                 ctx.lineTo(0, radius/2);
                 ctx.stroke();
+                break;
+            case 'frost':
+                const frostGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.4 * pulse);
+                frostGlow.addColorStop(0, 'rgba(224, 247, 250, 1.0)');
+                frostGlow.addColorStop(1, 'rgba(3, 169, 244, 0)');
+                ctx.fillStyle = frostGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 2.4 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                const frostGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, radius);
+                frostGradient.addColorStop(0, '#e0f7fa');
+                frostGradient.addColorStop(1, '#0277bd');
+                ctx.fillStyle = frostGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(angle) * radius * 0.2, Math.sin(angle) * radius * 0.2);
+                    ctx.lineTo(Math.cos(angle) * radius * 0.7, Math.sin(angle) * radius * 0.7);
+                    ctx.stroke();
+                }
                 break;
         }
         ctx.restore();

@@ -112,9 +112,24 @@ export class SettingsManager {
         if (typeof window !== 'undefined') {
             const width = window.innerWidth || 0;
             const ua = (navigator && navigator.userAgent) || '';
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+            const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+                || (typeof window.matchMedia === 'function'
+                    && window.matchMedia('(pointer: coarse)').matches
+                    && navigator.maxTouchPoints > 0
+                    && width > 0 && width <= 900);
             if (isMobile) {
                 this.defaultSettings.video.uiScale = width >= 900 ? 1.4 : 1.2;
+                // Performance-friendly first-run defaults (only when no saved settings exist)
+                this.defaultSettings.video.qualityPreset = 'low';
+                this.defaultSettings.video.particleCount = 'low';
+                this.defaultSettings.video.resolutionScale = 0.75;
+                this.defaultSettings.video.webgpuEnabled = false;
+                this.defaultSettings.video.bloomIntensity = 0;
+                this.defaultSettings.video.vignette = false;
+                this.defaultSettings.video.shadows = false;
+                this.defaultSettings.video.lighting = false;
+                this.defaultSettings.video.lightingQuality = 'off';
+                this.defaultSettings.video.distortionEffects = false;
             }
         }
         this.settings = this.loadSettings();

@@ -4,8 +4,8 @@ import { cameraSystem } from '../systems/CameraSystem.js';
 import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
-import { SKILLS_POOL } from '../systems/SkillSystem.js';
-import { saveMultiplierStats, getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
+import { SKILLS_POOL, SKILL_TREES, skillSystem } from '../systems/SkillSystem.js';
+import { saveMultiplierStats, getLastRuns, formatTime, loadScoreboard, isMobileDevice } from '../utils/gameUtils.js';
 import { isAudioInitialized, playMenuClickSound, playMenuHoverSound } from '../systems/AudioSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { RankDisplay } from './RankDisplay.js';
@@ -26,7 +26,7 @@ import { initGroundPattern } from '../systems/GraphicsSystem.js';
 export class GameHUD {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d', { willReadFrequently: true });
+        this.ctx = canvas.getContext('2d');
         this.bossHealthBar = new BossHealthBar(canvas);
         this.rankDisplay = new RankDisplay(canvas);
         this.leaderboardDisplay = new LeaderboardDisplay(canvas);
@@ -43,6 +43,7 @@ export class GameHUD {
         this.campaignIntroScreen = new CampaignIntroScreen(canvas, this.ctx);
         this.basePadding = 15;
         this.baseItemSpacing = 12;
+        this.throwableCycleAnimTimer = 0;
         this.baseFontSize = 16;
         this.padding = this.getScaledPadding();
         this.itemSpacing = this.getScaledItemSpacing();
@@ -56,13 +57,26 @@ export class GameHUD {
         this.hoveredSkillIndex = null;
         this.lobbyEnterTime = null; // Track when lobby was entered for fade-in animations
         this.lastLobbyState = false; // Track previous lobby state to reset animation
+        this.sessionPrep = null;
         // News ticker drag state - now managed by MainMenuScreen, but expose for backward compatibility
         Object.defineProperty(this, 'newsTickerDragging', {
             get: () => this.mainMenuScreen?.newsTickerDragging || false
         });
+        this._isMobileCached = isMobileDevice();
+        this._cachedScale = 1.0;
+        this._lastScaleTime = 0;
+        this._creepyBgStaticKey = '';
+        this._creepyBgFrame = 0;
+        this._creepyBgScanlineCanvas = null;
+        this._creepyBgVignetteCanvas = null;
     }
 
     getUIScale() {
+        const now = Date.now();
+        if (this._lastScaleTime && now - this._lastScaleTime < 16) {
+            return this._cachedScale;
+        }
+
         let scale = settingsManager.getSetting('video', 'uiScale') ?? 1.0;
         // Ensure scale is always a finite positive number
         if (!Number.isFinite(scale) || scale <= 0) {
@@ -94,12 +108,13 @@ export class GameHUD {
             scale *= autoScale;
         }
 
+        this._cachedScale = scale;
+        this._lastScaleTime = now;
         return scale;
     }
 
     isMobile() {
-        const ua = (navigator && navigator.userAgent) || '';
-        return /Android|iPhone|iPad|iPod/i.test(ua);
+        return isMobileDevice();
     }
 
     getScaledPadding() {
@@ -116,13 +131,34 @@ export class GameHUD {
 
     drawStat(label, value, icon, color, x, y, width, height = null) {
         const scale = this.getUIScale();
-        const statHeight = height || (50 * scale); // Use provided height or default to 50
+        let statHeight = height || (50 * scale); // Use provided height or default to 50
         const padding = 10 * scale;
         const fontSize = this.getScaledFontSize();
 
+        let currentX = x;
+        let currentY = y;
+        let currentWidth = width;
+
+        // Handle Scrap stat (special metallic styling)
+        if (label === 'Scrap') {
+            this.drawScrapStat(value, x, y, width, statHeight, scale);
+            return;
+        }
+
+        const isCycling = (label === 'Grenades' || label === 'Molotovs') && this.throwableCycleAnimTimer > 0;
+        if (isCycling) {
+            const scaleFactor = 1 + (this.throwableCycleAnimTimer / 15) * 0.15; // Max 1.15x scale
+            const centerX = x + width / 2;
+            const centerY = y + statHeight / 2;
+            currentWidth = width * scaleFactor;
+            statHeight = statHeight * scaleFactor;
+            currentX = centerX - currentWidth / 2;
+            currentY = centerY - statHeight / 2;
+        }
+
         // 1. Glass Background (matching HP UI)
         this.ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
-        this.ctx.fillRect(x, y, width, statHeight);
+        this.ctx.fillRect(currentX, currentY, currentWidth, statHeight);
 
         // 2. Texture overlay (bloody_dark_floor.png pattern)
         const groundPattern = initGroundPattern();
@@ -130,26 +166,31 @@ export class GameHUD {
             this.ctx.save();
             this.ctx.globalAlpha = 0.15; // Subtle texture overlay
             this.ctx.fillStyle = groundPattern;
-            this.ctx.fillRect(x, y, width, statHeight);
+            this.ctx.fillRect(currentX, currentY, currentWidth, statHeight);
             this.ctx.restore();
         }
 
-        // 3. Border (subtle, matching HP UI - no glow)
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(x, y, width, statHeight);
+        // 3. Border
+        if (isCycling) {
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + (this.throwableCycleAnimTimer / 15) * 0.7})`;
+            this.ctx.lineWidth = 2;
+        } else {
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            this.ctx.lineWidth = 1;
+        }
+        this.ctx.strokeRect(currentX, currentY, currentWidth, statHeight);
 
         // 4. Color Accent (vertical bar on far left)
         this.ctx.fillStyle = color;
         this.ctx.shadowBlur = 10 * scale;
         this.ctx.shadowColor = color;
-        this.ctx.fillRect(x, y, 4 * scale, statHeight);
+        this.ctx.fillRect(currentX, currentY, 4 * scale, statHeight);
         this.ctx.shadowBlur = 0;
 
         // 5. Icon (far left, vertically centered)
         const iconSize = 22 * scale;
-        const iconX = x + 24 * scale;
-        const iconY = y + statHeight * 0.5;
+        const iconX = currentX + 24 * scale;
+        const iconY = currentY + statHeight * 0.5;
         this.ctx.font = `${iconSize}px serif`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -161,19 +202,19 @@ export class GameHUD {
         this.ctx.fillStyle = '#bfbfbf';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
-        this.ctx.fillText(label.toUpperCase(), x + 46 * scale, y + 10 * scale);
+        this.ctx.fillText(label.toUpperCase(), currentX + 46 * scale, currentY + 10 * scale);
 
         // 7. Value (Bottom-right stacked, prominent)
         this.ctx.textAlign = 'right';
         this.ctx.textBaseline = 'bottom';
-        const valueFontSize = Math.max(16, Math.round(24 * scale));
+        const valueFontSize = Math.max(14, Math.min(Math.round(24 * scale), Math.round(statHeight * 0.42)));
         this.ctx.font = `bold ${valueFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = color;
 
         // Glow for the value
         this.ctx.shadowBlur = 12 * scale;
         this.ctx.shadowColor = color;
-        this.ctx.fillText(value, x + width - 12 * scale, y + statHeight - 8 * scale);
+        this.ctx.fillText(value, currentX + currentWidth - 12 * scale, currentY + statHeight - 8 * scale);
 
         this.ctx.shadowBlur = 0;
         this.ctx.textAlign = 'left'; // Reset alignment
@@ -269,10 +310,20 @@ export class GameHUD {
     }
 
     draw() {
+        if (gameState.throwableCycleHUDTrigger) {
+            this.throwableCycleAnimTimer = 15;
+            gameState.throwableCycleHUDTrigger = false;
+        }
+        if (this.throwableCycleAnimTimer > 0) {
+            this.throwableCycleAnimTimer--;
+        }
+
         if (gameState.showCampaignIntro) {
             // Update and draw the intro screen
             this.campaignIntroScreen.update();
             this.campaignIntroScreen.draw();
+            this.updateSessionPrep();
+            this.drawSessionPrepOverlay();
             return;
         }
 
@@ -305,6 +356,7 @@ export class GameHUD {
                 }
                 this.drawOffScreenIndicators();
                 this.drawAchievementNotifications();
+                this.drawSynergyNotifications();
                 this.drawMobileControls();
             }
 
@@ -335,6 +387,87 @@ export class GameHUD {
             this.paused || gameState.gamePaused || gameState.showLevelUp || this.gameOver) {
             this.drawCursor();
         }
+
+        this.updateSessionPrep();
+        this.drawSessionPrepOverlay();
+    }
+
+    beginSessionPrep() {
+        this.sessionPrep = {
+            alpha: 0,
+            phase: 'in',
+            spinnerAngle: 0,
+            startedAt: performance.now()
+        };
+    }
+
+    endSessionPrep() {
+        if (!this.sessionPrep) return;
+        this.sessionPrep.phase = 'out';
+        this.sessionPrep.startedAt = performance.now();
+    }
+
+    updateSessionPrep() {
+        if (!this.sessionPrep) return;
+
+        const elapsed = performance.now() - this.sessionPrep.startedAt;
+        if (this.sessionPrep.phase === 'in') {
+            this.sessionPrep.alpha = Math.min(1, elapsed / 220);
+        } else if (this.sessionPrep.phase === 'out') {
+            this.sessionPrep.alpha = Math.max(0, 1 - (elapsed / 380));
+            if (this.sessionPrep.alpha <= 0) {
+                this.sessionPrep = null;
+                return;
+            }
+        }
+
+        this.sessionPrep.spinnerAngle += 0.18;
+    }
+
+    drawSessionPrepOverlay() {
+        if (!this.sessionPrep || this.sessionPrep.alpha <= 0) return;
+
+        const ctx = this.ctx;
+        const alpha = this.sessionPrep.alpha;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.save();
+        ctx.fillStyle = `rgba(8, 8, 10, ${0.82 * alpha})`;
+        ctx.fillRect(0, 0, w, h);
+
+        const spinnerRadius = 18;
+        const spinnerY = cy - 8;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.14 * alpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, spinnerY, spinnerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(255, 23, 68, ${alpha})`;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(
+            cx,
+            spinnerY,
+            spinnerRadius,
+            this.sessionPrep.spinnerAngle,
+            this.sessionPrep.spinnerAngle + Math.PI * 0.65
+        );
+        ctx.stroke();
+
+        ctx.font = `700 ${Math.max(12, Math.round(13 * this.getUIScale()))}px "Roboto Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(232, 232, 232, ${alpha})`;
+        ctx.fillText('PREPARING WORLD', cx, cy + 34);
+
+        ctx.font = `400 ${Math.max(10, Math.round(11 * this.getUIScale()))}px "Roboto Mono", monospace`;
+        ctx.fillStyle = `rgba(160, 160, 170, ${0.85 * alpha})`;
+        ctx.fillText('Initializing graphics', cx, cy + 54);
+        ctx.restore();
     }
 
     drawSinglePlayerHUD() {
@@ -348,61 +481,45 @@ export class GameHUD {
         const webgpuHeight = 32;
         const webgpuSpacing = 8;
         let startY = this.padding + webgpuHeight + webgpuSpacing;
+        const combatRowY = startY;
 
-        // ===== DRAW WAVE AND KILLS NEXT TO DIRECTIONAL COMPASS =====
-        // Directional compass is at top: Y=10, height=30, width=40% of canvas
-        const compassHeight = 30;
-        const compassY = 10;
-        const compassWidth = this.canvas.width * 0.4;
-        const compassX = (this.canvas.width - compassWidth) / 2;
+        const topHud = this.getTopCompassLayout();
+        const {
+            compassWidth,
+            compassX,
+            statWidth,
+            statHeight,
+            compassSpacing,
+            statY,
+            compassHeight,
+            compassY
+        } = topHud;
 
-        const statWidth = 140 * scale;
-        const statHeight = 50 * scale;
-        const compassSpacing = 10 * scale;
-
-        // Position stats vertically centered with compass
-        const statY = compassY + (compassHeight / 2) - (statHeight / 2);
-
-        // WAVE box - LEFT of directional compass
         const waveX = compassX - compassSpacing - statWidth;
-        this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', waveX, statY, statWidth);
+        this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', waveX, statY, statWidth, statHeight);
 
-        // Kills box - RIGHT of directional compass
         const killsX = compassX + compassWidth + compassSpacing;
-        this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth);
-        // ===== END DIRECTIONAL COMPASS STATS =====
-
-        // Draw centralized multiplier indicator at top center (if active or building up)
-        // Show if multiplier > 1.0 OR if player has any consecutive kills (progress bar)
-        if (player.scoreMultiplier > 1.0 || player.consecutiveKills > 0) {
-            const centerX = this.canvas.width / 2;
-            const multiplierY = 100 * scale; // Moved back up to be just below compass
-            this.drawMultiplierIndicator(player, centerX, multiplierY);
-        }
+        this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth, statHeight);
 
         this.drawPlayerStats(player, startX, startY);
 
-        // Draw shared stats below player stats for single player
-        // Health and Shield only now (removed Ammo/Grenades)
         const sharedStatHeight = 50 * scale;
-        startY += (sharedStatHeight + itemSpacing) * 2 + itemSpacing; // Health + Shield (or just Health if no shield)
-        const finalY = this.drawSharedStats(startX, startY);
+        startY += (sharedStatHeight + itemSpacing) * 2 + itemSpacing;
+        this.drawSharedStats(startX, startY);
 
-        // Calculate bottom UI positions (bottom stat / weapon row)
         const isMobile = this.isMobile();
-        const xpBarWidth = 280 * scale;
-        const xpBarHeight = 50 * scale;
-        const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        const xpBarY = this.getBottomHudRowY(xpBarHeight);
-        this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
-
-        // Calculate Data
         const remainingZombies = gameState.zombies.length;
         const totalZombies = gameState.zombiesSpawnedThisWave || gameState.zombiesPerWave;
         const waveProgressText = `${remainingZombies}/${totalZombies}`;
         const waveProgressColor = remainingZombies <= totalZombies * 0.3 ? '#76ff03' : '#ffc107';
 
         if (isMobile) {
+            const xpBarWidth = 280 * scale;
+            const xpBarHeight = 50 * scale;
+            const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
+            const xpBarY = this.getBottomHudRowY(xpBarHeight);
+            this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
+
             // === MOBILE LAYOUT: SIDEBARS ===
 
             // Left Sidebar (Center Vertical): Zombies Left, Score
@@ -411,17 +528,15 @@ export class GameHUD {
             const sidebarSpacing = 15 * scale;
             const centerY = this.canvas.height / 2;
 
-            // Calculate total height to center the block
-            const leftBlockTotalHeight = sidebarHeight * 2 + sidebarSpacing;
-            const leftBlockStartY = centerY - (leftBlockTotalHeight / 2);
+        // Calculate total height to center the block (Left, Score, Scrap)
+        const leftBlockTotalHeight = sidebarHeight * 3 + sidebarSpacing * 2;
+        const leftBlockStartY = centerY - (leftBlockTotalHeight / 2);
 
-            const leftX = this.padding; // Hug the left wall
+        const leftX = this.padding;
 
-            // Draw "Left" (Zombies)
-            this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, leftBlockStartY, sidebarWidth, sidebarHeight);
-
-            // Draw "Score" (Below)
-            this.drawStat('Score', gameState.score, '🏆', '#ffd700', leftX, leftBlockStartY + sidebarHeight + sidebarSpacing, sidebarWidth, sidebarHeight);
+        this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, leftBlockStartY, sidebarWidth, sidebarHeight);
+        this.drawStat('Score', gameState.score, '🏆', '#ffd700', leftX, leftBlockStartY + sidebarHeight + sidebarSpacing, sidebarWidth, sidebarHeight);
+        this.drawScrapStat(player.scrap || 0, leftX, leftBlockStartY + (sidebarHeight + sidebarSpacing) * 2, sidebarWidth, sidebarHeight, scale);
 
             // Right Sidebar (Center Vertical): Weapon, Grenade
             // Stacked vertically on the right wall
@@ -441,8 +556,12 @@ export class GameHUD {
             // Grenade box re-uses drawStat usually, but we want it tappable
             // Let's use drawStat but save bounds for tap
             const grenadeY = rightBlockStartY + weaponHeight + sidebarSpacing;
-            const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-            this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, rightX, grenadeY, weaponWidth, weaponHeight);
+            const activeThrowable = player.activeThrowable || 'grenade';
+            const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
+            const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
+            const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
+            const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+            this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, rightX, grenadeY, weaponWidth, weaponHeight);
 
             // Store interactable bounds for Mobile Touches
             this.mobileBounds = {
@@ -474,27 +593,28 @@ export class GameHUD {
             }
 
         } else {
-            // === DESKTOP LAYOUT: BOTTOM BAR ===
-
-            const bottomWidth = 160 * scale;
-            const leftStatWidth = 160 * scale;
-            const leftStatHeight = 50 * scale;
-            const bottomSpacing = 8 * scale;
-
-            const leftX = this.padding;
-            const scoreX = leftX + leftStatWidth + bottomSpacing;
-
-            this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, xpBarY, leftStatWidth, leftStatHeight);
-            this.drawStat('Score', gameState.score, '🏆', '#ffd700', scoreX, xpBarY, leftStatWidth, leftStatHeight);
-
-            const weaponWidth = 200 * scale;
-            const weaponHeight = 50 * scale;
+            // === DESKTOP LAYOUT: top-right combat + bottom dock ===
+            const weaponWidth = 175 * scale;
+            const weaponHeight = 44 * scale;
             const weaponSpacing = 8 * scale;
-
             const grenadeX = this.canvas.width - weaponWidth - this.padding;
             const weaponX = grenadeX - weaponWidth - weaponSpacing;
+            this.drawWeaponInfoHorizontal(player, weaponX, grenadeX, combatRowY, weaponWidth, weaponHeight);
 
-            this.drawWeaponInfoHorizontal(player, weaponX, grenadeX, xpBarY, weaponWidth, weaponHeight);
+            const metaWidth = 132 * scale;
+            const metaHeight = 50 * scale;
+            const metaSpacing = 8 * scale;
+            const xpBarWidth = Math.min(420 * scale, this.canvas.width * 0.38);
+            const xpBarHeight = 44 * scale;
+            const xpBarY = this.getBottomHudRowY(xpBarHeight);
+            const xpBarX = (this.canvas.width - xpBarWidth) / 2;
+            const metaRowY = xpBarY - metaHeight - metaSpacing;
+
+            const leftX = this.padding;
+            this.drawStat('Score', gameState.score, '🏆', '#ffd700', leftX, metaRowY, metaWidth, metaHeight);
+            this.drawScrapStat(player.scrap || 0, leftX + metaWidth + metaSpacing, metaRowY, metaWidth, metaHeight, scale);
+            this.drawStat('Zombies', waveProgressText, '🧟', waveProgressColor, leftX + (metaWidth + metaSpacing) * 2, metaRowY, metaWidth, metaHeight);
+            this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
         }
     }
 
@@ -522,14 +642,6 @@ export class GameHUD {
 
         // Get local player (mouse input) or first player
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
-
-        // Draw centralized multiplier indicator at top center (if active or building up)
-        // Use local player or first player for multiplier display
-        if (localPlayer && (localPlayer.scoreMultiplier > 1.0 || localPlayer.consecutiveKills > 0)) {
-            const centerX = this.canvas.width / 2;
-            const multiplierY = 100 * scale; // Moved back up
-            this.drawMultiplierIndicator(localPlayer, centerX, multiplierY);
-        }
 
         // Draw players in grid positions
         if (gameState.players.length >= 1) {
@@ -578,6 +690,36 @@ export class GameHUD {
             const weaponX = grenadeX - weaponWidth - weaponSpacing;
             this.drawWeaponInfoHorizontal(localPlayer, weaponX, grenadeX, weaponY, weaponWidth, weaponHeight);
         }
+    }
+
+    getBottomHudRowY(rowHeight) {
+        const scale = this.getUIScale();
+        const bottomInset = 6 * scale; // small gutter above screen edge / OS taskbar
+        return this.canvas.height - rowHeight - bottomInset;
+    }
+
+    getTopCompassLayout() {
+        const scale = this.getUIScale();
+        const compassHeight = 30;
+        const compassY = 10;
+        const compassWidth = this.canvas.width * 0.28;
+        const compassX = (this.canvas.width - compassWidth) / 2;
+        const statWidth = 115 * scale;
+        const statHeight = 44 * scale;
+        const compassSpacing = 8 * scale;
+        const statY = compassY + (compassHeight / 2) - (statHeight / 2);
+
+        return {
+            scale,
+            compassHeight,
+            compassY,
+            compassWidth,
+            compassX,
+            statWidth,
+            statHeight,
+            compassSpacing,
+            statY
+        };
     }
 
     drawPlayerStats(player, x, y, labelPrefix = "") {
@@ -638,6 +780,12 @@ export class GameHUD {
             this.drawStat('Rapid', '>>> ' + timeLeft + 's', '🔥', '#ff9800', x, currentY, width);
         }
 
+        if (gameState.frostNovaEndTime > Date.now()) {
+            currentY += height + itemSpacing;
+            const timeLeft = Math.ceil((gameState.frostNovaEndTime - Date.now()) / 1000);
+            this.drawStat('Frost', timeLeft + 's frozen', '❄', '#4dd0e1', x, currentY, width);
+        }
+
         if (gameState.adrenalineEndTime > Date.now()) {
             currentY += height + this.itemSpacing;
             const timeLeft = Math.ceil((gameState.adrenalineEndTime - Date.now()) / 1000);
@@ -645,6 +793,82 @@ export class GameHUD {
         }
 
         return currentY;
+    }
+
+    drawScrapStat(value, x, y, width, height, scale) {
+        const padding = 10 * scale;
+        const fontSize = this.getScaledFontSize();
+
+        let currentX = x;
+        let currentY = y;
+        let currentWidth = width;
+
+        // Glass Background (matching Stats UI)
+        this.ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+        this.ctx.fillRect(currentX, currentY, currentWidth, height);
+
+        // Texture overlay
+        const groundPattern = initGroundPattern();
+        if (groundPattern) {
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.15;
+            this.ctx.fillStyle = groundPattern;
+            this.ctx.fillRect(currentX, currentY, currentWidth, height);
+            this.ctx.restore();
+        }
+
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(currentX, currentY, currentWidth, height);
+
+        // Gold/Silver/Bronze accent based on value
+        let scrapColor;
+        if (value >= 100) {
+            scrapColor = '#ffd700';
+        } else if (value >= 25) {
+            scrapColor = '#c0c0c0';
+        } else {
+            scrapColor = '#cd9b6d';
+        }
+
+        // Vertical accent bar (gold/silver/bronze)
+        this.ctx.fillStyle = scrapColor;
+        this.ctx.shadowBlur = 10 * scale;
+        this.ctx.shadowColor = scrapColor;
+        this.ctx.fillRect(currentX, currentY, 4 * scale, height);
+        this.ctx.shadowBlur = 0;
+
+        // Icon (Scrap coin/treasure chest icon)
+        const iconSize = 22 * scale;
+        const iconX = currentX + 24 * scale;
+        const iconY = currentY + height * 0.5;
+        this.ctx.font = `${iconSize}px serif`; // Emoji font
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('💰', iconX, iconY);
+
+        // Label text (Top-left stacked)
+        const labelFontSize = Math.max(9, Math.round(11 * scale));
+        this.ctx.font = `bold ${labelFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#bfbfbf';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('SCRAP', currentX + 46 * scale, currentY + 10 * scale);
+
+        // Value (Bottom-right stacked, prominent)
+        this.ctx.textAlign = 'right';
+        this.ctx.textBaseline = 'bottom';
+        const valueFontSize = Math.max(14, Math.min(Math.round(24 * scale), Math.round(height * 0.42)));
+        this.ctx.font = `bold ${valueFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = scrapColor;
+
+        // Glow for the value
+        this.ctx.shadowBlur = 12 * scale;
+        this.ctx.shadowColor = scrapColor;
+        this.ctx.fillText(value, currentX + currentWidth - 12 * scale, currentY + height - 8 * scale);
+        this.ctx.shadowBlur = 0;
+        this.ctx.textAlign = 'left'; // Reset alignment
     }
 
     drawXPBar(x, y, width) {
@@ -719,13 +943,14 @@ export class GameHUD {
 
         // Draw each active skill
         for (const activeSkill of gameState.activeSkills) {
-            const skillData = SKILLS_POOL.find(s => s.id === activeSkill.id);
+            const skillData = skillSystem.getSkillById(activeSkill.id);
             if (!skillData) continue;
 
             const skillLevel = activeSkill.level || 1;
+            const treeInfo = activeSkill.tree ? SKILL_TREES[activeSkill.tree] : null;
             const skillName = skillLevel > 1 ? `${skillData.name} Lv.${skillLevel}` : skillData.name;
+            const skillColor = treeInfo ? treeInfo.color : '#9c27b0';
 
-            // Background with glow
             const bgGradient = this.ctx.createLinearGradient(x, currentY, x, currentY + skillHeight);
             bgGradient.addColorStop(0, 'rgba(42, 42, 42, 0.85)');
             bgGradient.addColorStop(1, 'rgba(26, 26, 26, 0.85)');
@@ -733,8 +958,12 @@ export class GameHUD {
             this.ctx.fillStyle = bgGradient;
             this.ctx.fillRect(x, currentY, width, skillHeight);
 
-            // Border
-            const skillColor = '#9c27b0'; // Purple for skills
+            // Tree accent bar on left edge
+            if (treeInfo) {
+                this.ctx.fillStyle = treeInfo.accent || treeInfo.color;
+                this.ctx.fillRect(x, currentY, 4 * scale, skillHeight);
+            }
+
             this.ctx.strokeStyle = skillColor;
             this.ctx.lineWidth = 2 * scale;
             this.ctx.strokeRect(x, currentY, width, skillHeight);
@@ -834,8 +1063,12 @@ export class GameHUD {
 
         // Grenades
         currentY += height + itemSpacing;
-        const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-        this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
+        const activeThrowable = player.activeThrowable || 'grenade';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, x, currentY, width);
     }
 
     drawWeaponInfoHorizontal(player, weaponX, grenadeX, y, width, height) {
@@ -921,14 +1154,12 @@ export class GameHUD {
         }
 
         // Grenades box - side by side
-        const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-        this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, grenadeX, y, width);
-    }
-
-    getBottomHudRowY(rowHeight) {
-        const scale = this.getUIScale();
-        const bottomInset = 6 * scale; // small gutter above screen edge / OS taskbar
-        return this.canvas.height - rowHeight - bottomInset;
+        const activeThrowable = player.activeThrowable || 'grenade';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, grenadeX, y, width);
     }
 
     drawTooltip(text, x, y) {
@@ -1039,8 +1270,45 @@ export class GameHUD {
     hidePauseMenu() { this.paused = false; }
     hideGameOver() { this.gameOver = false; this.finalScore = ''; }
 
+    _ensureCreepyBgStaticLayers() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const key = `${w}x${h}`;
+        if (this._creepyBgStaticKey === key && this._creepyBgScanlineCanvas && this._creepyBgVignetteCanvas) {
+            return;
+        }
+
+        this._creepyBgStaticKey = key;
+        this._creepyBgFrame = 0;
+
+        const scanCanvas = document.createElement('canvas');
+        scanCanvas.width = w;
+        scanCanvas.height = h;
+        const scanCtx = scanCanvas.getContext('2d');
+        scanCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        for (let i = 0; i < h; i += 4) {
+            scanCtx.fillRect(0, i, w, 2);
+        }
+        this._creepyBgScanlineCanvas = scanCanvas;
+
+        const vigCanvas = document.createElement('canvas');
+        vigCanvas.width = w;
+        vigCanvas.height = h;
+        const vigCtx = vigCanvas.getContext('2d');
+        const cx = w / 2;
+        const cy = h / 2;
+        const vignette = vigCtx.createRadialGradient(cx, cy, h * 0.3, cx, cy, h * 0.8);
+        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignette.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+        vigCtx.fillStyle = vignette;
+        vigCtx.fillRect(0, 0, w, h);
+        this._creepyBgVignetteCanvas = vigCanvas;
+    }
+
     drawCreepyBackground() {
-        // Use willReadFrequently to optimize readback for glitch effects
+        this._ensureCreepyBgStaticLayers();
+        this._creepyBgFrame++;
+
         const time = Date.now();
         const mouseX = this.mouseX || this.canvas.width / 2;
         const mouseY = this.mouseY || this.canvas.height / 2;
@@ -1051,7 +1319,7 @@ export class GameHUD {
 
         // Pulsing red gradient center
         const pulseSpeed = 0.002;
-        const pulseSize = 0.5 + Math.sin(time * pulseSpeed) * 0.1; // Oscillates between 0.4 and 0.6
+        const pulseSize = 0.5 + Math.sin(time * pulseSpeed) * 0.1;
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
@@ -1064,10 +1332,7 @@ export class GameHUD {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Hidden Scratches (only visible near mouse)
-        // We draw these BEFORE the heavy vignette so they feel "deep"
         if (Math.random() < 0.1) {
-            // Use a fixed seed or just consistent noise for scratches?
-            // Actually, let's just draw random faint lines near the cursor
             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             this.ctx.lineWidth = 1;
             this.ctx.beginPath();
@@ -1081,7 +1346,6 @@ export class GameHUD {
         // Random Blood Splatters
         if (!this.splatters) this.splatters = [];
 
-        // Spawn new splatter (small chance)
         if (Math.random() < 0.02) {
             this.splatters.push({
                 x: Math.random() * this.canvas.width,
@@ -1097,8 +1361,7 @@ export class GameHUD {
             });
         }
 
-        // Draw and update splatters
-        this.ctx.fillStyle = '#660000'; // Deep red
+        this.ctx.fillStyle = '#660000';
         for (let i = this.splatters.length - 1; i >= 0; i--) {
             const s = this.splatters[i];
             s.alpha -= s.decay;
@@ -1118,10 +1381,9 @@ export class GameHUD {
         }
         this.ctx.globalAlpha = 1.0;
 
-        // Scanlines
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        for (let i = 0; i < this.canvas.height; i += 4) {
-            this.ctx.fillRect(0, i, this.canvas.width, 2);
+        // Pre-baked scanlines (static per canvas size)
+        if (this._creepyBgScanlineCanvas) {
+            this.ctx.drawImage(this._creepyBgScanlineCanvas, 0, 0);
         }
 
         // Glitch Effect (Random horizontal slice displacement)
@@ -1130,55 +1392,47 @@ export class GameHUD {
             const glitchY = Math.random() * (this.canvas.height - glitchHeight);
             const offset = (Math.random() - 0.5) * 20;
 
-            // Capture and re-draw the slice with an offset using drawImage (GPU-accelerated)
-            // This is much faster than getImageData/putImageData and avoids readback penalties
             this.ctx.drawImage(
                 this.canvas,
                 0, glitchY, this.canvas.width, glitchHeight,
                 offset, glitchY, this.canvas.width, glitchHeight
             );
 
-            // Add chromatic aberration line
             this.ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 255, 0.3)';
             this.ctx.fillRect(0, glitchY + Math.random() * glitchHeight, this.canvas.width, 2);
         }
 
-        // Moving static noise (lighter to not be too distracting)
-        const noiseAmount = 1000;
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-        for (let i = 0; i < noiseAmount; i++) {
-            const x = Math.random() * this.canvas.width;
-            const y = Math.random() * this.canvas.height;
-            const size = Math.random() * 2 + 1;
-            this.ctx.fillRect(x, y, size, size);
+        // Static noise — every 4th frame, fewer dots (same visual density, ~75% less work)
+        if (this._creepyBgFrame % 4 === 0) {
+            const noiseAmount = 250;
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            for (let i = 0; i < noiseAmount; i++) {
+                const x = Math.random() * this.canvas.width;
+                const y = Math.random() * this.canvas.height;
+                const size = Math.random() * 2 + 1;
+                this.ctx.fillRect(x, y, size, size);
+            }
         }
 
-        // Heavy Vignette
-        const vignette = this.ctx.createRadialGradient(centerX, centerY, this.canvas.height * 0.3, centerX, centerY, this.canvas.height * 0.8);
-        vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        vignette.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+        // Pre-baked vignette (static per canvas size)
+        if (this._creepyBgVignetteCanvas) {
+            this.ctx.drawImage(this._creepyBgVignetteCanvas, 0, 0);
+        }
 
-        this.ctx.fillStyle = vignette;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Flashlight / "Something Watching" Effect (drawn after vignette for uniform brightness)
-        // Creates a subtle, unsettling spotlight that follows the mouse
-        // revealing hidden scratches/texture
+        // Flashlight follows mouse
         const flashlightRadius = 150 + Math.sin(time * 0.005) * 20;
         const flashlight = this.ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, flashlightRadius);
-        // Realistic flashlight: bright center, gradual fade to edges
-        flashlight.addColorStop(0, 'rgba(255, 255, 255, 0.3)'); // Bright center
-        flashlight.addColorStop(0.2, 'rgba(255, 220, 220, 0.25)'); // Slight fade
-        flashlight.addColorStop(0.5, 'rgba(255, 180, 180, 0.18)'); // More fade
-        flashlight.addColorStop(0.75, 'rgba(200, 120, 120, 0.1)'); // Dimmer
-        flashlight.addColorStop(0.9, 'rgba(150, 80, 80, 0.05)'); // Much dimmer
-        flashlight.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparent edge
+        flashlight.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+        flashlight.addColorStop(0.2, 'rgba(255, 220, 220, 0.25)');
+        flashlight.addColorStop(0.5, 'rgba(255, 180, 180, 0.18)');
+        flashlight.addColorStop(0.75, 'rgba(200, 120, 120, 0.1)');
+        flashlight.addColorStop(0.9, 'rgba(150, 80, 80, 0.05)');
+        flashlight.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-        // Use screen blend mode to ensure uniform brightness regardless of underlying darkness
         this.ctx.globalCompositeOperation = 'screen';
         this.ctx.fillStyle = flashlight;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.globalCompositeOperation = 'source-over'; // Reset blend mode
+        this.ctx.globalCompositeOperation = 'source-over';
     }
 
 
@@ -1538,10 +1792,13 @@ export class GameHUD {
         if (gameState.players.length === 0) return;
 
         const player = gameState.players[0];
-        const compassHeight = 30;
-        const compassY = 10;
-        const compassWidth = this.canvas.width * 0.4;
-        const compassX = (this.canvas.width - compassWidth) / 2;
+        const {
+            compassHeight,
+            compassY,
+            compassWidth,
+            compassX,
+            scale
+        } = this.getTopCompassLayout();
 
         this.ctx.save();
 
@@ -1562,7 +1819,6 @@ export class GameHUD {
         const directions = ['N', 'E', 'S', 'W'];
         const directionAngles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
 
-        const scale = this.getUIScale();
         const compassFontSize = Math.max(10, Math.round(14 * scale));
         this.ctx.font = `bold ${compassFontSize}px "Roboto Mono", monospace`;
         this.ctx.textAlign = 'center';
@@ -1602,6 +1858,22 @@ export class GameHUD {
         });
 
         this.ctx.restore();
+
+        this.drawMultiplierOverlay();
+    }
+
+    drawMultiplierOverlay() {
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+        if (gameState.players.length === 0) return;
+
+        const player = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
+        if (!player || (player.scoreMultiplier <= 1.0 && player.consecutiveKills === 0)) return;
+
+        const { compassY, compassHeight, scale } = this.getTopCompassLayout();
+        const boxHeight = 70 * scale;
+        const centerX = this.canvas.width / 2;
+        const multiplierY = compassY + compassHeight + 10 * scale + boxHeight / 2;
+        this.drawMultiplierIndicator(player, centerX, multiplierY);
     }
 
 
@@ -1821,6 +2093,10 @@ export class GameHUD {
 
     checkLevelUpClick(x, y) {
         return this.levelUpScreen.checkClick(x, y);
+    }
+
+    checkLevelUpRerollClick(x, y) {
+        return this.levelUpScreen.checkRerollClick(x, y);
     }
 
     updateLevelUpHover(x, y) {
@@ -2051,6 +2327,48 @@ export class GameHUD {
     /**
      * Fetch global leaderboard from server with 10-second timeout
      */
+
+    drawSynergyNotifications() {
+        if (!gameState.synergyNotifications || gameState.synergyNotifications.length === 0) return;
+
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        let startY = 190 * scale;
+        const now = Date.now();
+
+        gameState.synergyNotifications = gameState.synergyNotifications.filter(note => {
+            const age = now - note.createdAt;
+            if (age > 4000) return false;
+
+            const alpha = age < 400 ? age / 400 : Math.max(0, 1 - (age - 3500) / 500);
+            const width = Math.min(420 * scale, this.canvas.width - 32 * scale);
+            const height = 72 * scale;
+            const x = centerX - width / 2;
+
+            this.ctx.fillStyle = `rgba(26, 26, 26, ${0.92 * alpha})`;
+            this.ctx.fillRect(x, startY, width, height);
+
+            this.ctx.strokeStyle = `rgba(255, 193, 7, ${alpha})`;
+            this.ctx.lineWidth = 2 * scale;
+            this.ctx.stroke();
+
+            this.ctx.font = `${34 * scale}px serif`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            this.ctx.fillText(note.icon, x + 16 * scale, startY + height / 2);
+
+            this.ctx.font = `bold ${Math.max(12, 15 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.fillText(`SYNERGY: ${note.name}`, x + 62 * scale, startY + height / 2 - 8 * scale);
+
+            this.ctx.font = `${Math.max(10, 12 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = `rgba(255, 193, 7, ${0.85 * alpha})`;
+            this.ctx.fillText(note.tagline || '', x + 62 * scale, startY + height / 2 + 12 * scale);
+
+            startY += height + 12 * scale;
+            return true;
+        });
+    }
 
     drawAchievementNotifications() {
         if (!gameState.achievementNotifications || gameState.achievementNotifications.length === 0) return;

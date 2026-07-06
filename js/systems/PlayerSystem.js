@@ -16,6 +16,7 @@ import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
 import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
+import { isMobileDevice } from '../utils/gameUtils.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -177,8 +178,7 @@ export class PlayerSystem {
             const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult * waveRiderMult;
 
             // autoSprint: Check settings, but force enable on mobile for better ergonomics
-            const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const autoSprint = isMobile || settingsManager.getSetting('gameplay', 'autoSprint') || false;
+            const autoSprint = isMobileDevice() || settingsManager.getSetting('gameplay', 'autoSprint') || false;
 
             // Auto-sprint: invert logic - sprint by default, hold shift to walk
             let shouldSprint = false;

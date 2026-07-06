@@ -3,17 +3,20 @@ import { canvas, ctx } from '../core/canvas.js';
 import {
     PLAYER_BASE_SPEED, PLAYER_SPRINT_SPEED,
     PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY,
-    MAX_LOCAL_PLAYERS
+    MAX_LOCAL_PLAYERS,
+    WEAPONS, MUZZLE_FLASH_COLORS,
+    PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_DURATION, PLAYER_DODGE_SPEED_MULT, PLAYER_DODGE_STAMINA_COST
 } from '../core/constants.js';
 import { settingsManager } from './SettingsManager.js';
 import { graphicsSettings } from './GraphicsSystem.js';
 import { inputSystem } from './InputSystem.js';
-import { playFootstepSound } from '../systems/AudioSystem.js';
-import { shootBullet, reloadWeapon, throwGrenade } from '../utils/combatUtils.js';
+import { playFootstepSound, playDodgeSound } from '../systems/AudioSystem.js';
+import { shootBullet, reloadWeapon, throwGrenade, cycleThrowable, performRiposte, spawnPhantomDecoy } from '../utils/combatUtils.js';
 import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
 import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
+import { isMobileDevice } from '../utils/gameUtils.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -125,6 +128,16 @@ export class PlayerSystem {
                 };
             }
 
+            // Siren scream aim disruption
+            if (player.sirenJitterUntil && player.sirenJitterUntil > Date.now()) {
+                const jitterStrength = 0.12;
+                const jitter = (Math.random() - 0.5) * jitterStrength * 2;
+                player.angle += jitter;
+                const aimDist = Math.sqrt((target.x - player.x) ** 2 + (target.y - player.y) ** 2) || 200;
+                target.x = player.x + Math.cos(player.angle) * aimDist;
+                target.y = player.y + Math.sin(player.angle) * aimDist;
+            }
+
             // Normalize movement vector
             const len = Math.sqrt(moveX * moveX + moveY * moveY);
             if (len > 1) {
@@ -132,25 +145,40 @@ export class PlayerSystem {
                 moveY /= len;
             }
 
+            // Static Charge — build while moving
+            if (player.hasStaticCharge && (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01)) {
+                const max = player.staticChargeMax || 100;
+                player.staticCharge = Math.min(max, (player.staticCharge || 0) + 0.6);
+            }
+
             // Sprint Logic (with speed boost buff and skill multiplier)
             const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
             const skillSpeedMultiplier = player.speedMultiplier || 1.0;
 
-            // Adrenaline boost (20% speed for 3s after kill)
+            // Adrenaline boost (skill-tuned multiplier after kill)
             let adrenalineBoostMultiplier = 1.0;
             if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime > Date.now()) {
-                adrenalineBoostMultiplier = 1.2; // 20% speed boost
+                adrenalineBoostMultiplier = player.adrenalineBoostMultiplier || 1.2;
             } else if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime <= Date.now()) {
                 // Expire adrenaline boost
                 player.adrenalineBoostActive = false;
                 player.adrenalineBoostEndTime = null;
             }
 
-            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier;
+            let feralRageSpeedMult = 1.0;
+            if (player.hasFeralRage && player.maxHealth > 0 && player.health / player.maxHealth < 0.25) {
+                feralRageSpeedMult = 1.15;
+            }
+
+            let waveRiderMult = 1.0;
+            if (player.hasWaveRider && player.waveRiderEndTime && player.waveRiderEndTime > Date.now()) {
+                waveRiderMult = player.waveRiderSpeedMult || 1.2;
+            }
+
+            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult * waveRiderMult;
 
             // autoSprint: Check settings, but force enable on mobile for better ergonomics
-            const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const autoSprint = isMobile || settingsManager.getSetting('gameplay', 'autoSprint') || false;
+            const autoSprint = isMobileDevice() || settingsManager.getSetting('gameplay', 'autoSprint') || false;
 
             // Auto-sprint: invert logic - sprint by default, hold shift to walk
             let shouldSprint = false;
@@ -162,16 +190,106 @@ export class PlayerSystem {
                 shouldSprint = isSprintingInput;
             }
 
-            if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
-                player.isSprinting = true;
-                player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
-                player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
+            // Check if player wants to trigger dodge
+            let dodgeInput = false;
+            if (player.inputSource === 'mouse') {
+                const dodgeKey = controls.dodge || ' ';
+                if (keys[dodgeKey]) {
+                    if (player.dodgeKeyReleased) {
+                        dodgeInput = true;
+                        player.dodgeKeyReleased = false;
+                    }
+                } else {
+                    player.dodgeKeyReleased = true;
+                }
+            } else if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+                const gpState = inputSystem.getGamepad(player.gamepadIndex);
+                if (gpState && gpState.buttons.dodge && gpState.buttons.dodge.justPressed) {
+                    dodgeInput = true;
+                }
+            }
+
+            // Decrease active dodge time and cooldowns
+            if (player.dodgeCooldown > 0) {
+                player.dodgeCooldown = Math.max(0, player.dodgeCooldown - 16.67);
+            }
+
+            if (player.isDodging) {
+                player.dodgeTimeRemaining = Math.max(0, player.dodgeTimeRemaining - 16.67);
+                if (player.dodgeTimeRemaining <= 0) {
+                    player.isDodging = false;
+                }
+            }
+
+            // Trigger dodge roll
+            const dodgeCooldownMult = player.dodgeCooldownMultiplier || 1.0;
+            const dodgeStaminaMult = player.dodgeStaminaMultiplier || 1.0;
+            const effectiveDodgeStaminaCost = PLAYER_DODGE_STAMINA_COST * dodgeStaminaMult;
+            if (dodgeInput && !player.isDodging && player.dodgeCooldown <= 0 && player.stamina >= effectiveDodgeStaminaCost) {
+                player.isDodging = true;
+                player.dodgeTimeRemaining = PLAYER_DODGE_DURATION * (player.dodgeDurationMult || 1.0);
+                player.dodgeCooldown = PLAYER_DODGE_COOLDOWN * dodgeCooldownMult;
+                player.stamina = Math.max(0, player.stamina - effectiveDodgeStaminaCost);
                 player.lastSprintTime = Date.now();
-            } else {
+
+                performRiposte(player);
+                spawnPhantomDecoy(player);
+                
+                // Play dodge sound
+                playDodgeSound();
+
+                // Add screen shake for impactful feel
+                if (player === gameState.players[0]) {
+                    gameState.shakeAmount = Math.max(gameState.shakeAmount || 0, 6);
+                }
+
+                // Determine dodge direction
+                let dx = moveX;
+                let dy = moveY;
+                if (dx === 0 && dy === 0) {
+                    dx = Math.cos(player.angle);
+                    dy = Math.sin(player.angle);
+                }
+                const lenD = Math.sqrt(dx * dx + dy * dy);
+                if (lenD > 0) {
+                    player.dodgeDirection = { x: dx / lenD, y: dy / lenD };
+                } else {
+                    player.dodgeDirection = { x: Math.cos(player.angle), y: Math.sin(player.angle) };
+                }
+            }
+
+            if (player.isDodging) {
+                // Override movement vector
+                moveX = player.dodgeDirection.x;
+                moveY = player.dodgeDirection.y;
+                player.speed = PLAYER_BASE_SPEED * PLAYER_DODGE_SPEED_MULT;
                 player.isSprinting = false;
-                player.speed = PLAYER_BASE_SPEED * totalSpeedMultiplier;
-                if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
-                    player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
+
+                // Position history for ghost trails
+                if (!player.positionHistory) {
+                    player.positionHistory = [];
+                }
+                player.positionHistory.push({ x: player.x, y: player.y, angle: player.angle, time: Date.now() });
+                if (player.positionHistory.length > 8) {
+                    player.positionHistory.shift();
+                }
+            } else {
+                if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
+                    player.isSprinting = true;
+                    player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
+                    const staminaDrain = PLAYER_STAMINA_DRAIN * (player.staminaDrainMultiplier || 1.0);
+                    player.stamina = Math.max(0, player.stamina - staminaDrain);
+                    player.lastSprintTime = Date.now();
+                } else {
+                    player.isSprinting = false;
+                    player.speed = PLAYER_BASE_SPEED * totalSpeedMultiplier;
+                    if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
+                        player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
+                    }
+                }
+                // Clear history when not dodging
+                if (player.positionHistory && player.positionHistory.length > 0) {
+                    player.positionHistory = [];
                 }
             }
 
@@ -209,6 +327,7 @@ export class PlayerSystem {
                     if (gpState.buttons.melee.justPressed) performMeleeAttackCallback(player);
                     if (gpState.buttons.reload.justPressed) reloadWeapon(player);
                     if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
+                    if (gpState.buttons.cycleThrowable.justPressed) cycleThrowable(player);
                     if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
                     if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 }
@@ -419,7 +538,7 @@ export class PlayerSystem {
             // Player Name (for AI)
             if (player.name && player.inputSource === 'ai') {
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 12px Consolas, monospace';
+                ctx.font = "bold 12px 'Roboto Mono', monospace";
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
                 ctx.shadowColor = 'black';
@@ -428,7 +547,7 @@ export class PlayerSystem {
                 ctx.shadowBlur = 0;
             }
 
-            // Muzzle flash - quality scaled
+            // Muzzle flash - quality scaled, weapon-specific colors
             if (player.muzzleFlash.active) {
                 const flashQuality = cachedGraphicsSettings.getQualityValues('muzzleFlash');
                 const baseSize = 8 + (player.muzzleFlash.intensity * 12);
@@ -437,16 +556,24 @@ export class PlayerSystem {
                 const flashX = player.muzzleFlash.x + Math.cos(player.muzzleFlash.angle) * flashOffset;
                 const flashY = player.muzzleFlash.y + Math.sin(player.muzzleFlash.angle) * flashOffset;
 
+                // Resolve weapon-specific flash colors
+                const weaponKey = Object.keys(WEAPONS).find(k => WEAPONS[k] === player.currentWeapon) || 'pistol';
+                const fc = MUZZLE_FLASH_COLORS[weaponKey] || MUZZLE_FLASH_COLORS.pistol;
+                const [cr, cg, cb] = fc.core;
+                const [mr, mg, mb] = fc.mid;
+                const [or, og, ob] = fc.outer;
+                const intensity = player.muzzleFlash.intensity;
+
                 if (flashQuality.gradientLayers >= 3) {
                     // Ultra quality: Multi-layer flash with glow
                     ctx.shadowBlur = flashSize * 0.5;
-                    ctx.shadowColor = 'rgba(255, 255, 200, 0.8)';
+                    ctx.shadowColor = `rgba(${cr}, ${cg}, ${cb}, 0.8)`;
 
                     // Outer glow layer
                     const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.5);
-                    outerGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.3})`);
-                    outerGradient.addColorStop(0.5, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.2})`);
-                    outerGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                    outerGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.3})`);
+                    outerGradient.addColorStop(0.5, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.2})`);
+                    outerGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                     ctx.fillStyle = outerGradient;
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.5, 0, Math.PI * 2);
@@ -454,10 +581,10 @@ export class PlayerSystem {
 
                     // Middle layer
                     const middleGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.2);
-                    middleGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.6})`);
-                    middleGradient.addColorStop(0.4, `rgba(255, 255, 150, ${player.muzzleFlash.intensity * 0.5})`);
-                    middleGradient.addColorStop(0.8, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
-                    middleGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                    middleGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.6})`);
+                    middleGradient.addColorStop(0.4, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.5})`);
+                    middleGradient.addColorStop(0.8, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.3})`);
+                    middleGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                     ctx.fillStyle = middleGradient;
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.2, 0, Math.PI * 2);
@@ -465,13 +592,13 @@ export class PlayerSystem {
                 } else if (flashQuality.gradientLayers >= 2) {
                     // High quality: Two-layer flash
                     ctx.shadowBlur = flashSize * 0.3;
-                    ctx.shadowColor = 'rgba(255, 255, 200, 0.6)';
+                    ctx.shadowColor = `rgba(${cr}, ${cg}, ${cb}, 0.6)`;
 
                     // Outer layer
                     const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.3);
-                    outerGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.4})`);
-                    outerGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
-                    outerGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    outerGradient.addColorStop(0, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.4})`);
+                    outerGradient.addColorStop(0.6, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.3})`);
+                    outerGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                     ctx.fillStyle = outerGradient;
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.3, 0, Math.PI * 2);
@@ -481,21 +608,21 @@ export class PlayerSystem {
                 // Main flash (all quality levels)
                 const flashGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize);
                 if (flashQuality.gradientLayers >= 3) {
-                    flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.95})`);
-                    flashGradient.addColorStop(0.2, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.85})`);
-                    flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.7})`);
-                    flashGradient.addColorStop(0.8, `rgba(255, 150, 0, ${player.muzzleFlash.intensity * 0.4})`);
-                    flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    flashGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.95})`);
+                    flashGradient.addColorStop(0.2, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.85})`);
+                    flashGradient.addColorStop(0.5, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.7})`);
+                    flashGradient.addColorStop(0.8, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.4})`);
+                    flashGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                 } else if (flashQuality.gradientLayers >= 2) {
-                    flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.9})`);
-                    flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.7})`);
-                    flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.4})`);
-                    flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    flashGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.9})`);
+                    flashGradient.addColorStop(0.3, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.7})`);
+                    flashGradient.addColorStop(0.6, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.4})`);
+                    flashGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                 } else {
                     // Low/Medium: Simple gradient
-                    flashGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.8})`);
-                    flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.5})`);
-                    flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    flashGradient.addColorStop(0, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.8})`);
+                    flashGradient.addColorStop(0.5, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.5})`);
+                    flashGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                 }
 
                 ctx.fillStyle = flashGradient;
@@ -506,9 +633,9 @@ export class PlayerSystem {
                 // Reset shadow
                 ctx.shadowBlur = 0;
 
-                // Ultra quality: Add particle trail
+                // Ultra quality: Add particle trail (weapon-colored)
                 if (flashQuality.hasTrail && Math.random() < 0.3) {
-                    spawnParticle(flashX, flashY, '#ffff00', {
+                    spawnParticle(flashX, flashY, `rgb(${or}, ${og}, ${ob})`, {
                         radius: 2,
                         vx: Math.cos(player.muzzleFlash.angle) * 3,
                         vy: Math.sin(player.muzzleFlash.angle) * 3,

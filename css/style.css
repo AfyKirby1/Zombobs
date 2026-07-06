@@ -12,6 +12,10 @@
             font-family: 'Roboto Mono', monospace;
             color: #fff;
             overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .boot-overlay {
@@ -82,6 +86,7 @@
             display: block;
             margin: 0 auto;
             cursor: none;
+            touch-action: none;
             /* Hide system cursor so custom crosshair takes precedence */
         }
 

@@ -48,11 +48,14 @@ export class PlayerProfileSystem {
                 battlepassXP: 0,
                 currentTier: 1,
                 unlockedTiers: [],
+                claimedTiers: [],
+                hasPremium: false,
                 completedChallenges: [],
                 dailyChallenges: [],
                 weeklyChallenges: [],
                 lastDailyReset: null,
-                lastWeeklyReset: null
+                lastWeeklyReset: null,
+                gamesPlayedThisWeek: 0
             },
             stats: {
                 totalGamesPlayed: 0,
@@ -67,6 +70,9 @@ export class PlayerProfileSystem {
                 maxCombo: 0,
                 totalPerfectWaves: 0,
                 totalSkillsUnlocked: 0,
+                totalTreeSkillsUnlocked: 0,
+                unlockedSkillIds: [],
+                unlockedTreeSkillIds: [],
                 totalPickupsCollected: 0,
                 totalCoopWins: 0,
                 profileVisits: 0,
@@ -138,11 +144,14 @@ export class PlayerProfileSystem {
                     battlepassXP: 0,
                     currentTier: 1,
                     unlockedTiers: [],
+                    claimedTiers: [],
+                    hasPremium: false,
                     completedChallenges: [],
                     dailyChallenges: [],
                     weeklyChallenges: [],
                     lastDailyReset: null,
-                    lastWeeklyReset: null
+                    lastWeeklyReset: null,
+                    gamesPlayedThisWeek: 0
                 };
             }
             if (!profile.stats) {
@@ -159,6 +168,9 @@ export class PlayerProfileSystem {
                     maxCombo: 0,
                     totalPerfectWaves: 0,
                     totalSkillsUnlocked: 0,
+                    totalTreeSkillsUnlocked: 0,
+                    unlockedSkillIds: [],
+                    unlockedTreeSkillIds: [],
                     totalPickupsCollected: 0,
                     totalCoopWins: 0,
                     profileVisits: 0
@@ -178,6 +190,18 @@ export class PlayerProfileSystem {
         if (!profile.stats.galleryVisits) profile.stats.galleryVisits = 0;
         if (!profile.stats.gameRestarts) profile.stats.gameRestarts = 0;
         if (!profile.stats.gamePauses) profile.stats.gamePauses = 0;
+        if (!profile.stats.unlockedSkillIds) profile.stats.unlockedSkillIds = [];
+        if (!profile.stats.unlockedTreeSkillIds) profile.stats.unlockedTreeSkillIds = [];
+        if (profile.stats.totalTreeSkillsUnlocked === undefined) {
+            profile.stats.totalTreeSkillsUnlocked = profile.stats.unlockedTreeSkillIds.length;
+        }
+
+        // Migrate battlepass v2 fields
+        if (profile.battlepass) {
+            if (!profile.battlepass.claimedTiers) profile.battlepass.claimedTiers = [];
+            if (profile.battlepass.hasPremium === undefined) profile.battlepass.hasPremium = false;
+            if (!profile.battlepass.gamesPlayedThisWeek) profile.battlepass.gamesPlayedThisWeek = 0;
+        }
     }
 
     /**
@@ -286,7 +310,9 @@ export class PlayerProfileSystem {
             maxCombo: this.profile.stats.maxCombo,
             totalPerfectWaves: this.profile.stats.totalPerfectWaves,
             totalPickupsCollected: this.profile.stats.totalPickupsCollected,
-            totalCoopWins: this.profile.stats.totalCoopWins
+            totalCoopWins: this.profile.stats.totalCoopWins,
+            totalSkillsUnlocked: (this.profile.stats.unlockedSkillIds || []).length,
+            totalTreeSkillsUnlocked: (this.profile.stats.unlockedTreeSkillIds || []).length
         };
         const newlyUnlocked = achievementSystem.updateProgress(sessionStatsForAchievements);
 
@@ -301,8 +327,20 @@ export class PlayerProfileSystem {
         const bpWaveXP = (sessionStats.wave || 0) * 10;
         const bpBaseXP = 25;
         const totalBPXP = bpScoreXP + bpWaveXP + bpBaseXP;
-        
+
         const battlepassProgress = battlepassSystem.addXP(totalBPXP);
+
+        // Auto-claim newly unlocked tier rewards
+        const claimedRewards = [];
+        if (battlepassProgress.newlyUnlocked && battlepassProgress.newlyUnlocked.length > 0) {
+            battlepassProgress.newlyUnlocked.forEach(tier => {
+                const rewards = battlepassSystem.claimTierReward(tier);
+                if (rewards) {
+                    claimedRewards.push({ tier, rewards });
+                }
+            });
+        }
+        battlepassProgress.claimedRewards = claimedRewards;
 
         // Save profile
         this.saveProfile();
@@ -472,6 +510,26 @@ export class PlayerProfileSystem {
      * Export profile data (for backup)
      * @returns {string} JSON string of profile
      */
+    /**
+     * Track lifetime skill unlock for achievements
+     * @param {string} skillId
+     * @param {boolean} isTreeSkill
+     */
+    recordSkillUnlock(skillId, isTreeSkill = false) {
+        if (!this.profile) this.loadProfile();
+        if (!this.profile.stats) return;
+
+        const listKey = isTreeSkill ? 'unlockedTreeSkillIds' : 'unlockedSkillIds';
+        const countKey = isTreeSkill ? 'totalTreeSkillsUnlocked' : 'totalSkillsUnlocked';
+
+        if (!this.profile.stats[listKey]) this.profile.stats[listKey] = [];
+        if (this.profile.stats[listKey].includes(skillId)) return;
+
+        this.profile.stats[listKey].push(skillId);
+        this.profile.stats[countKey] = this.profile.stats[listKey].length;
+        this.saveProfile();
+    }
+
     exportProfile() {
         if (!this.profile) {
             this.loadProfile();

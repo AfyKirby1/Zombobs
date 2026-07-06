@@ -445,9 +445,21 @@ export function formatTime(seconds) {
     return parts.join(' ');
 }
 
-/** True on phone/tablet user agents (matches GameHUD mobile layout gate) */
+/** True on phone/tablet — UA, coarse pointer, or touch-first narrow viewport */
 export function isMobileDevice() {
-    return /Android|iPhone|iPad|iPod/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+    if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+
+    const ua = navigator.userAgent || '';
+    if (/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+        return true;
+    }
+
+    const coarsePointer = typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches;
+    const touchPoints = navigator.maxTouchPoints > 0;
+    const narrow = window.innerWidth > 0 && window.innerWidth <= 900;
+
+    return coarsePointer && touchPoints && narrow;
 }
 
 /** Single-player arcade: world-space camera, infinite ground, prop spawning */

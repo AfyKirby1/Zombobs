@@ -79,6 +79,8 @@ The Android app lives in `mobile/` and loads the same web game in a WebView.
 **Note:** Offline play works by default for local assets. Online features (multiplayer
 and global leaderboard) still require a reachable server.
 
+**Mobile web:** The same build runs in mobile browsers (viewport meta, safe-area insets, virtual joysticks via `TouchControlSystem`). Level-up uses a responsive **2×2 card grid** on narrow screens. Always run `npm run sync:web` after changing root `js/`/`css/` before an Android Studio build so `mobile/www` stays current.
+
 ## 🕸️ Itch.io (HTML upload)
 
 From the **repo root**, build the upload zip with:

@@ -1,8 +1,16 @@
 import { gameState } from '../core/gameState.js';
-import { PLAYER_MAX_HEALTH, PLAYER_BASE_SPEED } from '../core/constants.js';
+import { SKILL_TREES, TREE_SKILLS_POOL } from '../core/skillTreeDefinitions.js';
+import { playerProfileSystem } from './PlayerProfileSystem.js';
+import { checkSkillSynergies } from '../core/skillSynergies.js';
+
+export { SKILL_TREES, TREE_SKILLS_POOL };
 
 // Constants
-export const MAX_SKILL_SLOTS = 6;
+export const MAX_SKILL_SLOTS = 10;
+export const LEVEL_UP_CHOICE_COUNT = 4;
+export const LEVEL_UP_REROLLS = 1;
+export const CORRUPTED_CHOICE_CHANCE = 0.14;
+export const TREE_SKILL_WEIGHT_MULT = 0.35;
 export const XP_BASE_REQUIREMENT = 100;
 export const XP_SCALING_FACTOR = 1.2;
 
@@ -248,6 +256,565 @@ export const SKILLS_POOL = [
             player.hasBerserker = true;
         },
         upgradeable: true
+    },
+
+    // === EXPANSION SKILLS — COMMON ===
+    {
+        id: 'endurance_training',
+        name: 'Endurance Training',
+        icon: '🏃',
+        description: '15% less stamina drain while sprinting',
+        rarity: 'COMMON',
+        effect: (player) => {
+            if (!player.staminaDrainMultiplier) player.staminaDrainMultiplier = 1.0;
+            player.staminaDrainMultiplier *= 0.85;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'melee_master',
+        name: 'Melee Master',
+        icon: '👊',
+        description: '+25% melee damage',
+        rarity: 'COMMON',
+        effect: (player) => {
+            if (!player.meleeDamageMultiplier) player.meleeDamageMultiplier = 1.0;
+            player.meleeDamageMultiplier *= 1.25;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'quick_recovery',
+        name: 'Quick Recovery',
+        icon: '💊',
+        description: '+0.5 HP/sec passive regen',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.hasRegeneration = true;
+            player.regenRate = (player.regenRate || 0) + 0.5;
+        },
+        upgradeable: true
+    },
+
+    // === EXPANSION SKILLS — RARE ===
+    {
+        id: 'magnetism',
+        name: 'Magnetism',
+        icon: '🧲',
+        description: '+60px scrap pickup magnet range',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.pickupMagnetBonus) player.pickupMagnetBonus = 0;
+            player.pickupMagnetBonus += 60;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'grenadier',
+        name: 'Grenadier',
+        icon: '💣',
+        description: '+1 max grenade, +20% explosion radius',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.maxGrenadeBonus) player.maxGrenadeBonus = 0;
+            player.maxGrenadeBonus += 1;
+            player.grenadeCount += 1;
+            if (!player.grenadeRadiusMultiplier) player.grenadeRadiusMultiplier = 1.0;
+            player.grenadeRadiusMultiplier *= 1.2;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'overclock',
+        name: 'Overclock',
+        icon: '⚙️',
+        description: '+12% fire rate',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.fireRateSkillMultiplier) player.fireRateSkillMultiplier = 1.0;
+            player.fireRateSkillMultiplier *= 0.88;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'xp_hunter',
+        name: 'XP Hunter',
+        icon: '⭐',
+        description: '+15% XP from kills',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.xpGainMultiplier) player.xpGainMultiplier = 1.0;
+            player.xpGainMultiplier *= 1.15;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'nimble_dodge',
+        name: 'Nimble Dodge',
+        icon: '🌀',
+        description: '20% faster dodge cooldown, -15% dodge stamina cost',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.dodgeCooldownMultiplier) player.dodgeCooldownMultiplier = 1.0;
+            player.dodgeCooldownMultiplier *= 0.8;
+            if (!player.dodgeStaminaMultiplier) player.dodgeStaminaMultiplier = 1.0;
+            player.dodgeStaminaMultiplier *= 0.85;
+        },
+        upgradeable: true
+    },
+
+    // === EXPANSION SKILLS — EPIC ===
+    {
+        id: 'vampiric_rounds',
+        name: 'Vampiric Rounds',
+        icon: '🧛',
+        description: '5% lifesteal on weapon hits',
+        rarity: 'EPIC',
+        effect: (player) => {
+            if (!player.lifestealPercent) player.lifestealPercent = 0;
+            player.lifestealPercent = Math.min(0.5, player.lifestealPercent + 0.05);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'demolitionist',
+        name: 'Demolitionist',
+        icon: '💥',
+        description: '+25% explosion damage',
+        rarity: 'EPIC',
+        effect: (player) => {
+            if (!player.explosionDamageMultiplier) player.explosionDamageMultiplier = 1.0;
+            player.explosionDamageMultiplier *= 1.25;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'kill_momentum',
+        name: 'Kill Momentum',
+        icon: '🔥',
+        description: '+8% fire rate for 2s after each kill (stacks to 40%)',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasKillMomentum = true;
+            player.killMomentumPerStack = (player.killMomentumPerStack || 0) + 0.08;
+            player.killMomentumMaxStacks = (player.killMomentumMaxStacks || 0) + 5;
+        },
+        upgradeable: true
+    },
+
+    // === EXPANSION SKILLS — LEGENDARY ===
+    {
+        id: 'glass_cannon',
+        name: 'Glass Cannon',
+        icon: '🔮',
+        description: '+60% weapon damage, take 35% more damage',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            if (!player.damageSkillMultiplier) player.damageSkillMultiplier = 1.0;
+            player.damageSkillMultiplier *= 1.6;
+            if (!player.damageTakenMultiplier) player.damageTakenMultiplier = 1.0;
+            player.damageTakenMultiplier *= 1.35;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'last_stand',
+        name: 'Last Stand',
+        icon: '🏴',
+        description: 'Once per run: below 10% HP, halve damage for 5s',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasLastStand = true;
+            player.lastStandUsed = false;
+        },
+        upgradeable: false
+    },
+    {
+        id: 'chain_lightning',
+        name: 'Chain Lightning',
+        icon: '⚡',
+        description: '12% chance hits arc to a nearby zombie',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            if (!player.chainLightningChance) player.chainLightningChance = 0;
+            player.chainLightningChance = Math.min(0.5, player.chainLightningChance + 0.12);
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — COMMON ===
+    {
+        id: 'scrap_goblin',
+        name: 'Scrap Goblin',
+        icon: '🪙',
+        description: 'Collecting scrap heals 2 HP',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.scrapHealOnPickup = (player.scrapHealOnPickup || 0) + 2;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'riposte',
+        name: 'Riposte',
+        icon: '🗡️',
+        description: 'Dodge releases a shockwave (35 dmg)',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.hasRiposte = true;
+            player.riposteDamage = (player.riposteDamage || 0) + 35;
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — RARE ===
+    {
+        id: 'headhunter',
+        name: 'Headhunter',
+        icon: '💀',
+        description: 'Headshots heal 4 HP & grant +50% kill XP',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.hasHeadhunter = true;
+            player.headhunterHeal = (player.headhunterHeal || 0) + 4;
+            player.headhunterXpBonus = (player.headhunterXpBonus || 0) + 0.5;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'thorn_skin',
+        name: 'Thorn Skin',
+        icon: '🌵',
+        description: 'Zombies touching you take 1.5 dmg/sec',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.hasThornSkin = true;
+            player.thornDamage = (player.thornDamage || 0) + 1.5;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'pyromaniac',
+        name: 'Pyromaniac',
+        icon: '🔥',
+        description: '+1 molotov, fire pools last 40% longer',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.maxMolotovBonus) player.maxMolotovBonus = 0;
+            player.maxMolotovBonus += 1;
+            player.molotovCount += 1;
+            if (!player.firePoolDurationMult) player.firePoolDurationMult = 1.0;
+            player.firePoolDurationMult *= 1.4;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'horde_slayer',
+        name: 'Horde Slayer',
+        icon: '👹',
+        description: '+18% damage when 4+ zombies nearby',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.hordeSlayerBonus = (player.hordeSlayerBonus || 0) + 0.18;
+            player.hordeSlayerRange = player.hordeSlayerRange || 200;
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — EPIC ===
+    {
+        id: 'corpse_bloom',
+        name: 'Corpse Bloom',
+        icon: '☣️',
+        description: '10% chance kills leave toxic puddles',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.corpseBloomChance = Math.min(0.35, (player.corpseBloomChance || 0) + 0.10);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'overkill',
+        name: 'Overkill',
+        icon: '💥',
+        description: '40% of excess damage splashes nearby',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.overkillSplashPercent = Math.min(0.8, (player.overkillSplashPercent || 0) + 0.40);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'combo_king',
+        name: 'Combo King',
+        icon: '👑',
+        description: 'Score multiplier survives 3 chip-damage hits',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.multiplierGraceHits = (player.multiplierGraceHits || 0) + 3;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'static_charge',
+        name: 'Static Charge',
+        icon: '🔋',
+        description: 'Moving builds charge — next shot up to +80% dmg',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasStaticCharge = true;
+            player.staticCharge = 0;
+            player.staticChargeMax = (player.staticChargeMax || 100) + 100;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'toxic_rounds',
+        name: 'Toxic Rounds',
+        icon: '🧪',
+        description: 'Hits poison zombies (DOT + green trail)',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasToxicRounds = true;
+            player.toxicDamagePerTick = (player.toxicDamagePerTick || 0) + 0.4;
+            player.toxicDurationMs = (player.toxicDurationMs || 0) + 3500;
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — LEGENDARY ===
+    {
+        id: 'borrowed_time',
+        name: 'Borrowed Time',
+        icon: '⏳',
+        description: 'Below 25% HP: +30% crit chance',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasBorrowedTime = true;
+            player.borrowedTimeCritBonus = (player.borrowedTimeCritBonus || 0) + 0.30;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'kill_switch',
+        name: 'Kill Switch',
+        icon: '🔴',
+        description: 'Every 7 kills: next shot deals 3× damage',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasKillSwitch = true;
+            player.killSwitchThreshold = (player.killSwitchThreshold || 7);
+            player.killSwitchCounter = player.killSwitchCounter || 0;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'phantom_decoy',
+        name: 'Phantom Decoy',
+        icon: '👻',
+        description: 'Dodge leaves a ghost that draws zombies 1.5s',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasPhantomDecoy = true;
+        },
+        upgradeable: false
+    },
+
+    // === WAVE 3 SKILLS — COMMON ===
+    {
+        id: 'deep_pockets',
+        name: 'Deep Pockets',
+        icon: '🎒',
+        description: '+18% max stamina',
+        rarity: 'COMMON',
+        effect: (player) => {
+            const bonus = Math.floor(player.maxStamina * 0.18);
+            player.maxStamina += bonus;
+            player.stamina = Math.min(player.maxStamina, player.stamina + bonus);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'fortified',
+        name: 'Fortified',
+        icon: '🔰',
+        description: '+10 shield points',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.shield = Math.min(100, (player.shield || 0) + 10);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'steady_hands',
+        name: 'Steady Hands',
+        icon: '🤲',
+        description: '15% faster weapon swap',
+        rarity: 'COMMON',
+        effect: (player) => {
+            if (!player.weaponSwitchSpeedMultiplier) player.weaponSwitchSpeedMultiplier = 1.0;
+            player.weaponSwitchSpeedMultiplier *= 0.85;
+        },
+        upgradeable: true
+    },
+
+    // === WAVE 3 SKILLS — RARE ===
+    {
+        id: 'score_hunter',
+        name: 'Score Hunter',
+        icon: '🏆',
+        description: '+22% score from kills',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.scoreGainMultiplier) player.scoreGainMultiplier = 1.0;
+            player.scoreGainMultiplier *= 1.22;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'boss_hunter',
+        name: 'Boss Hunter',
+        icon: '👑',
+        description: '+30% damage vs bosses',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.bossDamageMult = (player.bossDamageMult || 1.0) * 1.30;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'ammo_echo',
+        name: 'Ammo Echo',
+        icon: '🔁',
+        description: '12% chance shots cost no ammo',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.freeShotChance = Math.min(0.4, (player.freeShotChance || 0) + 0.12);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'lucky_reload',
+        name: 'Lucky Reload',
+        icon: '🍀',
+        description: '18% chance instant reload when empty',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.instantReloadChance = Math.min(0.5, (player.instantReloadChance || 0) + 0.18);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'ricochet',
+        name: 'Ricochet',
+        icon: '↩️',
+        description: '14% chance hits bounce to a 2nd zombie (50% dmg)',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.ricochetChance = Math.min(0.45, (player.ricochetChance || 0) + 0.14);
+        },
+        upgradeable: true
+    },
+
+    // === WAVE 3 SKILLS — EPIC ===
+    {
+        id: 'wave_rider',
+        name: 'Wave Rider',
+        icon: '🌊',
+        description: '+20% speed for 8s at each new wave',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasWaveRider = true;
+            player.waveRiderDurationMs = (player.waveRiderDurationMs || 0) + 8000;
+            player.waveRiderSpeedMult = (player.waveRiderSpeedMult || 1.0) * 1.20;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'vengeance',
+        name: 'Vengeance',
+        icon: '😤',
+        description: '+45% damage for 3s after taking a hit',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasVengeance = true;
+            player.vengeanceDamageMult = (player.vengeanceDamageMult || 1.0) * 1.45;
+            player.vengeanceDurationMs = (player.vengeanceDurationMs || 0) + 3000;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'juggernaut',
+        name: 'Juggernaut',
+        icon: '🚛',
+        description: 'Sprint drains 50% less stamina',
+        rarity: 'EPIC',
+        effect: (player) => {
+            if (!player.staminaDrainMultiplier) player.staminaDrainMultiplier = 1.0;
+            player.staminaDrainMultiplier *= 0.5;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'cold_snap',
+        name: 'Cold Snap',
+        icon: '❄️',
+        description: 'Every 8 kills: mini frost nova (2s freeze)',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasColdSnap = true;
+            player.coldSnapThreshold = Math.max(4, (player.coldSnapThreshold || 8) - 1);
+        },
+        upgradeable: true
+    },
+
+    // === WAVE 3 SKILLS — LEGENDARY ===
+    {
+        id: 'guardian_angel',
+        name: 'Guardian Angel',
+        icon: '😇',
+        description: 'Once per wave: below 15% HP heals 25%',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasGuardianAngel = true;
+            player.guardianAngelUsedThisWave = false;
+        },
+        upgradeable: false
+    },
+    {
+        id: 'nova_core',
+        name: 'Nova Core',
+        icon: '💠',
+        description: '6% kill chance triggers frost nova',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.frostNovaOnKillChance = Math.min(0.2, (player.frostNovaOnKillChance || 0) + 0.06);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'gold_rush',
+        name: 'Gold Rush',
+        icon: '✨',
+        description: 'Double scrap gains for 6s after each level-up',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasGoldRush = true;
+            player.goldRushDurationMs = (player.goldRushDurationMs || 0) + 6000;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'bullet_storm',
+        name: 'Bullet Storm',
+        icon: '🌪️',
+        description: 'Multi-kills (3+) refund 30% magazine',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasBulletStorm = true;
+            player.bulletStormRefundPercent = (player.bulletStormRefundPercent || 0) + 0.30;
+        },
+        upgradeable: true
     }
 ];
 
@@ -262,6 +829,9 @@ class SkillSystem {
             spitter: 18,    // Reduced from 21 (15% reduction)
             flying: 15,     // Reduced from 18 (15% reduction)
             crawler: 14,    // Reduced from 16 (15% reduction)
+            siren: 19,
+            splitter: 17,
+            shard: 5,
             boss: 287       // Reduced from 338 (15% reduction)
         };
 
@@ -309,7 +879,8 @@ class SkillSystem {
         // Apply kill streak bonus if applicable
         const streak = options.streak || gameState.killStreak || 0;
         const multiplier = this.getKillStreakMultiplier(streak);
-        const finalAmount = Math.floor(amount * multiplier);
+        const xpSkillMult = gameState.players[0]?.xpGainMultiplier || 1.0;
+        const finalAmount = Math.floor(amount * multiplier * xpSkillMult);
 
         gameState.xp += finalAmount;
 
@@ -390,16 +961,64 @@ class SkillSystem {
 
             gameState.levelUpChoices = this.generateChoices();
             gameState.showLevelUp = true;
+            gameState.levelUpRerollsLeft = LEVEL_UP_REROLLS;
 
             gameState.multiplayer.socket.emit('game:levelup', {
                 level: gameState.level,
                 nextLevelXP: gameState.nextLevelXP,
-                choices: gameState.levelUpChoices
+                choices: gameState.levelUpChoices,
+                rerollsLeft: gameState.levelUpRerollsLeft
             });
         } else {
             gameState.levelUpChoices = this.generateChoices();
             gameState.showLevelUp = true;
+            gameState.levelUpRerollsLeft = LEVEL_UP_REROLLS;
         }
+    }
+
+    rerollChoices() {
+        if (!gameState.showLevelUp || (gameState.levelUpRerollsLeft || 0) <= 0) {
+            return false;
+        }
+        gameState.levelUpRerollsLeft--;
+        gameState.levelUpChoices = this.generateChoices();
+        if (gameState.isCoop && gameState.multiplayer.active && gameState.multiplayer.isLeader) {
+            gameState.multiplayer.socket.emit('game:levelup_reroll', {
+                choices: gameState.levelUpChoices,
+                rerollsLeft: gameState.levelUpRerollsLeft
+            });
+        }
+        return true;
+    }
+
+    getSkillById(skillId) {
+        return SKILLS_POOL.find(s => s.id === skillId)
+            || TREE_SKILLS_POOL.find(s => s.id === skillId)
+            || null;
+    }
+
+    isTreeSkillUnlocked(skill) {
+        if (!skill.requires) return true;
+        return gameState.activeSkills.some(s => s.id === skill.requires);
+    }
+
+    isSkillMaxed(skill, activeEntry) {
+        if (!activeEntry) return false;
+        const maxLevel = skill.maxLevel || 3;
+        return (activeEntry.level || 1) >= maxLevel;
+    }
+
+    getAvailableSkills() {
+        const slotsFull = gameState.activeSkills.length >= MAX_SKILL_SLOTS;
+        const allPools = [...SKILLS_POOL, ...TREE_SKILLS_POOL];
+
+        return allPools.filter(skill => {
+            const existing = gameState.activeSkills.find(s => s.id === skill.id);
+            if (this.isSkillMaxed(skill, existing)) return false;
+            if (!existing && slotsFull) return false;
+            if (skill.treeExclusive && !this.isTreeSkillUnlocked(skill)) return false;
+            return true;
+        });
     }
 
     /**
@@ -407,24 +1026,12 @@ class SkillSystem {
      * @returns {Array} Array of 3 skill choices
      */
     generateChoices() {
-        const activeSkillIds = gameState.activeSkills.map(s => s.id);
-
-        // Filter available skills
-        let availableSkills = SKILLS_POOL.filter(skill => {
-            if (activeSkillIds.length < MAX_SKILL_SLOTS) {
-                return true;
-            }
-            return activeSkillIds.includes(skill.id);
-        });
-
-        // Weighted random selection based on rarity
+        const availableSkills = this.getAvailableSkills();
         const choices = [];
         const usedIds = new Set();
+        const levelBonus = Math.min(0.02 * (gameState.level - 1), 0.10);
 
-        // Increase legendary chance at higher levels
-        const levelBonus = Math.min(0.02 * (gameState.level - 1), 0.10); // Up to 10% bonus at level 6+
-
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < LEVEL_UP_CHOICE_COUNT; i++) {
             const skill = this.selectWeightedSkill(availableSkills, usedIds, levelBonus);
             if (skill) {
                 choices.push(skill);
@@ -432,15 +1039,26 @@ class SkillSystem {
             }
         }
 
-        // Fallback if we don't have 3 choices
-        while (choices.length < 3) {
-            const fallback = SKILLS_POOL.find(s => !usedIds.has(s.id));
+        while (choices.length < LEVEL_UP_CHOICE_COUNT) {
+            const fallback = availableSkills.find(s => !usedIds.has(s.id));
             if (fallback) {
                 choices.push(fallback);
                 usedIds.add(fallback.id);
             } else {
                 break;
             }
+        }
+
+        // Wildcard: one choice may be corrupted (high risk / high reward)
+        if (choices.length > 0 && Math.random() < CORRUPTED_CHOICE_CHANCE) {
+            const corruptIdx = Math.floor(Math.random() * choices.length);
+            const base = choices[corruptIdx];
+            choices[corruptIdx] = {
+                ...base,
+                corrupted: true,
+                name: `${base.name} ☠`,
+                description: `${base.description} — CORRUPTED: +35% effect, -12% max HP`
+            };
         }
 
         return choices;
@@ -457,22 +1075,23 @@ class SkillSystem {
         const available = skills.filter(s => !excludeIds.has(s.id));
         if (available.length === 0) return null;
 
-        // Calculate total weight with level bonus
         let totalWeight = 0;
         const weightedSkills = available.map(skill => {
             const baseRarity = SKILL_RARITY[skill.rarity] || SKILL_RARITY.COMMON;
             let weight = baseRarity.weight;
 
-            // Apply level bonus to non-common rarities
+            if (skill.treeExclusive) {
+                weight *= TREE_SKILL_WEIGHT_MULT;
+            }
+
             if (skill.rarity !== 'COMMON' && levelBonus > 0) {
-                weight *= (1 + levelBonus * 2); // Boost rare+ chances at higher levels
+                weight *= (1 + levelBonus * 2);
             }
 
             totalWeight += weight;
             return { skill, weight, cumulative: totalWeight };
         });
 
-        // Random selection
         const roll = Math.random() * totalWeight;
         for (const entry of weightedSkills) {
             if (roll <= entry.cumulative) {
@@ -480,7 +1099,7 @@ class SkillSystem {
             }
         }
 
-        return available[0]; // Fallback
+        return available[0];
     }
 
     /**
@@ -492,12 +1111,12 @@ class SkillSystem {
         return SKILL_RARITY[rarityKey] || SKILL_RARITY.COMMON;
     }
 
-    activateSkill(skillId) {
-        const skill = SKILLS_POOL.find(s => s.id === skillId);
+    activateSkill(skillId, options = {}) {
+        const skill = this.getSkillById(skillId);
         if (!skill) return;
 
-        // Check if skill already exists
         const existingSkill = gameState.activeSkills.find(s => s.id === skillId);
+        const isNewUnlock = !existingSkill;
 
         if (existingSkill) {
             existingSkill.level = (existingSkill.level || 1) + 1;
@@ -505,21 +1124,46 @@ class SkillSystem {
             if (gameState.activeSkills.length >= MAX_SKILL_SLOTS) {
                 return;
             }
-            gameState.activeSkills.push({
+            const entry = {
                 id: skillId,
                 level: 1,
                 rarity: skill.rarity
-            });
+            };
+            if (skill.tree) {
+                entry.tree = skill.tree;
+                entry.tier = skill.tier;
+            }
+            if (options.corrupted) {
+                entry.corrupted = true;
+            }
+            gameState.activeSkills.push(entry);
         }
 
-        // Apply effect to all players
         gameState.players.forEach(player => {
             if (player.health > 0) {
                 skill.effect(player);
+                if (options.corrupted) {
+                    if (!player.damageSkillMultiplier) player.damageSkillMultiplier = 1.0;
+                    player.damageSkillMultiplier *= 1.35;
+                    const hpCut = Math.max(1, Math.floor(player.maxHealth * 0.12));
+                    player.maxHealth -= hpCut;
+                    player.health = Math.max(1, Math.min(player.health, player.maxHealth));
+                }
             }
         });
 
-        // Broadcast choice if Leader
+        checkSkillSynergies(gameState.activeSkills, gameState.players);
+
+        gameState.players.forEach(p => {
+            if (p.hasGoldRush) {
+                p.goldRushEndTime = Date.now() + (p.goldRushDurationMs || 6000);
+            }
+        });
+
+        if (isNewUnlock) {
+            playerProfileSystem.recordSkillUnlock(skillId, !!skill.treeExclusive);
+        }
+
         if (gameState.isCoop && gameState.multiplayer.active && gameState.multiplayer.isLeader) {
             gameState.multiplayer.socket.emit('game:skill', skillId);
         }

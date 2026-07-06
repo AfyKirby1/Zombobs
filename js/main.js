@@ -1371,7 +1371,11 @@ window.addEventListener('touchstart', (e) => {
 
         // Also update hover state immediately for visual feedback
         if (gameHUD) {
-            gameHUD.updateMenuHover(uiPos.x, uiPos.y);
+            if (gameState.showLevelUp) {
+                gameHUD.updateLevelUpHover(uiPos.x, uiPos.y);
+            } else {
+                gameHUD.updateMenuHover(uiPos.x, uiPos.y);
+            }
         }
         return;
     }
@@ -1451,7 +1455,8 @@ window.addEventListener('touchmove', (e) => {
     if (e.target !== canvas && e.target !== uiCanvas && e.target !== gpuCanvas) return;
 
     const pos = getCanvasTouchPos(e);
-    if (!pos) return;
+    const uiPos = getUiTouchPos(e);
+    if (!pos || !uiPos) return;
 
     mouse.x = pos.x;
     mouse.y = pos.y;
@@ -1469,9 +1474,16 @@ window.addEventListener('touchmove', (e) => {
         return;
     }
 
+    // Level-up card hover / reroll highlight
+    if (gameState.showLevelUp) {
+        if (e.cancelable) e.preventDefault();
+        gameHUD.updateLevelUpHover(uiPos.x, uiPos.y);
+        return;
+    }
+
     // Main Menu / Lobby Hovers (optional, adds polish)
     if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) {
-        gameHUD.updateMenuHover(mouse.x, mouse.y);
+        gameHUD.updateMenuHover(uiPos.x, uiPos.y);
     }
 
     // Game Input (Aiming) - Prevent scroll while playing

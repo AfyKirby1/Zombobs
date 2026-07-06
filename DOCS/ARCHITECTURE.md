@@ -1760,6 +1760,7 @@ This hybrid approach provides:
   - Only saves if entry makes it into top 10 after sorting
   - Returns boolean indicating if entry was saved
 - [2026-06-25] **Mode / UI helpers**: `isSinglePlayerArcadeMode(state)`, `isGameplayBlocked(state)`, `isUICanvasInteractive(state, hud)`, `isHTMLOverlayActive(state)`, `isMenuOrOverlayScreen(state, hud)`, `isMobileDevice()` — shared gates for game loop, overlay pointer-events, and touch controls
+- [AMENDED 2026-07-06] **`isMobileDevice()`**: UA match **or** coarse pointer + `maxTouchPoints` + viewport ≤900px. **Level-up mobile layout**: `LevelUpScreen` switches to 2×2 grid when cards won't fit in one row; touch hover wired in `main.js` `touchmove`. First-run mobile defaults in `SettingsManager` apply low video preset.
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`
 

@@ -1,28 +1,24 @@
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
-import { Quadtree } from './Quadtree.js';
-import { compactArray } from './arrayUtils.js';
 import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
-    ZOMBIE_BASE_SCORES
+    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN, SCRAP_VALUE
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
-import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
+import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkPickupCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
+import { Molotov } from '../entities/Molotov.js';
 import { DamageNumber } from '../entities/Particle.js';
+import { Prop } from '../entities/Prop.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
-
-// Reusable Quadtree instance to avoid recreation every frame
-let collisionQuadtree = null;
-// Reusable query range object to avoid allocation per bullet
-const queryRange = { x: 0, y: 0, width: 40, height: 40 };
+import { pickupSpawnSystem } from '../systems/PickupSpawnSystem.js';
 
 export function shootBullet(target, canvas, player) {
     // Fallback to p1 for backward compat if player not provided
@@ -51,9 +47,17 @@ export function shootBullet(target, canvas, player) {
         }
     }
 
-    // Check fire rate cooldown (with rapid fire buff)
+    // Check fire rate cooldown (with rapid fire buff + skill fire rate)
     const fireRateMultiplier = (gameState.rapidFireEndTime > now) ? 0.5 : 1;
-    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier) {
+    const skillFireRate = player.fireRateSkillMultiplier || 1.0;
+    let killMomentumRate = 1.0;
+    if (player.hasKillMomentum && player.killMomentumEndTime > now) {
+        const stacks = player.killMomentumStacks || 0;
+        killMomentumRate = Math.max(0.55, 1 - (player.killMomentumPerStack || 0.08) * stacks);
+    } else if (player.hasKillMomentum) {
+        player.killMomentumStacks = 0;
+    }
+    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier * skillFireRate * killMomentumRate) {
         return;
     }
 
@@ -65,6 +69,10 @@ export function shootBullet(target, canvas, player) {
 
     // Calculate damage multiplier
     const damageMult = (gameState.damageBuffEndTime > now) ? 2 : 1;
+    const staticMult = getStaticChargeDamageMult(player);
+    const killSwitchMult = consumeKillSwitch(player);
+    const totalDamageMult = damageMult * staticMult * killSwitchMult;
+    consumeStaticCharge(player);
 
     const angle = Math.atan2(target.y - player.y, target.x - player.x);
     const gunX = player.x + Math.cos(angle) * player.radius * 1.8;
@@ -82,7 +90,7 @@ export function shootBullet(target, canvas, player) {
         for (let i = 0; i < 5; i++) {
             const spreadAngle = angle + (Math.random() - 0.5) * 0.5 * spreadReduction; // Add spread with reduction
             const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
-            bullet.damage *= damageMult;
+            bullet.damage *= totalDamageMult;
             bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
             bullet.player = player; // Track which player fired this bullet
             gameState.bullets.push(bullet);
@@ -93,7 +101,7 @@ export function shootBullet(target, canvas, player) {
         for (let i = 0; i < flameCount; i++) {
             const spreadAngle = angle + (Math.random() - 0.5) * 0.4 * spreadReduction; // Wider spread with reduction
             const flame = new FlameBullet(gunX, gunY, spreadAngle, player.currentWeapon);
-            flame.damage *= damageMult;
+            flame.damage *= totalDamageMult;
             flame.maxDistance *= rangeMultiplier; // Apply range multiplier
             flame.player = player; // Track which player fired this bullet
             gameState.bullets.push(flame);
@@ -102,14 +110,14 @@ export function shootBullet(target, canvas, player) {
         // SMG fires single bullet with slight spread
         const spreadAngle = angle + (Math.random() - 0.5) * 0.1 * spreadReduction;
         const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
-        bullet.damage *= damageMult;
+        bullet.damage *= totalDamageMult;
         bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.sniper) {
         // Sniper fires piercing bullet
         const bullet = new PiercingBullet(gunX, gunY, angle, player.currentWeapon);
-        bullet.damage *= damageMult;
+        bullet.damage *= totalDamageMult;
         bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
@@ -118,7 +126,7 @@ export function shootBullet(target, canvas, player) {
 
         const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
 
-        rocket.damage *= damageMult; // Direct hit damage (if any)
+        rocket.damage *= totalDamageMult; // Direct hit damage (if any)
         rocket.maxDistance *= rangeMultiplier; // Apply range multiplier
         rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
@@ -131,7 +139,8 @@ export function shootBullet(target, canvas, player) {
 
         let endX = gunX + rayDirX * range;
         let endY = gunY + rayDirY * range;
-        let hitZombie = null;
+        let hitTarget = null;
+        let hitType = null;
         let minDist = range;
 
         // Check all zombies for ray intersection
@@ -152,22 +161,52 @@ export function shootBullet(target, canvas, player) {
             if (distSq < hitRadius * hitRadius) {
                 if (t < minDist) {
                     minDist = t;
-                    hitZombie = zombie;
+                    hitTarget = zombie;
+                    hitType = 'zombie';
                 }
             }
         }
 
-        if (hitZombie) {
+        // Check all props for ray intersection
+        for (const prop of gameState.props) {
+            if (prop.type !== 'explosiveBarrel' || prop.detonated) continue;
+
+            const dx = prop.x - gunX;
+            const dy = prop.y - gunY;
+            const t = dx * rayDirX + dy * rayDirY;
+
+            if (t <= 0 || t > range) continue;
+
+            const projX = gunX + rayDirX * t;
+            const projY = gunY + rayDirY * t;
+            const distSq = (prop.x - projX) ** 2 + (prop.y - projY) ** 2;
+            const hitRadius = prop.radius + 10;
+
+            if (distSq < hitRadius * hitRadius) {
+                if (t < minDist) {
+                    minDist = t;
+                    hitTarget = prop;
+                    hitType = 'prop';
+                }
+            }
+        }
+
+        if (hitTarget) {
             endX = gunX + rayDirX * minDist;
             endY = gunY + rayDirY * minDist;
 
-            // Create an invisible bullet at the hit point to trigger standard logic
-            const logicBullet = new Bullet(hitZombie.x, hitZombie.y, angle, player.currentWeapon);
-            logicBullet.type = 'laser_hit';
-            logicBullet.damage *= damageMult;
-            logicBullet.player = player;
-            logicBullet.radius = hitZombie.radius + 5; // Ensure it overlaps
-            gameState.bullets.push(logicBullet);
+            if (hitType === 'zombie') {
+                // Create an invisible bullet at the hit point to trigger standard logic
+                const logicBullet = new Bullet(hitTarget.x, hitTarget.y, angle, player.currentWeapon);
+                logicBullet.type = 'laser_hit';
+                logicBullet.damage *= totalDamageMult;
+                logicBullet.player = player;
+                logicBullet.radius = hitTarget.radius + 5; // Ensure it overlaps
+                gameState.bullets.push(logicBullet);
+            } else if (hitType === 'prop') {
+                // Apply damage directly to barrel
+                hitTarget.takeDamage((player.currentWeapon.damage || 5) * totalDamageMult, player);
+            }
         }
 
         // Create visual beam
@@ -177,18 +216,28 @@ export function shootBullet(target, canvas, player) {
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
-        bullet.damage *= damageMult;
+        bullet.damage *= totalDamageMult;
         bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     }
 
-    // Consume ammo
-    player.currentAmmo--;
+    // Consume ammo (Ammo Echo may refund)
+    const freeShot = player.freeShotChance && Math.random() < player.freeShotChance;
+    if (!freeShot) {
+        player.currentAmmo--;
+    }
 
     // Auto-reload if ammo is empty after this shot
     if (player.currentAmmo === 0) {
-        reloadWeapon(player);
+        const ammoMultiplier = player.ammoMultiplier || 1.0;
+        const maxAmmoWithMultiplier = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+        if (player.instantReloadChance && Math.random() < player.instantReloadChance) {
+            player.currentAmmo = maxAmmoWithMultiplier;
+            player.isReloading = false;
+        } else {
+            reloadWeapon(player);
+        }
     }
 
     // Update last shot time
@@ -330,14 +379,19 @@ export function throwGrenade(target, canvas, player) {
     player = player || gameState.players[0];
     const now = Date.now();
 
+    const activeThrowable = player.activeThrowable || 'grenade';
+    const cooldown = activeThrowable === 'grenade' ? GRENADE_COOLDOWN : MOLOTOV_COOLDOWN;
+
     // Check cooldown
-    if (now - player.lastGrenadeThrowTime < GRENADE_COOLDOWN) {
+    if (now - player.lastGrenadeThrowTime < cooldown) {
         return;
     }
 
-    // Check grenade count
-    if (player.grenadeCount <= 0) {
-        return;
+    // Check throwable count
+    if (activeThrowable === 'grenade') {
+        if (player.grenadeCount <= 0) return;
+    } else {
+        if (player.molotovCount <= 0) return;
     }
 
     // v0.8.1.2: In single player arcade mode, don't clamp target to canvas bounds
@@ -349,8 +403,6 @@ export function throwGrenade(target, canvas, player) {
     const throwY = player.y + Math.sin(angle) * player.radius * 1.5;
 
     // Target is where the cursor/aim is
-    // In single player arcade mode, use world space coordinates directly
-    // In other modes, clamp to canvas bounds
     let targetX, targetY;
     if (isSinglePlayerArcade) {
         targetX = target.x;
@@ -360,8 +412,14 @@ export function throwGrenade(target, canvas, player) {
         targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
     }
 
-    gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
-    player.grenadeCount--;
+    if (activeThrowable === 'grenade') {
+        gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
+        player.grenadeCount--;
+    } else {
+        gameState.grenades.push(new Molotov(throwX, throwY, targetX, targetY, player));
+        player.molotovCount--;
+    }
+    
     player.lastGrenadeThrowTime = now;
 
     // Small screen shake on throw
@@ -373,6 +431,7 @@ export function throwGrenade(target, canvas, player) {
         if (isLocalPlayer) {
             gameState.multiplayer.socket.emit('player:action', {
                 action: 'grenade',
+                throwableType: activeThrowable,
                 x: player.x,
                 y: player.y,
                 angle: angle
@@ -381,12 +440,33 @@ export function throwGrenade(target, canvas, player) {
     }
 }
 
-export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null) {
+export function cycleThrowable(player) {
+    player = player || gameState.players[0];
+    const now = Date.now();
+    if (now - player.lastThrowableCycleTime < 200) return; // Debounce
+
+    player.activeThrowable = (player.activeThrowable || 'grenade') === 'grenade' ? 'molotov' : 'grenade';
+    player.lastThrowableCycleTime = now;
+    
+    // Spawn visual indicator / effect trigger on HUD
+    if (player === gameState.players[0]) {
+        gameState.throwableCycleHUDTrigger = true;
+    }
+}
+
+export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null, forcePlayerDamage = false) {
 
 
     // Safety check - ensure valid coordinates
     if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
         return;
+    }
+
+    if (sourceIsPlayer && sourcePlayer) {
+        const radiusMult = sourcePlayer.grenadeRadiusMultiplier || 1.0;
+        const damageMult = sourcePlayer.explosionDamageMultiplier || 1.0;
+        radius = Math.floor(radius * radiusMult);
+        damage = Math.floor(damage * damageMult);
     }
 
     // Calculate explosion size based on radius
@@ -434,7 +514,10 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 // Clean up state tracking for dead zombie (multiplayer sync)
                 gameState.lastZombieState.delete(zombie.id);
 
+                const dropX = zombie.x;
+                const dropY = zombie.y;
                 gameState.zombies.splice(zombieIndex, 1);
+                pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, dropX, dropY);
 
                 // Check if boss was killed
                 if (zombie.type === 'boss' || zombie === gameState.boss) {
@@ -493,18 +576,47 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
         }
     }
 
-    // Player damage if explosion is not from player (e.g., exploding zombie)
-    if (!sourceIsPlayer) {
+    // AOE damage to explosive barrels for chain reactions
+    if (gameState.props && gameState.props.length > 0) {
+        for (let i = 0; i < gameState.props.length; i++) {
+            const prop = gameState.props[i];
+            if (prop.type === 'explosiveBarrel' && !prop.detonated) {
+                const dx = prop.x - x;
+                const dy = prop.y - y;
+                const distSquared = dx * dx + dy * dy;
+                if (distSquared <= radiusSquared) {
+                    const distance = Math.sqrt(distSquared);
+                    const damageMultiplier = 1 - (distance / radius) * 0.5;
+                    const finalDamage = Math.floor(damage * damageMultiplier);
+                    prop.takeDamage(finalDamage, sourcePlayer);
+                }
+            }
+        }
+    }
+
+    // Player damage if explosion is not from player, or if player damage is forced (e.g., barrel explosion)
+    if (!sourceIsPlayer || forcePlayerDamage) {
         const radiusSquared = radius * radius;
         for (let i = 0; i < gameState.players.length; i++) {
             const player = gameState.players[i];
-            if (player.health <= 0) continue;
+            if (player.health <= 0) continue; // Skip if dead
 
             const dx = player.x - x;
             const dy = player.y - y;
             const distSquared = dx * dx + dy * dy;
 
             if (distSquared <= radiusSquared) {
+                if (player.isDodging) {
+                    const now = Date.now();
+                    if (!player.lastDodgePopupTime || now - player.lastDodgePopupTime > 200) {
+                        player.lastDodgePopupTime = now;
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 20, "DODGED!", false, '#00ffff'));
+                        }
+                    }
+                    continue;
+                }
                 const distance = Math.sqrt(distSquared);
                 const damageMultiplier = 1 - (distance / radius) * 0.5;
                 const playerDamage = Math.floor(damage * damageMultiplier * 0.5); // Player takes 50% of explosion damage
@@ -528,568 +640,6 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
     }
 }
 
-// Collision handlers
-export function handleBulletZombieCollisions() {
-    // v0.8.1.2: In single player arcade mode, use world space bounds for Quadtree
-    // In other modes, use canvas bounds (screen space)
-    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
-
-
-
-    // Reuse Quadtree instance instead of recreating every frame
-    if (!collisionQuadtree) {
-        if (isSinglePlayerArcade) {
-            // Use a very large boundary for world space (covers entire possible world)
-            // This allows collision detection to work anywhere in the world
-            const worldSize = 100000; // Large enough to cover the entire explorable world
-            collisionQuadtree = new Quadtree({
-                x: -worldSize / 2,
-                y: -worldSize / 2,
-                width: worldSize,
-                height: worldSize
-            }, 4);
-        } else {
-            collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
-        }
-    } else {
-        // Only clear and update boundary if mode changed or canvas size changed (non-arcade)
-        const currentIsArcade = isSinglePlayerArcade;
-        const needsUpdate =
-            (currentIsArcade && collisionQuadtree.boundary.width !== 100000) ||
-            (!currentIsArcade && (collisionQuadtree.boundary.width !== canvas.width || collisionQuadtree.boundary.height !== canvas.height));
-
-        if (needsUpdate) {
-            collisionQuadtree.clear();
-            if (isSinglePlayerArcade) {
-                const worldSize = 100000;
-                collisionQuadtree.boundary = {
-                    x: -worldSize / 2,
-                    y: -worldSize / 2,
-                    width: worldSize,
-                    height: worldSize
-                };
-            } else {
-                collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
-            }
-        } else {
-            // Just clear the quadtree contents (zombies) but keep the structure
-            collisionQuadtree.clear();
-        }
-    }
-
-    // Insert all zombies into Quadtree
-    for (let i = 0; i < gameState.zombies.length; i++) {
-        collisionQuadtree.insert(gameState.zombies[i]);
-    }
-
-    for (let bulletIndex = 0; bulletIndex < gameState.bullets.length; bulletIndex++) {
-        const bullet = gameState.bullets[bulletIndex];
-
-        // Skip visual-only laser beams
-        if (bullet.type === 'laser_visual') continue;
-
-        // Reuse query range object (update properties instead of creating new object)
-        queryRange.x = bullet.x - 20; // Arbitrary padding around bullet
-        queryRange.y = bullet.y - 20;
-        queryRange.width = 40;
-        queryRange.height = 40;
-
-        // Query potential collisions
-        const candidates = collisionQuadtree.query(queryRange);
-
-        for (let i = 0; i < candidates.length; i++) {
-            const zombie = candidates[i];
-            // Verify the zombie is still alive (might have been killed by another bullet in this same frame)
-            // Although candidates are references to objects in gameState.zombies, 
-            // if we splice from gameState.zombies, the reference is still valid but we need to ensure
-            // we don't process a dead zombie if we handle death by setting health <= 0 before splicing.
-            // However, we splice immediately. 
-            // Problem: If a bullet kills a zombie, it's removed from gameState.zombies. 
-            // But it's still in the local `candidates` list for *other* bullets?
-            // No, we are inside the bullet loop. 
-            // If bullet A kills zombie Z, zombie Z is removed from gameState.zombies.
-            // But logic uses references. 
-
-            // We need to check if zombie is still in gameState.zombies to be safe, 
-            // or just check health > 0.
-            if (zombie.health <= 0) return;
-
-            // Also checking if bullet is still active (it might have hit another zombie in spread?)
-            // The bullet loop continues? No, we usually splice bullet on impact.
-            if (bullet.hit) return; // Add a hit flag if we want to stop processing this bullet
-
-            const zombieIndex = gameState.zombies.indexOf(zombie);
-            if (zombieIndex === -1) return; // Already removed
-
-            const collisionResult = checkZombieCollision(bullet, zombie);
-            if (collisionResult.hit) {
-                // v0.8.3.5 Store headshot status for the kill reward
-                const isHeadshot = collisionResult.isHeadshot;
-                // Handle Rocket collisions FIRST (before marking as hit)
-                if (bullet.type === 'rocket') {
-
-                    const rocketPlayer = bullet.player || gameState.players[0];
-                    triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage, true, rocketPlayer);
-                    bullet.markedForRemoval = true;
-                    return; // Stop processing this bullet
-                }
-
-                // Mark bullet as hit to prevent multiple collisions if it's not piercing
-                // (Flamethrower is piercing-ish, handled separately)
-                if (bullet.type !== 'flame' && bullet.type !== 'piercing') bullet.hit = true;
-
-                // Get bullet angle for directional blood splatter
-                const impactAngle = Math.atan2(bullet.vy, bullet.vx);
-
-                // Store zombie position and type before damage (for exploding zombies)
-                const zombieX = zombie.x;
-                const zombieY = zombie.y;
-                const isExploding = zombie.type === 'exploding';
-
-                // Handle flame bullets (apply burn effect)
-                if (bullet.type === 'flame') {
-                    // Apply burn timer (3 seconds) and burn damage
-                    zombie.burnTimer = 3000; // 3 seconds
-                    zombie.burnDamage = bullet.damage * 2; // Double damage over time
-                    // Also apply instant damage
-                    if (zombie.takeDamage(bullet.damage)) {
-                        // v0.8.3.5 Track headshot
-                        if (isHeadshot) gameState.headshots++;
-                        // Zombie dies from flame hit
-                        // const zombieX = zombie.x; // Already stored
-                        // const zombieY = zombie.y;
-                        gameState.zombies.splice(zombieIndex, 1);
-
-                        if (zombie.type === 'boss' || zombie === gameState.boss) {
-                            gameState.bossActive = false;
-                            gameState.boss = null;
-                        }
-
-                        // Get the player who fired the bullet
-                        const shootingPlayer = bullet.player || gameState.players[0];
-
-                        // Increment consecutive kills
-                        shootingPlayer.consecutiveKills++;
-
-                        // Add bonus for boss zombies
-                        if (zombie.type === 'boss' || zombie === gameState.boss) {
-                            shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
-                        }
-
-                        // Store old multiplier to detect tier changes
-                        const oldMultiplier = shootingPlayer.scoreMultiplier;
-                        updateScoreMultiplier(shootingPlayer);
-
-                        // Check for tier increase and trigger feedback
-                        if (shootingPlayer.scoreMultiplier > oldMultiplier) {
-                            // Tier increased - trigger audio and visual feedback
-                            if (shootingPlayer.scoreMultiplier >= 5.0) {
-                                playMultiplierMaxSound();
-                            } else {
-                                playMultiplierUpSound(shootingPlayer.scoreMultiplier);
-                            }
-
-                            // Show multiplier notification
-                            gameState.damageNumbers.push(new DamageNumber(
-                                shootingPlayer.x,
-                                shootingPlayer.y - 40,
-                                `${shootingPlayer.scoreMultiplier}x MULTIPLIER!`,
-                                false,
-                                '#ffd700'
-                            ));
-                        }
-
-                        // Award score with multiplier
-                        const baseScore = getZombieBaseScore(zombie);
-                        const finalScore = awardScore(shootingPlayer, baseScore, zombie.type);
-
-                        gameState.zombiesKilled++;
-
-                        // Apply Bloodlust heal (2 HP per kill)
-                        if (shootingPlayer.hasBloodlust) {
-                            shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
-                            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                            if (damageNumberStyle !== 'off') {
-                                gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
-                            }
-                        }
-
-                        // Apply Adrenaline speed boost (20% for 3s after kill)
-                        if (shootingPlayer.hasAdrenaline) {
-                            shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
-                            shootingPlayer.adrenalineBoostActive = true;
-                        }
-
-                        const now = Date.now();
-                        if (now - gameState.lastKillTime < 1500) {
-                            gameState.killStreak++;
-                        } else {
-                            gameState.killStreak = 1;
-                        }
-                        gameState.lastKillTime = now;
-
-                        // Track max streak for session stats
-                        if (gameState.killStreak > gameState.maxKillStreak) {
-                            gameState.maxKillStreak = gameState.killStreak;
-                        }
-
-                        // Multi-kill detection (V0.7.1)
-                        const zombieType = zombie.type || 'normal';
-                        if (!gameState.recentKills) gameState.recentKills = [];
-                        gameState.recentKills.push({ time: now, zombieType });
-                        // Remove kills older than 500ms
-                        gameState.recentKills = gameState.recentKills.filter(k => now - k.time < 500);
-
-                        // Check for multi-kill (3+ kills in 0.5 seconds)
-                        if (gameState.recentKills.length >= 3) {
-                            const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
-                            gameState.damageNumbers.push(new DamageNumber(
-                                zombieX,
-                                zombieY - 60,
-                                multiKillText,
-                                false,
-                                '#ff00ff', // Magenta for multi-kills
-                                28 // Larger font size
-                            ));
-                        }
-
-                        // Enhanced Kill Streak Visuals (V0.7.1)
-                        if (gameState.killStreak > 2) {
-                            let comboText = `${gameState.killStreak} HIT COMBO!`;
-                            let textColor = '#ffffff';
-                            let fontSize = 20;
-
-                            // Enhanced visuals for high streaks
-                            if (gameState.killStreak >= 20) {
-                                comboText = "LEGENDARY STREAK!";
-                                textColor = '#ffd700'; // Gold
-                                fontSize = 32;
-                            } else if (gameState.killStreak >= 15) {
-                                comboText = "DOMINATING!";
-                                textColor = '#ff6b00'; // Orange
-                                fontSize = 28;
-                            } else if (gameState.killStreak >= 10) {
-                                comboText = "UNSTOPPABLE!";
-                                textColor = '#ff1744'; // Red
-                                fontSize = 26;
-                            } else if (gameState.killStreak % 5 === 0) {
-                                comboText = `${gameState.killStreak} KILL RAMPAGE!`;
-                                textColor = '#ffc107'; // Amber
-                                fontSize = 24;
-                            }
-
-                            gameState.damageNumbers.push(new DamageNumber(
-                                zombieX,
-                                zombieY - 30,
-                                comboText,
-                                false,
-                                textColor,
-                                fontSize
-                            ));
-                        }
-
-                        playKillSound(zombieType);
-
-                        // Show score with multiplier if active
-                        if (shootingPlayer.scoreMultiplier > 1.0) {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore} (${shootingPlayer.scoreMultiplier}x)`));
-                        } else {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore}`));
-                        }
-
-                        createBloodSplatter(zombieX, zombieY, impactAngle, true);
-                        // Add volumetric blood on kill (more blood)
-                        bloodSimulationSystem.addBlood(zombieX, zombieY, 0.8);
-                    } else {
-                        // Zombie survives but is burning
-                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                        if (damageNumberStyle !== 'off') {
-                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
-                        }
-                        createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
-                        // Add volumetric blood on hit (less blood)
-                        bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
-
-                        // Trigger hit marker
-                        gameState.hitMarker.active = true;
-                        gameState.hitMarker.life = gameState.hitMarker.maxLife;
-                        playHitSound();
-                    }
-
-                    bullet.markedForRemoval = true;
-                    return;
-                }
-
-                // Handle Piercing Bullets
-                if (bullet.type === 'piercing') {
-                    // Check if this zombie has already been hit by this bullet (to prevent multi-hit per frame)
-                    if (!bullet.hitZombies) bullet.hitZombies = [];
-                    if (bullet.hitZombies.includes(zombie)) return;
-
-                    bullet.hitZombies.push(zombie);
-                    bullet.pierceCount--;
-                    if (bullet.pierceCount <= 0) {
-                        bullet.markedForRemoval = true;
-                    }
-                }
-
-                // Get the player who fired the bullet
-                const shootingPlayer = bullet.player || gameState.players[0];
-
-                // Critical hit chance (base ~3.33%, plus player crit chance)
-                const baseCritChance = 0.0333333333; // Reduced by 2/3 from 10%
-                const playerCritChance = shootingPlayer.critChance || 0;
-                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance);
-                const isCrit = Math.random() < totalCritChance;
-
-                // Lucky Strike chance (15% for double damage)
-                const isLuckyStrike = shootingPlayer.luckyStrikeChance && Math.random() < shootingPlayer.luckyStrikeChance;
-
-                let finalDamage = bullet.damage;
-                if (isCrit) {
-                    finalDamage = bullet.damage * 2; // 2x damage on crit
-                } else if (isLuckyStrike) {
-                    finalDamage = bullet.damage * 2; // 2x damage on lucky strike
-                }
-
-                // Check if zombie dies from this hit
-                if (zombie.takeDamage(finalDamage)) {
-                    // Clean up state tracking for dead zombie (multiplayer sync)
-                    gameState.lastZombieState.delete(zombie.id);
-
-                    // Remove zombie from array first
-                    gameState.zombies.splice(zombieIndex, 1);
-
-                    // Check if boss was killed
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
-                        gameState.bossActive = false;
-                        gameState.boss = null;
-                    }
-
-                    // Handle exploding zombie explosion (after removal to avoid array issues)
-                    if (isExploding) {
-                        triggerExplosion(zombieX, zombieY, 60, 30, false);
-                    }
-
-                    // Broadcast zombie death to other clients (leader only)
-                    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-                        gameState.multiplayer.socket.emit('zombie:die', {
-                            zombieId: zombie.id,
-                            angle: impactAngle,
-                            isExploding: isExploding
-                        });
-                    }
-
-                    // Increment consecutive kills
-                    shootingPlayer.consecutiveKills++;
-
-                    // Add bonus for boss zombies
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
-                        shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
-                    }
-
-                    // Store old multiplier to detect tier changes
-                    const oldMultiplier = shootingPlayer.scoreMultiplier;
-                    updateScoreMultiplier(shootingPlayer);
-
-                    // Check for tier increase and trigger feedback
-                    if (shootingPlayer.scoreMultiplier > oldMultiplier) {
-                        // Tier increased - trigger audio and visual feedback
-                        if (shootingPlayer.scoreMultiplier >= 5.0) {
-                            playMultiplierMaxSound();
-                        } else {
-                            playMultiplierUpSound(shootingPlayer.scoreMultiplier);
-                        }
-
-                        // Show multiplier notification
-                        gameState.damageNumbers.push(new DamageNumber(
-                            shootingPlayer.x,
-                            shootingPlayer.y - 40,
-                            `${shootingPlayer.scoreMultiplier}x MULTIPLIER!`,
-                            false,
-                            '#ffd700'
-                        ));
-                    }
-
-                    // Award score with multiplier
-                    const baseScore = getZombieBaseScore(zombie);
-                    const finalScore = awardScore(shootingPlayer, baseScore, zombie.type);
-
-                    gameState.zombiesKilled++;
-
-                    // Apply Bloodlust heal (2 HP per kill)
-                    if (shootingPlayer.hasBloodlust) {
-                        shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
-                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                        if (damageNumberStyle !== 'off') {
-                            gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
-                        }
-                    }
-
-                    // Apply Adrenaline speed boost (20% for 3s after kill)
-                    if (shootingPlayer.hasAdrenaline) {
-                        shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
-                        shootingPlayer.adrenalineBoostActive = true;
-                    }
-
-                    // Award XP for kill (with multiplier)
-                    const zombieType = zombie.type || 'normal';
-                    let xpAmount = skillSystem.getXPForZombieType(zombieType);
-                    xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier);
-                    // Show XP popup over player instead of zombie
-                    skillSystem.gainXP(xpAmount, { x: shootingPlayer.x, y: shootingPlayer.y, streak: gameState.killStreak });
-
-                    // Broadcast XP gain to other clients (leader only) - use multiplied amount
-                    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-                        gameState.multiplayer.socket.emit('game:xp', xpAmount);
-                    }
-
-                    // Kill Streak Logic
-                    const now = Date.now();
-                    if (now - gameState.lastKillTime < 1500) {
-                        gameState.killStreak++;
-                    } else {
-                        gameState.killStreak = 1;
-                    }
-                    gameState.lastKillTime = now;
-
-                    // Track max streak for session stats
-                    if (gameState.killStreak > gameState.maxKillStreak) {
-                        gameState.maxKillStreak = gameState.killStreak;
-                    }
-
-                    // Multi-kill detection (V0.7.1)
-                    // zombieType already declared above for XP calculation
-                    if (!gameState.recentKills) gameState.recentKills = [];
-                    gameState.recentKills.push({ time: now, zombieType });
-                    // Remove kills older than 500ms
-                    gameState.recentKills = gameState.recentKills.filter(k => now - k.time < 500);
-
-                    // Check for multi-kill (3+ kills in 0.5 seconds)
-                    if (gameState.recentKills.length >= 3) {
-                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                        if (damageNumberStyle !== 'off') {
-                            const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
-                            gameState.damageNumbers.push(new DamageNumber(
-                                zombieX,
-                                zombieY - 60,
-                                multiKillText,
-                                false,
-                                '#ff00ff', // Magenta for multi-kills
-                                28 // Larger font size
-                            ));
-                        }
-                    }
-
-                    // Enhanced Kill Streak Visuals (V0.7.1)
-                    if (gameState.killStreak > 2) {
-                        let comboText = `${gameState.killStreak} HIT COMBO!`;
-                        let textColor = '#ffffff';
-                        let fontSize = 20;
-
-                        // Enhanced visuals for high streaks
-                        if (gameState.killStreak >= 20) {
-                            comboText = "LEGENDARY STREAK!";
-                            textColor = '#ffd700'; // Gold
-                            fontSize = 32;
-                        } else if (gameState.killStreak >= 15) {
-                            comboText = "DOMINATING!";
-                            textColor = '#ff6b00'; // Orange
-                            fontSize = 28;
-                        } else if (gameState.killStreak >= 10) {
-                            comboText = "UNSTOPPABLE!";
-                            textColor = '#ff1744'; // Red
-                            fontSize = 26;
-                        } else if (gameState.killStreak % 5 === 0) {
-                            comboText = `${gameState.killStreak} KILL RAMPAGE!`;
-                            textColor = '#ffc107'; // Amber
-                            fontSize = 24;
-                        }
-
-                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                        if (damageNumberStyle !== 'off') {
-                            gameState.damageNumbers.push(new DamageNumber(
-                                zombieX,
-                                zombieY - 30,
-                                comboText,
-                                false,
-                                textColor,
-                                fontSize
-                            ));
-                        }
-                    }
-
-                    // Play kill confirmed sound with zombie type (unless it was exploding zombie, explosion sound plays)
-                    if (!isExploding) {
-                        playKillSound(zombieType);
-                    }
-                    // Create floating damage number (with crit styling if crit)
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
-                        if (isCrit) {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 25, "CRIT!", true));
-                        }
-
-                        // Show score with multiplier if active
-                        if (shootingPlayer.scoreMultiplier > 1.0) {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore} (${shootingPlayer.scoreMultiplier}x)`, isCrit));
-                        } else {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, `+${finalScore}`, isCrit));
-                        }
-                    }
-                    // Create blood splatter on kill
-                    createBloodSplatter(zombieX, zombieY, impactAngle, true);
-                    // Add volumetric blood on kill (more blood)
-                    bloodSimulationSystem.addBlood(zombieX, zombieY, 0.8);
-                } else {
-                    // Zombie survived - broadcast hit to other clients (leader only)
-                    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-                        gameState.multiplayer.socket.emit('zombie:hit', {
-                            zombieId: zombie.id,
-                            newHealth: zombie.health,
-                            angle: impactAngle
-                        });
-                    }
-
-                    // Create floating damage number (with crit styling if crit)
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
-                        if (isCrit) {
-                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, Math.floor(finalDamage), true));
-                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y - 25, "CRIT!", true));
-                        } else {
-                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
-                        }
-                    }
-                    // Create blood splatter on hit (not kill)
-                    createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
-                    // Add volumetric blood on hit (less blood)
-                    bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
-
-                    // --- START: Apply Slow-on-Hit ---
-                    if (zombie.originalSpeed === undefined) {
-                        zombie.originalSpeed = zombie.speed;
-                    }
-                    zombie.speed = zombie.originalSpeed * 0.70; // 30% slow
-                    zombie.slowedUntil = Date.now() + 500; // for 0.5 seconds
-                    // --- END: Apply Slow-on-Hit ---
-                }
-
-                // Trigger hit marker
-                gameState.hitMarker.active = true;
-                gameState.hitMarker.life = gameState.hitMarker.maxLife;
-                playHitSound();
-
-                if (bullet.type !== 'piercing') {
-                    bullet.markedForRemoval = true;
-                }
-            }
-        }
-    }
-
-    // Remove marked bullets using in-place compaction (no array allocation)
-    compactArray(gameState.bullets, b => !b.markedForRemoval);
-}
 
 export function handlePlayerZombieCollisions() {
     for (let i = 0; i < gameState.players.length; i++) {
@@ -1099,34 +649,37 @@ export function handlePlayerZombieCollisions() {
         for (let j = 0; j < gameState.zombies.length; j++) {
             const zombie = gameState.zombies[j];
             if (checkCollision(player, zombie)) {
-                let damage = 0.5;
-                const previousHealth = player.health;
-
-                // Apply Thick Skin damage reduction
-                if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
-                    damage *= player.damageReduction;
-                }
-
-                // Apply damage to shield first, then health
-                if (player.shield > 0) {
-                    player.shield -= damage;
-                    if (player.shield < 0) {
-                        player.health += player.shield; // Apply overflow damage to health
-                        player.shield = 0;
+                if (player.isDodging) {
+                    const now = Date.now();
+                    if (!player.lastDodgePopupTime || now - player.lastDodgePopupTime > 200) {
+                        player.lastDodgePopupTime = now;
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 20, "DODGED!", false, '#00ffff'));
+                        }
                     }
-                    createParticles(player.x, player.y, '#03a9f4', 3); // Blue for shield hit
-                } else {
-                    player.health -= damage;
-                    createParticles(player.x, player.y, '#ff0000', 3); // Red for health hit
+                    continue;
+                }
+                let damage = 0.5;
+
+                const healthLost = applyPlayerDamage(player, damage);
+
+                // Thorn Skin — retaliate on contact
+                if (player.hasThornSkin && player.thornDamage > 0) {
+                    const thornDmg = player.thornDamage;
+                    if (zombie.takeDamage(thornDmg)) {
+                        gameState.zombies.splice(j, 1);
+                        gameState.zombiesKilled++;
+                        j--;
+                        pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombie.x, zombie.y);
+                    }
                 }
 
-                // Reset multiplier if health was reduced (shield didn't fully absorb)
-                if (player.health < previousHealth && player.shield === 0) {
-                    resetMultiplier(player);
+                if (healthLost > 0 && player.shield === 0) {
+                    tryResetMultiplier(player);
                 }
 
                 if (player === gameState.players[0]) {
-                    // Add screen shake on damage (mostly for P1 or global)
                     gameState.shakeAmount = 8;
                     triggerDamageIndicator();
                 }
@@ -1136,15 +689,21 @@ export function handlePlayerZombieCollisions() {
     }
 }
 
+function shouldShowPickupFloatingText() {
+    if (settingsManager.getSetting('video', 'floatingText') === false) return false;
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    return damageNumberStyle !== 'off';
+}
+
 export function handlePickupCollisions() {
-    const showFloatingText = settingsManager.getSetting('video', 'floatingText') !== false;
+    const showFloatingText = shouldShowPickupFloatingText();
 
     // Check player-health pickup collisions
     if (gameState.healthPickups.length > 0) {
         gameState.healthPickups = gameState.healthPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (player.health < PLAYER_MAX_HEALTH && checkCollision(player, pickup)) {
+                if (player.health < PLAYER_MAX_HEALTH && checkPickupCollision(player, pickup)) {
                     player.health = Math.min(
                         PLAYER_MAX_HEALTH,
                         player.health + HEALTH_PICKUP_HEAL_AMOUNT
@@ -1167,11 +726,11 @@ export function handlePickupCollisions() {
         gameState.ammoPickups = gameState.ammoPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if ((player.currentAmmo < player.maxAmmo || player.grenadeCount < MAX_GRENADES) && checkCollision(player, pickup)) {
+                if ((player.currentAmmo < player.maxAmmo || player.grenadeCount < getPlayerMaxGrenades(player)) && checkPickupCollision(player, pickup)) {
                     // Restore ammo for current weapon
                     player.currentAmmo = Math.min(player.maxAmmo, player.currentAmmo + AMMO_PICKUP_AMOUNT);
                     // Also refill grenades
-                    player.grenadeCount = MAX_GRENADES;
+                    player.grenadeCount = getPlayerMaxGrenades(player);
                     createParticles(pickup.x, pickup.y, '#ff9800', 8);
                     if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(pickup.x, pickup.y - 20, `+${AMMO_PICKUP_AMOUNT} AMMO`, false, '#00ffff'));
@@ -1190,9 +749,11 @@ export function handlePickupCollisions() {
         gameState.damagePickups = gameState.damagePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     gameState.damageBuffEndTime = Date.now() + 10000; // 10 seconds
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "DOUBLE DAMAGE!"));
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "DOUBLE DAMAGE!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#9c27b0', 12);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1208,8 +769,8 @@ export function handlePickupCollisions() {
         gameState.nukePickups = gameState.nukePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
-                    triggerNuke(pickup.x, pickup.y);
+                if (checkPickupCollision(player, pickup)) {
+                    triggerNuke(pickup.x, pickup.y, showFloatingText);
                     createParticles(pickup.x, pickup.y, '#ffeb3b', 20);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1225,9 +786,11 @@ export function handlePickupCollisions() {
         gameState.speedPickups = gameState.speedPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     gameState.speedBoostEndTime = Date.now() + 8000; // 8 seconds
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "SPEED BOOST!"));
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "SPEED BOOST!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#00bcd4', 12);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1243,9 +806,11 @@ export function handlePickupCollisions() {
         gameState.rapidFirePickups = gameState.rapidFirePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     gameState.rapidFireEndTime = Date.now() + 10000; // 10 seconds
-                    gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "RAPID FIRE!"));
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "RAPID FIRE!"));
+                    }
                     createParticles(pickup.x, pickup.y, '#ff9800', 12);
                     collected = true;
                     gameState.pickupsCollected++;
@@ -1261,10 +826,9 @@ export function handlePickupCollisions() {
         gameState.shieldPickups = gameState.shieldPickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     player.shield = Math.min(player.maxShield, player.shield + 50);
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
+                    if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "+50 SHIELD!"));
                     }
                     createParticles(pickup.x, pickup.y, '#03a9f4', 12);
@@ -1282,13 +846,12 @@ export function handlePickupCollisions() {
         gameState.adrenalinePickups = gameState.adrenalinePickups.filter(pickup => {
             let collected = false;
             for (const player of gameState.players) {
-                if (checkCollision(player, pickup)) {
+                if (checkPickupCollision(player, pickup)) {
                     // Apply all three buffs: Speed + Reload Speed + Fire Rate
                     gameState.adrenalineEndTime = Date.now() + 12000; // 12 seconds
                     gameState.speedBoostEndTime = Math.max(gameState.speedBoostEndTime, Date.now() + 12000);
                     gameState.rapidFireEndTime = Math.max(gameState.rapidFireEndTime, Date.now() + 12000);
-                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                    if (damageNumberStyle !== 'off') {
+                    if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "ADRENALINE RUSH!"));
                     }
                     createParticles(pickup.x, pickup.y, '#4caf50', 15);
@@ -1300,11 +863,89 @@ export function handlePickupCollisions() {
             return !collected;
         });
     }
+
+    // Check frost nova pickup collisions
+    if (gameState.frostPickups.length > 0) {
+        gameState.frostPickups = gameState.frostPickups.filter(pickup => {
+            let collected = false;
+            for (const player of gameState.players) {
+                if (checkPickupCollision(player, pickup)) {
+                    triggerFrostNova(pickup.x, pickup.y, showFloatingText);
+                    collected = true;
+                    gameState.pickupsCollected++;
+                    break;
+                }
+            }
+            return !collected;
+        });
+    }
+
+    // Check scrap pickup collisions (magnetic + walk-over)
+    if (gameState.scrapPickups.length > 0) {
+        gameState.scrapPickups = gameState.scrapPickups.filter(scrap => {
+            let collected = false;
+            for (const player of gameState.players) {
+                if (player.health <= 0) continue;
+                if (checkCollision(player, scrap)) {
+                    const scrapValue = scrap.value || SCRAP_VALUE;
+                    const multiplier = player.scrapMultiplier || 1.0;
+                    let gained = Math.floor(scrapValue * multiplier);
+                    if (player.goldRushEndTime && player.goldRushEndTime > Date.now()) {
+                        gained *= 2;
+                    }
+                    player.scrap = (player.scrap || 0) + gained;
+                    gameState.scrapCollected += gained;
+                    gameState.score += gained;
+                    createParticles(scrap.x, scrap.y, '#cd9b6d', 8);
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(
+                            new DamageNumber(scrap.x, scrap.y - 20, `+${gained} SCRAP`, false, '#ffd700')
+                        );
+                    }
+                    if (player.scrapHealOnPickup > 0) {
+                        player.health = Math.min(player.maxHealth, player.health + player.scrapHealOnPickup);
+                    }
+                    collected = true;
+                    break;
+                }
+            }
+            return !collected;
+        });
+    }
 }
 
-function triggerNuke(x, y) {
+function triggerFrostNova(x, y, showFloatingText = true) {
+    const FROST_DURATION = 6000;
+    gameState.frostNovaEndTime = Date.now() + FROST_DURATION;
+    gameState.shakeAmount = Math.max(gameState.shakeAmount, 10);
+    if (showFloatingText) {
+        gameState.damageNumbers.push(new DamageNumber(x, y - 50, "FROST NOVA!", false, '#80deea'));
+        gameState.damageNumbers.push(new DamageNumber(x, y - 25, "ZOMBIES FROZEN 6s", false, '#e1f5fe'));
+    }
+    gameState.frostNovaEffect = {
+        active: true,
+        x,
+        y,
+        startTime: Date.now(),
+        duration: 900,
+        maxRadius: Math.max(canvas.width, canvas.height) * 0.9
+    };
+
+    createParticles(x, y, '#e1f5fe', 28);
+    createParticles(x, y, '#ffffff', 16);
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const zombie = gameState.zombies[i];
+        createParticles(zombie.x, zombie.y, '#b3e5fc', 5);
+        createParticles(zombie.x, zombie.y - zombie.radius * 0.5, '#ffffff', 2);
+    }
+}
+
+function triggerNuke(x, y, showFloatingText = true) {
     gameState.shakeAmount = 30;
-    gameState.damageNumbers.push(new DamageNumber(x, y - 50, "TACTICAL NUKE!"));
+    if (showFloatingText) {
+        gameState.damageNumbers.push(new DamageNumber(x, y - 50, "TACTICAL NUKE!"));
+    }
 
     // Flash effect (simulated by white particles everywhere or just screen flash handled in draw)
     // We'll just kill everyone
@@ -1339,14 +980,18 @@ function triggerNuke(x, y) {
 
         // Apply Bloodlust heal (2 HP per kill)
         if (player.hasBloodlust) {
-            player.health = Math.min(player.maxHealth, player.health + 2);
+            const healAmt = player.bloodlustHealAmount || 2;
+            player.health = Math.min(player.maxHealth, player.health + healAmt);
         }
 
-        // Apply Adrenaline speed boost (20% for 3s after kill)
+        // Apply Adrenaline speed boost after kill
         if (player.hasAdrenaline) {
-            player.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+            const duration = player.adrenalineDurationMs || 3000;
+            player.adrenalineBoostEndTime = Date.now() + duration;
             player.adrenalineBoostActive = true;
         }
+
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombie.x, zombie.y);
 
         // Remove
         gameState.zombies.splice(i, 1);
@@ -1392,7 +1037,8 @@ export function updateScoreMultiplier(player) {
  * @returns {number} Final score awarded
  */
 export function awardScore(player, baseScore, zombieType) {
-    const multipliedScore = Math.floor(baseScore * player.scoreMultiplier);
+    const scoreMult = player.scoreGainMultiplier || 1.0;
+    const multipliedScore = Math.floor(baseScore * player.scoreMultiplier * scoreMult);
     gameState.score += multipliedScore;
 
     // Track bonus
@@ -1428,6 +1074,490 @@ export function resetMultiplier(player) {
     }
 }
 
+/** Combo King — absorb chip damage without losing multiplier */
+export function tryResetMultiplier(player) {
+    if ((player.multiplierGraceHits || 0) > 0) {
+        player.multiplierGraceHits--;
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 35, 'COMBO SAVED!', false, '#ffc107', 16
+            ));
+        }
+        return;
+    }
+    resetMultiplier(player);
+}
+
+export function countNearbyZombies(x, y, range) {
+    const rangeSq = range * range;
+    let count = 0;
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        const dx = z.x - x;
+        const dy = z.y - y;
+        if (dx * dx + dy * dy <= rangeSq) count++;
+    }
+    return count;
+}
+
+/**
+ * Applies tree/flat skill damage modifiers to a hit
+ */
+export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
+    let d = damage * (shootingPlayer.damageSkillMultiplier || 1.0);
+    if (shootingPlayer.hordeSlayerBonus) {
+        const range = shootingPlayer.hordeSlayerRange || 200;
+        if (countNearbyZombies(shootingPlayer.x, shootingPlayer.y, range) >= 4) {
+            d *= (1 + shootingPlayer.hordeSlayerBonus);
+        }
+    }
+    if (shootingPlayer.hasExecutioner && zombie.maxHealth > 0) {
+        if (zombie.health / zombie.maxHealth < 0.3) {
+            d *= 1.5;
+        }
+    }
+    if (shootingPlayer.hasBerserker && shootingPlayer.maxHealth > 0) {
+        if (shootingPlayer.health / shootingPlayer.maxHealth < 0.3) {
+            d *= 1.3;
+        }
+    }
+    if (shootingPlayer.hasFeralRage && shootingPlayer.maxHealth > 0) {
+        if (shootingPlayer.health / shootingPlayer.maxHealth < 0.25) {
+            d *= 1.4;
+        }
+    }
+    if (shootingPlayer.bossDamageMult && (zombie.type === 'boss' || zombie === gameState.boss)) {
+        d *= shootingPlayer.bossDamageMult;
+    }
+    if (shootingPlayer.hasVengeance && shootingPlayer.vengeanceEndTime && shootingPlayer.vengeanceEndTime > Date.now()) {
+        d *= shootingPlayer.vengeanceDamageMult || 1.45;
+    }
+    if (shootingPlayer.hasNightfall && gameState.isNight) {
+        d *= 1.15;
+    }
+    return d;
+}
+
+/**
+ * Apply lifesteal from weapon or melee hits
+ */
+export function applyLifesteal(player, damageDealt, percent) {
+    if (!player || !percent || percent <= 0 || damageDealt <= 0) return;
+    const heal = Math.max(1, Math.floor(damageDealt * percent));
+    player.health = Math.min(player.maxHealth, player.health + heal);
+}
+
+export function applyKillMomentum(player) {
+    if (!player?.hasKillMomentum) return;
+    const maxStacks = player.killMomentumMaxStacks || 5;
+    player.killMomentumStacks = Math.min(maxStacks, (player.killMomentumStacks || 0) + 1);
+    player.killMomentumEndTime = Date.now() + 2000;
+}
+
+/**
+ * Chain lightning — arc damage to nearest zombie in range
+ */
+export function tryChainLightning(sourceZombie, damage, shootingPlayer) {
+    const chance = shootingPlayer?.chainLightningChance || 0;
+    if (!chance || Math.random() >= chance) return;
+
+    const chainRange = 150;
+    const chainRangeSq = chainRange * chainRange;
+    let nearest = null;
+    let nearestDistSq = chainRangeSq;
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        if (z === sourceZombie) continue;
+        const dx = z.x - sourceZombie.x;
+        const dy = z.y - sourceZombie.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nearestDistSq) {
+            nearestDistSq = distSq;
+            nearest = z;
+        }
+    }
+
+    if (!nearest) return;
+
+    const chainDamage = Math.max(1, Math.floor(damage * 0.5));
+    const idx = gameState.zombies.indexOf(nearest);
+    if (nearest.takeDamage(chainDamage) && idx !== -1) {
+        gameState.zombies.splice(idx, 1);
+        gameState.zombiesKilled++;
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, nearest, nearest.x, nearest.y);
+    }
+    createParticles(nearest.x, nearest.y, '#81d4fa', 6);
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    if (damageNumberStyle !== 'off') {
+        gameState.damageNumbers.push(new DamageNumber(nearest.x, nearest.y - 20, '⚡', false, '#81d4fa', 16));
+    }
+}
+
+export function tryOverkillSplash(sourceZombie, preHealth, finalDamage, shootingPlayer) {
+    const pct = shootingPlayer?.overkillSplashPercent || 0;
+    if (!pct || preHealth <= 0) return;
+    const excess = Math.max(0, finalDamage - preHealth);
+    if (excess <= 0) return;
+    const splashDmg = Math.floor(excess * pct);
+    if (splashDmg <= 0) return;
+
+    const splashRange = 120;
+    const splashRangeSq = splashRange * splashRange;
+    let nearest = null;
+    let nearestDistSq = splashRangeSq;
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        if (z === sourceZombie) continue;
+        const dx = z.x - sourceZombie.x;
+        const dy = z.y - sourceZombie.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nearestDistSq) {
+            nearestDistSq = distSq;
+            nearest = z;
+        }
+    }
+    if (!nearest) return;
+
+    const idx = gameState.zombies.indexOf(nearest);
+    if (nearest.takeDamage(splashDmg) && idx !== -1) {
+        gameState.zombies.splice(idx, 1);
+        gameState.zombiesKilled++;
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, nearest, nearest.x, nearest.y);
+    }
+    createParticles(nearest.x, nearest.y, '#ff9800', 5);
+}
+
+export function tryCorpseBloom(x, y, player) {
+    const chance = player?.corpseBloomChance || 0;
+    if (!chance || Math.random() >= chance) return;
+    if (typeof window !== 'undefined' && window.AcidPool) {
+        const pool = new window.AcidPool(x, y);
+        pool.radius = 32;
+        pool.life = 4000;
+        pool.maxLife = 4000;
+        gameState.acidPools.push(pool);
+    }
+}
+
+export function applyToxicRound(zombie, player) {
+    if (!player?.hasToxicRounds) return;
+    zombie.poisonTimer = player.toxicDurationMs || 3500;
+    zombie.poisonDamage = player.toxicDamagePerTick || 0.4;
+}
+
+export function processHeadhunterKill(player, isHeadshot) {
+    if (!player?.hasHeadhunter || !isHeadshot) return 1.0;
+    const heal = player.headhunterHeal || 4;
+    player.health = Math.min(player.maxHealth, player.health + heal);
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    if (damageNumberStyle !== 'off') {
+        gameState.damageNumbers.push(new DamageNumber(
+            player.x, player.y - 45, `HEADSHOT +${heal}`, false, '#ffd700', 15
+        ));
+    }
+    return 1 + (player.headhunterXpBonus || 0.5);
+}
+
+export function tickKillSwitch(player) {
+    if (!player?.hasKillSwitch) return;
+    player.killSwitchCounter = (player.killSwitchCounter || 0) + 1;
+    const threshold = player.killSwitchThreshold || 7;
+    if (player.killSwitchCounter >= threshold) {
+        player.killSwitchCounter = 0;
+        player.killSwitchArmed = true;
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 50, 'KILL SWITCH ARMED', false, '#ff1744', 18
+            ));
+        }
+    }
+}
+
+export function tryInfernoExplosion(x, y, player, wasBurning) {
+    if (!player?.hasInferno || !wasBurning) return;
+    triggerExplosion(x, y, 50, 25, true, player, true);
+}
+
+export function performRiposte(player) {
+    if (!player?.hasRiposte) return;
+    const dmg = player.riposteDamage || 35;
+    const range = 90;
+    const rangeSq = range * range;
+    let hits = 0;
+
+    for (let i = gameState.zombies.length - 1; i >= 0; i--) {
+        const z = gameState.zombies[i];
+        const dx = z.x - player.x;
+        const dy = z.y - player.y;
+        if (dx * dx + dy * dy > rangeSq) continue;
+        hits++;
+        if (z.takeDamage(dmg)) {
+            gameState.zombies.splice(i, 1);
+            gameState.zombiesKilled++;
+            pickupSpawnSystem.tryDropScrapFromZombie(gameState, z, z.x, z.y);
+        }
+    }
+    if (hits > 0) {
+        createParticles(player.x, player.y, '#00bcd4', 10);
+        gameState.shakeAmount = Math.max(gameState.shakeAmount || 0, 4);
+    }
+}
+
+export function spawnPhantomDecoy(player) {
+    if (!player?.hasPhantomDecoy) return;
+    if (!gameState.phantomDecoys) gameState.phantomDecoys = [];
+    gameState.phantomDecoys.push({
+        x: player.x,
+        y: player.y,
+        life: 1500,
+        createdAt: Date.now()
+    });
+}
+
+export function getBorrowedTimeCritBonus(player) {
+    if (!player?.hasBorrowedTime || !player.maxHealth) return 0;
+    if (player.health / player.maxHealth > 0.25) return 0;
+    return player.borrowedTimeCritBonus || 0.30;
+}
+
+export function getStaticChargeDamageMult(player) {
+    if (!player?.hasStaticCharge || !player.staticChargeMax) return 1.0;
+    const ratio = Math.min(1, (player.staticCharge || 0) / player.staticChargeMax);
+    return 1 + ratio * 0.8;
+}
+
+export function consumeStaticCharge(player) {
+    if (!player?.hasStaticCharge) return;
+    player.staticCharge = 0;
+}
+
+export function consumeKillSwitch(player) {
+    if (!player?.killSwitchArmed) return 1.0;
+    player.killSwitchArmed = false;
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    if (damageNumberStyle !== 'off') {
+        gameState.damageNumbers.push(new DamageNumber(
+            player.x, player.y - 30, '3× KILL SWITCH', false, '#ff1744', 20
+        ));
+    }
+    return 3.0;
+}
+
+export function triggerMiniFrostNova(x, y, durationMs = 2000) {
+    gameState.frostNovaEndTime = Date.now() + durationMs;
+    gameState.frostNovaEffect = {
+        active: true,
+        x,
+        y,
+        startTime: Date.now(),
+        duration: 600,
+        maxRadius: 320
+    };
+    createParticles(x, y, '#b3e5fc', 16);
+}
+
+export function tickColdSnap(player, x, y) {
+    if (!player?.hasColdSnap) return;
+    player.coldSnapCounter = (player.coldSnapCounter || 0) + 1;
+    const threshold = player.coldSnapThreshold || 8;
+    if (player.coldSnapCounter >= threshold) {
+        player.coldSnapCounter = 0;
+        triggerMiniFrostNova(x, y, 2000);
+    }
+}
+
+export function tryFrostNovaOnKill(player, x, y) {
+    const chance = player?.frostNovaOnKillChance || 0;
+    if (chance && Math.random() < chance) {
+        triggerFrostNovaAt(x, y);
+    }
+}
+
+export function triggerFrostNovaAt(x, y) {
+    const FROST_DURATION = 6000;
+    gameState.frostNovaEndTime = Date.now() + FROST_DURATION;
+    gameState.shakeAmount = Math.max(gameState.shakeAmount, 10);
+    gameState.damageNumbers.push(new DamageNumber(x, y - 40, 'FROST NOVA!', false, '#80deea'));
+    gameState.frostNovaEffect = {
+        active: true,
+        x,
+        y,
+        startTime: Date.now(),
+        duration: 900,
+        maxRadius: Math.max(canvas.width, canvas.height) * 0.9
+    };
+    createParticles(x, y, '#e1f5fe', 28);
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const zombie = gameState.zombies[i];
+        createParticles(zombie.x, zombie.y, '#b3e5fc', 3);
+    }
+}
+
+export function tryRicochet(sourceZombie, damage, shootingPlayer, excludeZombie = null) {
+    const chance = shootingPlayer?.ricochetChance || 0;
+    if (!chance || Math.random() >= chance) return;
+
+    const range = 140;
+    const rangeSq = range * range;
+    let nearest = null;
+    let nearestDistSq = rangeSq;
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        if (z === sourceZombie || z === excludeZombie) continue;
+        const dx = z.x - sourceZombie.x;
+        const dy = z.y - sourceZombie.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nearestDistSq) {
+            nearestDistSq = distSq;
+            nearest = z;
+        }
+    }
+    if (!nearest) return;
+
+    const ricochetDmg = Math.max(1, Math.floor(damage * 0.5));
+    const idx = gameState.zombies.indexOf(nearest);
+    if (nearest.takeDamage(ricochetDmg) && idx !== -1) {
+        gameState.zombies.splice(idx, 1);
+        gameState.zombiesKilled++;
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, nearest, nearest.x, nearest.y);
+    }
+    createParticles(nearest.x, nearest.y, '#ffeb3b', 4);
+}
+
+export function processGrimReaperKill(player, zombie, preHealth) {
+    if (!player?.hasGrimReaper || !zombie?.maxHealth) return;
+    if (preHealth / zombie.maxHealth > 0.2) return;
+    const heal = player.grimReaperHeal || 6;
+    player.health = Math.min(player.maxHealth, player.health + heal);
+}
+
+export function applyWaveRiderBoost(players) {
+    for (let i = 0; i < players.length; i++) {
+        const p = players[i];
+        if (p.hasWaveRider) {
+            p.waveRiderEndTime = Date.now() + (p.waveRiderDurationMs || 8000);
+        }
+        p.guardianAngelUsedThisWave = false;
+    }
+}
+
+export function applyBulletStormRefund(player, killCount) {
+    if (!player?.hasBulletStorm || killCount < 3) return;
+    const pct = player.bulletStormRefundPercent || 0.3;
+    const ammoMult = player.ammoMultiplier || 1.0;
+    const maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMult);
+    const refund = Math.max(1, Math.floor(maxAmmo * pct));
+    player.currentAmmo = Math.min(maxAmmo, player.currentAmmo + refund);
+}
+
+/**
+ * Get effective max grenades for a player (base + skill bonus)
+ */
+export function getPlayerMaxGrenades(player) {
+    return MAX_GRENADES + (player?.maxGrenadeBonus || 0);
+}
+
+/**
+ * Centralized incoming damage — shield, reduction, last stand, second wind
+ * @returns {number} actual health lost (0 if shield absorbed all)
+ */
+export function applyPlayerDamage(player, rawDamage) {
+    if (player.health <= 0 || rawDamage <= 0) return 0;
+
+    let damage = rawDamage;
+
+    if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
+        damage *= player.damageReduction;
+    }
+    if (player.damageTakenMultiplier && player.damageTakenMultiplier > 1.0) {
+        damage *= player.damageTakenMultiplier;
+    }
+    if (player.hasNightfall && gameState.isNight) {
+        damage *= 0.9;
+    }
+
+    const healthRatio = player.maxHealth > 0 ? player.health / player.maxHealth : 1;
+    const projectedRatio = player.maxHealth > 0 ? Math.max(0, player.health - damage) / player.maxHealth : 0;
+    if (player.hasLastStand && !player.lastStandUsed && (healthRatio <= 0.1 || projectedRatio <= 0.1)) {
+        player.lastStandActiveUntil = Date.now() + 5000;
+        player.lastStandUsed = true;
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 30, 'LAST STAND!', false, '#ff7043', 18
+            ));
+        }
+        createParticles(player.x, player.y, '#ff7043', 8);
+    }
+    if (player.lastStandActiveUntil && Date.now() < player.lastStandActiveUntil) {
+        damage *= 0.5;
+    } else if (player.lastStandActiveUntil && Date.now() >= player.lastStandActiveUntil) {
+        player.lastStandActiveUntil = 0;
+    }
+
+    const previousHealth = player.health;
+
+    if (player.shield > 0) {
+        player.shield -= damage;
+        if (player.shield < 0) {
+            player.health += player.shield;
+            player.shield = 0;
+        }
+        createParticles(player.x, player.y, '#03a9f4', 3);
+    } else {
+        player.health -= damage;
+        createParticles(player.x, player.y, '#ff0000', 3);
+    }
+
+    if (player.health <= 0 && trySecondWind(player)) {
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
+            ));
+        }
+        createParticles(player.x, player.y, '#66bb6a', 8);
+    }
+
+    if (player.hasVengeance && player.health < previousHealth) {
+        player.vengeanceEndTime = Date.now() + (player.vengeanceDurationMs || 3000);
+    }
+
+    if (player.hasGuardianAngel && !player.guardianAngelUsedThisWave && player.maxHealth > 0) {
+        const ratio = player.health / player.maxHealth;
+        if (ratio > 0 && ratio <= 0.15) {
+            const heal = Math.floor(player.maxHealth * 0.25);
+            player.health = Math.min(player.maxHealth, player.health + heal);
+            player.guardianAngelUsedThisWave = true;
+            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+            if (damageNumberStyle !== 'off') {
+                gameState.damageNumbers.push(new DamageNumber(
+                    player.x, player.y - 40, 'GUARDIAN ANGEL', false, '#e1bee7', 18
+                ));
+            }
+        }
+    }
+
+    return Math.max(0, previousHealth - player.health);
+}
+
+/**
+ * Second Wind — survive fatal damage once at 50% HP
+ * @returns {boolean} true if second wind triggered
+ */
+export function trySecondWind(player) {
+    if (player.health > 0) return false;
+    if (!player.hasSecondWind || player.secondWindUsed) return false;
+    player.health = Math.floor(player.maxHealth * 0.5);
+    player.secondWindUsed = true;
+    return true;
+}
+
 /**
  * Gets the base score for a zombie type
  * @param {Object} zombie - The zombie object
@@ -1452,7 +1582,16 @@ export function getZombieBaseScore(zombie) {
         return ZOMBIE_BASE_SCORES.ghost;
     } else if (zombieType.includes('spitter')) {
         return ZOMBIE_BASE_SCORES.spitter;
+    } else if (zombieType.includes('siren')) {
+        return ZOMBIE_BASE_SCORES.siren;
+    } else if (zombieType.includes('splitter')) {
+        return ZOMBIE_BASE_SCORES.splitter;
+    } else if (zombieType.includes('shard')) {
+        return ZOMBIE_BASE_SCORES.shard;
     } else {
         return ZOMBIE_BASE_SCORES.normal;
     }
 }
+
+// Phase 4b: bullet-zombie collision handler extracted to bulletZombieCollisions.js
+export { handleBulletZombieCollisions } from './bulletZombieCollisions.js';

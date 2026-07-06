@@ -5,6 +5,8 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+✅ **Mobile UX & Performance (2026-07-06)** — Phones and Capacitor builds: level-up **2×2 grid** on narrow screens, touch hover for cards/reroll, scroll lock (`touch-action: none`), improved **`isMobileDevice()`** (UA + coarse pointer + ≤900px), first-run **low video preset** on mobile, `mobile/www` synced. Run `cd mobile && npm run sync:web` before Android builds.
+
 ✅ **Functional Codebase Audit (2026-07-05)** — `tools/count_functional_loc.py` reports **34,773 functional LOC** across **125 maintained source files** after excluding docs, assets, generated mobile `www`, dependencies, IDE metadata, vendored/minified bundles, and duplicate snapshots. JavaScript accounts for **30,237 LOC** across **88 files**. The landing website now advertises the large vanilla codebase.
 
 **Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), **smooth game entry** (idle GPU/ground warm-up, async `startGame()`, session prep overlay, `gpuCanvas` fade-in), v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata. **Audio balance (2026-06-26)**: default music volume halved (`0.5` → `0.25`, settings v3 migration) so gunshots cut through MP3 tracks without raising SFX gain.

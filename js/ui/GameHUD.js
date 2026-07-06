@@ -5,7 +5,7 @@ import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL, SKILL_TREES, skillSystem } from '../systems/SkillSystem.js';
-import { saveMultiplierStats, getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
+import { saveMultiplierStats, getLastRuns, formatTime, loadScoreboard, isMobileDevice } from '../utils/gameUtils.js';
 import { isAudioInitialized, playMenuClickSound, playMenuHoverSound } from '../systems/AudioSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { RankDisplay } from './RankDisplay.js';
@@ -62,7 +62,7 @@ export class GameHUD {
         Object.defineProperty(this, 'newsTickerDragging', {
             get: () => this.mainMenuScreen?.newsTickerDragging || false
         });
-        this._isMobileCached = /Android|iPhone|iPad|iPod/i.test((navigator && navigator.userAgent) || '');
+        this._isMobileCached = isMobileDevice();
         this._cachedScale = 1.0;
         this._lastScaleTime = 0;
         this._creepyBgStaticKey = '';
@@ -114,7 +114,7 @@ export class GameHUD {
     }
 
     isMobile() {
-        return this._isMobileCached;
+        return isMobileDevice();
     }
 
     getScaledPadding() {
@@ -2341,7 +2341,7 @@ export class GameHUD {
             if (age > 4000) return false;
 
             const alpha = age < 400 ? age / 400 : Math.max(0, 1 - (age - 3500) / 500);
-            const width = 420 * scale;
+            const width = Math.min(420 * scale, this.canvas.width - 32 * scale);
             const height = 72 * scale;
             const x = centerX - width / 2;
 

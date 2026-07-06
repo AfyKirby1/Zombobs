@@ -2,10 +2,12 @@ import { gameState } from '../core/gameState.js';
 import { MELEE_RANGE, MELEE_DAMAGE, MELEE_COOLDOWN, TWO_PI } from '../core/constants.js';
 import { playDamageSound, playKillSound } from '../systems/AudioSystem.js';
 import { createBloodSplatter, createParticles } from '../systems/ParticleSystem.js';
-import { triggerExplosion } from '../utils/combatUtils.js';
+import { triggerExplosion, applySkillDamageModifiers, applyLifesteal, applyKillMomentum } from '../utils/combatUtils.js';
+import { spawnSplitterShards } from '../entities/Zombie.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from './SettingsManager.js';
 import { skillSystem } from './SkillSystem.js';
+import { pickupSpawnSystem } from './PickupSpawnSystem.js';
 
 /**
  * MeleeSystem - Handles melee attack logic and range checking
@@ -40,19 +42,24 @@ export class MeleeSystem {
         // Play melee sound (using damage sound as placeholder)
         playDamageSound();
 
-        // Check for zombies in melee range
+        // Check for zombies in melee range (iterate backwards to safely splice)
         let hitCount = 0;
-        gameState.zombies.forEach((zombie, zombieIndex) => {
-            if (this.isInMeleeRange(zombie.x, zombie.y, zombie.radius, player.x, player.y, player.angle)) {
+        const meleeDamage = Math.floor(MELEE_DAMAGE * (player.meleeDamageMultiplier || 1.0));
+        for (let zombieIndex = gameState.zombies.length - 1; zombieIndex >= 0; zombieIndex--) {
+            const zombie = gameState.zombies[zombieIndex];
+            if (this.isInMeleeRange(zombie.x, zombie.y, zombie.radius, player.x, player.y, player.angle, player)) {
                 const impactAngle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
 
                 // Store zombie position and type before damage (for exploding zombies)
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
+                const isSplitter = zombie.type === 'splitter';
+
+                const finalMeleeDamage = applySkillDamageModifiers(player, meleeDamage, zombie);
 
                 // Check if zombie dies
-                if (zombie.takeDamage(MELEE_DAMAGE)) {
+                if (zombie.takeDamage(finalMeleeDamage)) {
                     // Clean up state tracking for dead zombie (multiplayer sync)
                     gameState.lastZombieState.delete(zombie.id);
                     
@@ -70,6 +77,12 @@ export class MeleeSystem {
                         triggerExplosion(zombieX, zombieY, 60, 30, false);
                     }
 
+                    if (isSplitter) {
+                        spawnSplitterShards(zombieX, zombieY, gameState.multiplayer.socket);
+                    }
+
+                    pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
+
                     gameState.score += 10;
                     gameState.zombiesKilled++;
                     // Award XP for kill (with multiplier)
@@ -77,25 +90,36 @@ export class MeleeSystem {
                     let xpAmount4 = skillSystem.getXPForZombieType(zombieType4);
                     xpAmount4 = Math.floor(xpAmount4 * player.scoreMultiplier);
                     skillSystem.gainXP(xpAmount4);
+                    applyKillMomentum(player);
+                    if (player.hasBloodlust) {
+                        const healAmt = player.bloodlustHealAmount || 2;
+                        player.health = Math.min(player.maxHealth, player.health + healAmt);
+                    }
+                    if (player.hasAdrenaline) {
+                        const duration = player.adrenalineDurationMs || 3000;
+                        player.adrenalineBoostEndTime = Date.now() + duration;
+                        player.adrenalineBoostActive = true;
+                    }
                     // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
-                    if (!isExploding) {
+                    if (!isExploding && !isSplitter) {
                         playKillSound();
                     }
                     const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                     if (damageNumberStyle !== 'off') {
-                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, MELEE_DAMAGE));
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, finalMeleeDamage));
                     }
                     createBloodSplatter(zombieX, zombieY, impactAngle, true);
                 } else {
                     const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                     if (damageNumberStyle !== 'off') {
-                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, MELEE_DAMAGE));
+                        gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, finalMeleeDamage));
                     }
                     createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
                 }
+                applyLifesteal(player, finalMeleeDamage, player.meleeLifestealPercent);
                 hitCount++;
             }
-        });
+        }
 
         // Screen shake on melee (stronger if hit something)
         if (hitCount > 0) {
@@ -119,7 +143,8 @@ export class MeleeSystem {
     /**
      * Check if zombie is in melee range
      */
-    isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle) {
+    isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle, player = null) {
+        const rangeMult = player?.meleeRangeMultiplier || 1.0;
         const dx = zombieX - playerX;
         const dy = zombieY - playerY;
         const distSquared = dx * dx + dy * dy;
@@ -134,7 +159,7 @@ export class MeleeSystem {
             if (distSquared < 25 * 25) return true; // Overlap check
         }
 
-        const maxRange = MELEE_RANGE + (zombieRadius || 0);
+        const maxRange = (MELEE_RANGE * rangeMult) + (zombieRadius || 0);
         const maxRangeSquared = maxRange * maxRange;
         if (distSquared > maxRangeSquared) return false;
         

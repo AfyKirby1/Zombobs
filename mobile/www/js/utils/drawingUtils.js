@@ -74,6 +74,13 @@ export function drawCrosshair(mouse) {
 
     if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
 
+    let crosshairX = mouse.x;
+    let crosshairY = mouse.y;
+    if (localPlayer.sirenJitterUntil && localPlayer.sirenJitterUntil > Date.now()) {
+        crosshairX += (Math.random() - 0.5) * 18;
+        crosshairY += (Math.random() - 0.5) * 18;
+    }
+
     ctx.save();
     
     // Get crosshair settings
@@ -126,7 +133,7 @@ export function drawCrosshair(mouse) {
         // Simple dot crosshair
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 3, 0, Math.PI * 2);
         ctx.fill();
 
         // Outline
@@ -138,19 +145,19 @@ export function drawCrosshair(mouse) {
         ctx.strokeStyle = crosshairOutlineColor;
         ctx.lineWidth = crosshairLineWidth + 2;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
 
         // Center dot
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 1.5, 0, Math.PI * 2);
         ctx.fill();
     } else if (crosshairStyle === 'cross') {
         // Simple cross (no center dot)
@@ -159,26 +166,26 @@ export function drawCrosshair(mouse) {
         ctx.lineCap = 'round';
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
 
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
     } else {
         // Default: cross with center dot
@@ -187,31 +194,31 @@ export function drawCrosshair(mouse) {
         ctx.lineCap = 'round';
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
 
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
+        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
+        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
+        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
+        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
         ctx.stroke();
 
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 1.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -227,10 +234,10 @@ export function drawCrosshair(mouse) {
 
         // Draw X
         ctx.beginPath();
-        ctx.moveTo(mouse.x - markerSize, mouse.y - markerSize);
-        ctx.lineTo(mouse.x + markerSize, mouse.y + markerSize);
-        ctx.moveTo(mouse.x + markerSize, mouse.y - markerSize);
-        ctx.lineTo(mouse.x - markerSize, mouse.y + markerSize);
+        ctx.moveTo(crosshairX - markerSize, crosshairY - markerSize);
+        ctx.lineTo(crosshairX + markerSize, crosshairY + markerSize);
+        ctx.moveTo(crosshairX + markerSize, crosshairY - markerSize);
+        ctx.lineTo(crosshairX - markerSize, crosshairY + markerSize);
         ctx.stroke();
     }
 
@@ -243,26 +250,35 @@ export function drawCrosshair(mouse) {
 export function drawWaveBreak() {
     if (!gameState.waveBreakActive) return;
 
-    const remainingTime = Math.ceil((gameState.waveBreakEndTime - Date.now()) / 1000);
-    if (remainingTime < 0) return;
+    const remainingMs = gameState.waveBreakEndTime - Date.now();
+    if (remainingMs < 0) return;
+
+    const remainingTime = Math.ceil(remainingMs / 1000);
+    const isBrief = remainingMs <= 1200;
 
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font = 'bold 40px Creepster, system-ui';
-    ctx.fillStyle = '#ffc107';
+    ctx.font = isBrief ? 'bold 48px Creepster, system-ui' : 'bold 40px Creepster, system-ui';
+    ctx.fillStyle = isBrief ? '#ff5252' : '#ffc107';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 10;
-    ctx.fillText("Wave Cleared!", canvas.width / 2, canvas.height / 2 - 80);
+    ctx.fillText(isBrief ? 'INCOMING!' : 'Wave Cleared!', canvas.width / 2, canvas.height / 2 - 80);
 
-    ctx.font = '30px "Roboto Mono", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
+    if (!isBrief) {
+        ctx.font = '30px "Roboto Mono", monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
 
-    ctx.font = '20px "Roboto Mono", monospace';
-    ctx.fillStyle = '#aaaaaa';
-    ctx.fillText("Reload [R] | Heal Up", canvas.width / 2, canvas.height / 2 + 20);
+        ctx.font = '20px "Roboto Mono", monospace';
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillText('Reload [R] | Heal Up', canvas.width / 2, canvas.height / 2 + 20);
+    } else {
+        ctx.font = '22px "Roboto Mono", monospace';
+        ctx.fillStyle = '#ff8a80';
+        ctx.fillText(`${remainingTime}s`, canvas.width / 2, canvas.height / 2 - 20);
+    }
 
     ctx.restore();
 }
