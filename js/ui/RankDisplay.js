@@ -1,6 +1,18 @@
-import { ctx } from '../core/canvas.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+
+/** Per-rank accent palette for badge theming */
+const RANK_THEMES = [
+    { primary: '#cd7f32', light: '#f0b35a', glow: 'rgba(255, 140, 0, 0.55)' },   // Private
+    { primary: '#7a8fa3', light: '#b8c9d9', glow: 'rgba(126, 184, 218, 0.5)' }, // Corporal
+    { primary: '#c9a227', light: '#f4d76a', glow: 'rgba(255, 215, 0, 0.5)' },   // Sergeant
+    { primary: '#4fc3f7', light: '#8ddbff', glow: 'rgba(79, 195, 247, 0.5)' }, // Lieutenant
+    { primary: '#ab47bc', light: '#e1a8f0', glow: 'rgba(171, 71, 188, 0.5)' }, // Captain
+    { primary: '#ef5350', light: '#ff8a80', glow: 'rgba(239, 83, 80, 0.5)' },   // Major
+    { primary: '#ff6b00', light: '#ffab40', glow: 'rgba(255, 107, 0, 0.55)' }, // Colonel
+    { primary: '#ffd700', light: '#fff59d', glow: 'rgba(255, 215, 0, 0.6)' },   // General
+    { primary: '#ff1744', light: '#ff6090', glow: 'rgba(255, 23, 68, 0.6)' }  // Legend
+];
 
 /**
  * RankDisplay - UI component for displaying rank information
@@ -16,6 +28,11 @@ export class RankDisplay {
         return Number.isFinite(scale) && scale > 0 ? scale : 1.0;
     }
 
+    getRankTheme(rankIndex) {
+        const idx = Math.max(0, Math.min(rankIndex - 1, RANK_THEMES.length - 1));
+        return RANK_THEMES[idx];
+    }
+
     /**
      * Draw rank badge (compact version for menu)
      * @param {number} x - X position
@@ -23,85 +40,159 @@ export class RankDisplay {
      * @param {number} size - Size of badge
      */
     drawRankBadge(x, y, size = 60) {
-        // Check if rank badge should be shown
         const showRankBadge = settingsManager.getSetting('video', 'showRankBadge') !== false;
         if (!showRankBadge) return;
-        
+
         const scale = this.getUIScale();
         const progress = rankSystem.getProgress();
-        
-        // Apply rank badge size multiplier
+        const theme = this.getRankTheme(progress.rank);
+
         const rankBadgeSize = settingsManager.getSetting('video', 'rankBadgeSize') || 'normal';
         let sizeMultiplier = 1.0;
         if (rankBadgeSize === 'small') sizeMultiplier = 0.8;
         else if (rankBadgeSize === 'large') sizeMultiplier = 1.2;
-        
+
         const scaledSize = size * scale * sizeMultiplier;
-
-        // Enable better text rendering quality
-        this.ctx.imageSmoothingEnabled = true;
-        this.ctx.imageSmoothingQuality = 'high';
-
-        // Badge background (circular)
         const centerX = x + scaledSize / 2;
         const centerY = y + scaledSize / 2;
         const radius = scaledSize / 2;
+        const pulse = 0.88 + 0.12 * Math.sin(Date.now() / 900);
 
-        // Outer glow
-        this.ctx.shadowBlur = 15 * scale;
-        this.ctx.shadowColor = '#ff6b00';
-        this.ctx.fillStyle = 'rgba(42, 42, 42, 0.9)';
+        this.ctx.save();
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+
+        // Soft outer glow
+        this.ctx.shadowBlur = 18 * scale * pulse;
+        this.ctx.shadowColor = theme.glow;
         this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        this.ctx.arc(centerX, centerY, radius + 4 * scale, 0, Math.PI * 2);
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
         this.ctx.fill();
         this.ctx.shadowBlur = 0;
 
-        // Border
-        this.ctx.strokeStyle = '#ff6b00';
-        this.ctx.lineWidth = 3 * scale;
+        // XP progress track (outer ring)
+        const arcR = radius + 3 * scale;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, arcR, 0, Math.PI * 2);
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.lineWidth = 2.5 * scale;
         this.ctx.stroke();
 
-        // Rank text - increased size and improved rendering
-        const rankFontSize = Math.max(12, 14 * scale);
-        this.ctx.fillStyle = '#ffffff';
+        // XP progress fill
+        const arcStart = -Math.PI / 2;
+        const arcSweep = (progress.progressPercent / 100) * Math.PI * 2;
+        if (arcSweep > 0.02) {
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, arcR, arcStart, arcStart + arcSweep);
+            const arcGrad = this.ctx.createLinearGradient(
+                centerX - arcR, centerY, centerX + arcR, centerY
+            );
+            arcGrad.addColorStop(0, theme.primary);
+            arcGrad.addColorStop(1, theme.light);
+            this.ctx.strokeStyle = arcGrad;
+            this.ctx.lineWidth = 3 * scale;
+            this.ctx.lineCap = 'round';
+            this.ctx.stroke();
+        }
+
+        // Metallic ring border
+        const ringGrad = this.ctx.createLinearGradient(
+            centerX - radius, centerY - radius,
+            centerX + radius, centerY + radius
+        );
+        ringGrad.addColorStop(0, theme.light);
+        ringGrad.addColorStop(0.45, theme.primary);
+        ringGrad.addColorStop(1, theme.primary);
+
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        this.ctx.strokeStyle = ringGrad;
+        this.ctx.lineWidth = 2.5 * scale;
+        this.ctx.stroke();
+
+        // Inner glass disc
+        const innerR = radius - 2.5 * scale;
+        const discGrad = this.ctx.createRadialGradient(
+            centerX, centerY - innerR * 0.3, innerR * 0.1,
+            centerX, centerY, innerR
+        );
+        discGrad.addColorStop(0, 'rgba(22, 26, 34, 0.95)');
+        discGrad.addColorStop(0.6, 'rgba(10, 12, 16, 0.92)');
+        discGrad.addColorStop(1, 'rgba(4, 6, 10, 0.98)');
+
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, innerR, 0, Math.PI * 2);
+        this.ctx.fillStyle = discGrad;
+        this.ctx.fill();
+
+        // Inner highlight arc (top shine)
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, innerR - 1 * scale, -Math.PI * 0.85, -Math.PI * 0.15);
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        this.ctx.lineWidth = 1 * scale;
+        this.ctx.stroke();
+
+        // Tier chevrons (military insignia)
+        this._drawTierChevrons(centerX, centerY - 11 * scale, progress.rankTier, theme.light, scale);
+
+        // Rank name
+        const rankLen = progress.rankName.length;
+        const rankFontSize = Math.max(9, (rankLen > 8 ? 10 : rankLen > 6 ? 11 : 12) * scale);
         this.ctx.font = `bold ${rankFontSize}px 'Roboto Mono', monospace`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        
-        // Add text shadow for better visibility
-        this.ctx.shadowBlur = 3 * scale;
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        this.ctx.shadowOffsetX = 1 * scale;
-        this.ctx.shadowOffsetY = 1 * scale;
-        
-        // Calculate better vertical spacing for larger text
-        const rankTextY = centerY - 9 * scale;
-        this.ctx.fillText(progress.rankName, centerX, rankTextY);
-        
-        // Reset shadow for tier text
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.shadowBlur = 4 * scale;
+        this.ctx.shadowColor = theme.glow;
+        this.ctx.fillText(progress.rankName.toUpperCase(), centerX, centerY + 1 * scale);
         this.ctx.shadowBlur = 0;
-        this.ctx.shadowOffsetX = 0;
-        this.ctx.shadowOffsetY = 0;
 
-        // Tier text - increased size and improved rendering
-        const tierFontSize = Math.max(10, 12 * scale);
-        this.ctx.fillStyle = '#ff6b00';
-        this.ctx.font = `bold ${tierFontSize}px 'Roboto Mono', monospace`;
-        
-        // Add subtle text shadow for tier text
-        this.ctx.shadowBlur = 2 * scale;
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-        this.ctx.shadowOffsetX = 1 * scale;
-        this.ctx.shadowOffsetY = 1 * scale;
-        
-        // Calculate better vertical spacing for larger text
-        const tierTextY = centerY + 9 * scale;
-        this.ctx.fillText(`Tier ${progress.rankTier}`, centerX, tierTextY);
-        
-        // Reset shadow
-        this.ctx.shadowBlur = 0;
-        this.ctx.shadowOffsetX = 0;
-        this.ctx.shadowOffsetY = 0;
+        // Tier pill
+        const tierLabel = `TIER ${progress.rankTier}`;
+        const pillFontSize = Math.max(7, 8 * scale);
+        this.ctx.font = `bold ${pillFontSize}px 'Roboto Mono', monospace`;
+        const pillW = this.ctx.measureText(tierLabel).width + 10 * scale;
+        const pillH = 11 * scale;
+        const pillX = centerX - pillW / 2;
+        const pillY = centerY + 12 * scale;
+
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        this.ctx.beginPath();
+        this.ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+        this.ctx.fill();
+
+        this.ctx.strokeStyle = theme.primary;
+        this.ctx.lineWidth = 1 * scale;
+        this.ctx.stroke();
+
+        this.ctx.fillStyle = theme.light;
+        this.ctx.fillText(tierLabel, centerX, pillY + pillH / 2 + 0.5 * scale);
+
+        this.ctx.restore();
+    }
+
+    /** Draw stacked chevrons for tier insignia */
+    _drawTierChevrons(cx, cy, tier, color, scale) {
+        const chevronW = 5 * scale;
+        const chevronH = 2.2 * scale;
+        const stackGap = 2.8 * scale;
+
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1.6 * scale;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
+        for (let t = 0; t < tier; t++) {
+            const rowY = cy + t * stackGap;
+            const left = cx - chevronW / 2;
+            const right = cx + chevronW / 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(left, rowY + chevronH);
+            this.ctx.lineTo(cx, rowY);
+            this.ctx.lineTo(right, rowY + chevronH);
+            this.ctx.stroke();
+        }
     }
 
     /**

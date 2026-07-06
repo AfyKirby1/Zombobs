@@ -533,7 +533,7 @@ export class MainMenuScreen {
         // Draw rank badge to the right of username box
         const badgeX = centerX + usernameBoxWidth / 2 + 20 * scale;
         const badgeY = 30 * scale + 25 * scale - 25 * scale; // Aligned with username box center
-        this.rankDisplay.drawRankBadge(badgeX, badgeY, 50 * scale);
+        this.rankDisplay.drawRankBadge(badgeX, badgeY, 56 * scale);
     }
 
     drawLocalHighscores() {
