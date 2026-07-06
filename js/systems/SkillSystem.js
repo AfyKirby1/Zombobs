@@ -1,6 +1,7 @@
 import { gameState } from '../core/gameState.js';
 import { SKILL_TREES, TREE_SKILLS_POOL } from '../core/skillTreeDefinitions.js';
 import { playerProfileSystem } from './PlayerProfileSystem.js';
+import { checkSkillSynergies } from '../core/skillSynergies.js';
 
 export { SKILL_TREES, TREE_SKILLS_POOL };
 
@@ -8,6 +9,7 @@ export { SKILL_TREES, TREE_SKILLS_POOL };
 export const MAX_SKILL_SLOTS = 8;
 export const LEVEL_UP_CHOICE_COUNT = 3;
 export const LEVEL_UP_REROLLS = 1;
+export const CORRUPTED_CHOICE_CHANCE = 0.14;
 export const TREE_SKILL_WEIGHT_MULT = 0.35;
 export const XP_BASE_REQUIREMENT = 100;
 export const XP_SCALING_FACTOR = 1.2;
@@ -438,6 +440,184 @@ export const SKILLS_POOL = [
             player.chainLightningChance = Math.min(0.5, player.chainLightningChance + 0.12);
         },
         upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — COMMON ===
+    {
+        id: 'scrap_goblin',
+        name: 'Scrap Goblin',
+        icon: '🪙',
+        description: 'Collecting scrap heals 2 HP',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.scrapHealOnPickup = (player.scrapHealOnPickup || 0) + 2;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'riposte',
+        name: 'Riposte',
+        icon: '🗡️',
+        description: 'Dodge releases a shockwave (35 dmg)',
+        rarity: 'COMMON',
+        effect: (player) => {
+            player.hasRiposte = true;
+            player.riposteDamage = (player.riposteDamage || 0) + 35;
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — RARE ===
+    {
+        id: 'headhunter',
+        name: 'Headhunter',
+        icon: '💀',
+        description: 'Headshots heal 4 HP & grant +50% kill XP',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.hasHeadhunter = true;
+            player.headhunterHeal = (player.headhunterHeal || 0) + 4;
+            player.headhunterXpBonus = (player.headhunterXpBonus || 0) + 0.5;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'thorn_skin',
+        name: 'Thorn Skin',
+        icon: '🌵',
+        description: 'Zombies touching you take 1.5 dmg/sec',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.hasThornSkin = true;
+            player.thornDamage = (player.thornDamage || 0) + 1.5;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'pyromaniac',
+        name: 'Pyromaniac',
+        icon: '🔥',
+        description: '+1 molotov, fire pools last 40% longer',
+        rarity: 'RARE',
+        effect: (player) => {
+            if (!player.maxMolotovBonus) player.maxMolotovBonus = 0;
+            player.maxMolotovBonus += 1;
+            player.molotovCount += 1;
+            if (!player.firePoolDurationMult) player.firePoolDurationMult = 1.0;
+            player.firePoolDurationMult *= 1.4;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'horde_slayer',
+        name: 'Horde Slayer',
+        icon: '👹',
+        description: '+18% damage when 4+ zombies nearby',
+        rarity: 'RARE',
+        effect: (player) => {
+            player.hordeSlayerBonus = (player.hordeSlayerBonus || 0) + 0.18;
+            player.hordeSlayerRange = player.hordeSlayerRange || 200;
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — EPIC ===
+    {
+        id: 'corpse_bloom',
+        name: 'Corpse Bloom',
+        icon: '☣️',
+        description: '10% chance kills leave toxic puddles',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.corpseBloomChance = Math.min(0.35, (player.corpseBloomChance || 0) + 0.10);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'overkill',
+        name: 'Overkill',
+        icon: '💥',
+        description: '40% of excess damage splashes nearby',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.overkillSplashPercent = Math.min(0.8, (player.overkillSplashPercent || 0) + 0.40);
+        },
+        upgradeable: true
+    },
+    {
+        id: 'combo_king',
+        name: 'Combo King',
+        icon: '👑',
+        description: 'Score multiplier survives 3 chip-damage hits',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.multiplierGraceHits = (player.multiplierGraceHits || 0) + 3;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'static_charge',
+        name: 'Static Charge',
+        icon: '🔋',
+        description: 'Moving builds charge — next shot up to +80% dmg',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasStaticCharge = true;
+            player.staticCharge = 0;
+            player.staticChargeMax = (player.staticChargeMax || 100) + 100;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'toxic_rounds',
+        name: 'Toxic Rounds',
+        icon: '🧪',
+        description: 'Hits poison zombies (DOT + green trail)',
+        rarity: 'EPIC',
+        effect: (player) => {
+            player.hasToxicRounds = true;
+            player.toxicDamagePerTick = (player.toxicDamagePerTick || 0) + 0.4;
+            player.toxicDurationMs = (player.toxicDurationMs || 0) + 3500;
+        },
+        upgradeable: true
+    },
+
+    // === UNIQUE SKILLS — LEGENDARY ===
+    {
+        id: 'borrowed_time',
+        name: 'Borrowed Time',
+        icon: '⏳',
+        description: 'Below 25% HP: +30% crit chance',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasBorrowedTime = true;
+            player.borrowedTimeCritBonus = (player.borrowedTimeCritBonus || 0) + 0.30;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'kill_switch',
+        name: 'Kill Switch',
+        icon: '🔴',
+        description: 'Every 7 kills: next shot deals 3× damage',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasKillSwitch = true;
+            player.killSwitchThreshold = (player.killSwitchThreshold || 7);
+            player.killSwitchCounter = player.killSwitchCounter || 0;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'phantom_decoy',
+        name: 'Phantom Decoy',
+        icon: '👻',
+        description: 'Dodge leaves a ghost that draws zombies 1.5s',
+        rarity: 'LEGENDARY',
+        effect: (player) => {
+            player.hasPhantomDecoy = true;
+        },
+        upgradeable: false
     }
 ];
 
@@ -672,6 +852,18 @@ class SkillSystem {
             }
         }
 
+        // Wildcard: one choice may be corrupted (high risk / high reward)
+        if (choices.length > 0 && Math.random() < CORRUPTED_CHOICE_CHANCE) {
+            const corruptIdx = Math.floor(Math.random() * choices.length);
+            const base = choices[corruptIdx];
+            choices[corruptIdx] = {
+                ...base,
+                corrupted: true,
+                name: `${base.name} ☠`,
+                description: `${base.description} — CORRUPTED: +35% effect, -12% max HP`
+            };
+        }
+
         return choices;
     }
 
@@ -722,7 +914,7 @@ class SkillSystem {
         return SKILL_RARITY[rarityKey] || SKILL_RARITY.COMMON;
     }
 
-    activateSkill(skillId) {
+    activateSkill(skillId, options = {}) {
         const skill = this.getSkillById(skillId);
         if (!skill) return;
 
@@ -744,14 +936,26 @@ class SkillSystem {
                 entry.tree = skill.tree;
                 entry.tier = skill.tier;
             }
+            if (options.corrupted) {
+                entry.corrupted = true;
+            }
             gameState.activeSkills.push(entry);
         }
 
         gameState.players.forEach(player => {
             if (player.health > 0) {
                 skill.effect(player);
+                if (options.corrupted) {
+                    if (!player.damageSkillMultiplier) player.damageSkillMultiplier = 1.0;
+                    player.damageSkillMultiplier *= 1.35;
+                    const hpCut = Math.max(1, Math.floor(player.maxHealth * 0.12));
+                    player.maxHealth -= hpCut;
+                    player.health = Math.max(1, Math.min(player.health, player.maxHealth));
+                }
             }
         });
+
+        checkSkillSynergies(gameState.activeSkills, gameState.players);
 
         if (isNewUnlock) {
             playerProfileSystem.recordSkillUnlock(skillId, !!skill.treeExclusive);

@@ -28,6 +28,13 @@ export const SKILL_TREES = {
         accent: '#e64a19',
         icon: '👊',
         tagline: 'Up close & personal'
+    },
+    pyromancer: {
+        name: 'Pyromancer',
+        color: '#ff5722',
+        accent: '#bf360c',
+        icon: '🔥',
+        tagline: 'Ash & ember'
     }
 };
 
@@ -405,6 +412,96 @@ export const TREE_SKILLS_POOL = [
         upgradeable: false,
         effect: (player) => {
             player.hasFeralRage = true;
+        }
+    },
+
+    // === PYROMANCER — Ash & Ember ===
+    {
+        id: 'pyro_t1_ember',
+        tree: 'pyromancer',
+        tier: 1,
+        requires: null,
+        treeExclusive: true,
+        name: 'Ember Touch',
+        icon: '🔥',
+        tagline: 'Everything you touch burns',
+        description: 'Your hits extend burn duration by 50%',
+        rarity: tierRarity(1),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            player.burnDurationMult = (player.burnDurationMult || 1.0) * 1.5;
+        }
+    },
+    {
+        id: 'pyro_t2_kindling',
+        tree: 'pyromancer',
+        tier: 2,
+        requires: 'pyro_t1_ember',
+        treeExclusive: true,
+        name: 'Kindling',
+        icon: '🍾',
+        tagline: 'Always armed',
+        description: '+1 molotov capacity per level',
+        rarity: tierRarity(2),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.maxMolotovBonus) player.maxMolotovBonus = 0;
+            player.maxMolotovBonus += 1;
+            player.molotovCount += 1;
+        }
+    },
+    {
+        id: 'pyro_t3_wildfire',
+        tree: 'pyromancer',
+        tier: 3,
+        requires: 'pyro_t2_kindling',
+        treeExclusive: true,
+        name: 'Wildfire',
+        icon: '🌋',
+        tagline: 'Spread the flame',
+        description: '+25% fire pool radius per level',
+        rarity: tierRarity(3),
+        maxLevel: 3,
+        upgradeable: true,
+        effect: (player) => {
+            if (!player.firePoolRadiusMult) player.firePoolRadiusMult = 1.0;
+            player.firePoolRadiusMult *= 1.25;
+        }
+    },
+    {
+        id: 'pyro_t4_immolation',
+        tree: 'pyromancer',
+        tier: 4,
+        requires: 'pyro_t3_wildfire',
+        treeExclusive: true,
+        name: 'Immolation',
+        icon: '🕯️',
+        tagline: 'Fire heals the faithful',
+        description: 'Regenerate 0.8 HP/sec while standing in your fire',
+        rarity: tierRarity(4),
+        maxLevel: 1,
+        upgradeable: false,
+        effect: (player) => {
+            player.fireHealPerTick = (player.fireHealPerTick || 0) + 0.8;
+        }
+    },
+    {
+        id: 'pyro_t5_inferno',
+        tree: 'pyromancer',
+        tier: 5,
+        requires: 'pyro_t4_immolation',
+        treeExclusive: true,
+        name: 'Inferno',
+        icon: '☄️',
+        tagline: 'Burning corpses detonate',
+        description: 'Kills on burning zombies trigger mini explosions',
+        rarity: tierRarity(5),
+        maxLevel: 1,
+        upgradeable: false,
+        effect: (player) => {
+            player.hasInferno = true;
         }
     }
 ];

@@ -20,7 +20,14 @@ import {
     applySkillDamageModifiers,
     applyLifesteal,
     applyKillMomentum,
-    tryChainLightning
+    tryChainLightning,
+    tryOverkillSplash,
+    tryCorpseBloom,
+    applyToxicRound,
+    processHeadhunterKill,
+    tickKillSwitch,
+    tryInfernoExplosion,
+    getBorrowedTimeCritBonus
 } from './combatUtils.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
@@ -182,7 +189,7 @@ export function handleBulletZombieCollisions() {
                 // Handle flame bullets (apply burn effect)
                 if (bullet.type === 'flame') {
                     // Apply burn timer (3 seconds) and burn damage
-                    zombie.burnTimer = 3000; // 3 seconds
+                    zombie.burnTimer = Math.floor(3000 * (shootingPlayer.burnDurationMult || 1.0));
                     zombie.burnDamage = bullet.damage * 2; // Double damage over time
                     // Also apply instant damage
                     if (zombie.takeDamage(bullet.damage)) {
@@ -379,13 +386,17 @@ export function handleBulletZombieCollisions() {
                 const shootingPlayer = bullet.player || gameState.players[0];
 
                 // Critical hit chance (base ~3.33%, plus player crit chance)
-                const baseCritChance = 0.0333333333; // Reduced by 2/3 from 10%
+                const baseCritChance = 0.0333333333;
                 const playerCritChance = shootingPlayer.critChance || 0;
-                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance);
+                const borrowedCrit = getBorrowedTimeCritBonus(shootingPlayer);
+                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance + borrowedCrit);
                 const isCrit = Math.random() < totalCritChance;
 
                 // Lucky Strike chance (15% for double damage)
                 const isLuckyStrike = shootingPlayer.luckyStrikeChance && Math.random() < shootingPlayer.luckyStrikeChance;
+
+                const preHealth = zombie.health;
+                const wasBurning = zombie.burnTimer > 0;
 
                 let finalDamage = applySkillDamageModifiers(shootingPlayer, bullet.damage, zombie);
                 if (isCrit) {
@@ -399,6 +410,7 @@ export function handleBulletZombieCollisions() {
 
                 // Check if zombie dies from this hit
                 if (zombie.takeDamage(finalDamage)) {
+                    tryOverkillSplash(hitZombieRef, preHealth, finalDamage, shootingPlayer);
                     // Clean up state tracking for dead zombie (multiplayer sync)
                     gameState.lastZombieState.delete(zombie.id);
 
@@ -506,11 +518,16 @@ export function handleBulletZombieCollisions() {
 
                     applyKillMomentum(shootingPlayer);
                     tryChainLightning(hitZombieRef, dealtDamage, shootingPlayer);
+                    tryCorpseBloom(zombieX, zombieY, shootingPlayer);
+                    tryInfernoExplosion(zombieX, zombieY, shootingPlayer, wasBurning);
+                    tickKillSwitch(shootingPlayer);
+
+                    const headhunterXpMult = processHeadhunterKill(shootingPlayer, isHeadshot);
 
                     // Award XP for kill (with multiplier)
                     const zombieType = zombie.type || 'normal';
                     let xpAmount = skillSystem.getXPForZombieType(zombieType);
-                    xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier);
+                    xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier * headhunterXpMult);
                     // Show XP popup over player instead of zombie
                     skillSystem.gainXP(xpAmount, { x: shootingPlayer.x, y: shootingPlayer.y, streak: gameState.killStreak });
 
@@ -642,6 +659,7 @@ export function handleBulletZombieCollisions() {
                     bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
 
                     tryChainLightning(hitZombieRef, dealtDamage, shootingPlayer);
+                    applyToxicRound(zombie, shootingPlayer);
 
                     // --- START: Apply Slow-on-Hit ---
                     if (zombie.originalSpeed === undefined) {

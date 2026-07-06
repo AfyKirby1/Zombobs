@@ -11,7 +11,7 @@ import { settingsManager } from './SettingsManager.js';
 import { graphicsSettings } from './GraphicsSystem.js';
 import { inputSystem } from './InputSystem.js';
 import { playFootstepSound, playDodgeSound } from '../systems/AudioSystem.js';
-import { shootBullet, reloadWeapon, throwGrenade, cycleThrowable } from '../utils/combatUtils.js';
+import { shootBullet, reloadWeapon, throwGrenade, cycleThrowable, performRiposte, spawnPhantomDecoy } from '../utils/combatUtils.js';
 import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
@@ -144,6 +144,12 @@ export class PlayerSystem {
                 moveY /= len;
             }
 
+            // Static Charge — build while moving
+            if (player.hasStaticCharge && (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01)) {
+                const max = player.staticChargeMax || 100;
+                player.staticCharge = Math.min(max, (player.staticCharge || 0) + 0.6);
+            }
+
             // Sprint Logic (with speed boost buff and skill multiplier)
             const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
             const skillSpeedMultiplier = player.speedMultiplier || 1.0;
@@ -219,7 +225,10 @@ export class PlayerSystem {
                 player.dodgeTimeRemaining = PLAYER_DODGE_DURATION;
                 player.dodgeCooldown = PLAYER_DODGE_COOLDOWN * dodgeCooldownMult;
                 player.stamina = Math.max(0, player.stamina - effectiveDodgeStaminaCost);
-                player.lastSprintTime = Date.now(); // Delay stamina regen
+                player.lastSprintTime = Date.now();
+
+                performRiposte(player);
+                spawnPhantomDecoy(player);
                 
                 // Play dodge sound
                 playDodgeSound();

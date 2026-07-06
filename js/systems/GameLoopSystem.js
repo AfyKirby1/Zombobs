@@ -112,6 +112,11 @@ export class GameLoopSystem {
 
         pickupSpawnSystem.updateSpawns(gameState, canvas, now);
 
+        if (gameState.phantomDecoys && gameState.phantomDecoys.length > 0) {
+            const decoyNow = Date.now();
+            gameState.phantomDecoys = gameState.phantomDecoys.filter(d => decoyNow - d.createdAt < d.life);
+        }
+
         for (let i = 0; i < gameState.players.length; i++) {
             const player = gameState.players[i];
             if (player.health > 0 && player.hasRegeneration) {

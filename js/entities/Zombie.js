@@ -564,6 +564,24 @@ export class Zombie {
             }
         }
 
+        // Handle poison damage (Toxic Rounds skill)
+        if (this.poisonTimer > 0) {
+            const now = Date.now();
+            if (!this.lastPoisonTick || now - this.lastPoisonTick >= 200) {
+                this.health -= this.poisonDamage || 0.4;
+                this.lastPoisonTick = now;
+                if (gameState.particles.length < MAX_PARTICLES - 10) {
+                    createParticles(this.x, this.y, '#76ff03', 2);
+                }
+            }
+            this.poisonTimer -= 16;
+            if (this.poisonTimer <= 0) {
+                this.poisonTimer = 0;
+                this.poisonDamage = 0;
+                this.lastPoisonTick = undefined;
+            }
+        }
+
         // Track velocity for interpolation
         this.lastX = this.x;
         this.lastY = this.y;

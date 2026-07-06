@@ -32,9 +32,9 @@ export class AcidPool {
                 
                 if (distSquared < radiusSquared) {
                     if (player.isDodging) {
-                        const now = Date.now();
-                        if (!player.lastDodgePopupTime || now - player.lastDodgePopupTime > 200) {
-                            player.lastDodgePopupTime = now;
+                        const dodgeNow = Date.now();
+                        if (!player.lastDodgePopupTime || dodgeNow - player.lastDodgePopupTime > 200) {
+                            player.lastDodgePopupTime = dodgeNow;
                             const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                             if (damageNumberStyle !== 'off') {
                                 gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 20, "DODGED!", false, '#00ffff'));
@@ -42,6 +42,13 @@ export class AcidPool {
                         }
                         continue;
                     }
+
+                    // Pyromancer Immolation — heal in your own fire
+                    if (this.isFirePool && this.player === player && (player.fireHealPerTick || 0) > 0) {
+                        player.health = Math.min(player.maxHealth, player.health + player.fireHealPerTick);
+                        continue;
+                    }
+
                     // Player is in acid pool - take damage
                     const damage = this.damagePerTick;
                     const previousHealth = player.health;

@@ -65,9 +65,20 @@ export class ZombieUpdateSystem {
             return;
         }
 
-        // Find closest living player
+        // Find closest living player or phantom decoy
         let closestPlayer = null;
         let minDist = Infinity;
+
+        if (gameState.phantomDecoys && gameState.phantomDecoys.length > 0) {
+            for (let d = 0; d < gameState.phantomDecoys.length; d++) {
+                const decoy = gameState.phantomDecoys[d];
+                const distSq = (decoy.x - zombie.x) ** 2 + (decoy.y - zombie.y) ** 2;
+                if (distSq < minDist) {
+                    minDist = distSq;
+                    closestPlayer = decoy;
+                }
+            }
+        }
 
         // Optimized player search loop
         for (let j = 0; j < players.length; j++) {

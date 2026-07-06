@@ -356,6 +356,7 @@ export class GameHUD {
                 }
                 this.drawOffScreenIndicators();
                 this.drawAchievementNotifications();
+                this.drawSynergyNotifications();
                 this.drawMobileControls();
             }
 
@@ -2326,6 +2327,48 @@ export class GameHUD {
     /**
      * Fetch global leaderboard from server with 10-second timeout
      */
+
+    drawSynergyNotifications() {
+        if (!gameState.synergyNotifications || gameState.synergyNotifications.length === 0) return;
+
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        let startY = 190 * scale;
+        const now = Date.now();
+
+        gameState.synergyNotifications = gameState.synergyNotifications.filter(note => {
+            const age = now - note.createdAt;
+            if (age > 4000) return false;
+
+            const alpha = age < 400 ? age / 400 : Math.max(0, 1 - (age - 3500) / 500);
+            const width = 420 * scale;
+            const height = 72 * scale;
+            const x = centerX - width / 2;
+
+            this.ctx.fillStyle = `rgba(26, 26, 26, ${0.92 * alpha})`;
+            this.ctx.fillRect(x, startY, width, height);
+
+            this.ctx.strokeStyle = `rgba(255, 193, 7, ${alpha})`;
+            this.ctx.lineWidth = 2 * scale;
+            this.ctx.stroke();
+
+            this.ctx.font = `${34 * scale}px serif`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            this.ctx.fillText(note.icon, x + 16 * scale, startY + height / 2);
+
+            this.ctx.font = `bold ${Math.max(12, 15 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.fillText(`SYNERGY: ${note.name}`, x + 62 * scale, startY + height / 2 - 8 * scale);
+
+            this.ctx.font = `${Math.max(10, 12 * scale)}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = `rgba(255, 193, 7, ${0.85 * alpha})`;
+            this.ctx.fillText(note.tagline || '', x + 62 * scale, startY + height / 2 + 12 * scale);
+
+            startY += height + 12 * scale;
+            return true;
+        });
+    }
 
     drawAchievementNotifications() {
         if (!gameState.achievementNotifications || gameState.achievementNotifications.length === 0) return;

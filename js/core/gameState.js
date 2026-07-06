@@ -169,6 +169,9 @@ export const gameState = {
     showLevelUp: false,
     levelUpChoices: [],
     levelUpRerollsLeft: 0,
+    unlockedSynergies: null,
+    synergyNotifications: [],
+    phantomDecoys: [],
 
     isSpawningWave: false,
     waveBreakActive: false,
@@ -326,6 +329,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.showLevelUp = false;
     gameState.levelUpChoices = [];
     gameState.levelUpRerollsLeft = 0;
+    gameState.unlockedSynergies = new Set();
+    gameState.synergyNotifications = [];
+    gameState.phantomDecoys = [];
 
     gameState.bossActive = false;
     gameState.boss = null;
@@ -403,6 +409,38 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.killMomentumEndTime = 0;
             player.chainLightningChance = 0;
             player.hasFeralRage = false;
+            player.hasHeadhunter = false;
+            player.headhunterHeal = 0;
+            player.headhunterXpBonus = 0;
+            player.hasThornSkin = false;
+            player.thornDamage = 0;
+            player.maxMolotovBonus = 0;
+            player.firePoolDurationMult = 1.0;
+            player.firePoolRadiusMult = 1.0;
+            player.fireHealPerTick = 0;
+            player.burnDurationMult = 1.0;
+            player.hasInferno = false;
+            player.hordeSlayerBonus = 0;
+            player.hordeSlayerRange = 200;
+            player.corpseBloomChance = 0;
+            player.overkillSplashPercent = 0;
+            player.multiplierGraceHits = 0;
+            player.hasStaticCharge = false;
+            player.staticCharge = 0;
+            player.staticChargeMax = 100;
+            player.hasToxicRounds = false;
+            player.toxicDamagePerTick = 0;
+            player.toxicDurationMs = 0;
+            player.hasBorrowedTime = false;
+            player.borrowedTimeCritBonus = 0;
+            player.hasKillSwitch = false;
+            player.killSwitchThreshold = 7;
+            player.killSwitchCounter = 0;
+            player.killSwitchArmed = false;
+            player.hasPhantomDecoy = false;
+            player.hasRiposte = false;
+            player.riposteDamage = 0;
+            player.scrapHealOnPickup = 0;
 
             // Reset weapon states
             player.weaponStates = {

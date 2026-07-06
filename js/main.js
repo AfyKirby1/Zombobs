@@ -769,10 +769,11 @@ function handleMenuInteraction(clickX, clickY) {
         const selectedIndex = gameHUD.checkLevelUpClick(clickX, clickY);
         if (selectedIndex !== null && gameState.levelUpChoices[selectedIndex]) {
             const selectedSkill = gameState.levelUpChoices[selectedIndex];
-            skillSystem.activateSkill(selectedSkill.id);
+            skillSystem.activateSkill(selectedSkill.id, { corrupted: !!selectedSkill.corrupted });
             gameState.showLevelUp = false;
             gameState.levelUpChoices = [];
             gameState.levelUpRerollsLeft = 0;
+            gameHUD.levelUpScreen.reset();
         }
         return;
     }

@@ -91,13 +91,15 @@ export class Molotov {
 
         // 2. Spawn fire pool (reusing AcidPool)
         if (window.AcidPool) {
+            const durMult = this.player?.firePoolDurationMult || 1.0;
+            const radMult = this.player?.firePoolRadiusMult || 1.0;
             const firePool = new window.AcidPool(this.x, this.y);
             firePool.isFirePool = true;
-            firePool.radius = MOLOTOV_EXPLOSION_RADIUS;
-            firePool.life = MOLOTOV_FIRE_DURATION;
-            firePool.maxLife = MOLOTOV_FIRE_DURATION;
+            firePool.radius = MOLOTOV_EXPLOSION_RADIUS * radMult;
+            firePool.life = Math.floor(MOLOTOV_FIRE_DURATION * durMult);
+            firePool.maxLife = firePool.life;
             firePool.damagePerTick = MOLOTOV_FIRE_TICK_DAMAGE;
-            firePool.player = this.player; // Attribute score
+            firePool.player = this.player;
             gameState.acidPools.push(firePool);
         }
     }

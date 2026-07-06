@@ -137,6 +137,7 @@ export class LevelUpScreen {
             const isHovered = this.hoveredSkillIndex === index;
             const rarity = skill.rarity || 'COMMON';
             const rarityInfo = SKILL_RARITY[rarity] || SKILL_RARITY.COMMON;
+            const isCorrupted = !!skill.corrupted;
 
             // Card entrance animation (stagger)
             const cardDelay = index * 0.1;
@@ -146,8 +147,11 @@ export class LevelUpScreen {
             ctx.save();
             ctx.globalAlpha = cardProgress;
 
-            // Card glow for legendary/epic
-            if (rarity === 'LEGENDARY' || rarity === 'EPIC') {
+            // Card glow for legendary/epic or corrupted
+            if (isCorrupted) {
+                ctx.shadowBlur = isHovered ? 30 : 18;
+                ctx.shadowColor = '#ab47bc';
+            } else if (rarity === 'LEGENDARY' || rarity === 'EPIC') {
                 ctx.shadowBlur = isHovered ? 25 : 15;
                 ctx.shadowColor = rarityInfo.color;
             }
@@ -170,10 +174,16 @@ export class LevelUpScreen {
 
             // Card border with rarity color
             const borderGradient = this.getRarityGradient(ctx, cardX, cardY, cardWidth, cardHeight, rarity);
-            ctx.strokeStyle = isHovered ? borderGradient : (rarity === 'COMMON' ? '#555555' : borderGradient);
-            ctx.lineWidth = isHovered ? 4 : (rarity === 'LEGENDARY' ? 3 : 2);
+            ctx.strokeStyle = isCorrupted ? '#ab47bc' : (isHovered ? borderGradient : (rarity === 'COMMON' ? '#555555' : borderGradient));
+            ctx.lineWidth = isCorrupted ? 3 * scale : (isHovered ? 4 : (rarity === 'LEGENDARY' ? 3 : 2));
             ctx.stroke();
             ctx.shadowBlur = 0;
+
+            if (isCorrupted) {
+                ctx.fillStyle = '#ab47bc';
+                ctx.font = `bold ${Math.max(9, 11 * scale)}px "Roboto Mono", monospace`;
+                ctx.fillText('☠ CORRUPTED', cardX + cardWidth / 2, cardY + cardHeight - 22 * scale);
+            }
 
             // Tree path badge (tree-exclusive skills)
             let badgeYOffset = 0;

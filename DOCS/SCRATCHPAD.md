@@ -3,6 +3,12 @@
 
 ## Active Tasks
 ### Skill System Expansion (2026-07-05) ✅ COMPLETE
+- **Wave 2**: 14 unique skills, **10 skill synergies**, corrupted wildcards (~14%), **Pyromancer** tree (5 tiers).
+- **Highlights**: Headhunter, Corpse Bloom, Static Charge, Kill Switch, Phantom Decoy, Riposte, Combo King, Toxic Rounds, etc.
+- **Synergies**: e.g. Glass Cannon + Berserker → Death Wish; Toxic + Corpse Bloom → Plague Doctor.
+- **Verify**: `powershell -NoProfile -ExecutionPolicy Bypass -File .\test-syntax.ps1`.
+
+### Skill System Expansion (2026-07-05) — Wave 1 ✅ COMPLETE
 - **Done**: +13 flat skills (Magnetism, Grenadier, Vampiric Rounds, Glass Cannon, Last Stand, Chain Lightning, etc.) — **29 total** in `SKILLS_POOL`.
 - **Done**: 4th class tree **Brawler** (5 tier skills) in `skillTreeDefinitions.js` — **20 tree skills** across 4 trees.
 - **Done**: Max active skill slots **6 → 8**; 1 free **reroll** per level-up on `LevelUpScreen`.

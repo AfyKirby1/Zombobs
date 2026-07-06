@@ -69,6 +69,10 @@ export function shootBullet(target, canvas, player) {
 
     // Calculate damage multiplier
     const damageMult = (gameState.damageBuffEndTime > now) ? 2 : 1;
+    const staticMult = getStaticChargeDamageMult(player);
+    const killSwitchMult = consumeKillSwitch(player);
+    const totalDamageMult = damageMult * staticMult * killSwitchMult;
+    consumeStaticCharge(player);
 
     const angle = Math.atan2(target.y - player.y, target.x - player.x);
     const gunX = player.x + Math.cos(angle) * player.radius * 1.8;
@@ -86,7 +90,7 @@ export function shootBullet(target, canvas, player) {
         for (let i = 0; i < 5; i++) {
             const spreadAngle = angle + (Math.random() - 0.5) * 0.5 * spreadReduction; // Add spread with reduction
             const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
-            bullet.damage *= damageMult;
+            bullet.damage *= totalDamageMult;
             bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
             bullet.player = player; // Track which player fired this bullet
             gameState.bullets.push(bullet);
@@ -97,7 +101,7 @@ export function shootBullet(target, canvas, player) {
         for (let i = 0; i < flameCount; i++) {
             const spreadAngle = angle + (Math.random() - 0.5) * 0.4 * spreadReduction; // Wider spread with reduction
             const flame = new FlameBullet(gunX, gunY, spreadAngle, player.currentWeapon);
-            flame.damage *= damageMult;
+            flame.damage *= totalDamageMult;
             flame.maxDistance *= rangeMultiplier; // Apply range multiplier
             flame.player = player; // Track which player fired this bullet
             gameState.bullets.push(flame);
@@ -106,14 +110,14 @@ export function shootBullet(target, canvas, player) {
         // SMG fires single bullet with slight spread
         const spreadAngle = angle + (Math.random() - 0.5) * 0.1 * spreadReduction;
         const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
-        bullet.damage *= damageMult;
+        bullet.damage *= totalDamageMult;
         bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.sniper) {
         // Sniper fires piercing bullet
         const bullet = new PiercingBullet(gunX, gunY, angle, player.currentWeapon);
-        bullet.damage *= damageMult;
+        bullet.damage *= totalDamageMult;
         bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
@@ -122,7 +126,7 @@ export function shootBullet(target, canvas, player) {
 
         const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
 
-        rocket.damage *= damageMult; // Direct hit damage (if any)
+        rocket.damage *= totalDamageMult; // Direct hit damage (if any)
         rocket.maxDistance *= rangeMultiplier; // Apply range multiplier
         rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
@@ -195,13 +199,13 @@ export function shootBullet(target, canvas, player) {
                 // Create an invisible bullet at the hit point to trigger standard logic
                 const logicBullet = new Bullet(hitTarget.x, hitTarget.y, angle, player.currentWeapon);
                 logicBullet.type = 'laser_hit';
-                logicBullet.damage *= damageMult;
+                logicBullet.damage *= totalDamageMult;
                 logicBullet.player = player;
                 logicBullet.radius = hitTarget.radius + 5; // Ensure it overlaps
                 gameState.bullets.push(logicBullet);
             } else if (hitType === 'prop') {
                 // Apply damage directly to barrel
-                hitTarget.takeDamage((player.currentWeapon.damage || 5) * damageMult, player);
+                hitTarget.takeDamage((player.currentWeapon.damage || 5) * totalDamageMult, player);
             }
         }
 
@@ -212,7 +216,7 @@ export function shootBullet(target, canvas, player) {
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
-        bullet.damage *= damageMult;
+        bullet.damage *= totalDamageMult;
         bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
@@ -650,8 +654,19 @@ export function handlePlayerZombieCollisions() {
 
                 const healthLost = applyPlayerDamage(player, damage);
 
+                // Thorn Skin — retaliate on contact
+                if (player.hasThornSkin && player.thornDamage > 0) {
+                    const thornDmg = player.thornDamage;
+                    if (zombie.takeDamage(thornDmg)) {
+                        gameState.zombies.splice(j, 1);
+                        gameState.zombiesKilled++;
+                        j--;
+                        pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombie.x, zombie.y);
+                    }
+                }
+
                 if (healthLost > 0 && player.shield === 0) {
-                    resetMultiplier(player);
+                    tryResetMultiplier(player);
                 }
 
                 if (player === gameState.players[0]) {
@@ -874,6 +889,9 @@ export function handlePickupCollisions() {
                             new DamageNumber(scrap.x, scrap.y - 20, `+${gained} SCRAP`, false, '#ffd700')
                         );
                     }
+                    if (player.scrapHealOnPickup > 0) {
+                        player.health = Math.min(player.maxHealth, player.health + player.scrapHealOnPickup);
+                    }
                     collected = true;
                     break;
                 }
@@ -1042,11 +1060,44 @@ export function resetMultiplier(player) {
     }
 }
 
+/** Combo King — absorb chip damage without losing multiplier */
+export function tryResetMultiplier(player) {
+    if ((player.multiplierGraceHits || 0) > 0) {
+        player.multiplierGraceHits--;
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 35, 'COMBO SAVED!', false, '#ffc107', 16
+            ));
+        }
+        return;
+    }
+    resetMultiplier(player);
+}
+
+export function countNearbyZombies(x, y, range) {
+    const rangeSq = range * range;
+    let count = 0;
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        const dx = z.x - x;
+        const dy = z.y - y;
+        if (dx * dx + dy * dy <= rangeSq) count++;
+    }
+    return count;
+}
+
 /**
  * Applies tree/flat skill damage modifiers to a hit
  */
 export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
     let d = damage * (shootingPlayer.damageSkillMultiplier || 1.0);
+    if (shootingPlayer.hordeSlayerBonus) {
+        const range = shootingPlayer.hordeSlayerRange || 200;
+        if (countNearbyZombies(shootingPlayer.x, shootingPlayer.y, range) >= 4) {
+            d *= (1 + shootingPlayer.hordeSlayerBonus);
+        }
+    }
     if (shootingPlayer.hasExecutioner && zombie.maxHealth > 0) {
         if (zombie.health / zombie.maxHealth < 0.3) {
             d *= 1.5;
@@ -1119,6 +1170,158 @@ export function tryChainLightning(sourceZombie, damage, shootingPlayer) {
     if (damageNumberStyle !== 'off') {
         gameState.damageNumbers.push(new DamageNumber(nearest.x, nearest.y - 20, '⚡', false, '#81d4fa', 16));
     }
+}
+
+export function tryOverkillSplash(sourceZombie, preHealth, finalDamage, shootingPlayer) {
+    const pct = shootingPlayer?.overkillSplashPercent || 0;
+    if (!pct || preHealth <= 0) return;
+    const excess = Math.max(0, finalDamage - preHealth);
+    if (excess <= 0) return;
+    const splashDmg = Math.floor(excess * pct);
+    if (splashDmg <= 0) return;
+
+    const splashRange = 120;
+    const splashRangeSq = splashRange * splashRange;
+    let nearest = null;
+    let nearestDistSq = splashRangeSq;
+
+    for (let i = 0; i < gameState.zombies.length; i++) {
+        const z = gameState.zombies[i];
+        if (z === sourceZombie) continue;
+        const dx = z.x - sourceZombie.x;
+        const dy = z.y - sourceZombie.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nearestDistSq) {
+            nearestDistSq = distSq;
+            nearest = z;
+        }
+    }
+    if (!nearest) return;
+
+    const idx = gameState.zombies.indexOf(nearest);
+    if (nearest.takeDamage(splashDmg) && idx !== -1) {
+        gameState.zombies.splice(idx, 1);
+        gameState.zombiesKilled++;
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, nearest, nearest.x, nearest.y);
+    }
+    createParticles(nearest.x, nearest.y, '#ff9800', 5);
+}
+
+export function tryCorpseBloom(x, y, player) {
+    const chance = player?.corpseBloomChance || 0;
+    if (!chance || Math.random() >= chance) return;
+    if (typeof window !== 'undefined' && window.AcidPool) {
+        const pool = new window.AcidPool(x, y);
+        pool.radius = 32;
+        pool.life = 4000;
+        pool.maxLife = 4000;
+        gameState.acidPools.push(pool);
+    }
+}
+
+export function applyToxicRound(zombie, player) {
+    if (!player?.hasToxicRounds) return;
+    zombie.poisonTimer = player.toxicDurationMs || 3500;
+    zombie.poisonDamage = player.toxicDamagePerTick || 0.4;
+}
+
+export function processHeadhunterKill(player, isHeadshot) {
+    if (!player?.hasHeadhunter || !isHeadshot) return 1.0;
+    const heal = player.headhunterHeal || 4;
+    player.health = Math.min(player.maxHealth, player.health + heal);
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    if (damageNumberStyle !== 'off') {
+        gameState.damageNumbers.push(new DamageNumber(
+            player.x, player.y - 45, `HEADSHOT +${heal}`, false, '#ffd700', 15
+        ));
+    }
+    return 1 + (player.headhunterXpBonus || 0.5);
+}
+
+export function tickKillSwitch(player) {
+    if (!player?.hasKillSwitch) return;
+    player.killSwitchCounter = (player.killSwitchCounter || 0) + 1;
+    const threshold = player.killSwitchThreshold || 7;
+    if (player.killSwitchCounter >= threshold) {
+        player.killSwitchCounter = 0;
+        player.killSwitchArmed = true;
+        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+        if (damageNumberStyle !== 'off') {
+            gameState.damageNumbers.push(new DamageNumber(
+                player.x, player.y - 50, 'KILL SWITCH ARMED', false, '#ff1744', 18
+            ));
+        }
+    }
+}
+
+export function tryInfernoExplosion(x, y, player, wasBurning) {
+    if (!player?.hasInferno || !wasBurning) return;
+    triggerExplosion(x, y, 50, 25, true, player, true);
+}
+
+export function performRiposte(player) {
+    if (!player?.hasRiposte) return;
+    const dmg = player.riposteDamage || 35;
+    const range = 90;
+    const rangeSq = range * range;
+    let hits = 0;
+
+    for (let i = gameState.zombies.length - 1; i >= 0; i--) {
+        const z = gameState.zombies[i];
+        const dx = z.x - player.x;
+        const dy = z.y - player.y;
+        if (dx * dx + dy * dy > rangeSq) continue;
+        hits++;
+        if (z.takeDamage(dmg)) {
+            gameState.zombies.splice(i, 1);
+            gameState.zombiesKilled++;
+            pickupSpawnSystem.tryDropScrapFromZombie(gameState, z, z.x, z.y);
+        }
+    }
+    if (hits > 0) {
+        createParticles(player.x, player.y, '#00bcd4', 10);
+        gameState.shakeAmount = Math.max(gameState.shakeAmount || 0, 4);
+    }
+}
+
+export function spawnPhantomDecoy(player) {
+    if (!player?.hasPhantomDecoy) return;
+    if (!gameState.phantomDecoys) gameState.phantomDecoys = [];
+    gameState.phantomDecoys.push({
+        x: player.x,
+        y: player.y,
+        life: 1500,
+        createdAt: Date.now()
+    });
+}
+
+export function getBorrowedTimeCritBonus(player) {
+    if (!player?.hasBorrowedTime || !player.maxHealth) return 0;
+    if (player.health / player.maxHealth > 0.25) return 0;
+    return player.borrowedTimeCritBonus || 0.30;
+}
+
+export function getStaticChargeDamageMult(player) {
+    if (!player?.hasStaticCharge || !player.staticChargeMax) return 1.0;
+    const ratio = Math.min(1, (player.staticCharge || 0) / player.staticChargeMax);
+    return 1 + ratio * 0.8;
+}
+
+export function consumeStaticCharge(player) {
+    if (!player?.hasStaticCharge) return;
+    player.staticCharge = 0;
+}
+
+export function consumeKillSwitch(player) {
+    if (!player?.killSwitchArmed) return 1.0;
+    player.killSwitchArmed = false;
+    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+    if (damageNumberStyle !== 'off') {
+        gameState.damageNumbers.push(new DamageNumber(
+            player.x, player.y - 30, '3× KILL SWITCH', false, '#ff1744', 20
+        ));
+    }
+    return 3.0;
 }
 
 /**
