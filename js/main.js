@@ -742,6 +742,24 @@ gameEngine.draw = () => {
 
         // If I update WebGPURenderer.js to respect 'isGameplay' state, that's cleanest.
 
+        if (webgpuRenderer.updateBloodEdge) {
+            const player = gameState.players[0];
+            const lowHealthWarning = settingsManager.getSetting('video', 'lowHealthWarning') ?? true;
+            let healthRatio = 1;
+            let damageIntensity = 0;
+            if (player && player.health > 0) {
+                healthRatio = player.health / Math.max(1, player.maxHealth);
+                if (gameState.damageIndicator.active) {
+                    damageIntensity = gameState.damageIndicator.intensity;
+                }
+            }
+            webgpuRenderer.updateBloodEdge({
+                enabled: lowHealthWarning && isGameplay,
+                healthRatio,
+                damageIntensity
+            });
+        }
+
         webgpuRenderer.render(dt, shakeCamera, isGameplay);
     }
 

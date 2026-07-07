@@ -1,5 +1,5 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
-# Project Summary
+# ProjFOR ect Summary
 
 ## Overview
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.

@@ -1861,6 +1861,12 @@ export class GameHUD {
     drawLowHealthVignette(player) {
         if (!settingsManager.getSetting('video', 'lowHealthWarning')) return;
 
+        const webgpuRenderer = window.webgpuRenderer;
+        const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+        if (webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable()) {
+            return;
+        }
+
         const healthPercent = player.health / player.maxHealth;
         if (healthPercent >= 0.3) return; // Only show when health < 30%
 
