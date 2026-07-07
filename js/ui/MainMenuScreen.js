@@ -6,6 +6,7 @@ import { NEWS_UPDATES, GAME_VERSION } from '../core/constants.js';
 import { RankDisplay } from './RankDisplay.js';
 import { LeaderboardDisplay } from './LeaderboardDisplay.js';
 import { MenuHandHorrorEffect } from './MenuHandHorrorEffect.js';
+import { MenuMetalGunshotEffect } from './MenuMetalGunshotEffect.js';
 import { VersionModal } from './VersionModal.js';
 
 export class MainMenuScreen {
@@ -49,6 +50,7 @@ export class MainMenuScreen {
         this.lastExplosionSpawn = 0;
 
         this.handHorror = new MenuHandHorrorEffect(() => this.canvas);
+        this.metalGunshots = new MenuMetalGunshotEffect(() => this.canvas);
         this.versionModal = new VersionModal(() => this.canvas);
         this.versionBoxX = 0;
         this.versionBoxY = 0;
@@ -191,6 +193,7 @@ export class MainMenuScreen {
         }
 
         this.handHorror.update(this.isMobileDevice);
+        this.metalGunshots.update();
     }
 
     isWebGPUActive() {
@@ -271,6 +274,8 @@ export class MainMenuScreen {
             this.ctx.fillRect(p.x, p.y, p.size, p.size);
         }
         this.ctx.restore();
+
+        this.metalGunshots.draw(this.ctx);
     }
 
     draw() {

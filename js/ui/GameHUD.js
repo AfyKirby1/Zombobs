@@ -1854,6 +1854,7 @@ export class GameHUD {
     showMainMenu() {
         this.mainMenu = true;
         this.mainMenuScreen.handHorror.reset();
+        this.mainMenuScreen.metalGunshots.reset();
     }
     hideMainMenu() { this.mainMenu = false; this.hoveredButton = null; }
 
