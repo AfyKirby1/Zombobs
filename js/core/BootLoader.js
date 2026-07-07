@@ -1,6 +1,8 @@
 let dismissed = false;
 let overlayEl = null;
 let labelEl = null;
+let subEl = null;
+let badgeEl = null;
 let firstFrameReady = false;
 let webgpuReady = false;
 let webgpuGateActive = false;
@@ -22,10 +24,32 @@ function perfMeasure(name, start, end) {
 export function initBootLoader() {
     overlayEl = document.getElementById('boot-overlay');
     labelEl = overlayEl?.querySelector('.boot-overlay__label');
+    subEl = overlayEl?.querySelector('.boot-overlay__sub');
+    badgeEl = overlayEl?.querySelector('.boot-overlay__badge');
 }
 
 export function setBootStatus(text) {
     if (labelEl) labelEl.textContent = text;
+}
+
+/** Show WebGPU branding on boot overlay (badge + accent styling). */
+export function setBootWebGPUMode(active) {
+    if (overlayEl) {
+        overlayEl.classList.toggle('boot-overlay--webgpu', !!active);
+    }
+    if (badgeEl) {
+        badgeEl.hidden = !active;
+    }
+    if (!active) {
+        setBootSubstatus('');
+    }
+}
+
+/** Secondary boot line — shader compile detail, etc. */
+export function setBootSubstatus(text) {
+    if (!subEl) return;
+    subEl.textContent = text || '';
+    subEl.hidden = !text;
 }
 
 export function requireWebGPUBootGate() {

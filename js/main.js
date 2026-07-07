@@ -60,11 +60,14 @@ import { groundTextureSystem } from './systems/GroundTextureSystem.js';
 import {
     initBootLoader,
     setBootStatus,
+    setBootSubstatus,
+    setBootWebGPUMode,
     requireWebGPUBootGate,
     notifyWebGPUBootReady,
     skipWebGPUBootGate,
     notifyBootFirstFrame,
-    tryDismissBootOverlay
+    tryDismissBootOverlay,
+    isBootOverlayDismissed
 } from './core/BootLoader.js';
 
 const perfEnabled = (() => {
@@ -219,7 +222,14 @@ function scheduleWebGPUInit() {
     }
 
     perfMark('zombobs:webgpu:init:start');
+    if (!isBootOverlayDismissed()) {
+        setBootSubstatus('Loading WebGPU renderer module');
+    }
     webgpuInitPromise = loadWebGPURendererModule().then(Renderer => {
+        if (!isBootOverlayDismissed()) {
+            setBootStatus('Initializing WebGPU');
+            setBootSubstatus('Compiling WGSL shaders · bloom · particles');
+        }
         if (!webgpuRenderer) {
             webgpuRenderer = new Renderer();
             window.webgpuRenderer = webgpuRenderer;
@@ -1576,7 +1586,9 @@ perfMeasure('zombobs:bootstrap', 'zombobs:bootstrap:start', 'zombobs:bootstrap:e
 const bootWebgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
 if (bootWebgpuEnabled && hasNativeWebGPU()) {
     requireWebGPUBootGate();
-    setBootStatus('Initializing GPU');
+    setBootWebGPUMode(true);
+    setBootStatus('Initializing WebGPU');
+    setBootSubstatus('Requesting GPU adapter · WGSL pipeline');
     webgpuInitStarted = true;
     scheduleWebGPUInit()
         .then(() => notifyWebGPUBootReady())
