@@ -522,7 +522,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, dropX, dropY);
 
                 // Check if boss was killed
-                if (zombie.type === 'boss' || zombie === gameState.boss) {
+                if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                     gameState.bossActive = false;
                     gameState.boss = null;
                 }
@@ -532,7 +532,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                     sourcePlayer.consecutiveKills++;
 
                     // Add bonus for boss zombies
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         sourcePlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
                     }
 
@@ -959,7 +959,7 @@ function triggerNuke(x, y, showFloatingText = true) {
         const zombie = gameState.zombies[i];
 
         // Check if boss is being nuked
-        if (zombie.type === 'boss' || zombie === gameState.boss) {
+        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
             gameState.bossActive = false;
             gameState.boss = null;
         }
@@ -972,7 +972,7 @@ function triggerNuke(x, y, showFloatingText = true) {
         player.consecutiveKills++;
 
         // Add bonus for boss zombies
-        if (zombie.type === 'boss' || zombie === gameState.boss) {
+        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
             player.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
         }
 
@@ -1132,7 +1132,7 @@ export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
             d *= 1.4;
         }
     }
-    if (shootingPlayer.bossDamageMult && (zombie.type === 'boss' || zombie === gameState.boss)) {
+    if (shootingPlayer.bossDamageMult && (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss)) {
         d *= shootingPlayer.bossDamageMult;
     }
     if (shootingPlayer.hasVengeance && shootingPlayer.vengeanceEndTime && shootingPlayer.vengeanceEndTime > Date.now()) {
@@ -1509,6 +1509,7 @@ export function applyPlayerDamage(player, rawDamage) {
     }
 
     const previousHealth = player.health;
+    player.lastDamageTime = Date.now();
 
     if (player.shield > 0) {
         player.shield -= damage;

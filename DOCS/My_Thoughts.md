@@ -1,6 +1,15 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-09 - Act 1 Finale Shipped (Z1–Z4)
+
+Bible said go deep, not wide — so we did. Hold-E power/hack is the same interact verb as scrap shrine (E), which keeps mobile/gamepad coherent. Defend phase owns spawns so arcade wave-break doesn't steal the finale. Warden extends `BossZombie` but overrides update via `Zombie.prototype.update` to avoid double-attack. Act Clear is just `campaignActClear` + no `nextMapId` — GameOverScreen already had ZONE CLEAR, so white/cyan **ACT 1 CLEAR** was cheap. Still need gallery card + balance pass; don't modality-bump until playtested.
+
+## 2026-07-09 - V0.9.2 ALPHA Modality Pass
+
+V0.9.2 is **Campaign & Mobile Update**: player-facing story is playable Act 1 (3 zones + extraction chain), equipment/heroes meta layer, and mobile touch that actually drives gameplay — not just UI chrome. Kept v0.9.1 skill depth and v0.9.0 perf in copy as "still live." Bumped all modalities per checklist; `mobile/www` synced after `constants.js` hub update.
+[AMENDED 2026-07-09]: Z4 + Warden landed Unreleased after the modality pass — next bump can sell full Act 1 clear.
+
 ## 2026-07-06 - Campaign Zone 1 (The Crash Site)
 
 Campaign was intro-only until now — arcade infinite world doesn't fit *Constrained Chaos* thesis. Shipped **MapLoader** + first zone as ES module (`crashSite.js`) not JSON fetch: zero build step, works on itch `file://`. Reuses arcade camera/world-space pipeline; only differences are bounded map, static walls, hand-placed props, edge spawns, `gameMode: 'campaign'`. Collision is circle-vs-AABB (good enough for top-down). Triggers stubbed — full dialogue/scripted debris-clear is next. Zone 2 tunnels = narrow AABB maze + steam hazard volumes.
@@ -8,6 +17,10 @@ Campaign was intro-only until now — arcade infinite world doesn't fit *Constra
 ## 2026-07-06 - Clickable Version Modal (Patch Notes)
 
 Centralized version control in `js/core/constants.js` (`GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY`) so badge, About, and modal stay in sync. **VersionModal** is the third in-game announcement modality alongside the news ticker (`NEWS_UPDATES`) and About screen — click the top-left badge for the full arcade cabinet changelog. On bump: prepend `VERSION_HISTORY`, move `tag: 'CURRENT'`, update constants + landing/itch/server per `VERSION_UPDATE_CHECKLIST.md`. No more hunting hardcoded strings in `MainMenuScreen` / `AboutScreen`.
+
+## 2026-07-09 - Boot Loader WebGPU Buffer/Lag Hardening
+
+First boot pass (2026-07-06) gated overlay on first frame + WebGPU init — fixed blank flash — but **bar froze** during long WGSL compile / buffer alloc and overlay could fade before first GPU present settled. Hardening: **progress creep** to next-stage ceiling so UI never looks dead; **stall soft/hard** copy at 5s/10s; finer phases via `WebGPURenderer.init({ onPhase })` → `reportWebGPUBootPhase()`; **3-frame settle** + min 500ms display after gates; failsafe **12s → 20s**; spinner + % + elapsed on `#boot-overlay`. Play-path **PREPARING WORLD** overlay unchanged.
 
 ## 2026-07-06 - Boot Loader (Gated Startup Overlay)
 

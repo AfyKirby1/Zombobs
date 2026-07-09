@@ -37,7 +37,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-FF1744?style=for-the-badge" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.8.2.1_ALPHA-00C853?style=for-the-badge" alt="Version 0.8.2.1 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.9.2_ALPHA-00C853?style=for-the-badge" alt="Version 0.9.2 ALPHA" />
   </a>
 </p>
 
@@ -47,7 +47,7 @@
   <br>
   <b>No Engines. No Frameworks. Just Pure Adrenaline.</b><br>
   A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.<br>
-  <i>Now featuring permanent progression, achievements, and seasonal battlepass!</i>
+  <i>Campaign zones, equipment sets, hireable heroes, 93 skills, WebGPU FX — 40,910 functional LOC.</i>
   <br><br>
   <a href="https://afykirby1.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
@@ -88,6 +88,50 @@ From the **repo root**, build the upload zip with:
 `powershell -NoProfile -ExecutionPolicy Bypass -File ITCH/build-itch.ps1`
 
 This writes **`Zombobs_Web.zip`** and **fails the build** if zip entry paths use Windows backslashes or required files are missing (Explorer / `Compress-Archive` zips break itch’s CDN and cause **403** on all assets). Details: `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md`.
+
+## 🔥 What's New in V0.9.2 ALPHA
+
+### 🗺️ Campaign & Mobile Update
+
+> **Playable Act 1 campaign, equipment/heroes, and mobile touch controls that actually work**
+
+- **🗺️ Campaign Zones 1–3** — Crash Site → Maintenance Tunnels → Switching Yard; extraction objectives + zone transitions
+- **🎒 Equipment + Sets** — 6 slots, 5 rarities, Scavenger Kit / Fireteam Echo / Last Survivor set bonuses; **E** panel
+- **🦸 Hireable Heroes** — Scrap-hired AI companions (Rex, Mira, Doc, Nix, Kira, Voss) with role kits
+- **📱 Mobile Touch** — Virtual pad aim/fire/reload/melee/grenade/weapon/interact; safe-area + Capacitor polish
+- **🛡 Boot + FX** — WebGPU-aware boot overlay (progress creep, stall messaging, % + elapsed, 3-frame settle); blood-edge injury vignette; menu metal gunshots
+- **📊 Codebase** — **40,910** functional LOC / **140** files (`tools/count_functional_loc.py`, 2026-07-09)
+
+## 🔥 What's New in V0.9.1 ALPHA
+
+### 🌳 Skills & Survivability Update
+
+> **Mega skill expansion, new enemies, mobile UX, and boot hardening**
+
+- **🌳 93 Skills / 6 Class Trees** — 63 flat + 30 tree skills (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow); **15 synergies** with HUD toasts; corrupted wildcards (~14%); 4 cards / 10 slots / 1 reroll (+ MP sync)
+- **🧟 Splitter & Siren** — Splitter cracks into 2 fast Shard minions; Siren buffs the horde and jitters aim
+- **👁 Zombie Face QoL** — Procedural faces, pupil styles, gaze-tracking eyes across major variants
+- **📱 Mobile UX** — 2×2 level-up grid, touch hover, first-run low video preset; Capacitor `mobile/www` sync
+- **🛡 Boot Hardening** — Safe `localStorage` reads; gated `#boot-overlay` until menu + WebGPU ready
+
+## 🔥 What's New in V0.9.0 ALPHA
+
+### ⚡ Performance & Systems Update
+
+- **Main-menu smoothness** — Cached score reads, prebaked horror layers, throttled noise
+- **Lazy WebGPU / Socket.IO** — GPU module and multiplayer client load off the critical menu path
+- **Smooth game entry** — Idle warm-up, async `startGame()`, PREPARING WORLD overlay, `gpuCanvas` fade-in
+- **Class trees (original 3)** — Gunner / Survivor / Scavenger hybrid paths (expanded to 6 in v0.9.1)
+- **Audio balance** — Default music volume 0.5 → 0.25 so gunshots cut through MP3 tracks
+
+## 🔥 What's New in V0.8.4 ALPHA
+
+### 🌊 The Chaos & Horde Update
+
+- **Wave Chaos** — Five mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), burst spawns, boss minions, music intensity
+- **Scrap Shop** — Wave-break shrine spends scrap on Ammo Cache / Armor Plate / Overclock
+- **Zombie visual AI** — Gaze eyes, lean/bob, hit recoil, torso overlays
+- **MP3 soundtrack** — Two-track gameplay playlist + menu theme; Phase 4 `GameLoopSystem` extract
 
 ## 🔥 What's New in V0.8.2.2 ALPHA
 
@@ -421,52 +465,53 @@ This writes **`Zombobs_Web.zip`** and **fails the build** if zip entry paths use
 | **SMG** | 1.6 | 80ms | 40 | Medium | High Fire Rate |
 | **Sniper** | 30 | 1500ms | 5 | Very Long | Piercing Shots |
 | **RPG** | 120 AOE | 2000ms | 3 | Long | Explosive Damage |
+| **Laser** | Beam | High | Energy | Long | Continuous beam |
 
-- **Grenades**: Clear the screen with satisfying AOE explosions (3 per game, 2s cooldown)
+- **Grenades / Molotovs**: AOE explosives + fire pools (cycle with Q)
 - **Melee Attack**: Close-range swipe with 500ms cooldown (V key or right-click)
-- **Weapon Switching**: Hotkeys (1-7) or scroll wheel for seamless arsenal management
+- **Weapon Switching**: Hotkeys (1-8) or scroll wheel for seamless arsenal management
 - **Background Reloading**: Weapons reload automatically when holstered long enough
 - **Weapon Persistence**: Each weapon maintains its own ammo count across switches
 
 ### 🧠 Intelligent Enemies
 
-- **7 Zombie Variants**:
+- **11+ Zombie Variants**:
   - 🟢 **Normal** - Classic shambling horde
   - 🔴 **Fast (Runners)** - 1.6x speed, smaller hitbox, speed trail particles
   - 🛡️ **Armored (Tanks)** - Heavy armor absorbs damage before health
   - 💥 **Exploding (Boomers)** - Explodes on death, AOE damage
   - 👻 **Ghost (Spectral)** - Semi-transparent, 1.3x speed, ethereal glow
   - 🟢 **Spitter (Ranged)** - Kites at optimal range, lobs acid projectiles
+  - 🦇 **Flying / Crawler / Blight** - Elevated, low-profile, and slime-trail support types
+  - 🧩 **Splitter** - Cracks into 2 fast Shard minions on death (wave 6+)
+  - 📢 **Siren** - Horde speed buff + aim jitter scream (wave 8+)
   - 👑 **Boss** - Massive zombie with devastating attacks (spawns every 5 waves)
 
 - **Boss Waves**: Every 5 waves, a massive boss zombie spawns with devastating attacks
-- **Progressive Difficulty**: Waves get harder, faster, and more chaotic
+- **Progressive Difficulty**: Waves get harder, faster, and more chaotic (Wave Chaos mutators from V0.8.4+)
 - **Day/Night Cycle**: Dynamic atmosphere with 20% speed boost for zombies at night
 - **Environmental Hazards**: Acid pools from Spitter attacks create dangerous zones
 - **Crowd Control**: Bullets slow zombies on hit, allowing strategic kiting
 
-### 🎯 Skill & XP System
+### 🎯 Skill, Gear & Campaign
 
-- **16 Total Skills** - Expand your capabilities with strategic skill choices
-  - **Survival Skills**: Vitality Boost (Max HP +25%), Regeneration (1 HP/sec), Thick Skin (10% damage reduction), Armor Plating (+10 shield)
-  - **Combat Skills**: Eagle Eye (Crit chance +10%), Lucky Strike (15% double damage chance), Bloodlust (Heal 2 HP per kill), Adrenaline (20% speed boost after kill)
-  - **Utility Skills**: Swift Steps (Movement speed +15%), Quick Hands (50% faster weapon switching), Fast Fingers (15% faster reload), Iron Grip (20% faster reload)
-  - **Tactical Skills**: Hoarder (Max ammo +30%), Scavenger (25% more pickup spawns), Long Range (20% increased bullet range), Steady Aim (30% reduced spread)
-
-- **3-Choice Level-Up System** - Choose from 3 random skills when you level up
-- **Skill Upgrading** - Skills can be upgraded multiple times for stacking effects
-- **XP Gain** - Earn XP from zombie kills (scaled by zombie type, 1.5x rate for faster progression)
-- **XP Scaling** - Base 100 XP requirement, scales by 1.2 per level
+- **93 Skills / 6 Class Trees** — 63 flat + 30 tree (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow)
+- **15 Skill Synergies** — Combo unlocks with HUD toasts; corrupted wildcards (~14%)
+- **4-Card Level-Ups** — 10 active slots, 1 free reroll per level (+ MP sync)
+- **Equipment Sets** — 6 slots, 5 rarities, named set bonuses; press **E**
+- **Hireable Heroes** — Scrap-hire Rex, Mira, Doc, Nix, Kira, Voss with role kits
+- **Campaign Act 1** — Zones 1–3 playable (Crash Site → Tunnels → Switching Yard); Zone 4 designed
+- **XP Scaling** — Slower curve (base 200 + 50/level) for longer builds
 
 ### 🎨 Visual & Audio Feast
 
 - **Juicy Combat**: Screen shake, particle blood splatters, muzzle flashes, bullet trails, shell ejection
-- **Dynamic Audio**: Procedurally generated sound effects using Web Audio API + atmospheric menu music
+- **Dynamic Audio**: Procedurally generated SFX + MP3 gameplay playlist + menu theme
 - **Retro Aesthetics**: Glowing neon zombies against a dark, gritty backdrop
-- **Horror Atmosphere**: Animated menu backgrounds with pulsing effects, scanlines, and dynamic blood splatters
+- **Horror Atmosphere**: Animated menu backgrounds, metal gunshots, zombie-hand slam FX
 - **Floating Damage Numbers**: See your damage output in real-time with customizable styles
 - **Kill Streak Combos**: Chain kills within 1.5s for combo notifications ("RAMPAGE!", "UNSTOPPABLE!")
-- **WebGPU Rendering**: GPU-accelerated background shaders, bloom post-processing, and procedural effects (with Canvas 2D fallback)
+- **WebGPU Rendering**: GPU shaders, bloom, blood-edge injury overlay (Canvas 2D fallback)
 
 ### 💪 Power-Up System
 
@@ -723,7 +768,7 @@ We believe in the power of the platform.
 
 ### Frontend Core
 - **100% Vanilla JavaScript (ES6+)** - No frameworks, no libraries, no bloat
-- **34,773 Functional LOC** - Audited with `tools/count_functional_loc.py`; large custom codebase across gameplay, UI, rendering, networking, and tooling
+- **40,910 Functional LOC** - Audited with `tools/count_functional_loc.py` (2026-07-09); **140** maintained files / **36,106** JS LOC; large custom codebase across gameplay, UI, rendering, networking, and tooling
 - **HTML5 Canvas API (2D Context)** - Hand-optimized rendering pipeline for gameplay/UI
 - **WebGPU** - Next-generation graphics API for GPU-accelerated background shaders and post-processing (automatic Canvas 2D fallback)
 - **Web Audio API** - Procedurally generated sound effects (Oscillators & Gain Nodes)
@@ -939,7 +984,9 @@ The horde is growing. Here's what's coming next:
 - [x] **Background Reloading** - Tactical weapon switching
 - [x] **Weapon Persistence** - Independent ammo tracking
 - [x] **Cloud Multiplayer Server** - Hugging Face Spaces deployment
-- [x] **Skill System** - 16 skills with 3-choice level-up system
+- [x] **Skill System** - 93 skills (63 flat + 30 tree), 6 class trees, 15 synergies, corrupted wildcards
+- [x] **Equipment + Heroes** - 6-slot gear sets + scrap-hire AI heroes (E panel)
+- [x] **Campaign Act 1 Zones 1–3** - Crash Site → Tunnels → Switching Yard with extraction
 - [x] **7 Weapons** - Complete arsenal including SMG, Sniper, and RPG
 - [x] **7 Zombie Types** - Full enemy variety including Boss zombies
 

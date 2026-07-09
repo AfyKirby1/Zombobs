@@ -2,9 +2,19 @@ import { achievementSystem } from '../systems/AchievementSystem.js';
 import { getAchievementCategories } from '../core/achievementDefinitions.js';
 import { gameState } from '../core/gameState.js';
 
+/** Category display meta — icons + accent for filter rail */
+const CATEGORY_META = {
+    all: { label: 'All', icon: '🏆', accent: '#ff1744' },
+    combat: { label: 'Combat', icon: '💀', accent: '#ff5252' },
+    survival: { label: 'Survival', icon: '🛡️', accent: '#66bb6a' },
+    collection: { label: 'Collection', icon: '📦', accent: '#ff9800' },
+    skill: { label: 'Skills', icon: '⚡', accent: '#ab47bc' },
+    social: { label: 'Social', icon: '👥', accent: '#42a5f5' }
+};
+
 /**
- * AchievementScreen - UI component for achievement gallery
- * Uses HTML overlay instead of Canvas 2D drawing
+ * AchievementScreen - Trophy cabinet overlay
+ * HTML overlay with glass-horror polish (stats ring, category rail, rich cards)
  */
 export class AchievementScreen {
     constructor(canvas) {
@@ -12,37 +22,60 @@ export class AchievementScreen {
         this.container = null;
         this.isMounted = false;
         this.selectedCategory = 'all';
+        this.statusFilter = 'all'; // all | unlocked | locked
         this.gridContainer = null;
         this.achievementsGrid = null;
+        this.statsEl = null;
+        this.sidebar = null;
+        this.statusBar = null;
     }
 
-    /**
-     * Mount the HTML overlay
-     */
     mount() {
         if (this.isMounted) {
             this.update();
             return;
         }
 
-        // Create container
         this.container = document.createElement('div');
-        this.container.className = 'overlay-container';
+        this.container.className = 'overlay-container achievements-overlay';
         this.container.id = 'achievements-overlay';
 
-        // Create header
+        // Ambient vignette + scanline layers (CSS-driven)
+        const ambience = document.createElement('div');
+        ambience.className = 'achievements-ambience';
+        ambience.setAttribute('aria-hidden', 'true');
+        this.container.appendChild(ambience);
+
+        // Header
         const header = document.createElement('div');
-        header.className = 'overlay-header';
+        header.className = 'overlay-header achievements-header';
 
         const headerLeft = document.createElement('div');
+        headerLeft.className = 'achievements-header-left';
+
+        const eyebrow = document.createElement('div');
+        eyebrow.className = 'achievements-eyebrow';
+        eyebrow.textContent = 'SURVIVOR RECORD';
+
         const title = document.createElement('div');
-        title.className = 'overlay-title';
+        title.className = 'overlay-title achievements-title';
         title.textContent = 'ACHIEVEMENTS';
 
+        const subtitle = document.createElement('div');
+        subtitle.className = 'overlay-subtitle';
+        subtitle.textContent = 'Prove your worth. Unlock glory. Dominate the horde.';
+
+        headerLeft.appendChild(eyebrow);
         headerLeft.appendChild(title);
+        headerLeft.appendChild(subtitle);
         header.appendChild(headerLeft);
 
-        // Back button
+        // Completion ring in header
+        const statsWrap = document.createElement('div');
+        statsWrap.className = 'achievements-stats-wrap';
+        this.statsEl = statsWrap;
+        header.appendChild(statsWrap);
+
         const backButton = document.createElement('button');
         backButton.className = 'btn-back';
         backButton.innerHTML = '<span>BACK</span>';
@@ -53,16 +86,23 @@ export class AchievementScreen {
         });
         header.appendChild(backButton);
 
-        // Create main content (2-column layout)
+        // Main layout
         const main = document.createElement('div');
         main.className = 'achievements-main';
 
-        // Sidebar for categories
         const sidebar = document.createElement('div');
         sidebar.className = 'achievements-sidebar';
         this.sidebar = sidebar;
 
-        // Main grid container
+        const contentCol = document.createElement('div');
+        contentCol.className = 'achievements-content';
+
+        // Status filter chips
+        const statusBar = document.createElement('div');
+        statusBar.className = 'achievements-status-bar';
+        this.statusBar = statusBar;
+        contentCol.appendChild(statusBar);
+
         const gridContainer = document.createElement('div');
         gridContainer.className = 'achievements-grid-container';
         this.gridContainer = gridContainer;
@@ -72,30 +112,28 @@ export class AchievementScreen {
         this.achievementsGrid = achievementsGrid;
 
         gridContainer.appendChild(achievementsGrid);
-        main.appendChild(sidebar);
-        main.appendChild(gridContainer);
+        contentCol.appendChild(gridContainer);
 
-        // Assemble
+        main.appendChild(sidebar);
+        main.appendChild(contentCol);
+
         this.container.appendChild(header);
         this.container.appendChild(main);
         document.body.appendChild(this.container);
 
-        // Render categories and achievements
+        this.renderStats();
         this.renderCategories();
-        this.renderList(this.selectedCategory);
+        this.renderStatusBar();
+        this.renderList();
 
         this.isMounted = true;
 
-        // Handle scroll events
         gridContainer.addEventListener('wheel', (e) => {
             e.preventDefault();
             gridContainer.scrollTop += e.deltaY;
-        });
+        }, { passive: false });
     }
 
-    /**
-     * Unmount the HTML overlay
-     */
     unmount() {
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
@@ -105,158 +143,291 @@ export class AchievementScreen {
         this.sidebar = null;
         this.gridContainer = null;
         this.achievementsGrid = null;
+        this.statsEl = null;
+        this.statusBar = null;
     }
 
-    /**
-     * Update the overlay content
-     */
     update() {
         if (!this.isMounted) return;
-        this.renderList(this.selectedCategory);
+        this.renderStats();
+        this.renderCategories();
+        this.renderStatusBar();
+        this.renderList();
     }
 
-    /**
-     * Render category buttons in sidebar
-     */
+    renderStats() {
+        if (!this.statsEl) return;
+        const stats = achievementSystem.getStatistics();
+        const pct = Math.floor(stats.completionPercent || 0);
+        const radius = 34;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (pct / 100) * circumference;
+
+        this.statsEl.innerHTML = `
+            <div class="achievements-ring" style="--pct:${pct}">
+                <svg viewBox="0 0 80 80" aria-hidden="true">
+                    <circle class="ring-track" cx="40" cy="40" r="${radius}"></circle>
+                    <circle class="ring-fill" cx="40" cy="40" r="${radius}"
+                        stroke-dasharray="${circumference}"
+                        stroke-dashoffset="${offset}"></circle>
+                </svg>
+                <div class="ring-label">
+                    <span class="ring-pct">${pct}%</span>
+                    <span class="ring-sub">CLEAR</span>
+                </div>
+            </div>
+            <div class="achievements-stat-pills">
+                <div class="stat-pill unlocked">
+                    <span class="stat-pill-val">${stats.unlocked}</span>
+                    <span class="stat-pill-lbl">UNLOCKED</span>
+                </div>
+                <div class="stat-pill locked">
+                    <span class="stat-pill-val">${stats.locked}</span>
+                    <span class="stat-pill-lbl">LOCKED</span>
+                </div>
+                <div class="stat-pill total">
+                    <span class="stat-pill-val">${stats.total}</span>
+                    <span class="stat-pill-lbl">TOTAL</span>
+                </div>
+            </div>
+        `;
+    }
+
     renderCategories() {
         if (!this.sidebar) return;
-
         this.sidebar.innerHTML = '';
 
+        const railTitle = document.createElement('div');
+        railTitle.className = 'achievements-rail-title';
+        railTitle.textContent = 'CATEGORIES';
+        this.sidebar.appendChild(railTitle);
+
         const categories = ['all', ...getAchievementCategories()];
+        const allAchievements = achievementSystem.getAllAchievements();
 
         categories.forEach(category => {
+            const meta = CATEGORY_META[category] || {
+                label: category.charAt(0).toUpperCase() + category.slice(1),
+                icon: '★',
+                accent: '#ff1744'
+            };
+
+            const count = category === 'all'
+                ? allAchievements.length
+                : allAchievements.filter(a => a.category === category).length;
+            const unlockedCount = category === 'all'
+                ? allAchievements.filter(a => a.unlocked).length
+                : allAchievements.filter(a => a.category === category && a.unlocked).length;
+
             const button = document.createElement('button');
             button.className = 'category-button';
+            button.style.setProperty('--cat-accent', meta.accent);
             if (category === this.selectedCategory) {
                 button.classList.add('active');
             }
 
-            const categoryName = category === 'all' 
-                ? 'All' 
-                : category.charAt(0).toUpperCase() + category.slice(1);
-            button.textContent = categoryName;
+            button.innerHTML = `
+                <span class="cat-icon">${meta.icon}</span>
+                <span class="cat-body">
+                    <span class="cat-label">${meta.label}</span>
+                    <span class="cat-count">${unlockedCount}/${count}</span>
+                </span>
+            `;
 
             button.addEventListener('click', () => {
                 this.selectedCategory = category;
-                this.renderCategories(); // Update active state
-                this.renderList(category);
+                this.renderCategories();
+                this.renderList();
             });
 
             this.sidebar.appendChild(button);
         });
     }
 
-    /**
-     * Render achievement list based on category filter
-     */
-    renderList(category) {
+    renderStatusBar() {
+        if (!this.statusBar) return;
+        this.statusBar.innerHTML = '';
+
+        const filters = [
+            { id: 'all', label: 'ALL' },
+            { id: 'unlocked', label: 'UNLOCKED' },
+            { id: 'locked', label: 'IN PROGRESS' }
+        ];
+
+        filters.forEach(f => {
+            const chip = document.createElement('button');
+            chip.className = 'status-chip';
+            if (f.id === this.statusFilter) chip.classList.add('active');
+            chip.textContent = f.label;
+            chip.addEventListener('click', () => {
+                this.statusFilter = f.id;
+                this.renderStatusBar();
+                this.renderList();
+            });
+            this.statusBar.appendChild(chip);
+        });
+    }
+
+    renderList() {
         if (!this.achievementsGrid) return;
 
-        // Get filtered achievements
-        let achievements = category === 'all'
+        let achievements = this.selectedCategory === 'all'
             ? achievementSystem.getAllAchievements()
-            : achievementSystem.getAchievementsByCategory(category);
+            : achievementSystem.getAchievementsByCategory(this.selectedCategory);
 
-        // Sort: unlocked first, then by progress
+        if (this.statusFilter === 'unlocked') {
+            achievements = achievements.filter(a => a.unlocked);
+        } else if (this.statusFilter === 'locked') {
+            achievements = achievements.filter(a => !a.unlocked);
+        }
+
         achievements.sort((a, b) => {
             if (a.unlocked && !b.unlocked) return -1;
             if (!a.unlocked && b.unlocked) return 1;
             if (a.unlocked && b.unlocked) return 0;
-            // Both locked - sort by progress (descending)
             return (b.progress || 0) - (a.progress || 0);
         });
 
-        // Clear grid
         this.achievementsGrid.innerHTML = '';
 
-        // Create achievement cards
-        achievements.forEach(achievement => {
+        if (achievements.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'achievements-empty';
+            empty.innerHTML = `
+                <div class="empty-icon">🌑</div>
+                <div class="empty-title">NO MATCHES</div>
+                <div class="empty-sub">Try another filter or category.</div>
+            `;
+            this.achievementsGrid.appendChild(empty);
+            return;
+        }
+
+        achievements.forEach((achievement, index) => {
+            const meta = CATEGORY_META[achievement.category] || CATEGORY_META.all;
             const card = document.createElement('div');
             card.className = 'achievement-card';
-            if (achievement.unlocked) {
-                card.classList.add('unlocked');
-            } else {
-                card.classList.add('locked');
-            }
+            card.style.setProperty('--cat-accent', meta.accent);
+            card.style.animationDelay = `${Math.min(index * 0.03, 0.45)}s`;
+            card.classList.add(achievement.unlocked ? 'unlocked' : 'locked');
 
-            // Icon
+            // Accent bar
+            const accent = document.createElement('div');
+            accent.className = 'achievement-accent';
+            card.appendChild(accent);
+
+            // Icon plate
+            const iconPlate = document.createElement('div');
+            iconPlate.className = 'achievement-icon-plate';
             const icon = document.createElement('div');
             icon.className = 'achievement-icon';
-            icon.textContent = achievement.icon;
-            card.appendChild(icon);
+            icon.textContent = achievement.unlocked ? achievement.icon : '🔒';
+            iconPlate.appendChild(icon);
+            card.appendChild(iconPlate);
 
-            // Name
+            // Body
+            const body = document.createElement('div');
+            body.className = 'achievement-body';
+
+            const catTag = document.createElement('div');
+            catTag.className = 'achievement-cat-tag';
+            catTag.textContent = (meta.label || achievement.category || '').toUpperCase();
+            body.appendChild(catTag);
+
             const name = document.createElement('div');
             name.className = 'achievement-name';
             name.textContent = achievement.name;
-            card.appendChild(name);
+            body.appendChild(name);
 
-            // Progress or unlocked indicator
+            const desc = document.createElement('div');
+            desc.className = 'achievement-desc';
+            desc.textContent = achievement.description || '';
+            body.appendChild(desc);
+
             if (!achievement.unlocked && achievement.requirement) {
                 const progress = document.createElement('div');
                 progress.className = 'achievement-progress';
 
-                const progressPercent = Math.min(100, 
-                    (achievement.progress / achievement.requirement.value) * 100
-                );
+                const current = achievement.progress || 0;
+                const target = achievement.requirement.value || 1;
+                const progressPercent = Math.min(100, (current / target) * 100);
 
                 const progressBar = document.createElement('div');
                 progressBar.className = 'progress-bar-mini';
-
                 const progressFill = document.createElement('div');
                 progressFill.className = 'progress-bar-mini-fill';
                 progressFill.style.width = `${progressPercent}%`;
-
                 progressBar.appendChild(progressFill);
 
                 const progressText = document.createElement('div');
                 progressText.className = 'progress-text';
-                progressText.textContent = `${Math.floor(progressPercent)}% - ${achievement.progress} / ${achievement.requirement.value}`;
+                progressText.textContent = `${Math.floor(progressPercent)}% · ${this._formatNum(current)} / ${this._formatNum(target)}`;
 
                 progress.appendChild(progressBar);
                 progress.appendChild(progressText);
-                card.appendChild(progress);
+                body.appendChild(progress);
             } else if (achievement.unlocked) {
+                const unlockedRow = document.createElement('div');
+                unlockedRow.className = 'achievement-unlocked-row';
                 const unlockedText = document.createElement('div');
                 unlockedText.className = 'achievement-unlocked-text';
                 unlockedText.textContent = '✓ UNLOCKED';
-                card.appendChild(unlockedText);
+                unlockedRow.appendChild(unlockedText);
+                if (achievement.unlockedDate) {
+                    const date = document.createElement('div');
+                    date.className = 'achievement-date';
+                    date.textContent = this._formatDate(achievement.unlockedDate);
+                    unlockedRow.appendChild(date);
+                }
+                body.appendChild(unlockedRow);
             }
 
-            // Description tooltip on hover
-            card.title = achievement.description;
+            // Reward footer
+            if (achievement.reward) {
+                const reward = document.createElement('div');
+                reward.className = 'achievement-reward';
+                const bits = [];
+                if (achievement.reward.rankXP) bits.push(`+${this._formatNum(achievement.reward.rankXP)} XP`);
+                if (achievement.reward.title) bits.push(`Title: ${achievement.reward.title}`);
+                reward.textContent = bits.join(' · ');
+                body.appendChild(reward);
+            }
 
+            card.appendChild(body);
+            card.title = achievement.description || achievement.name;
             this.achievementsGrid.appendChild(card);
         });
     }
 
-    /**
-     * Draw achievement screen (legacy method - now uses HTML overlay)
-     */
+    _formatNum(n) {
+        return Number(n || 0).toLocaleString();
+    }
+
+    _formatDate(iso) {
+        try {
+            const d = new Date(iso);
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch {
+            return '';
+        }
+    }
+
     draw() {
         if (gameState.showAchievements) {
-            this.mount();
-            this.update();
-        } else {
+            if (!this.isMounted) {
+                this.mount();
+            }
+        } else if (this.isMounted) {
             this.unmount();
         }
     }
 
-    /**
-     * Handle click (back button)
-     */
     handleClick() {
         gameState.showAchievements = false;
         this.unmount();
         return { action: 'back' };
     }
 
-    /**
-     * Handle scroll (now handled by DOM events)
-     */
-    handleScroll(deltaY) {
-        // Scrolling is now handled by DOM wheel events
-        // This method kept for compatibility
+    handleScroll() {
+        // DOM wheel events handle scrolling
     }
 }

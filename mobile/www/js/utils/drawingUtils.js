@@ -336,7 +336,7 @@ export function drawCampaignObjective() {
     ctx.strokeStyle = 'rgba(255, 107, 53, 0.45)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(bannerX, bannerY, bannerWidth, 52, 8);
+    ctx.roundRect(bannerX, bannerY, bannerWidth, 68, 8);
     ctx.fill();
     ctx.stroke();
 
@@ -347,6 +347,17 @@ export function drawCampaignObjective() {
     ctx.fillStyle = 'rgba(245, 245, 245, 0.95)';
     ctx.font = 'bold 14px "Roboto Mono", monospace';
     ctx.fillText(text, canvas.width / 2, bannerY + 28);
+
+    // Hold-E prompt when near coupler / terminal / survivor
+    if (typeof window !== 'undefined' && window.mapLoader?.getInteractPrompt) {
+        const player = gameState.players[0];
+        const prompt = window.mapLoader.getInteractPrompt(player);
+        if (prompt) {
+            ctx.fillStyle = '#ffb300';
+            ctx.font = 'bold 12px "Roboto Mono", monospace';
+            ctx.fillText(prompt.label, canvas.width / 2, bannerY + 50);
+        }
+    }
 
     const target = gameState.campaignObjectiveTarget;
     const player = gameState.players[0];

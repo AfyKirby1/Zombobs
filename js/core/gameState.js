@@ -136,6 +136,39 @@ export const gameState = {
     campaignObjectiveTarget: null,
     campaignZoneCleared: false,
     campaignZoneClearTime: 0,
+    campaignActClear: false,
+    campaignScript: {
+        powerRequired: 0,
+        powerCompleted: 0,
+        powerIds: [],
+        gateOnline: false,
+        debrisCleared: false,
+        lightsOutUntil: 0,
+        lightsOutFired: false,
+        hackProgress: 0,
+        hackActiveId: null,
+        hackComplete: false,
+        defendActive: false,
+        defendEndsAt: 0,
+        defendDurationMs: 0,
+        wardenSpawned: false,
+        wardenDead: false,
+        actClear: false,
+        interactHoldId: null,
+        interactHoldStart: 0,
+        extractTaxFired: false,
+        activeNpcs: [],
+        nearbyNpcId: null,
+        survivorBubble: null
+    },
+    /** Persists across zone transitions within one campaign run. */
+    campaignSurvivorRun: {
+        met: {},
+        quest: null,
+        questDone: {},
+        recruited: {},
+        killsAtQuestStart: 0
+    },
     showSettingsPanel: false,
     showLobby: false,
     isCoop: false,
@@ -278,8 +311,19 @@ export const gameState = {
         active: false,
         text: '',
         life: 0,
-        maxLife: 120
+        maxLife: 120,
+        subtitle: null,
+        kind: 'arcade'
     },
+
+    campaignTransition: {
+        active: false,
+        until: 0,
+        title: '',
+        subtitle: ''
+    },
+
+    campaignRetryMapId: null,
 
     // FPS counter
     fps: 0,
@@ -602,5 +646,37 @@ export function resetGameState(canvasWidth, canvasHeight) {
         gameState.campaignObjectiveTarget = null;
         gameState.campaignZoneCleared = false;
         gameState.campaignZoneClearTime = 0;
+        gameState.campaignActClear = false;
+        gameState.campaignScript = {
+            powerRequired: 0,
+            powerCompleted: 0,
+            powerIds: [],
+            gateOnline: false,
+            debrisCleared: false,
+            lightsOutUntil: 0,
+            lightsOutFired: false,
+            hackProgress: 0,
+            hackActiveId: null,
+            hackComplete: false,
+            defendActive: false,
+            defendEndsAt: 0,
+            defendDurationMs: 0,
+            wardenSpawned: false,
+            wardenDead: false,
+            actClear: false,
+            interactHoldId: null,
+            interactHoldStart: 0,
+            extractTaxFired: false,
+            activeNpcs: [],
+            nearbyNpcId: null,
+            survivorBubble: null
+        };
+        gameState.campaignSurvivorRun = {
+            met: {},
+            quest: null,
+            questDone: {},
+            recruited: {},
+            killsAtQuestStart: 0
+        };
     }
 }

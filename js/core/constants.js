@@ -158,17 +158,28 @@ function resolveServerUrl() {
 export const SERVER_URL = resolveServerUrl();
 
 // Version control — single source of truth for all in-game version displays
-export const GAME_VERSION = 'V0.9.1 ALPHA';
+export const GAME_VERSION = 'V0.9.2 ALPHA';
 export const ENGINE_NAME = 'ZOMBS-XFX-NGIN';
 export const ENGINE_VERSION = `${ENGINE_NAME} ${GAME_VERSION}`;
 
 /** Patch notes shown in the main-menu version modal (newest first) */
 export const VERSION_HISTORY = [
     {
+        version: 'V0.9.2 ALPHA',
+        codename: 'Campaign & Mobile',
+        date: '2026-07-09',
+        tag: 'CURRENT',
+        highlights: [
+            'Campaign Act 1 Zones 1–3 + extraction transitions',
+            'Equipment sets + hireable hero companions',
+            'Mobile touch controls fully wired (aim/fire/E)',
+            'Boot loader progress bar + menu FX polish'
+        ]
+    },
+    {
         version: 'V0.9.1 ALPHA',
         codename: 'Skills & Survivability',
         date: '2026-07-06',
-        tag: 'CURRENT',
         highlights: [
             '93 skills, 15 synergies, 6 class trees',
             'Corrupted wildcards & level-up reroll',
@@ -213,7 +224,7 @@ export const VERSION_HISTORY = [
 ];
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.9.1 ALPHA — Skills & Survivability Update: 93 Skills & 15 Synergies 🌳 | 6 Class Trees | Corrupted Wildcards ☠ | Reroll + MP Sync 🔄 | Splitter & Siren 🧟 | Zombie Face QoL 👁 | Mobile 2×2 Level-Up 📱 | Boot Hardening 🛡 | 34K+ LOC Audit 📊 | V0.9.0: Performance ⚡ | V0.8.4: Wave Chaos 🌊 | And More...";
+export const NEWS_UPDATES = "NEW: V0.9.2 ALPHA — Campaign & Mobile Update: Act 1 Zones 1–3 🗺 | Equipment + Hero Hires 🎒 | Mobile Touch Wired 📱 | Boot Progress + Tips 🛡 | Blood Edge Overlay 🩸 | 40K+ LOC 📊 | V0.9.1: 93 Skills 🌳 | V0.9.0: Performance ⚡ | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

@@ -31,8 +31,10 @@ import {
 import {
     triggerDamageIndicator,
     loadHighScore, saveHighScore, loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted,
-    loadMultiplierStats, clearScoreboard
+    loadMultiplierStats, clearScoreboard, isCampaignMode
 } from './utils/gameUtils.js';
+import { mapLoader } from './systems/MapLoader.js';
+window.mapLoader = mapLoader;
 
 // Make triggerDamageIndicator available globally for AcidPool
 window.triggerDamageIndicator = triggerDamageIndicator;
@@ -52,6 +54,7 @@ import { MeleeSystem } from './systems/MeleeSystem.js';
 import { playerProfileSystem } from './systems/PlayerProfileSystem.js';
 import { ProfileScreen } from './ui/ProfileScreen.js';
 import { AchievementScreen } from './ui/AchievementScreen.js';
+import { achievementSystem } from './systems/AchievementSystem.js';
 import { BattlepassScreen } from './ui/BattlepassScreen.js';
 import { BadgeScreen } from './ui/BadgeScreen.js';
 import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
@@ -68,7 +71,8 @@ import {
     skipWebGPUBootGate,
     notifyBootFirstFrame,
     tryDismissBootOverlay,
-    isBootOverlayDismissed
+    isBootOverlayDismissed,
+    reportWebGPUBootPhase
 } from './core/BootLoader.js';
 
 const perfEnabled = (() => {
@@ -131,6 +135,7 @@ const badgeScreen = new BadgeScreen(uiCanvas);
 // Make globally accessible for text rendering quality
 window.profileScreen = profileScreen;
 window.achievementScreen = achievementScreen;
+window.achievementSystem = achievementSystem;
 window.battlepassScreen = battlepassScreen;
 window.badgeScreen = badgeScreen;
 
@@ -237,7 +242,13 @@ function scheduleWebGPUInit() {
             window.webgpuRenderer = webgpuRenderer;
             gameLoopSystem.webgpuRenderer = webgpuRenderer;
         }
-        return webgpuRenderer.init();
+        return webgpuRenderer.init({
+            onPhase: (phase) => {
+                if (!isBootOverlayDismissed()) {
+                    reportWebGPUBootPhase(phase);
+                }
+            }
+        });
     }).then(initialized => {
         if (initialized) {
             applyWebGPUSettings();
@@ -885,9 +896,10 @@ function handleMenuInteraction(clickX, clickY) {
             gameState.showGallery = true;
             gameState.showMainMenu = false;
             playerProfileSystem.trackGalleryVisit();
-            if (gameHUD.galleryScrollY !== undefined) {
-                gameHUD.galleryScrollY = 0;
-                gameHUD.galleryTargetScrollY = 0;
+            if (gameHUD.galleryScreen) {
+                gameHUD.galleryScreen.galleryScrollY = 0;
+                gameHUD.galleryScreen.galleryTargetScrollY = 0;
+                gameHUD.galleryScreen.activeTab = 'zombies';
             }
         } else if (clickedButton === 'about') {
             gameState.showAbout = true;
@@ -917,6 +929,9 @@ function handleMenuInteraction(clickX, clickY) {
         if (clickedButton === 'gallery_back') {
             gameState.showGallery = false;
             gameState.showMainMenu = true;
+        } else if (clickedButton && clickedButton.startsWith('gallery_tab_')) {
+            const tabId = clickedButton.replace('gallery_tab_', '');
+            gameHUD.galleryScreen.handleTabClick(tabId);
         }
         return;
     }
@@ -1021,6 +1036,9 @@ function handleMenuInteraction(clickX, clickY) {
             if (isWebGPUActive() && webgpuRenderer.resetSnow) webgpuRenderer.resetSnow();
         } else if (clickedButton === 'gameover_menu') {
             restartGame();
+            gameState.particles = [];
+        } else if (clickedButton === 'gameover_retry') {
+            gameStateManager.retryCampaignZone();
             gameState.particles = [];
         }
         return;
@@ -1159,6 +1177,7 @@ document.addEventListener('keydown', (e) => {
 
     const key = e.key.toLowerCase();
     keys[key] = true;
+    window._zombobsKeys = keys;
 
     if (e.key === 'Escape') {
         togglePause();
@@ -1194,6 +1213,9 @@ document.addEventListener('keydown', (e) => {
     if (key === 'e' && gameState.gameRunning && localPlayer) {
         if (gameState.waveBreakActive && scrapShopSystem.getNearbyShrine(localPlayer)) {
             scrapShopSystem.tryPurchase(localPlayer);
+        } else if (isCampaignMode(gameState) && mapLoader.isLoaded() && mapLoader.tryInteract(localPlayer)) {
+            // Hold-E power/hack — keep holding; MapLoader tracks progress while keys.e is down
+            window._zombobsKeys = keys;
         } else {
             gameState.showEquipment = !gameState.showEquipment;
         }
@@ -1205,7 +1227,10 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+document.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+    window._zombobsKeys = keys;
+});
 
 // Helper function to get accurate mouse coordinates accounting for canvas scaling
 function getCanvasMousePos(e) {
@@ -1321,9 +1346,8 @@ window.addEventListener('wheel', (e) => {
     // Gallery scrolling
     if (gameState.showGallery) {
         e.preventDefault();
-        const scrollSpeed = 30;
-        if (gameHUD.galleryTargetScrollY !== undefined) {
-            gameHUD.galleryTargetScrollY -= e.deltaY * 0.5; // Invert for natural scrolling
+        if (gameHUD.galleryScreen) {
+            gameHUD.galleryScreen.galleryTargetScrollY += e.deltaY * 0.5;
         }
         return;
     }

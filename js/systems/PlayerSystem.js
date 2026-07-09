@@ -354,7 +354,15 @@ export class PlayerSystem {
                 if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
                 if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 if (gpState.buttons.interact.justPressed) {
-                    scrapShopSystem.tryPurchase(player);
+                    if (scrapShopSystem.getNearbyShrine(player) && gameState.waveBreakActive) {
+                        scrapShopSystem.tryPurchase(player);
+                    } else if (window.mapLoader?.isLoaded?.()) {
+                        window.mapLoader.tryInteract(player);
+                    }
+                }
+                if (window.mapLoader?.isLoaded?.()) {
+                    window._zombobsKeys = window._zombobsKeys || {};
+                    window._zombobsKeys.e = !!gpState.buttons.interact.pressed;
                 }
                 if (gpState.buttons.flashlight.justPressed) {
                     if (!player.flashlight) player.flashlight = { active: false };
@@ -682,6 +690,11 @@ export class PlayerSystem {
             // Draw melee swipe animation if active
             if (player.activeMeleeSwipe) {
                 drawMeleeSwipe(player);
+            }
+
+            // Companion dialogue bubbles
+            if (player.dialogue && player.inputSource === 'ai') {
+                player.dialogue.draw(ctx, player.x, player.y - player.radius);
             }
         });
     }

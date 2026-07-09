@@ -8,7 +8,30 @@
 
 ---
 
-### **🆕 V0.9.1 ALPHA — Skills & Survivability Update**
+### **🆕 Latest on Main — Equipment, Heroes & Campaign**
+
+*   **Campaign Zones 1–3** — Crash Site → Maintenance Tunnels → Switching Yard with extraction beacons; Zone 4 Control Tower designed in `CAMPAIGN_DESIGN.md`
+*   **Equipment Sets** — 6 slots, 5 rarities, crit/DR, named sets (Scavenger / Fireteam Echo / Last Survivor); press **E**
+*   **Hireable Heroes** — Scrap-hire Rex, Mira, Doc, Nix, Kira, Voss with role kits and gold nameplates
+*   **Immersion** — WebGPU blood-edge injury overlay, menu metal gunshots, boot progress/tips, coherent mobile touch
+*   **Codebase Audit** — 40,910 functional LOC across 140 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
+
+---
+
+### **🆕 V0.9.2 ALPHA — Campaign & Mobile Update**
+
+*   **Campaign Act 1 Zones 1–3** — Crash Site → Maintenance Tunnels → Switching Yard; extraction objectives, zone transitions, arcade-parity spawns
+*   **Equipment System** — 6 slots, 5 rarities, crit/DR rolls, inventory 24; three named sets with 2/4/6-piece bonuses (press **E**)
+*   **Hireable Heroes** — Rex, Mira, Doc, Nix, Kira, Voss hired with scrap; role-tuned AI companions + gold nameplates
+*   **Mobile Touch Wired** — Virtual pad aim/fire/reload/melee/grenade/weapon/E/flashlight; safe-area, HUD taps, Capacitor immersive focus
+*   **Boot Loader Upgrade** — Progress bar, rotating tips, 12s failsafe, WebGPU accent; blood-edge injury overlay; menu metal gunshots
+*   **Codebase Audit** — 40,910 functional LOC across 140 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
+*   **V0.9.1 Systems Still Live** — 93 skills, 15 synergies, 6 class trees, corrupted wildcards, Splitter/Siren, mobile 2×2 level-up
+*   **V0.9.0 / V0.8.4 Still Live** — Lazy WebGPU/Socket.IO, smooth game entry, wave chaos, scrap shrine
+
+---
+
+### **V0.9.1 ALPHA — Skills & Survivability Update**
 
 *   **Mega Skill Expansion** — 93 total skills: 63 flat picks + 30 tree skills across 6 class paths (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow)
 *   **15 Skill Synergies** — Combo unlock popups when skill pairs meet (e.g. Frozen Fury, Midnight Reaper)
@@ -18,7 +41,6 @@
 *   **New Enemies** — Splitter carrier (2 fast Shard minions on death, wave 6+) and Siren support zombie (wave 8+ horde scream + aim jitter)
 *   **Zombie Face QoL** — Procedural face profiles, pupil styles, gaze-tracking eyes, wounds/drool across major zombie variants
 *   **Boot Hardening** — Safe `localStorage` reads on startup; repaired `test-syntax.ps1` for all JS modules
-*   **Codebase Audit** — 34,773 functional LOC across 125 maintained files (`tools/count_functional_loc.py`)
 *   **V0.9.0 Systems Still Live** — Main-menu smoothness, lazy WebGPU/Socket.IO, startup metrics, smooth game entry, original 3 class trees, music balance (default 25%)
 *   **V0.8.4 Systems Still Live** — Wave Chaos mutators, Scrap Shop Shrine, MP3 soundtrack, Phase 4 `GameLoopSystem`, controls-in-settings
 
@@ -49,14 +71,14 @@
 
 #### **🧟 Enemy Variety**
 
-**8 Zombie Types:** Normal, Fast Runners, Exploding Boomers, Armored Tanks, Ghost, Spitter, Flying, Crawler
+**11+ Zombie Types:** Normal, Fast Runners, Exploding Boomers, Armored Tanks, Ghost, Spitter, Flying, Crawler, Blight, Splitter (+ Shard minions), Siren
 
 *   Boss waves (every 5 waves)
 *   Day/Night cycle (zombies 20% faster at night)
 *   Environmental hazards (acid pools)
 *   Crowd control (bullets slow zombies)
 *   Progressive difficulty scaling
-*   8 Normal zombie visual variants with animated movement
+*   Procedural face QoL + torso overlays on major variants
 
 #### **💪 Power-Ups & Systems**
 
@@ -67,14 +89,15 @@
 *   Sprint system with stamina management
 *   Scrap currency from kills + wave-break Scrap Shop shrines (V0.8.4+)
 *   Wave Chaos mutators and escalating spawn pacing (V0.8.4+)
-*   16-skills progression system with 3-choice level-ups
+*   **93 skills** across 6 class trees + 15 synergies; corrupted wildcards; 4-card level-ups / 10 slots / reroll
+*   Equipment crates (6 slots, set bonuses) + hireable heroes with scrap
 *   XP gain from zombie kills with kill streak multipliers
 
 #### **👥 Multiplayer & Co-op**
 
 *   Local co-op (4-player shared-screen)
 *   Online multiplayer lobby (cloud-hosted server)
-*   AI Squad Mode (up to 3 AI companions)
+*   AI Squad Mode (up to 3 AI companions) + scrap-hire heroes
 *   Controller support (Xbox/gamepad with analog sticks)
 *   Lobby chat system
 *   Rank progression system
@@ -84,13 +107,13 @@
 
 **Graphics:**
 *   WebGPU rendering with Canvas 2D fallback
-*   GPU-accelerated shaders and bloom post-processing
+*   GPU-accelerated shaders, bloom, blood-edge injury overlay
 *   Screen shake, particle effects, blood splatter
 *   Muzzle flashes, bullet trails, shell ejection
 *   Floating damage numbers, critical hit indicators
 *   Hit markers, spawn indicators, off-screen indicators
 *   Reload progress bars, modern "Glass Tech" HUD
-*   Horror atmosphere with animated backgrounds
+*   Horror atmosphere with animated backgrounds + menu metal gunshots
 
 **Audio:**
 *   Licensed MP3 gameplay playlist (two-track rotation) + menu theme
@@ -102,8 +125,9 @@
 
 #### **⚙️ Gameplay Systems**
 
-*   Campaign Mode with cinematic intro
+*   Campaign Act 1 Zones 1–3 (Crash Site → Tunnels → Switching Yard) + cinematic intro
 *   Flashlight system (F key toggle)
+*   Equipment panel (**E**) + Heroes tab
 *   Comprehensive settings panel (Video, Audio, Gameplay, Controls)
 *   UI scaling system (50-150% accessibility)
 *   Fully customizable controls (keyboard and controller rebinding)
@@ -125,6 +149,7 @@
 *   **1-8**: Switch Weapon
 *   **Scroll Wheel**: Cycle Weapons (toggleable)
 *   **Shift**: Sprint
+*   **E**: Equipment / Heroes panel (also scrap shrine buy when near pedestal)
 *   **F**: Flashlight
 *   **ESC**: Pause
 
@@ -149,7 +174,7 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.9.1 ALPHA (Vanilla JS + HTML5 Canvas)
+*   **Engine:** ZOMBS-XFX-NGIN V0.9.2 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
@@ -159,6 +184,6 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.1 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.2 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*

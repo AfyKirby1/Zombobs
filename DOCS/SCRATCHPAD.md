@@ -2,6 +2,92 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Boot Loader — WebGPU Buffer/Lag Hardening (2026-07-09) ✅ COMPLETE
+- **Problem**: Overlay bar froze during WGSL compile / buffer alloc; dismiss could flash before GPU present settled.
+- **Done**: `BootLoader.js` — progress creep to next-stage ceiling, stall soft/hard (5s/10s), elapsed + %, 3-frame settle + min 500ms display, failsafe 20s, `reportWebGPUBootPhase()`.
+- **Done**: `WebGPURenderer.init({ onPhase })` reports adapter/device/shaders/pipelines/done; `main.js` wires phases into boot UI.
+- **Done**: `index.html` + `style.css` — spinner, bar sheen, percent, elapsed, stall accent; reduced-motion safe.
+- **Verify**: Hard refresh `index.html` with WebGPU on — bar creeps during compile, stall copy if slow, fade only after settle; Canvas2D path still dismisses after first frame.
+- **Next**: Optional `npm run sync:web` for mobile mirror.
+
+### Campaign Alive Coverage Pass (2026-07-09) ✅ COMPLETE
+- **P0 Feedback**: All MapLoader toasts → `triggerWaveNotification()` (life fixed); campaign kind skips arcade "Get ready…" subtitle; radio line as subtitle.
+- **P0 Quests**: Party-full keeps NPC (no `recruited` burn); block new quest while active; kill progress via `run.quest.progress`; zone-leave auto-abandon incomplete quest.
+- **P1 Presence**: Gamepad `interact.pressed` hold for couplers/terminal; `CompanionDialogue.draw()` wired; NPC-anchored speech bubbles; survivor `lines.complete` on recruit.
+- **P1 Transition**: 1.2s zone interstitial overlay (`drawCampaignTransition`) before `_loadNextCampaignZone`.
+- **P2 Atmosphere**: `RADIO_BEATS` table + static SFX; `fogAlpha` veil; lights-out flicker; steam hiss; coupler/gate/defend/warden/act stingers; 2/3 coupler rush; hold interrupt on damage.
+- **P2 Casting**: No arcade boss waves in campaign; zone spawn bias (Z2 crawler/fast, Z3 spitter/siren, Z4 armored).
+- **P3 Fantasy**: `ZONE FAIL` + **Retry Zone**; `campaignVictory()` separate from death; achievements **Echo Actual**, **Warden Slayer**, **Fireteam**.
+- **Syntax**: `test-syntax.ps1` all green.
+- **Manual playtest checklist**: Z1→Z4 full clear; 2+ recruits; party-full consolation then recruit when slot opens; mid-quest extract abandon toast; death→retry same zone; act clear achievements; gamepad hold-E on Z3 couplers + Z4 terminal.
+
+### Local Server Launcher Polish (2026-07-09) ✅ COMPLETE
+- **Done**: Rewrote `launch.ps1` — version from `LOCAL_SERVER/package.json`, Node >=18 gate, port override (`-Port` / `$env:PORT` / `$env:ZOMBOBS_PORT`), interactive `-KillPort`, health-gated browser open (`-NoBrowser`), LAN/dashboard URLs, cwd pinned to repo root, npm stderr no longer fatal under `$ErrorActionPreference Stop`.
+- **Done**: `launch.bat` forwards args + clearer failure exit codes.
+- **Docs**: `SERVER_SETUP.md` paths fixed (`LOCAL_SERVER` / `huggingface-space-SERVER`); HF README path fix; `AGENTS.md` + `VERSION_UPDATE_CHECKLIST` no longer require hardcoding launcher version.
+- **Verify**: `.\launch.ps1 -NoBrowser -Port 3999` → server READY on 3999.
+
+### Achievements + Gallery Visual Redesign (2026-07-09) ✅ COMPLETE
+- **Done**: Achievements overlay — completion ring + stat pills, category rail with icons/counts, status chips (All/Unlocked/In Progress), horizontal cards with desc/reward/date, ambience vignette/scanlines, blood-red Creepster title.
+- **Done**: Gallery — tabbed Zombies/Weapons/Pickups, threat/tier/rarity tags, rounded hover cards, 2–3 col grid, Laser + Warden entries, scroll fade + fixed scroll wiring on `galleryScreen`.
+- **Wiring**: `main.js` tab clicks + wheel scroll to `galleryScreen`; open gallery resets tab/scroll.
+- **Syntax**: `node --check` on AchievementScreen / GalleryScreen / main.js green.
+- **Mobile**: `npm run sync:web` after polish.
+- **Verify**: Main Menu → Achievements (filter categories/chips) → Gallery (tabs, scroll, hover, Back).
+
+### Act 1 Survivor Quests + Ante/QoL (2026-07-09) ✅ COMPLETE
+- **Done**: World survivors per zone — meet (E) → quest → recruit teammate via `CompanionSystem.recruitSurvivor()`.
+  - Z1 **Rook** (kill 8), Z2 **Pip** (reach wave 2), Z3 **June** (bring 30 scrap), Z4 **Holt** (kill 12).
+- **Done**: `js/core/survivorDefinitions.js`; map `survivors[]`; MapLoader NPC draw/talk/quest/recruit; party-full → scrap consolation.
+- **Done**: Ante — extract tax (panic pack, must thin to ≤2 before clear); hotter zone starts (`zombiesPerWave` scales by zone); Z4 defend 50s.
+- **Done**: QoL — companions park at next-zone spawn; `campaignSurvivorRun` persists across zones; HUD E prompts for talk/recruit; quest-ready toast.
+- **Edge cases**: party full, scrap quest pay-on-recruit, already-recruited skip spawn, extract tax before zone clear, survivor bubble expiry.
+- **Syntax**: `test-syntax.ps1` green.
+- **Verify**: Campaign — talk Rook → kill 8 → recruit; clear extract tax; Pip/June/Holt; party of 4 → consolation scrap.
+
+### Act 1 Finale Implementation — Z1–Z4 Playable (2026-07-09) ✅ COMPLETE
+- **Done (code)**: Bible §17 build order shipped:
+  1. **Z3 power couplers** — Hold E on N/M/S `power` triggers; gate extract gated until 3/3; `switchingYard.nextMapId = 'control_tower'`.
+  2. **Z2 steam + lights-out** — `hazards[]` steam jets (DoT + telegraph); `scriptedEvents` lights_out at wave 2 (flashlight force + dark veil).
+  3. **Z1 debris-clear** — wave 2 unlocks north path VFX (`_cleared` walls) + extract beacon.
+  4. **Z4 Control Tower** — `js/maps/controlTower.js` (2000×2200 nested rings); registry in `MapLoader`.
+  5. **Warden** — `js/entities/WardenBoss.js` (3 phases, slam/scream/adds/blackout); spawn after 45s defend.
+  6. **Act Clear** — hack Hold E → defend bar → Warden kill → `campaignActClear` + **ACT 1 CLEAR** game-over title.
+- **MapLoader**: `update()` loop — hazards, interact holds, defend spawns, warden death; trigger types `power` / `hack` / `defend`; Hold-E prompt in objective banner.
+- **Wiring**: `gameState.campaignScript` / `campaignActClear`; E-key interact vs equipment; finale wave lock; warden in boss kill hooks.
+- **Syntax**: `test-syntax.ps1` all green.
+- **Docs**: This entry + CHANGELOG Unreleased + SUMMARY + CAMPAIGN_DESIGN stubs + ARCHITECTURE + AGENTS + My_Thoughts.
+- **Verify**: Campaign → Z1 extract → Z2 steam/lights → Z3 power 3/3 → Z4 hack/defend/Warden → ACT 1 CLEAR.
+- **Next**: Playtest balance (Warden HP / defend duration).
+[AMENDED 2026-07-09]: Gallery now includes The Warden + Laser; Achievements/Gallery UI redesigned — see task above.
+
+### V0.9.2 Modality Pass (2026-07-09) ✅ COMPLETE
+- **Done**: Bump **V0.9.2 ALPHA** — *Campaign & Mobile Update* per `VERSION_UPDATE_CHECKLIST.md`: `constants.js`, `index.html`, `landing.html`, `README.md`, `ITCH/page_description.md`, `launch.ps1`, server packages, `AGENTS.md`, `CHANGELOG`, `SUMMARY`, `My_Thoughts`, checklist amend.
+- **Done**: `npm run sync:web` → `mobile/www`.
+- **Verify**: 🎃 badge + news ticker + patch notes modal show V0.9.2 with `CURRENT` tag.
+
+### Website + Docs Public Copy Refresh (2026-07-09) ✅ COMPLETE
+- **Done**: Brought README / `landing.html` / `ITCH/page_description.md` / `mobile/www/landing.html` in line with v0.9.2 systems (Campaign Z1–3, equipment sets, hireable heroes, immersion polish) + **40,910** LOC / **140** files.
+- **README**: Badge → **0.9.2 ALPHA**; V0.9.2/0.9.1/0.9.0/0.8.4 What's New blocks.
+- **Landing/itch**: Hero copy, feature cards, changelog side panel, core features, enemy/skill counts corrected (8 weapons, 11+ zombies, 93 skills).
+- **Status docs**: This entry + SUMMARY/CHANGELOG annotate; prior audit/AGENTS/ARCHITECTURE/CAMPAIGN_DESIGN work retained.
+- **Next**: Paste itch description to store page when publishing build.
+
+### Act 1 Zones 1–4 Design Bible (2026-07-09) ✅ COMPLETE (docs)
+- **Done**: Expanded `DOCS/CAMPAIGN_DESIGN.md` §5–§17 — full inward expansion of Crash Site / Tunnels / Switching Yard / Control Tower (no Act 2). Includes feeling arc, Fireteam Echo hooks, enemy casting matrix, per-zone beat scripts, VO, encounter recipes, Z3 power-coupler fantasy, Z4 Warden boss + hack/defend, build order.
+- **Scope lock**: Stay in Railyard / Outskirts only.
+- **Next (code)**: Priority from bible §17 — (1) Z3 power couplers (2) Z2 steam + lights-out (3) Z1 debris-clear VFX (4) Z4 map (5) Warden (6) Act Clear UI.
+- [AMENDED 2026-07-09]: §17 code shipped — see **Act 1 Finale Implementation** active task above.
+
+### Codebase Audit + Docs Refresh (2026-07-09) ✅ COMPLETE
+- **Done**: Re-ran `python tools/count_functional_loc.py` + `test-syntax.ps1`.
+- **Result**: **40,910** functional LOC across **140** maintained files (**36,106** JS LOC / **103** JS files). Prior 2026-07-05 audit was 34,773 / 125 (JS 30,237 / 88).
+- **Syntax**: All `js/**/*.js` pass `node --check`.
+- **Docs updated**: `SUMMARY`, `CHANGELOG` Unreleased, `ARCHITECTURE` (MapLoader multi-zone), `AGENTS.md` maps/systems, `SBOM` last-audited stamp, landing/README/itch LOC copy.
+- **Gap closed in CHANGELOG**: Blood-edge WebGPU injury overlay; `MenuMetalGunshotEffect`; hero role nameplate (`isHero` / `heroRole`).
+- **Out-of-Scope Observations**: `SUMMARY` file-structure tree still lists pre-expansion modules (annotate later); `mobile/www` LOC excluded by audit tool (generated) — re-sync before Android if source drifted. [AMENDED 2026-07-09]: Zone 4 + Warden now playable (see Act 1 Finale task).
+- **Next**: Optional v0.9.2 modality bump when shipping Unreleased block; playtest Z1→Z3 + hire hero + equipment sets.
+
 ### Massive Expansion — Equipment Sets + Heroes + Zone 3 (2026-07-09) ✅ COMPLETE
 - **Done**: Equipment depth — 10 names/slot, crit/DR bonuses, 3 named sets (Scavenger / Fireteam Echo / Last Survivor) with 2/4/6-piece bonuses; inventory 24; boss drop bias; set UI in Equipment screen.
 - **Done**: Guild Wars-style heroes — `js/core/heroDefinitions.js` (6 hireable heroes); `CompanionSystem.hireHero()` spends scrap, spawns AI with role kits (warrior/ranger/medic/scavenger); medic heal + scavenger scrap aura; Equipment screen **HEROES** tab.
@@ -37,7 +123,7 @@
 - **Verify**: DevTools phone UA — move/aim/fire, R/G/M/E/W±/🔦, HUD weapon tap, grenade throw mode, scrap E near shrine, pause (HUD only), rotate/background no stuck sticks. Then `cd mobile && npm run sync:web` before Android build.
 
 ### Boot Loader Visual + System Upgrade (2026-07-09) ✅ COMPLETE
-- **Done**: Extended `js/core/BootLoader.js` — staged progress bar (bootstrap → systems → WebGPU → first frame), rotating tips, `GAME_VERSION` chip, 12s failsafe timeout.
+- **Done**: Extended `js/core/BootLoader.js` — staged progress bar (bootstrap → systems → WebGPU → first frame), rotating tips, `GAME_VERSION` chip, 12s failsafe timeout. [AMENDED 2026-07-09]: Superseded by **WebGPU Buffer/Lag Hardening** — creep, stall UI, phase callbacks, 3-frame settle, 20s failsafe.
 - **Done**: Upgraded `#boot-overlay` in `index.html` — Creepster title glow, progress bar, version/WebGPU chips, tip line, vignette + grain (critical inline CSS).
 - **Done**: Mirrored polish in `css/style.css` — abyssal gradient, WebGPU accent bar, `prefers-reduced-motion`.
 - **Done**: Wired `advanceBootStage()` from `js/main.js` at bootstrap + WebGPU init sites.
@@ -121,6 +207,7 @@
 ### Functional LOC Audit Tool (2026-07-05) ✅ COMPLETE
 - **Done**: Added `tools/count_functional_loc.py` to count maintained functional source lines while excluding docs, assets, generated mobile `www`, dependencies, IDE folders, vendored/minified bundles, and duplicate `Zombobs/` snapshots.
 - **Result**: `34,773` functional LOC across `125` files (`30,237` JS LOC across `88` JS files).
+- [AMENDED 2026-07-09]: Re-audit → **40,910** / **140** files (**36,106** JS / **103**). See Active Tasks audit entry.
 - **Docs/Website**: Updated `landing.html`, `README.md`, `SUMMARY.md`, and `CHANGELOG.md` to mention the audited large vanilla codebase.
 - **Verify**: `python tools/count_functional_loc.py`.
 

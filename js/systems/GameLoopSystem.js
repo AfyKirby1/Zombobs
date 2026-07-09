@@ -34,7 +34,7 @@ import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
 import { equipmentSystem } from './EquipmentSystem.js';
-import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawFpsCounter } from '../utils/drawingUtils.js';
+import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
  * GameLoopSystem — per-frame gameplay update and world/HUD rendering.
@@ -112,8 +112,15 @@ export class GameLoopSystem {
                 if (!isCampaignMode(gameState)) {
                     propSpawnSystem.update(gameState, localPlayer);
                 } else if (mapLoader.isLoaded()) {
-                    mapLoader.updateTriggers();
+                    mapLoader.update(16.67);
                     if (gameState.campaignZoneCleared) {
+                        const tr = gameState.campaignTransition;
+                        if (tr?.active && Date.now() < tr.until) {
+                            return;
+                        }
+                        if (tr?.active) {
+                            gameState.campaignTransition.active = false;
+                        }
                         this.onZoneComplete();
                         return;
                     }
@@ -314,7 +321,11 @@ export class GameLoopSystem {
         this._updateEquipmentPickups();
 
         if (gameState.zombies.length === 0 && gameState.gameRunning && !gameState.isSpawningWave) {
-            if (!gameState.waveBreakActive) {
+            const script = gameState.campaignScript;
+            const finaleLock = script && (script.defendActive || script.wardenSpawned || script.actClear || gameState.campaignActClear);
+            if (finaleLock) {
+                // Hack/defend/Warden owns spawn — don't advance arcade waves
+            } else if (!gameState.waveBreakActive) {
                 gameState.waveBreakActive = true;
                 const breakDuration = getWaveBreakDuration(gameState.wave, {
                     fastClear: wasFastWaveClear(gameState.waveStartTime),
@@ -793,6 +804,7 @@ export class GameLoopSystem {
         }
         drawWaveNotification();
         drawCampaignObjective();
+        drawCampaignTransition();
         drawWaveBreak();
         drawFpsCounter();
 

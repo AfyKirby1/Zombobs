@@ -12,6 +12,8 @@ import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
 import { pickupSpawnSystem } from '../systems/PickupSpawnSystem.js';
+import { equipmentSystem } from '../systems/EquipmentSystem.js';
+import { EquipmentPickup } from '../entities/EquipmentPickup.js';
 import {
     triggerExplosion,
     updateScoreMultiplier,
@@ -205,8 +207,12 @@ export function handleBulletZombieCollisions() {
                         // const zombieY = zombie.y;
                         gameState.zombies.splice(zombieIndex, 1);
                         pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
+                        const equipmentItem = equipmentSystem.tryDropFromZombie(zombie);
+                        if (equipmentItem) {
+                            gameState.equipmentPickups.push(new EquipmentPickup(zombieX, zombieY, equipmentItem));
+                        }
 
-                        if (zombie.type === 'boss' || zombie === gameState.boss) {
+                        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                             gameState.bossActive = false;
                             gameState.boss = null;
                         }
@@ -222,7 +228,7 @@ export function handleBulletZombieCollisions() {
                         shootingPlayer.consecutiveKills++;
 
                         // Add bonus for boss zombies
-                        if (zombie.type === 'boss' || zombie === gameState.boss) {
+                        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                             shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
                         }
 
@@ -393,8 +399,9 @@ export function handleBulletZombieCollisions() {
                 // Critical hit chance (base ~3.33%, plus player crit chance)
                 const baseCritChance = 0.0333333333;
                 const playerCritChance = shootingPlayer.critChance || 0;
+                const equipmentCrit = shootingPlayer.equipmentCritChance || 0;
                 const borrowedCrit = getBorrowedTimeCritBonus(shootingPlayer);
-                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance + borrowedCrit);
+                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance + equipmentCrit + borrowedCrit);
                 const isCrit = Math.random() < totalCritChance;
 
                 // Lucky Strike chance (15% for double damage)
@@ -422,6 +429,10 @@ export function handleBulletZombieCollisions() {
                     // Remove zombie from array first
                     gameState.zombies.splice(zombieIndex, 1);
                     pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
+                    const equipmentItem = equipmentSystem.tryDropFromZombie(zombie);
+                    if (equipmentItem) {
+                        gameState.equipmentPickups.push(new EquipmentPickup(zombieX, zombieY, equipmentItem));
+                    }
 
                     // Handle Headshot Decapitation & Gore
                     if (isHeadshot) {
@@ -441,7 +452,7 @@ export function handleBulletZombieCollisions() {
                     }
 
                     // Check if boss was killed
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         gameState.bossActive = false;
                         gameState.boss = null;
                     }
@@ -469,7 +480,7 @@ export function handleBulletZombieCollisions() {
                     shootingPlayer.consecutiveKills++;
 
                     // Add bonus for boss zombies
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
                     }
 

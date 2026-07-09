@@ -106,19 +106,23 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Exports**:
 - `initBootLoader()` — Bind `#boot-overlay` DOM refs
-- `setBootStatus(text)` — Update status label (`Loading game`, `Initializing GPU`)
+- `setBootStatus(text)` / `setBootSubstatus(text)` / `setBootProgress(percent)` / `advanceBootStage(id)`
 - `requireWebGPUBootGate()` / `skipWebGPUBootGate()` / `notifyWebGPUBootReady()` — WebGPU readiness gate
 - `notifyBootFirstFrame()` — Mark first engine draw complete
-- `tryDismissBootOverlay()` — Fade out and remove overlay when all gates pass
+- `reportWebGPUBootPhase(phase)` — Map `adapter|device|shaders|pipelines|done` → stages
+- `tryDismissBootOverlay()` — Begin settle (3 rAF frames) then fade/remove when gates pass
 - `isBootOverlayDismissed()` — Query dismiss state
 
 **Boot Gates**:
 1. **First frame** — `gameEngine.draw()` calls `notifyBootFirstFrame()` after menu render
 2. **WebGPU** — Required when `video.webgpuEnabled` and `navigator.gpu` exist; skipped otherwise
+3. **Settle** — After both gates: 3 animation frames + min 500ms display before fade (masks first GPU present hitch)
+
+**Robustness** [AMENDED 2026-07-09]: Progress creep between stages; stall soft/hard UI at 5s/10s idle; 20s failsafe force-dismiss; elapsed + percent readout.
 
 **Integration**:
-- `#boot-overlay` in `index.html` with inline critical CSS (spinner + ZOMBOBS title before `style.css`)
-- `js/main.js` starts `scheduleWebGPUInit()` at bootstrap (parallel with game loop)
+- `#boot-overlay` in `index.html` with inline critical CSS (title + spinner + bar before `style.css`)
+- `js/main.js` starts `scheduleWebGPUInit()` at bootstrap; passes `onPhase` into `WebGPURenderer.init()`
 - Perf marks: `zombobs:init-to-first-draw` measured on dismiss
 
 **Dependencies**: `#boot-overlay` DOM in `index.html`, `css/style.css` fade transition (`.boot-overlay--done`)
@@ -188,6 +192,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - ZombobsFX initialized during WebGPURenderer.init() and rendered in render() loop
 - **[AMENDED 2026-06-26] Lazy load + warm-up**: `WebGPURenderer` module loads via dynamic `import()` — not at menu boot. `scheduleWebGPUInit()` runs during idle menu warm-up (`requestIdleCallback`) or on first Play via `prepareGameSession()`. `#gpuCanvas` visibility toggled in `updateGpuCanvasVisibility()` with 450ms CSS opacity fade-in (`css/style.css`).
 - **[AMENDED 2026-07-06] Boot overlay gate**: `scheduleWebGPUInit()` also starts at bootstrap (behind `#boot-overlay` via `BootLoader.js`). Overlay dismisses only after first menu frame **and** WebGPU init (or gate skipped when disabled/unavailable). Idle warm-up retains ground-texture preload only.
+- **[AMENDED 2026-07-09] Boot buffer/lag hardening**: `init({ onPhase })` callbacks drive staged boot UI during adapter/device/shader/pipeline work; progress creep + stall messaging mask compile stalls; 3-frame settle after gates before fade.
 
 #### ZombobsFX.js
 **Purpose**: 100k particle spore cloud background effect with mouse interaction
@@ -1186,27 +1191,35 @@ flowchart TD
 **Dependencies**: `core/constants.js` (CHUNK_SIZE, PROP_SPAWN_DENSITY, etc.), `utils/ChunkManager.js`, `entities/Prop.js`
 
 #### MapLoader.js (v0.9.1+ campaign)
-**Purpose**: Loads static campaign zone geometry (walls, decals, props, triggers) for constrained maps vs infinite arcade world
+**Purpose**: Loads static campaign zone geometry (walls, decals, props, triggers, hazards) for constrained maps vs infinite arcade world
 
 **Exports**: `MapLoader` class, `mapLoader` singleton
 
 **Methods**:
-- `load(mapId)` / `unload()` — activate or clear campaign map (`crash_site` registry in `js/maps/crashSite.js`)
+- `load(mapId)` / `unload()` — activate or clear campaign map; resets `campaignScript`
+- `update(dt)` — per-frame: steam hazards, lights-out/debris scripts, Hold-E power/hack, defend timer/spawns, Warden death → Act Clear
+- `tryInteract(player)` / `getInteractPrompt(player)` — Hold E on `power` / `hack` volumes
 - `getSpawn()` / `getBounds()` / `getWalls()` — map metadata and collision data
+- `getNextMapId()` — zone chain (`nextMapId` on map defs)
 - `spawnMapProps(gameState)` — place hand-authored `Prop` instances from map definition
-- `applyAmbiance()` — force night / zone mood flags on `gameState`
+- `applyAmbiance()` — force night / zone mood; locks `dayNightCycle.startTime` when `forceNight`
 - `resolvePosition(x, y, radius)` — clamp to map bounds + resolve circle-vs-AABB walls
-- `updateTriggers()` — fire objective volumes when player enters
-- `render(viewport)` — draw walls and environmental decals (fire, smoke, craters)
-- `getEdgeSpawnPosition(localPlayer)` — campaign zombie spawn points on map perimeter
+- `updateTriggers()` — objective / extraction (gated by power/debris where required)
+- `render(viewport)` — walls, decals (fire/smoke/crater/floodlight/relay), hazards, interactables, lights-out veil, beacons
+- `getEdgeSpawnPosition(localPlayer)` — legacy perimeter spawn helper (campaign prefers arcade-parity off-screen spawns)
 
 **Features**:
 - ES module map data (no fetch/build step) — works on `file://` and itch.io
+- Registry: `crash_site` → `maintenance_tunnels` → `switching_yard` → `control_tower`
+- Trigger types: `objective`, `extraction`, `power`, `hack`, `defend`
 - Shared collision via `js/utils/mapCollisionUtils.js` (player + zombie resolve)
-- Campaign objective banner via `drawCampaignObjective()` in `drawingUtils.js`
-- Wired from `GameStateManager.startGame()` when `gameMode === 'campaign'`
+- Campaign objective banner + Hold-E prompt via `drawCampaignObjective()` in `drawingUtils.js`
+- Zone transitions via `GameStateManager.zoneComplete()` / `_loadNextCampaignZone()`; Act Clear when no `nextMapId` + `campaignActClear`
+- Wired from `GameStateManager.startGame()` when `gameMode === 'campaign'`; `GameLoopSystem` calls `mapLoader.update()`
 
-**Dependencies**: `js/maps/crashSite.js`, `utils/mapCollisionUtils.js`, `entities/Prop.js`, `core/gameState.js`
+**Dependencies**: `js/maps/crashSite.js`, `maintenanceTunnels.js`, `switchingYard.js`, `controlTower.js`, `entities/WardenBoss.js`, `utils/mapCollisionUtils.js`, `entities/Prop.js`, `core/gameState.js`
+
+[AMENDED 2026-07-09]: Multi-zone chain through Z4; power/hack/defend; steam + lights-out; Warden + Act Clear. Equipment/heroes live outside MapLoader.
 
 #### PropRenderSystem.js (v0.8.1.2)
 **Purpose**: Handles rendering of world props with viewport culling
@@ -1892,24 +1905,26 @@ This hybrid approach provides:
 - Assign `gameEngine.update` / `gameEngine.draw` callbacks
 - Handle menu button routing (`handleMenuInteraction`)
 - WebGPU boot and settings change listeners
-- **Boot overlay (2026-07-06)**: `BootLoader.js` gates `#boot-overlay` until first menu frame + WebGPU ready
+- **Boot overlay (2026-07-06)** [AMENDED 2026-07-09]: `BootLoader.js` gates `#boot-overlay` until first menu frame + WebGPU ready; progress creep, stall UI, phase callbacks, 3-frame settle, 20s failsafe
 - Thin delegates: `updatePlayers()`, `drawPlayers()`, pause/restart/start
 - **Game session entry (2026-06-26)**: `warmSessionResourcesInBackground()` (idle ground-texture warm-up), `prepareGameSession()` + async `startGame()` (await GPU when needed), `updateGpuCanvasVisibility()` with opacity fade-in
 
-**Boot + Game Session Entry Flow** [2026-07-06]:
+**Boot + Game Session Entry Flow** [2026-07-06] [AMENDED 2026-07-09]:
 
 ```mermaid
 flowchart TD
     A[index.html boot overlay visible] --> B[main.js bootstrap]
     B --> C[scheduleWebGPUInit parallel]
     B --> D[gameEngine.start]
+    C --> C1[onPhase adapter device shaders pipelines]
     D --> E[draw main menu behind overlay]
     E --> F{first frame + WebGPU ready?}
     C --> F
-    F -->|yes| G[BootLoader dismiss overlay fade]
+    F -->|yes| G[3-frame settle + min 500ms]
     F -->|WebGPU off| G
-    G --> H[Main menu interactive]
-    H --> I{User clicks Play}
+    G --> H[BootLoader fade dismiss overlay]
+    H --> I[Main menu interactive]
+    I --> J{User clicks Play}
     I --> J{isWebGPUActive?}
     J -->|yes| K[GameStateManager.startGame]
     J -->|no| L[GameHUD.beginSessionPrep overlay]

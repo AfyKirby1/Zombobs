@@ -212,7 +212,7 @@ export function handleBulletZombieCollisions() {
                             gameState.equipmentPickups.push(new EquipmentPickup(zombieX, zombieY, equipmentItem));
                         }
 
-                        if (zombie.type === 'boss' || zombie === gameState.boss) {
+                        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                             gameState.bossActive = false;
                             gameState.boss = null;
                         }
@@ -228,7 +228,7 @@ export function handleBulletZombieCollisions() {
                         shootingPlayer.consecutiveKills++;
 
                         // Add bonus for boss zombies
-                        if (zombie.type === 'boss' || zombie === gameState.boss) {
+                        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                             shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
                         }
 
@@ -452,7 +452,7 @@ export function handleBulletZombieCollisions() {
                     }
 
                     // Check if boss was killed
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         gameState.bossActive = false;
                         gameState.boss = null;
                     }
@@ -480,7 +480,7 @@ export function handleBulletZombieCollisions() {
                     shootingPlayer.consecutiveKills++;
 
                     // Add bonus for boss zombies
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         shootingPlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
                     }
 

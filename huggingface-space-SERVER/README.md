@@ -18,8 +18,8 @@ This directory contains the server files needed to deploy the Zombobs multiplaye
 ## Important Notes
 
 - The game client MUST use the **Direct URL** (`.hf.space`) to avoid connection errors (302 Redirects/CORS) caused by the Hugging Face iframe wrapper.
-- These files are **separate** from the local development server in `../server/`
-- The local server runs on port 3000
+- These files are **separate** from the local development server in `../LOCAL_SERVER/`
+- The local server runs on port 3000 (`launch.bat` / `launch.ps1` from repo root)
 - The Hugging Face server runs on port 7860
-- Both servers have the same functionality, just different ports
+- Both servers share the same Socket.IO lobby protocol; HF adds MongoDB persistence + compression
 

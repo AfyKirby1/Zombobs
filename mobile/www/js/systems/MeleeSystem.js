@@ -67,7 +67,7 @@ export class MeleeSystem {
                     gameState.zombies.splice(zombieIndex, 1);
 
                     // Check if boss was killed
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         gameState.bossActive = false;
                         gameState.boss = null;
                     }

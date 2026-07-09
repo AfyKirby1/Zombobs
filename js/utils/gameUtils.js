@@ -124,7 +124,7 @@ export function triggerDamageIndicator() {
     gameState.damageIndicator.intensity = 1.0;
 }
 
-export function triggerWaveNotification(customText = null, customLife = null) {
+export function triggerWaveNotification(customText = null, customLife = null, subtitle = null, kind = null) {
     gameState.waveNotification.active = true;
     if (customText) {
         gameState.waveNotification.text = customText;
@@ -142,6 +142,8 @@ export function triggerWaveNotification(customText = null, customLife = null) {
         gameState.waveNotification.text = `Wave ${gameState.wave} Starting!`;
     }
     gameState.waveNotification.life = customLife ?? gameState.waveNotification.maxLife;
+    gameState.waveNotification.subtitle = subtitle;
+    gameState.waveNotification.kind = kind || (customText ? 'campaign' : 'arcade');
 }
 
 export function triggerMuzzleFlash(x, y, angle) {

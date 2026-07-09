@@ -33,6 +33,7 @@ import { mapLoader } from './MapLoader.js';
 import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
+import { equipmentSystem } from './EquipmentSystem.js';
 import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
@@ -111,7 +112,7 @@ export class GameLoopSystem {
                 if (!isCampaignMode(gameState)) {
                     propSpawnSystem.update(gameState, localPlayer);
                 } else if (mapLoader.isLoaded()) {
-                    mapLoader.updateTriggers();
+                    mapLoader.update(16.67);
                     if (gameState.campaignZoneCleared) {
                         this.onZoneComplete();
                         return;
@@ -310,9 +311,14 @@ export class GameLoopSystem {
         handlePlayerZombieCollisions();
         pickupSpawnSystem.updateScrapPickups(gameState, now);
         handlePickupCollisions();
+        this._updateEquipmentPickups();
 
         if (gameState.zombies.length === 0 && gameState.gameRunning && !gameState.isSpawningWave) {
-            if (!gameState.waveBreakActive) {
+            const script = gameState.campaignScript;
+            const finaleLock = script && (script.defendActive || script.wardenSpawned || script.actClear || gameState.campaignActClear);
+            if (finaleLock) {
+                // Hack/defend/Warden owns spawn — don't advance arcade waves
+            } else if (!gameState.waveBreakActive) {
                 gameState.waveBreakActive = true;
                 const breakDuration = getWaveBreakDuration(gameState.wave, {
                     fastClear: wasFastWaveClear(gameState.waveStartTime),
@@ -351,6 +357,26 @@ export class GameLoopSystem {
         }
 
         setGameMusicIntensity(targetIntensity);
+    }
+
+    _updateEquipmentPickups() {
+        const player = gameState.players[0];
+        if (!player || player.health <= 0) return;
+
+        for (let i = gameState.equipmentPickups.length - 1; i >= 0; i--) {
+            const pickup = gameState.equipmentPickups[i];
+            pickup.update();
+
+            const dx = player.x - pickup.x;
+            const dy = player.y - pickup.y;
+            const collectRadius = player.radius + pickup.radius;
+            if (dx * dx + dy * dy <= collectRadius * collectRadius) {
+                equipmentSystem.autoEquipIfSlotEmpty(player, pickup.item);
+                gameState.equipmentPickups.splice(i, 1);
+            } else if (pickup.life <= 0) {
+                gameState.equipmentPickups.splice(i, 1);
+            }
+        }
     }
 
     draw() {
@@ -630,6 +656,10 @@ export class GameLoopSystem {
 
         entityRenderSystem.drawEntities(gameState, ctx, viewport);
         this.drawPlayers();
+
+        for (let i = 0; i < gameState.equipmentPickups.length; i++) {
+            gameState.equipmentPickups[i].draw(ctx);
+        }
 
         ctx.restore();
 

@@ -354,7 +354,13 @@ export class PlayerSystem {
                 if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
                 if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 if (gpState.buttons.interact.justPressed) {
-                    scrapShopSystem.tryPurchase(player);
+                    if (scrapShopSystem.getNearbyShrine(player)) {
+                        scrapShopSystem.tryPurchase(player);
+                    } else if (window.mapLoader?.isLoaded?.()) {
+                        window.mapLoader.tryInteract(player);
+                        window._zombobsKeys = window._zombobsKeys || {};
+                        window._zombobsKeys.e = true;
+                    }
                 }
                 if (gpState.buttons.flashlight.justPressed) {
                     if (!player.flashlight) player.flashlight = { active: false };
@@ -564,15 +570,20 @@ export class PlayerSystem {
                 ctx.strokeRect(barX, barY, barWidth, barHeight);
             }
 
-            // Player Name (for AI)
+            // Player Name (for AI / heroes)
             if (player.name && player.inputSource === 'ai') {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = player.isHero ? '#ffd54f' : '#ffffff';
                 ctx.font = "bold 12px 'Roboto Mono', monospace";
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
                 ctx.shadowColor = 'black';
                 ctx.shadowBlur = 4;
                 ctx.fillText(player.name, player.x, player.y - player.radius - 8);
+                if (player.isHero && player.heroRole) {
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.font = "10px 'Roboto Mono', monospace";
+                    ctx.fillText(player.heroRole.toUpperCase(), player.x, player.y - player.radius - 20);
+                }
                 ctx.shadowBlur = 0;
             }
 

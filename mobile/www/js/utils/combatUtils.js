@@ -522,7 +522,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, dropX, dropY);
 
                 // Check if boss was killed
-                if (zombie.type === 'boss' || zombie === gameState.boss) {
+                if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                     gameState.bossActive = false;
                     gameState.boss = null;
                 }
@@ -532,7 +532,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                     sourcePlayer.consecutiveKills++;
 
                     // Add bonus for boss zombies
-                    if (zombie.type === 'boss' || zombie === gameState.boss) {
+                    if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
                         sourcePlayer.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
                     }
 
@@ -892,7 +892,8 @@ export function handlePickupCollisions() {
                     const scrapValue = scrap.value || SCRAP_VALUE;
                     const multiplier = player.scrapMultiplier || 1.0;
                     const equipmentScrapMultiplier = player.equipmentScrapMultiplier || 1.0;
-                    let gained = Math.floor(scrapValue * multiplier * equipmentScrapMultiplier);
+                    const heroScrapAura = player.heroScrapAuraBonus || 0;
+                    let gained = Math.floor(scrapValue * multiplier * equipmentScrapMultiplier * (1 + heroScrapAura));
                     if (player.goldRushEndTime && player.goldRushEndTime > Date.now()) {
                         gained *= 2;
                     }
@@ -958,7 +959,7 @@ function triggerNuke(x, y, showFloatingText = true) {
         const zombie = gameState.zombies[i];
 
         // Check if boss is being nuked
-        if (zombie.type === 'boss' || zombie === gameState.boss) {
+        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
             gameState.bossActive = false;
             gameState.boss = null;
         }
@@ -971,7 +972,7 @@ function triggerNuke(x, y, showFloatingText = true) {
         player.consecutiveKills++;
 
         // Add bonus for boss zombies
-        if (zombie.type === 'boss' || zombie === gameState.boss) {
+        if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
             player.consecutiveKills += 2; // +3 total (1 base + 2 bonus)
         }
 
@@ -1131,7 +1132,7 @@ export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
             d *= 1.4;
         }
     }
-    if (shootingPlayer.bossDamageMult && (zombie.type === 'boss' || zombie === gameState.boss)) {
+    if (shootingPlayer.bossDamageMult && (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss)) {
         d *= shootingPlayer.bossDamageMult;
     }
     if (shootingPlayer.hasVengeance && shootingPlayer.vengeanceEndTime && shootingPlayer.vengeanceEndTime > Date.now()) {
@@ -1477,6 +1478,9 @@ export function applyPlayerDamage(player, rawDamage) {
 
     if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
         damage *= player.damageReduction;
+    }
+    if (player.equipmentDamageReduction && player.equipmentDamageReduction > 0) {
+        damage *= (1 - Math.min(0.45, player.equipmentDamageReduction));
     }
     if (player.damageTakenMultiplier && player.damageTakenMultiplier > 1.0) {
         damage *= player.damageTakenMultiplier;

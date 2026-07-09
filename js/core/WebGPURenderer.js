@@ -87,10 +87,19 @@ export class WebGPURenderer {
         this.bloodEdgeEnabled = true;
     }
 
-    async init() {
+    async init(options = {}) {
         if (this.isInitialized || this.fallbackMode) {
             return this.isInitialized;
         }
+
+        const onPhase = typeof options.onPhase === 'function' ? options.onPhase : null;
+        const reportPhase = (phase) => {
+            try {
+                onPhase?.(phase);
+            } catch (error) {
+                // Boot UI must never break GPU init.
+            }
+        };
 
         // Check for WebGPU support
         if (!navigator.gpu) {
@@ -101,6 +110,7 @@ export class WebGPURenderer {
 
         try {
             // Request adapter
+            reportPhase('adapter');
             const adapter = await navigator.gpu.requestAdapter();
             if (!adapter) {
                 console.warn('Failed to get WebGPU adapter. Falling back to Canvas 2D.');
@@ -109,6 +119,7 @@ export class WebGPURenderer {
             }
 
             // Request device
+            reportPhase('device');
             this.device = await adapter.requestDevice();
 
             // Get canvas context
@@ -150,6 +161,7 @@ export class WebGPURenderer {
             this.device.queue.writeBuffer(this.snowGridBuffer, 0, new Float32Array(this.snowGridWidth * this.snowGridHeight));
 
             // 3. Snow Shader Modules (Split for Compute/Render)
+            reportPhase('shaders');
             const snowComputeSource = `
                 struct Uniforms {
                     time: f32,
@@ -265,6 +277,7 @@ export class WebGPURenderer {
             const snowComputeModule = this.device.createShaderModule({ code: snowComputeSource });
             const snowRenderModule = this.device.createShaderModule({ code: snowRenderSource });
 
+            reportPhase('pipelines');
             // 4. Create Bind Group Layouts & Groups for Snow
             // Compute needs writable storage
             const snowComputeBindGroupLayout = this.device.createBindGroupLayout({
@@ -609,6 +622,7 @@ export class WebGPURenderer {
             // ZombobsFX and flashlight init deferred until first gameplay frame
 
             this.isInitialized = true;
+            reportPhase('done');
             return true;
         } catch (error) {
             console.error('Error initializing WebGPU:', error);

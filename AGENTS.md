@@ -6,7 +6,7 @@ This file provides guidance to Qoder (qoder.com) when working with code in this 
 
 Zombobs is a top-down zombie survival shooter built entirely with **vanilla JavaScript (ES6+)**, HTML5 Canvas 2D, and WebGPU. **Zero external runtime dependencies** on the client — no frameworks, no bundlers, no build step. The multiplayer server uses Node.js + Express + Socket.IO.
 
-Version: 0.9.1 ALPHA. Proprietary/closed-source license.
+Version: 0.9.2 ALPHA. Proprietary/closed-source license.
 
 ## Commands
 
@@ -84,10 +84,10 @@ All JS uses native `import`/`export`. No webpack, no vite, no transpilation. Fil
 
 | Directory | Purpose |
 |---|---|
-| `js/core/` | Constants, canvas init, gameState, GameEngine, BootLoader, WebGPURenderer, ZombobsFX |
-| `js/entities/` | Entity classes: Zombie (11 variants + Shard minions + Boss; see `DOCS/ENEMY_TYPES.md`), Bullet, Particle, Pickup, Grenade, Shell, AcidProjectile, AcidPool, Prop |
-| `js/systems/` | Self-contained systems: Audio, Particle, Camera, Input, Settings, Skill, Rank, Achievement, Battlepass, Multiplayer, ZombieSpawn, ZombieUpdate, PlayerSystem, EntityRender, PropSpawn, PropRender, GroundTexture, BloodSimulation, Melee, PickupSpawn, GameStateManager, ArcadeMusic, TouchControl, **MapLoader** (campaign) |
-| `js/maps/` | Static campaign zone definitions (`crashSite.js` — Zone 1 geometry for `MapLoader`) |
+| `js/core/` | Constants, canvas init, gameState, GameEngine, BootLoader, WebGPURenderer, ZombobsFX, skill/equipment/hero definitions |
+| `js/entities/` | Entity classes: Zombie (11 variants + Shard minions + Boss + **WardenBoss**; see `DOCS/ENEMY_TYPES.md`), Bullet, Particle, Pickup, Grenade, Shell, AcidProjectile, AcidPool, Prop, ScrapPickup, ScrapShrine, EquipmentPickup |
+| `js/systems/` | Self-contained systems: Audio, Particle, Camera, Input, Settings, Skill, Rank, Achievement, Battlepass, Multiplayer, ZombieSpawn, ZombieUpdate, PlayerSystem, EntityRender, PropSpawn, PropRender, GroundTexture, BloodSimulation, Melee, PickupSpawn, GameStateManager, ArcadeMusic, TouchControl, ScrapShop, Equipment, WaveChaos, **MapLoader** (campaign) |
+| `js/maps/` | Static campaign zones for `MapLoader`: `crashSite.js` (Z1), `maintenanceTunnels.js` (Z2), `switchingYard.js` (Z3), `controlTower.js` (Z4 finale) |
 | `js/ui/` | Canvas-drawn UI screens: GameHUD, SettingsPanel, MainMenuScreen, LobbyScreen, GameOverScreen, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, etc. |
 | `js/utils/` | Pure functions: combatUtils, gameUtils, drawingUtils, arrayUtils, Quadtree, ObjectPool, ChunkManager |
 | `js/companions/` | AI companion NPC system |
@@ -112,6 +112,9 @@ All menus and HUD are drawn on `uiCanvas` using Canvas 2D API (no DOM elements f
 ### WebGPU (`js/core/WebGPURenderer.js` + `js/core/ZombobsFX.js`)
 Optional GPU-accelerated layer. Gracefully falls back to Canvas 2D. Renders: procedural background shader, bloom post-processing, ZombobsFX (100k particle spore cloud), and synced game particles. Controlled by settings; dirty-flag system for uniform buffer efficiency.
 
+### Boot Loader (`js/core/BootLoader.js`)
+Gated `#boot-overlay` on `index.html` masks startup + WebGPU compile/buffer lag. Dismiss requires **first menu frame** + **WebGPU init** (gate skipped when GPU off/unavailable), then **3-frame settle** + min 500ms before fade. Progress creep between stages; stall UI at 5s/10s; 20s failsafe. `WebGPURenderer.init({ onPhase })` reports `adapter` → `device` → `shaders` → `pipelines` → `done` to `reportWebGPUBootPhase()`. Inline critical CSS in `index.html` renders before `style.css`. Key files: `BootLoader.js`, `WebGPURenderer.js`, `main.js`, `index.html`, `css/style.css`.
+
 ### Multiplayer Server
 Two server variants share the same Socket.IO protocol:
 - **`LOCAL_SERVER/server.js`** — Dev server, port 3000, no MongoDB
@@ -130,7 +133,7 @@ Both serve static files from the project root and handle lobby management, playe
 - **Object pooling**: `ObjectPool` in `js/utils/ObjectPool.js` for particles and other frequently created/destroyed entities.
 - **Viewport culling**: All entity rendering checks against viewport bounds (`getViewportBounds()`, `isInViewport()`). Update culling uses a larger 300px margin.
 - **World-space camera** (single player arcade only): `cameraSystem` follows the player; ground texture, props, and entity rendering offset by camera position. Co-op and multiplayer use screen-space.
-- **Version strings**: Update `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` (prepend), and `NEWS_UPDATES` in `js/core/constants.js` together with `LOCAL_SERVER/package.json`, `launch.ps1`, and `huggingface-space-SERVER/package.json`. Main-menu badge, About screen, and `VersionModal` read from constants — do not hardcode. Full checklist: `DOCS/VERSION_UPDATE_CHECKLIST.md`.
+- **Version strings**: Update `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` (prepend), and `NEWS_UPDATES` in `js/core/constants.js` together with `LOCAL_SERVER/package.json` and `huggingface-space-SERVER/package.json`. `launch.ps1` reads version from `LOCAL_SERVER/package.json` (no hardcode). Main-menu badge, About screen, and `VersionModal` read from constants — do not hardcode. Full checklist: `DOCS/VERSION_UPDATE_CHECKLIST.md`.
 - **Global exposure**: Systems needing cross-module access are assigned to `window.*` in `main.js`. This is intentional — don't refactor to remove these without a replacement pattern.
 
 ## Agent Behavior Charter (META v2.0)

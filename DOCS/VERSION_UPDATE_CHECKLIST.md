@@ -81,9 +81,9 @@ Three player-facing surfaces — update all on a version pass:
 - **[DOCS/SUMMARY.md](DOCS/SUMMARY.md)**: Update "Recent Updates" section if major changes
 
 ### 7. Server Files (if applicable)
-- **[launch.ps1](launch.ps1)**: Update `$SERVER_VERSION` variable
-- **[LOCAL_SERVER/package.json](LOCAL_SERVER/package.json)**: Update version field
+- **[LOCAL_SERVER/package.json](LOCAL_SERVER/package.json)**: Update version field (`launch.ps1` reads this automatically — no hardcode)
 - **[huggingface-space-SERVER/package.json](huggingface-space-SERVER/package.json)**: Update version field
+[AMENDED 2026-07-09]: `launch.ps1` no longer has a hardcoded `$SERVER_VERSION`; bump package.json only.
 
 ### 8. Itch.io HTML build (when publishing the browser build)
 - **Always** run from repo root: `powershell -NoProfile -ExecutionPolicy Bypass -File ITCH/build-itch.ps1`
@@ -108,7 +108,9 @@ Use consistent format: `V0.X.Y.Z ALPHA` (with space before ALPHA)
 
 Example: `V0.8.4 ALPHA`
 
-[AMENDED 2026-06-26]: Current release example: `V0.9.1 ALPHA`
+[AMENDED 2026-06-26]: Current release example: `V0.9.2 ALPHA`
+
+[AMENDED 2026-07-09 — V0.9.2 modality pass]: Updated `NEWS_UPDATES`, landing bubbles (new V0.9.2 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.2 public copy leads with *Campaign & Mobile Update* (Act 1 Zones 1–3, equipment/heroes, mobile touch wired, boot progress, 40K LOC).
 
 [AMENDED 2026-07-06 — V0.9.1 modality pass]: Updated `NEWS_UPDATES`, main-menu/About version boxes, landing bubbles (new V0.9.1 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.1 public copy leads with *Skills & Survivability Update* (93 skills, 15 synergies, corrupted wildcards, mobile 2×2 level-up, Splitter/Siren).
 
@@ -117,7 +119,7 @@ Example: `V0.8.4 ALPHA`
 **Minimum version-bump touchpoints (in order):**
 1. `js/core/constants.js` — `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` (prepend), `NEWS_UPDATES`
 2. `index.html` — landing page (4 locations + new version bubble)
-3. `launch.ps1` + `LOCAL_SERVER/package.json` + `huggingface-space-SERVER/package.json`
+3. `LOCAL_SERVER/package.json` + `huggingface-space-SERVER/package.json` (`launch.ps1` reads local version)
 4. `ITCH/page_description.md` — itch marketing copy
 5. `DOCS/CHANGELOG.md` + `DOCS/SUMMARY.md`
 6. `mobile/` — `npm run sync:web` if Android build is shipping

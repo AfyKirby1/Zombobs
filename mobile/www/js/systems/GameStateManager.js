@@ -112,8 +112,11 @@ export class GameStateManager {
             return;
         }
         gameState.campaignZoneCleared = true;
+        const isActClear = gameState.campaignActClear || gameState.campaignScript?.actClear;
         this.gameOver();
-        const msg = `Zone ${gameState.campaignZone} cleared — extraction secured!\nKilled: ${gameState.zombiesKilled}`;
+        const msg = isActClear
+            ? `ACT 1 CLEAR — Echoes of Silence\nThe Outskirts relay is online.\nKilled: ${gameState.zombiesKilled}`
+            : `Zone ${gameState.campaignZone} cleared — extraction secured!\nKilled: ${gameState.zombiesKilled}`;
         this.gameHUD.showGameOver(msg);
     }
 
@@ -148,15 +151,26 @@ export class GameStateManager {
 
         gameState.campaignZoneCleared = false;
         gameState.campaignZoneClearTime = 0;
+        gameState.campaignActClear = false;
 
         mapLoader.unload();
         mapLoader.load(nextId);
         const spawn = mapLoader.getSpawn();
-        gameState.players[0].x = spawn.x;
-        gameState.players[0].y = spawn.y;
+        // Keep hired/recruited AI — park them near the new spawn
+        for (let i = 0; i < gameState.players.length; i++) {
+            const p = gameState.players[i];
+            const ox = (i % 3) * 36;
+            const oy = Math.floor(i / 3) * 36;
+            p.x = spawn.x + ox;
+            p.y = spawn.y + oy;
+        }
         mapLoader.spawnMapProps();
         mapLoader.applyAmbiance();
         cameraSystem.initialize(gameState.players[0]);
+
+        // Soft ante: each new zone starts slightly hotter
+        const zone = mapLoader.getMap()?.zone || 1;
+        gameState.zombiesPerWave = 5 + Math.max(0, zone - 1) * 2;
 
         const map = mapLoader.getMap();
         gameState.waveNotification = {
@@ -189,7 +203,18 @@ export class GameStateManager {
         gameState.campaignZoneCleared = false;
         gameState.campaignZoneClearTime = 0;
         gameState.campaignObjectiveTarget = null;
+        gameState.campaignActClear = false;
         mapLoader.unload();
+        if (window.companionSystem && window.companionSystem.resetHired) {
+            window.companionSystem.resetHired();
+        }
+        gameState.campaignSurvivorRun = {
+            met: {},
+            quest: null,
+            questDone: {},
+            recruited: {},
+            killsAtQuestStart: 0
+        };
         this.gameHUD.hidePauseMenu();
         this.gameHUD.hideGameOver();
         resetGameState(canvas.width, canvas.height);
@@ -216,6 +241,9 @@ export class GameStateManager {
             groundTextureSystem.reset();
             cameraSystem.reset();
             mapLoader.unload();
+            if (window.companionSystem && window.companionSystem.resetHired) {
+                window.companionSystem.resetHired();
+            }
 
             if (isCampaignMode(gameState)) {
                 mapLoader.load('crash_site');

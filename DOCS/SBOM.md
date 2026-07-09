@@ -177,8 +177,9 @@ The frontend game code is intentionally dependency-free for simplicity (followin
 - **2024** - Added server dependencies (Express, socket.io) for multiplayer functionality
 - **2025-11-19** - Added HTML5 Gamepad API to browser APIs section
 - **2025-11-22** - Added MongoDB Atlas integration and production server dependencies (mongodb, cookie-parser, compression)
+- **2026-07-09** - Codebase audit refresh: no new npm packages; functional LOC **40,910** / **140** files (`tools/count_functional_loc.py`). Frontend remains zero runtime deps. Capacitor/mobile + server package sets unchanged since last install audit.
 
 ---
 
-**Last Audited**: 2025-11-22
+**Last Audited**: 2026-07-09 (deps unchanged; LOC re-count only)
 

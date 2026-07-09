@@ -155,7 +155,8 @@ export class ZombieSpawnSystem {
         }
 
         const timeout = setTimeout(() => {
-            const typeKey = selectZombieClass(gameState.wave, mutator, Math.random());
+            const zone = isCampaignMode(gameState) ? (gameState.campaignZone || 0) : 0;
+            const typeKey = selectZombieClass(gameState.wave, mutator, Math.random(), zone);
             const ZombieClass = this.getZombieClassByType(typeKey);
             this._createAndPushZombie(ZombieClass, spawnX, spawnY, mutator, multiplayerSocket);
 
@@ -263,7 +264,7 @@ export class ZombieSpawnSystem {
         gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
         gameState.zombieSpawnTimeouts = [];
 
-        if (gameState.wave % 5 === 0) {
+        if (gameState.wave % 5 === 0 && !isCampaignMode(gameState)) {
             this.spawnBoss(multiplayerSocket);
             return;
         }

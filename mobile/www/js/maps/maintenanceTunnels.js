@@ -30,7 +30,7 @@ export const maintenanceTunnelsMap = {
     height: MAP_HEIGHT,
     spawn: { x: 120, y: CENTER_Y },
     objective: 'Reach the east escape ladder',
-    nextMapId: null,
+    nextMapId: 'switching_yard',
     ambiance: {
         forceNight: true,
         fogAlpha: 0.35
@@ -66,6 +66,23 @@ export const maintenanceTunnelsMap = {
         { type: 'concreteBarrier', x: 800, y: 500 },
         { type: 'concreteBarrier', x: 1000, y: 500 },
         { type: 'trashCan', x: 1500, y: 550 }
+    ],
+    hazards: [
+        { kind: 'steam', x: 520, y: 500, w: 90, h: 90, damage: 10, periodMs: 3000, activeMs: 1000, phaseOffset: 0 },
+        { kind: 'steam', x: 900, y: 520, w: 90, h: 90, damage: 10, periodMs: 3200, activeMs: 1100, phaseOffset: 800 },
+        { kind: 'steam', x: 1280, y: 500, w: 90, h: 90, damage: 12, periodMs: 2800, activeMs: 900, phaseOffset: 1600 }
+    ],
+    scriptedEvents: [
+        {
+            id: 'tunnels_lights_out',
+            type: 'lights_out',
+            requiresWave: 2,
+            durationMs: 4500,
+            message: "THEY'RE IN THE WALLS — LIGHTS OUT!"
+        }
+    ],
+    survivors: [
+        { survivorId: 'pip', x: 200, y: CENTER_Y - 40 }
     ],
     triggers: [
         {

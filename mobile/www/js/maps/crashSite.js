@@ -100,6 +100,10 @@ export const crashSiteMap = {
         { type: 'trashCan', x: 900, y: 1320 },
         { type: 'ammoCrate', x: 1480, y: 1280 }
     ],
+    // [TRACE: CAMPAIGN_DESIGN.md] Quest survivor — meet → kill quest → recruit
+    survivors: [
+        { survivorId: 'rook', x: CENTER_X + 180, y: CENTER_Y + 80 }
+    ],
     triggers: [
         {
             id: 'crash_site_start',

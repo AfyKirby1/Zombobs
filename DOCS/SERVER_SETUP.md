@@ -1,54 +1,72 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Server Setup Guide
+
+[AMENDED 2026-07-09]: Paths corrected to `LOCAL_SERVER/` + `huggingface-space-SERVER/`; launcher flags documented.
 
 This project has **two separate server configurations**:
 
-## 📁 Directory Structure
+## Directory Structure
 
 ```
 Zombobs/
-├── server/                    # LOCAL DEVELOPMENT SERVER
-│   ├── server.js             # Local server (port 3000)
-│   ├── package.json          # Local dependencies
-│   └── README.md             # Local server docs
+├── LOCAL_SERVER/                 # LOCAL DEVELOPMENT SERVER
+│   ├── server.js                 # Local server (port 3000)
+│   └── package.json              # Local dependencies (no MongoDB)
 │
-├── huggingface-space/         # HUGGING FACE DEPLOYMENT
-│   ├── Dockerfile            # HF Spaces Docker config
-│   ├── server.js             # HF server (port 7860)
-│   ├── package.json          # HF dependencies
-│   └── README.md             # HF deployment docs
+├── huggingface-space-SERVER/     # HUGGING FACE DEPLOYMENT
+│   ├── Dockerfile                # HF Spaces Docker config
+│   ├── server.js                 # HF server (port 7860)
+│   ├── package.json              # HF deps (+ MongoDB, compression)
+│   └── README.md                 # HF deployment notes
 │
-├── launch.bat                # Windows launcher (local server)
-└── launch.ps1                # PowerShell launcher (local server)
+├── launch.bat                    # Windows double-click launcher
+└── launch.ps1                    # PowerShell launcher (local server)
 ```
 
-## 🖥️ Local Development Server
+## Local Development Server
 
-**Location**: `server/` directory  
-**Port**: 3000  
+**Location**: `LOCAL_SERVER/`  
+**Port**: `3000` (override with `-Port`, `$env:PORT`, or `$env:ZOMBOBS_PORT`)  
 **URL**: http://localhost:3000
 
 ### Running Locally
 
-1. **Easy Way**: Double-click `launch.bat` in the project root
-2. **PowerShell**: Run `launch.ps1` from the project root
+1. **Easy**: Double-click `launch.bat` in the project root
+2. **PowerShell**:
+   ```powershell
+   .\launch.ps1
+   .\launch.ps1 -Port 3001
+   .\launch.ps1 -NoBrowser
+   .\launch.ps1 -KillPort          # free port 3000 if stuck
+   ```
 3. **Manual**:
-   ```bash
-   cd server
-   npm install  # First time only
+   ```powershell
+   cd LOCAL_SERVER
+   npm install   # first run only
    npm start
    ```
 
+### Launcher behavior (`launch.ps1`)
+
+- Reads version from `LOCAL_SERVER/package.json`
+- Requires Node.js **>= 18**
+- Checks / optionally kills listeners on the target port
+- Installs deps if `node_modules` (or `express`) is missing
+- Opens `/landing.html` only after `/health` responds (or `-NoBrowser`)
+- Prints Local / Landing / Game / Dashboard / LAN URLs
+- Sets `PORT` for `server.js` before `npm start`
+
 ### Features
 
-- Tests Hugging Face server connection on startup
-- Shows connection status for both servers
-- Enhanced logging for client connections/disconnections
-- Health check endpoint at `/health`
+- Static game files + Socket.IO multiplayer lobby
+- Health check: `GET /health`
+- Dashboard: `/dashboard` (JSON) and `/dashboard/html`
+- Enhanced connection logging
 
-## ☁️ Hugging Face Space Server
+## Hugging Face Space Server
 
-**Location**: `huggingface-space/` directory  
-**Port**: 7860 (HF Spaces default)  
+**Location**: `huggingface-space-SERVER/`  
+**Port**: `7860` (HF Spaces default)  
 **Direct URL (for Game Client)**: https://ottertondays-zombs.hf.space  
 **Web URL (for Viewing)**: https://huggingface.co/spaces/OttertonDays/zombs
 
@@ -58,16 +76,14 @@ Zombobs/
    - `Dockerfile`
    - `server.js`
    - `package.json`
-
-2. The Space will automatically build and deploy
-
-3. Server will be accessible at your Space URL
+2. The Space builds and deploys automatically
+3. Server is reachable at your Space URL
 
 ### MongoDB Setup (Required for Persistent Highscores)
 
-The Hugging Face server uses MongoDB Atlas for persistent highscore storage. Without MongoDB, highscores will be stored in-memory only and lost on server restarts.
+The Hugging Face server uses MongoDB Atlas for persistent highscore storage. Without MongoDB, highscores stay in-memory and are lost on restart.
 
-> **📖 For detailed MongoDB documentation, see [MongoDB.md](./MONGODB.md)**
+> **For detailed MongoDB documentation, see [MongoDB.md](./MONGODB.md)**
 
 #### Step 1: Create MongoDB Atlas Account
 1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
@@ -133,24 +149,22 @@ If you see connection errors, verify:
 - Files must be in the **root** of the HF Space repo (not in a subdirectory)
 - The Dockerfile expects files in the root directory
 - Port 7860 is required for Hugging Face Spaces
-- **MongoDB is optional** - Server will run with in-memory cache only if MongoDB unavailable
-- Server includes debug logging to track MongoDB connection status
+- **MongoDB is optional** — server runs with in-memory cache if MongoDB is unavailable
+- Server includes debug logging for MongoDB connection status
 
-## 🔄 Differences
+## Differences
 
 | Feature | Local Server | Hugging Face Server |
 |---------|-------------|---------------------|
 | Port | 3000 | 7860 |
-| Location | `server/` | `huggingface-space/` |
+| Location | `LOCAL_SERVER/` | `huggingface-space-SERVER/` |
 | Launch | `launch.bat` / `launch.ps1` | Auto-deployed |
-| Purpose | Development/Testing | Production |
+| MongoDB | Optional (`MONGO_URI`) | Recommended (HF secret) |
+| Purpose | Development / LAN co-op | Production |
 
-## 📝 Notes
+## Notes
 
-- Both servers have identical functionality
-- Only difference is the port number
-- Local server includes enhanced logging and connection testing
-- Hugging Face server is optimized for cloud deployment
-- **Hugging Face server uses MongoDB for persistent highscores** (requires setup above)
-- Local server can optionally use MongoDB by setting `MONGO_URI` environment variable
-
+- Both servers share the same Socket.IO lobby protocol
+- Local launcher is the supported Windows entry point for day-to-day play
+- Hugging Face server is optimized for cloud deployment + persistent highscores
+- Local server can optionally use MongoDB by setting `MONGO_URI`

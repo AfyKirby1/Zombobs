@@ -31,8 +31,10 @@ import {
 import {
     triggerDamageIndicator,
     loadHighScore, saveHighScore, loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted,
-    loadMultiplierStats, clearScoreboard
+    loadMultiplierStats, clearScoreboard, isCampaignMode
 } from './utils/gameUtils.js';
+import { mapLoader } from './systems/MapLoader.js';
+window.mapLoader = mapLoader;
 
 // Make triggerDamageIndicator available globally for AcidPool
 window.triggerDamageIndicator = triggerDamageIndicator;
@@ -597,7 +599,7 @@ gameEngine.update = (dt) => {
     if (gameState.showCoopLobby) {
         updateCoopLobby();
     }
-    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout) {
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout && !gameState.showEquipment) {
         gameLoopSystem.update();
     }
 
@@ -787,6 +789,13 @@ function handleMenuInteraction(clickX, clickY) {
         return;
     }
 
+    // Equipment Screen
+    if (gameState.showEquipment) {
+        if (gameHUD.checkEquipmentClick(clickX, clickY)) {
+            return;
+        }
+    }
+
     // Level Up Screen
     if (gameState.showLevelUp) {
         if (gameHUD.checkLevelUpRerollClick(clickX, clickY)) {
@@ -878,9 +887,10 @@ function handleMenuInteraction(clickX, clickY) {
             gameState.showGallery = true;
             gameState.showMainMenu = false;
             playerProfileSystem.trackGalleryVisit();
-            if (gameHUD.galleryScrollY !== undefined) {
-                gameHUD.galleryScrollY = 0;
-                gameHUD.galleryTargetScrollY = 0;
+            if (gameHUD.galleryScreen) {
+                gameHUD.galleryScreen.galleryScrollY = 0;
+                gameHUD.galleryScreen.galleryTargetScrollY = 0;
+                gameHUD.galleryScreen.activeTab = 'zombies';
             }
         } else if (clickedButton === 'about') {
             gameState.showAbout = true;
@@ -910,6 +920,9 @@ function handleMenuInteraction(clickX, clickY) {
         if (clickedButton === 'gallery_back') {
             gameState.showGallery = false;
             gameState.showMainMenu = true;
+        } else if (clickedButton && clickedButton.startsWith('gallery_tab_')) {
+            const tabId = clickedButton.replace('gallery_tab_', '');
+            gameHUD.galleryScreen.handleTabClick(tabId);
         }
         return;
     }
@@ -1152,6 +1165,7 @@ document.addEventListener('keydown', (e) => {
 
     const key = e.key.toLowerCase();
     keys[key] = true;
+    window._zombobsKeys = keys;
 
     if (e.key === 'Escape') {
         togglePause();
@@ -1184,8 +1198,15 @@ document.addEventListener('keydown', (e) => {
     if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && localPlayer) reloadWeapon(localPlayer);
     if (key === controls.cycleThrowable && localPlayer) cycleThrowable(localPlayer);
     if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && localPlayer) performMeleeAttack(localPlayer);
-    if (key === 'e' && gameState.gameRunning && !gameState.gamePaused && localPlayer && gameState.waveBreakActive) {
-        scrapShopSystem.tryPurchase(localPlayer);
+    if (key === 'e' && gameState.gameRunning && localPlayer) {
+        if (gameState.waveBreakActive && scrapShopSystem.getNearbyShrine(localPlayer)) {
+            scrapShopSystem.tryPurchase(localPlayer);
+        } else if (isCampaignMode(gameState) && mapLoader.isLoaded() && mapLoader.tryInteract(localPlayer)) {
+            // Hold-E power/hack — keep holding; MapLoader tracks progress while keys.e is down
+            window._zombobsKeys = keys;
+        } else {
+            gameState.showEquipment = !gameState.showEquipment;
+        }
     }
 
     if (gameState.gamePaused || (!gameState.gameRunning && !gameHUD.gameOver)) {
@@ -1194,7 +1215,10 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+document.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+    window._zombobsKeys = keys;
+});
 
 // Helper function to get accurate mouse coordinates accounting for canvas scaling
 function getCanvasMousePos(e) {
@@ -1238,6 +1262,8 @@ window.addEventListener('mousemove', (e) => {
 
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
+    } else if (gameState.showEquipment) {
+        gameHUD.updateEquipmentHover(mouse.x, mouse.y);
     } else if (gameState.showLevelUp) {
         gameHUD.updateLevelUpHover(mouse.x, mouse.y);
     } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout || gameState.showGallery || gameState.gamePaused || gameHUD.gameOver) {
@@ -1264,7 +1290,7 @@ window.addEventListener('mousedown', (e) => {
     // Only process if not on a menu screen
     if (gameState.gameRunning && !gameState.gamePaused && !gameState.showMainMenu &&
         !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby &&
-        !gameState.showGallery && !gameState.showAbout && !gameState.showLevelUp && !gameHUD.gameOver) {
+        !gameState.showGallery && !gameState.showAbout && !gameState.showLevelUp && !gameState.showEquipment && !gameHUD.gameOver) {
 
         if (e.button === 0) {
             initAudio();
@@ -1308,9 +1334,8 @@ window.addEventListener('wheel', (e) => {
     // Gallery scrolling
     if (gameState.showGallery) {
         e.preventDefault();
-        const scrollSpeed = 30;
-        if (gameHUD.galleryTargetScrollY !== undefined) {
-            gameHUD.galleryTargetScrollY -= e.deltaY * 0.5; // Invert for natural scrolling
+        if (gameHUD.galleryScreen) {
+            gameHUD.galleryScreen.galleryTargetScrollY += e.deltaY * 0.5;
         }
         return;
     }
@@ -1413,7 +1438,7 @@ window.addEventListener('touchstart', (e) => {
     // Use UI Coordinates for Menus
     if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby ||
         gameState.showAILobby || gameState.showGallery || gameState.showAbout ||
-        gameState.showLevelUp || gameHUD.gameOver || gameState.gamePaused || gameState.showSettingsPanel) {
+        gameState.showLevelUp || gameState.showEquipment || gameHUD.gameOver || gameState.gamePaused || gameState.showSettingsPanel) {
 
         // Prevent default to avoid generating a specialized "click" event later (ghost click)
         if (e.cancelable) e.preventDefault();
@@ -1425,6 +1450,8 @@ window.addEventListener('touchstart', (e) => {
         if (gameHUD) {
             if (gameState.showLevelUp) {
                 gameHUD.updateLevelUpHover(uiPos.x, uiPos.y);
+            } else if (gameState.showEquipment) {
+                gameHUD.updateEquipmentHover(uiPos.x, uiPos.y);
             } else {
                 gameHUD.updateMenuHover(uiPos.x, uiPos.y);
             }
@@ -1446,7 +1473,7 @@ window.addEventListener('touchstart', (e) => {
     }
 
     // Check Mobile HUD Controls (Pause, Weapon, Grenade) - Only during gameplay
-    if (gameState.gameRunning && !gameState.gamePaused && gameHUD && gameHUD.isMobile()) {
+    if (gameState.gameRunning && !gameState.gamePaused && !gameState.showEquipment && gameHUD && gameHUD.isMobile()) {
 
         // 1. Check Top Right Pause Button (UI Coords)
         const pauseAction = gameHUD.checkMobileControlsClick(uiPos.x, uiPos.y);
@@ -1516,6 +1543,12 @@ window.addEventListener('touchmove', (e) => {
     if (gameState.showLevelUp) {
         if (e.cancelable) e.preventDefault();
         gameHUD.updateLevelUpHover(uiPos.x, uiPos.y);
+        return;
+    }
+
+    if (gameState.showEquipment) {
+        if (e.cancelable) e.preventDefault();
+        gameHUD.updateEquipmentHover(uiPos.x, uiPos.y);
         return;
     }
 

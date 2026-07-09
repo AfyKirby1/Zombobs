@@ -1,6 +1,59 @@
 import { gameState } from '../core/gameState.js';
-import { settingsManager } from '../systems/SettingsManager.js';
-import { WEAPONS } from '../core/constants.js';
+
+const GALLERY_TABS = [
+    { id: 'zombies', label: 'ZOMBIES', accent: '#66bb6a' },
+    { id: 'weapons', label: 'WEAPONS', accent: '#ff9800' },
+    { id: 'pickups', label: 'PICKUPS', accent: '#42a5f5' }
+];
+
+const ZOMBIE_ENTRIES = [
+    { type: 'normal', name: 'Normal Zombie', health: 'Base', speed: 'Base', desc: 'Standard zombie enemy', spawn: 'Always', threat: 'COMMON' },
+    { type: 'fast', name: 'Fast Zombie', health: '60%', speed: '1.6x', desc: 'The Runner — faster but weaker', spawn: 'Wave 3+', threat: 'COMMON' },
+    { type: 'exploding', name: 'Exploding Zombie', health: '80%', speed: '0.9x', desc: 'The Boomer — explodes on death', spawn: 'Wave 5+', threat: 'UNCOMMON' },
+    { type: 'armored', name: 'Armored Zombie', health: '2x', speed: '0.8x', desc: 'The Tank — heavily armored', spawn: 'Wave 4+', threat: 'UNCOMMON' },
+    { type: 'ghost', name: 'Ghost Zombie', health: '80%', speed: '1.3x', desc: 'Semi-transparent spectral enemy', spawn: 'Wave 4+', threat: 'UNCOMMON' },
+    { type: 'spitter', name: 'Spitter Zombie', health: '80%', speed: '1.2x', desc: 'Ranged acid projectile attacks', spawn: 'Wave 6+', threat: 'RARE' },
+    { type: 'siren', name: 'Siren Zombie', health: '90%', speed: '0.85x', desc: 'Screams to buff horde and disrupt aim', spawn: 'Wave 8+', threat: 'RARE' },
+    { type: 'splitter', name: 'Splitter Zombie', health: '125%', speed: '0.85x', desc: 'Cracks into 2 fast shards on death', spawn: 'Wave 6+', threat: 'RARE' },
+    { type: 'boss', name: 'Boss Zombie', health: 'Massive', speed: '1.2x', desc: 'Epic boss with devastating attacks', spawn: 'Every 5 waves', threat: 'BOSS' },
+    { type: 'warden', name: 'The Warden', health: 'Colossal', speed: 'Phase-scaled', desc: 'Act 1 finale — slam, scream, adds, blackout', spawn: 'Control Tower', threat: 'BOSS' }
+];
+
+const WEAPON_ENTRIES = [
+    { key: 'pistol', name: 'Pistol', damage: '1', fireRate: '400ms', ammo: '10', desc: 'Balanced starting weapon', tier: 'STARTER' },
+    { key: 'shotgun', name: 'Shotgun', damage: '3', fireRate: '800ms', ammo: '5', desc: 'High damage, close range', tier: 'HEAVY' },
+    { key: 'rifle', name: 'Rifle', damage: '2', fireRate: '200ms', ammo: '30', desc: 'Fast firing, high capacity', tier: 'ASSAULT' },
+    { key: 'flamethrower', name: 'Flamethrower', damage: '0.5/tick', fireRate: '50ms', ammo: '100', desc: 'Short range DoT weapon', tier: 'SPECIAL' },
+    { key: 'smg', name: 'SMG', damage: '0.8', fireRate: '80ms', ammo: '40', desc: 'Rapid fire submachine gun', tier: 'ASSAULT' },
+    { key: 'sniper', name: 'Sniper', damage: '15', fireRate: '1500ms', ammo: '5', desc: 'High damage, piercing shots', tier: 'PRECISION' },
+    { key: 'rocketLauncher', name: 'RPG', damage: '60 AOE', fireRate: '2000ms', ammo: '3', desc: 'Explosive area damage', tier: 'HEAVY' },
+    { key: 'laser', name: 'Laser', damage: 'Beam', fireRate: 'Continuous', ammo: 'Energy', desc: 'High-tech continuous beam weapon', tier: 'SPECIAL' }
+];
+
+const PICKUP_ENTRIES = [
+    { type: 'health', name: 'Health Pickup', effect: '+25 HP', desc: 'Restores health', rarity: 'COMMON' },
+    { type: 'ammo', name: 'Ammo Pickup', effect: '+15 Ammo', desc: 'Refills ammo and grenades', rarity: 'COMMON' },
+    { type: 'damage', name: 'Damage Buff', effect: '2x Damage (10s)', desc: 'Double damage for 10 seconds', rarity: 'UNCOMMON' },
+    { type: 'nuke', name: 'Tactical Nuke', effect: 'Instant Kill All', desc: 'Rare — clears all zombies', rarity: 'LEGENDARY' },
+    { type: 'speed', name: 'Speed Boost', effect: '1.5x Speed (8s)', desc: 'Increased movement speed', rarity: 'UNCOMMON' },
+    { type: 'rapidfire', name: 'Rapid Fire', effect: '2x Fire Rate (10s)', desc: 'Faster weapon firing', rarity: 'UNCOMMON' },
+    { type: 'shield', name: 'Shield', effect: '+50 Shield', desc: 'Absorbs damage before health', rarity: 'RARE' },
+    { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects', rarity: 'RARE' },
+    { type: 'frost', name: 'Frost Nova', effect: 'Freeze All (6s)', desc: 'Rare — stops zombies cold, slows bosses', rarity: 'LEGENDARY' }
+];
+
+const THREAT_COLORS = {
+    COMMON: '#9e9e9e',
+    UNCOMMON: '#66bb6a',
+    RARE: '#42a5f5',
+    BOSS: '#ff1744',
+    STARTER: '#9e9e9e',
+    ASSAULT: '#ff9800',
+    HEAVY: '#ff5252',
+    PRECISION: '#ab47bc',
+    SPECIAL: '#00e5ff',
+    LEGENDARY: '#ffd700'
+};
 
 export class GalleryScreen {
     constructor(canvas, ctx, hud) {
@@ -8,12 +61,24 @@ export class GalleryScreen {
         this.ctx = ctx;
         this.hud = hud;
         this.hoveredButton = null;
+        this.hoveredTab = null;
+        this.hoveredCard = null;
+        this.activeTab = 'zombies';
         this.galleryScrollY = 0;
         this.galleryTargetScrollY = 0;
+        this._tabHitboxes = [];
+        this._cardHitboxes = [];
+        this._backHitbox = null;
     }
 
     getUIScale() {
         return this.hud.getUIScale();
+    }
+
+    _getEntries() {
+        if (this.activeTab === 'weapons') return { items: WEAPON_ENTRIES, itemType: 'weapon', accent: '#ff9800', title: 'ARSENAL' };
+        if (this.activeTab === 'pickups') return { items: PICKUP_ENTRIES, itemType: 'pickup', accent: '#42a5f5', title: 'FIELD SUPPLIES' };
+        return { items: ZOMBIE_ENTRIES, itemType: 'zombie', accent: '#66bb6a', title: 'THREAT BESTIARY' };
     }
 
     draw() {
@@ -23,93 +88,159 @@ export class GalleryScreen {
         const centerX = this.canvas.width / 2;
         const canvas = this.canvas;
         const ctx = this.ctx;
+        const time = Date.now();
 
-        // Initialize scroll if not exists
         if (!this.galleryScrollY) this.galleryScrollY = 0;
         if (!this.galleryTargetScrollY) this.galleryTargetScrollY = 0;
 
-        // Title - scaled
-        const galleryTitleFontSize = Math.max(36, 48 * scale);
-        ctx.font = `bold ${galleryTitleFontSize}px "Creepster", cursive`;
+        // Soft top glow
+        const topGlow = ctx.createRadialGradient(centerX, 0, 0, centerX, 0, canvas.height * 0.45);
+        topGlow.addColorStop(0, 'rgba(255, 23, 68, 0.12)');
+        topGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = topGlow;
+        ctx.fillRect(0, 0, canvas.width, canvas.height * 0.5);
+
+        // Eyebrow
+        const eyebrowSize = Math.max(9, 11 * scale);
+        ctx.font = `bold ${eyebrowSize}px "Roboto Mono", monospace`;
         ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255, 82, 82, 0.85)';
+        ctx.fillText('FIELD INTEL ARCHIVE', centerX, 28 * scale);
+
+        // Title
+        const galleryTitleFontSize = Math.max(36, 52 * scale);
+        ctx.font = `bold ${galleryTitleFontSize}px "Creepster", cursive`;
         ctx.fillStyle = '#ff1744';
-        ctx.shadowBlur = 30 * scale;
-        ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        ctx.fillText('GALLERY', centerX, 60 * scale);
+        ctx.shadowBlur = 28 * scale;
+        ctx.shadowColor = 'rgba(255, 23, 68, 0.85)';
+        ctx.fillText('GALLERY', centerX, 72 * scale);
         ctx.shadowBlur = 0;
 
         // Subtitle
-        const subtitleFontSize = Math.max(12, 16 * scale);
+        const subtitleFontSize = Math.max(11, 14 * scale);
         ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
         ctx.fillStyle = '#9e9e9e';
-        ctx.fillText('Showcase of Zombies, Weapons & Pickups', centerX, 90 * scale);
+        ctx.fillText('Know the horde. Master the arsenal. Claim every drop.', centerX, 96 * scale);
 
-        // Smooth scroll
+        // Tabs
+        this._tabHitboxes = [];
+        const tabY = 118 * scale;
+        const tabH = 36 * scale;
+        const tabGap = 10 * scale;
+        const tabW = 140 * scale;
+        const tabsTotalW = GALLERY_TABS.length * tabW + (GALLERY_TABS.length - 1) * tabGap;
+        let tabX = centerX - tabsTotalW / 2;
+
+        for (let i = 0; i < GALLERY_TABS.length; i++) {
+            const tab = GALLERY_TABS[i];
+            const active = this.activeTab === tab.id;
+            const hovered = this.hoveredTab === tab.id;
+
+            this._tabHitboxes.push({ id: tab.id, x: tabX, y: tabY, w: tabW, h: tabH });
+
+            // Tab background
+            const bg = ctx.createLinearGradient(tabX, tabY, tabX, tabY + tabH);
+            if (active) {
+                bg.addColorStop(0, 'rgba(255, 23, 68, 0.35)');
+                bg.addColorStop(1, 'rgba(255, 23, 68, 0.12)');
+            } else if (hovered) {
+                bg.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+                bg.addColorStop(1, 'rgba(255, 255, 255, 0.04)');
+            } else {
+                bg.addColorStop(0, 'rgba(10, 12, 16, 0.75)');
+                bg.addColorStop(1, 'rgba(10, 12, 16, 0.55)');
+            }
+            ctx.fillStyle = bg;
+            this._roundRect(ctx, tabX, tabY, tabW, tabH, 8 * scale);
+            ctx.fill();
+
+            ctx.strokeStyle = active ? tab.accent : (hovered ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.12)');
+            ctx.lineWidth = active ? 2 : 1;
+            this._roundRect(ctx, tabX, tabY, tabW, tabH, 8 * scale);
+            ctx.stroke();
+
+            if (active) {
+                ctx.shadowBlur = 12 * scale;
+                ctx.shadowColor = tab.accent;
+                ctx.strokeStyle = tab.accent;
+                this._roundRect(ctx, tabX, tabY, tabW, tabH, 8 * scale);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Underline accent
+                ctx.fillStyle = tab.accent;
+                ctx.fillRect(tabX + 16 * scale, tabY + tabH - 3 * scale, tabW - 32 * scale, 2.5 * scale);
+            }
+
+            const tabFont = Math.max(11, 13 * scale);
+            ctx.font = `bold ${tabFont}px "Roboto Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = active ? '#ffffff' : (hovered ? '#eeeeee' : '#9e9e9e');
+            ctx.fillText(tab.label, tabX + tabW / 2, tabY + tabH / 2);
+            ctx.textBaseline = 'alphabetic';
+
+            tabX += tabW + tabGap;
+        }
+
+        // Content area
+        const contentStartY = tabY + tabH + 18 * scale;
+        const contentHeight = canvas.height - contentStartY - (110 * scale);
+        const padding = 24 * scale;
+
         this.galleryScrollY += (this.galleryTargetScrollY - this.galleryScrollY) * 0.2;
-        
-        // Content area with clipping
-        const contentStartY = 120 * scale;
-        const contentHeight = canvas.height - contentStartY - (120 * scale); // Space for back button
-        const padding = 20 * scale;
-        
+
+        const section = this._getEntries();
+        const cardSpacing = 16 * scale;
+        const cols = canvas.width > 1100 * scale ? 3 : 2;
+        const cardWidth = (canvas.width - padding * 2 - cardSpacing * (cols - 1)) / cols;
+        const cardHeight = 132 * scale;
+
+        // Section header strip
+        const headerH = 36 * scale;
+        this.hud.drawGlassCard(padding, contentStartY, canvas.width - padding * 2, headerH, false);
+        ctx.fillStyle = section.accent;
+        ctx.fillRect(padding, contentStartY, 4 * scale, headerH);
+
+        const headerFont = Math.max(12, 14 * scale);
+        ctx.font = `bold ${headerFont}px "Roboto Mono", monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(section.title, padding + 16 * scale, contentStartY + headerH * 0.62);
+
+        ctx.font = `${Math.max(10, 11 * scale)}px "Roboto Mono", monospace`;
+        ctx.textAlign = 'right';
+        ctx.fillStyle = section.accent;
+        ctx.fillText(`${section.items.length} ENTRIES`, canvas.width - padding - 14 * scale, contentStartY + headerH * 0.62);
+
+        // Clip cards
+        const gridStartY = contentStartY + headerH + 12 * scale;
+        const gridHeight = contentHeight - headerH - 12 * scale;
+
         ctx.save();
         ctx.beginPath();
-        ctx.rect(padding, contentStartY, canvas.width - padding * 2, contentHeight);
+        ctx.rect(padding - 4, gridStartY, canvas.width - padding * 2 + 8, gridHeight);
         ctx.clip();
 
-        let currentY = contentStartY - this.galleryScrollY;
+        this._cardHitboxes = [];
+        let currentY = gridStartY - this.galleryScrollY;
 
-        // Section spacing
-        const sectionSpacing = 40 * scale;
-        const cardSpacing = 20 * scale;
-        const cardWidth = (canvas.width - padding * 4) / 2; // 2 columns
-        const cardHeight = 140 * scale;
+        for (let i = 0; i < section.items.length; i++) {
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            const cardX = padding + col * (cardWidth + cardSpacing);
+            const cardY = currentY + row * (cardHeight + cardSpacing);
+            const cardId = `${this.activeTab}_${i}`;
+            const hovered = this.hoveredCard === cardId;
 
-        // ZOMBIES SECTION
-        currentY = this.drawGallerySection('ZOMBIES', centerX, currentY, scale, cardWidth, cardHeight, cardSpacing, padding, [
-            { type: 'normal', name: 'Normal Zombie', health: 'Base', speed: 'Base', desc: 'Standard zombie enemy', spawn: 'Always' },
-            { type: 'fast', name: 'Fast Zombie', health: '60%', speed: '1.6x', desc: 'The Runner - faster but weaker', spawn: 'Wave 3+' },
-            { type: 'exploding', name: 'Exploding Zombie', health: '80%', speed: '0.9x', desc: 'The Boomer - explodes on death', spawn: 'Wave 5+' },
-            { type: 'armored', name: 'Armored Zombie', health: '2x', speed: '0.8x', desc: 'The Tank - heavily armored', spawn: 'Wave 4+' },
-            { type: 'ghost', name: 'Ghost Zombie', health: '80%', speed: '1.3x', desc: 'Semi-transparent spectral enemy', spawn: 'Wave 4+' },
-            { type: 'spitter', name: 'Spitter Zombie', health: '80%', speed: '1.2x', desc: 'Ranged acid projectile attacks', spawn: 'Wave 6+' },
-            { type: 'siren', name: 'Siren Zombie', health: '90%', speed: '0.85x', desc: 'Screams to buff horde and disrupt aim', spawn: 'Wave 8+' },
-            { type: 'splitter', name: 'Splitter Zombie', health: '125%', speed: '0.85x', desc: 'Cracks into 2 fast shards on death', spawn: 'Wave 6+' },
-            { type: 'boss', name: 'Boss Zombie', health: 'Massive', speed: '1.2x', desc: 'Epic boss with devastating attacks', spawn: 'Every 5 waves' }
-        ], 'zombie');
+            this._cardHitboxes.push({ id: cardId, x: cardX, y: cardY, w: cardWidth, h: cardHeight });
+            this._drawGalleryCard(cardX, cardY, cardWidth, cardHeight, scale, section.items[i], section.itemType, section.accent, hovered, time);
+        }
 
-        currentY += sectionSpacing;
+        const rows = Math.ceil(section.items.length / cols);
+        const totalContentHeight = rows * (cardHeight + cardSpacing);
+        const maxScroll = Math.max(0, totalContentHeight - gridHeight);
 
-        // WEAPONS SECTION
-        currentY = this.drawGallerySection('WEAPONS', centerX, currentY, scale, cardWidth, cardHeight, cardSpacing, padding, [
-            { key: 'pistol', name: 'Pistol', damage: '1', fireRate: '400ms', ammo: '10', desc: 'Balanced starting weapon' },
-            { key: 'shotgun', name: 'Shotgun', damage: '3', fireRate: '800ms', ammo: '5', desc: 'High damage, close range' },
-            { key: 'rifle', name: 'Rifle', damage: '2', fireRate: '200ms', ammo: '30', desc: 'Fast firing, high capacity' },
-            { key: 'flamethrower', name: 'Flamethrower', damage: '0.5/tick', fireRate: '50ms', ammo: '100', desc: 'Short range DoT weapon' },
-            { key: 'smg', name: 'SMG', damage: '0.8', fireRate: '80ms', ammo: '40', desc: 'Rapid fire submachine gun' },
-            { key: 'sniper', name: 'Sniper', damage: '15', fireRate: '1500ms', ammo: '5', desc: 'High damage, piercing shots' },
-            { key: 'rocketLauncher', name: 'RPG', damage: '60 AOE', fireRate: '2000ms', ammo: '3', desc: 'Explosive area damage' }
-        ], 'weapon');
-
-        currentY += sectionSpacing;
-
-        // PICKUPS SECTION
-        currentY = this.drawGallerySection('PICKUPS', centerX, currentY, scale, cardWidth, cardHeight, cardSpacing, padding, [
-            { type: 'health', name: 'Health Pickup', effect: '+25 HP', desc: 'Restores health' },
-            { type: 'ammo', name: 'Ammo Pickup', effect: '+15 Ammo', desc: 'Refills ammo and grenades' },
-            { type: 'damage', name: 'Damage Buff', effect: '2x Damage (10s)', desc: 'Double damage for 10 seconds' },
-            { type: 'nuke', name: 'Tactical Nuke', effect: 'Instant Kill All', desc: 'Rare - clears all zombies' },
-            { type: 'speed', name: 'Speed Boost', effect: '1.5x Speed (8s)', desc: 'Increased movement speed' },
-            { type: 'rapidfire', name: 'Rapid Fire', effect: '2x Fire Rate (10s)', desc: 'Faster weapon firing' },
-            { type: 'shield', name: 'Shield', effect: '+50 Shield', desc: 'Absorbs damage before health' },
-            { type: 'adrenaline', name: 'Adrenaline', effect: 'Multiple Buffs', desc: 'Combined power-up effects' },
-            { type: 'frost', name: 'Frost Nova', effect: 'Freeze All (6s)', desc: 'Rare - stops zombies cold, slows bosses' }
-        ], 'pickup');
-
-        const totalContentHeight = currentY + this.galleryScrollY - contentStartY;
-        const maxScroll = Math.max(0, totalContentHeight - contentHeight);
-        
-        // Clamp scroll
         if (this.galleryTargetScrollY < 0) this.galleryTargetScrollY = 0;
         if (this.galleryTargetScrollY > maxScroll) this.galleryTargetScrollY = maxScroll;
         if (this.galleryScrollY < 0) this.galleryScrollY = 0;
@@ -117,117 +248,217 @@ export class GalleryScreen {
 
         ctx.restore();
 
-        // Scroll indicator (if scrollable)
+        // Scrollbar
         if (maxScroll > 0) {
-            const scrollBarWidth = 6 * scale;
-            const scrollBarX = canvas.width - padding - scrollBarWidth;
-            const scrollBarHeight = contentHeight;
-            const scrollBarY = contentStartY;
-            const thumbHeight = Math.max(20 * scale, (contentHeight / totalContentHeight) * scrollBarHeight);
-            const thumbY = scrollBarY + (this.galleryScrollY / maxScroll) * (scrollBarHeight - thumbHeight);
+            const scrollBarWidth = 5 * scale;
+            const scrollBarX = canvas.width - padding + 6 * scale;
+            const thumbHeight = Math.max(24 * scale, (gridHeight / totalContentHeight) * gridHeight);
+            const thumbY = gridStartY + (this.galleryScrollY / maxScroll) * (gridHeight - thumbHeight);
 
-            // Scrollbar track
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(scrollBarX, scrollBarY, scrollBarWidth, scrollBarHeight);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            this._roundRect(ctx, scrollBarX, gridStartY, scrollBarWidth, gridHeight, 3 * scale);
+            ctx.fill();
 
-            // Scrollbar thumb
-            ctx.fillStyle = 'rgba(255, 23, 68, 0.6)';
-            ctx.fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight);
+            ctx.fillStyle = 'rgba(255, 23, 68, 0.7)';
+            this._roundRect(ctx, scrollBarX, thumbY, scrollBarWidth, thumbHeight, 3 * scale);
+            ctx.fill();
         }
 
-        // Back button (always visible)
+        // Fade edges on scroll
+        if (this.galleryScrollY > 4) {
+            const fade = ctx.createLinearGradient(0, gridStartY, 0, gridStartY + 28 * scale);
+            fade.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+            fade.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = fade;
+            ctx.fillRect(padding, gridStartY, canvas.width - padding * 2, 28 * scale);
+        }
+        if (this.galleryScrollY < maxScroll - 4) {
+            const fade = ctx.createLinearGradient(0, gridStartY + gridHeight - 28 * scale, 0, gridStartY + gridHeight);
+            fade.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            fade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
+            ctx.fillStyle = fade;
+            ctx.fillRect(padding, gridStartY + gridHeight - 28 * scale, canvas.width - padding * 2, 28 * scale);
+        }
+
+        // Back button
         const buttonWidth = 240 * scale;
         const buttonHeight = 50 * scale;
         const backY = canvas.height - (100 * scale);
-        this.hud.drawMenuButton('Back', centerX - buttonWidth / 2, backY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery_back', false);
+        this._backHitbox = {
+            x: centerX - buttonWidth / 2,
+            y: backY - buttonHeight / 2,
+            w: buttonWidth,
+            h: buttonHeight
+        };
+        this.hud.drawMenuButton('Back', this._backHitbox.x, this._backHitbox.y, buttonWidth, buttonHeight, this.hoveredButton === 'gallery_back', false);
     }
 
-    drawGallerySection(title, centerX, startY, scale, cardWidth, cardHeight, cardSpacing, padding, items, itemType) {
+    _drawGalleryCard(x, y, w, h, scale, item, itemType, accent, hovered, time) {
         const ctx = this.ctx;
-        const canvas = this.canvas;
-        
-        // Section title
-        const sectionTitleSize = Math.max(20, 24 * scale);
-        ctx.font = `bold ${sectionTitleSize}px "Roboto Mono", monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ff9800';
-        ctx.shadowBlur = 15 * scale;
-        ctx.shadowColor = 'rgba(255, 152, 0, 0.5)';
-        ctx.fillText(title, centerX, startY);
-        ctx.shadowBlur = 0;
-        
-        let currentY = startY + (40 * scale);
-        
-        // Draw items in 2-column grid
-        for (let i = 0; i < items.length; i++) {
-            const row = Math.floor(i / 2);
-            const col = i % 2;
-            const cardX = padding + col * (cardWidth + cardSpacing);
-            const cardY = currentY + row * (cardHeight + cardSpacing);
-            
-            // Draw glass card
-            this.hud.drawGlassCard(cardX, cardY, cardWidth, cardHeight);
-            
-            // Icon area (left side)
-            const iconSize = 60 * scale;
-            const iconX = cardX + (30 * scale);
-            const iconY = cardY + cardHeight / 2;
-            
-            // Draw icon based on type
-            if (itemType === 'zombie') {
-                this.drawZombieIcon(iconX, iconY, iconSize, items[i].type);
-            } else if (itemType === 'weapon') {
-                this.drawWeaponIcon(iconX, iconY, iconSize, items[i].key);
-            } else if (itemType === 'pickup') {
-                this.drawPickupIcon(iconX, iconY, iconSize, items[i].type);
-            }
-            
-            // Text area (right side)
-            const textX = cardX + (100 * scale);
-            const textY = cardY + (20 * scale);
-            const textWidth = cardWidth - (110 * scale);
-            
-            // Name
-            const nameSize = Math.max(14, 16 * scale);
-            ctx.font = `bold ${nameSize}px "Roboto Mono", monospace`;
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.fillText(items[i].name, textX, textY);
-            
-            // Stats/Info
-            const statSize = Math.max(10, 12 * scale);
-            ctx.font = `${statSize}px "Roboto Mono", monospace`;
-            ctx.fillStyle = '#ff9800';
-            let statY = textY + (22 * scale);
-            
-            if (itemType === 'zombie') {
-                ctx.fillText(`Health: ${items[i].health}`, textX, statY);
-                statY += (18 * scale);
-                ctx.fillText(`Speed: ${items[i].speed}`, textX, statY);
-                statY += (18 * scale);
-                ctx.fillText(`Spawn: ${items[i].spawn}`, textX, statY);
-            } else if (itemType === 'weapon') {
-                ctx.fillText(`Damage: ${items[i].damage}`, textX, statY);
-                statY += (18 * scale);
-                ctx.fillText(`Fire Rate: ${items[i].fireRate}`, textX, statY);
-                statY += (18 * scale);
-                ctx.fillText(`Ammo: ${items[i].ammo}`, textX, statY);
-            } else if (itemType === 'pickup') {
-                ctx.fillText(`Effect: ${items[i].effect}`, textX, statY);
-            }
-            
-            // Description
-            const descSize = Math.max(9, 11 * scale);
-            ctx.font = `${descSize}px "Roboto Mono", monospace`;
-            ctx.fillStyle = '#cccccc';
-            statY += (22 * scale);
-            ctx.fillText(items[i].desc, textX, statY, textWidth);
+
+        // Card body
+        const bg = ctx.createLinearGradient(x, y, x, y + h);
+        bg.addColorStop(0, hovered ? 'rgba(22, 26, 34, 0.95)' : 'rgba(12, 14, 20, 0.9)');
+        bg.addColorStop(1, hovered ? 'rgba(14, 16, 22, 0.92)' : 'rgba(8, 10, 14, 0.85)');
+        ctx.fillStyle = bg;
+        this._roundRect(ctx, x, y, w, h, 12 * scale);
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = hovered ? accent : 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = hovered ? 1.5 : 1;
+        this._roundRect(ctx, x, y, w, h, 12 * scale);
+        ctx.stroke();
+
+        if (hovered) {
+            ctx.shadowBlur = 18 * scale;
+            ctx.shadowColor = accent;
+            ctx.strokeStyle = accent;
+            this._roundRect(ctx, x, y, w, h, 12 * scale);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
         }
-        
-        // Calculate final Y position
-        const rows = Math.ceil(items.length / 2);
-        return startY + (40 * scale) + rows * (cardHeight + cardSpacing);
+
+        // Left accent bar
+        ctx.fillStyle = accent;
+        ctx.fillRect(x, y + 10 * scale, 3.5 * scale, h - 20 * scale);
+
+        // Icon well
+        const iconSize = 56 * scale;
+        const iconX = x + 42 * scale;
+        const iconY = y + h / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.arc(iconX, iconY, iconSize * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Soft icon glow
+        const glow = ctx.createRadialGradient(iconX, iconY, 0, iconX, iconY, iconSize * 0.85);
+        glow.addColorStop(0, this._hexToRgba(accent, 0.22));
+        glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(iconX, iconY, iconSize * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (itemType === 'zombie') {
+            this.drawZombieIcon(iconX, iconY, iconSize, item.type);
+        } else if (itemType === 'weapon') {
+            this.drawWeaponIcon(iconX, iconY, iconSize, item.key);
+        } else {
+            this.drawPickupIcon(iconX, iconY, iconSize, item.type);
+        }
+
+        // Text column
+        const textX = x + 82 * scale;
+        const textW = w - 96 * scale;
+        let textY = y + 16 * scale;
+
+        // Tag
+        const tag = item.threat || item.tier || item.rarity || '';
+        const tagColor = THREAT_COLORS[tag] || accent;
+        if (tag) {
+            const tagFont = Math.max(8, 9 * scale);
+            ctx.font = `bold ${tagFont}px "Roboto Mono", monospace`;
+            const tagW = ctx.measureText(tag).width + 12 * scale;
+            const tagH = 16 * scale;
+            ctx.fillStyle = this._hexToRgba(tagColor, 0.18);
+            this._roundRect(ctx, textX, textY, tagW, tagH, 4 * scale);
+            ctx.fill();
+            ctx.strokeStyle = this._hexToRgba(tagColor, 0.55);
+            ctx.lineWidth = 1;
+            this._roundRect(ctx, textX, textY, tagW, tagH, 4 * scale);
+            ctx.stroke();
+            ctx.fillStyle = tagColor;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tag, textX + 6 * scale, textY + tagH / 2);
+            ctx.textBaseline = 'alphabetic';
+            textY += tagH + 8 * scale;
+        }
+
+        // Name
+        const nameSize = Math.max(13, 15 * scale);
+        ctx.font = `bold ${nameSize}px "Roboto Mono", monospace`;
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.fillText(item.name, textX, textY + nameSize * 0.85, textW);
+        textY += nameSize + 8 * scale;
+
+        // Stats
+        const statSize = Math.max(10, 11 * scale);
+        ctx.font = `${statSize}px "Roboto Mono", monospace`;
+        ctx.fillStyle = accent;
+
+        if (itemType === 'zombie') {
+            ctx.fillText(`HP ${item.health}  ·  SPD ${item.speed}`, textX, textY, textW);
+            textY += 16 * scale;
+            ctx.fillStyle = '#9e9e9e';
+            ctx.fillText(`Spawn: ${item.spawn}`, textX, textY, textW);
+            textY += 16 * scale;
+        } else if (itemType === 'weapon') {
+            ctx.fillText(`DMG ${item.damage}  ·  RATE ${item.fireRate}`, textX, textY, textW);
+            textY += 16 * scale;
+            ctx.fillStyle = '#9e9e9e';
+            ctx.fillText(`Ammo: ${item.ammo}`, textX, textY, textW);
+            textY += 16 * scale;
+        } else {
+            ctx.fillText(item.effect, textX, textY, textW);
+            textY += 16 * scale;
+        }
+
+        // Description
+        const descSize = Math.max(9, 10.5 * scale);
+        ctx.font = `${descSize}px "Roboto Mono", monospace`;
+        ctx.fillStyle = '#bdbdbd';
+        this._drawWrappedText(item.desc, textX, textY, textW, descSize * 1.35, 2);
+    }
+
+    _drawWrappedText(text, x, y, maxWidth, lineHeight, maxLines) {
+        const ctx = this.ctx;
+        const words = String(text || '').split(' ');
+        let line = '';
+        let lineCount = 0;
+        let cy = y;
+
+        for (let i = 0; i < words.length; i++) {
+            const test = line ? `${line} ${words[i]}` : words[i];
+            if (ctx.measureText(test).width > maxWidth && line) {
+                ctx.fillText(line, x, cy, maxWidth);
+                line = words[i];
+                cy += lineHeight;
+                lineCount++;
+                if (lineCount >= maxLines) return;
+            } else {
+                line = test;
+            }
+        }
+        if (line && lineCount < maxLines) {
+            ctx.fillText(line, x, cy, maxWidth);
+        }
+    }
+
+    _roundRect(ctx, x, y, w, h, r) {
+        const radius = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + w, y, x + w, y + h, radius);
+        ctx.arcTo(x + w, y + h, x, y + h, radius);
+        ctx.arcTo(x, y + h, x, y, radius);
+        ctx.arcTo(x, y, x + w, y, radius);
+        ctx.closePath();
+    }
+
+    _hexToRgba(hex, alpha) {
+        const h = String(hex || '#ffffff').replace('#', '');
+        const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+        const n = parseInt(full, 16);
+        if (!Number.isFinite(n)) return `rgba(255,255,255,${alpha})`;
+        const r = (n >> 16) & 255;
+        const g = (n >> 8) & 255;
+        const b = n & 255;
+        return `rgba(${r},${g},${b},${alpha})`;
     }
 
     drawZombieIcon(x, y, size, type) {
@@ -237,10 +468,9 @@ export class GalleryScreen {
         ctx.translate(x, y);
 
         const radius = size * 0.4;
-        
-        switch(type) {
-            case 'normal':
-                // Green zombie
+
+        switch (type) {
+            case 'normal': {
                 const normalGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
                 normalGradient.addColorStop(0, '#9acd32');
                 normalGradient.addColorStop(1, '#33691e');
@@ -248,15 +478,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Eyes
                 ctx.fillStyle = `rgba(255, 0, 0, ${0.7 + Math.sin(time / 167) * 0.3})`;
                 ctx.beginPath();
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.25, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.25, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'fast':
-                // Reddish/orange zombie
+            }
+            case 'fast': {
                 const fastGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
                 fastGradient.addColorStop(0, '#ff8c42');
                 fastGradient.addColorStop(1, '#8b4513');
@@ -264,15 +493,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
                 ctx.fill();
-                // Bright red eyes
                 ctx.fillStyle = `rgba(255, 0, 0, ${0.8 + Math.sin(time / 100) * 0.2})`;
                 ctx.beginPath();
                 ctx.arc(-radius * 0.35, -radius * 0.2, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.35, -radius * 0.2, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'exploding':
-                // Orange/yellow pulsing zombie
+            }
+            case 'exploding': {
                 const pulse = 0.8 + Math.sin(time / 150) * 0.2;
                 const explodeGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
                 explodeGradient.addColorStop(0, `rgba(255, ${165 + pulse * 50}, 0, 1)`);
@@ -281,15 +509,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Yellow eyes
                 ctx.fillStyle = '#ffeb3b';
                 ctx.beginPath();
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'armored':
-                // Dark gray with armor plates
+            }
+            case 'armored': {
                 const armorGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
                 armorGradient.addColorStop(0, '#616161');
                 armorGradient.addColorStop(1, '#212121');
@@ -297,21 +524,19 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius * 1.1, 0, Math.PI * 2);
                 ctx.fill();
-                // Armor plates
                 ctx.strokeStyle = '#9e9e9e';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(0, -radius * 0.3, radius * 0.3, 0, Math.PI);
                 ctx.stroke();
-                // Red eyes
                 ctx.fillStyle = '#ff1744';
                 ctx.beginPath();
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'ghost':
-                // Semi-transparent pale blue
+            }
+            case 'ghost': {
                 ctx.globalAlpha = 0.5;
                 const ghostGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
                 ghostGradient.addColorStop(0, '#b3e5fc');
@@ -321,15 +546,14 @@ export class GalleryScreen {
                 ctx.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
-                // Pale blue eyes
                 ctx.fillStyle = '#81d4fa';
                 ctx.beginPath();
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'spitter':
-                // Green with toxic aura
+            }
+            case 'spitter': {
                 const spitterGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
                 spitterGradient.addColorStop(0, '#66bb6a');
                 spitterGradient.addColorStop(1, '#1b5e20');
@@ -337,14 +561,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Toxic green eyes
                 ctx.fillStyle = '#4caf50';
                 ctx.beginPath();
                 ctx.arc(-radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.arc(radius * 0.4, -radius * 0.25, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'siren':
+            }
+            case 'siren': {
                 const sirenGradient = ctx.createRadialGradient(-3, -4, 0, 0, 0, radius);
                 sirenGradient.addColorStop(0, '#4dd0e1');
                 sirenGradient.addColorStop(1, '#004d57');
@@ -362,7 +586,8 @@ export class GalleryScreen {
                 ctx.arc(radius * 0.35, -radius * 0.2, radius * 0.18, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'splitter':
+            }
+            case 'splitter': {
                 const splitGradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius * 1.1);
                 splitGradient.addColorStop(0, '#c5e1a5');
                 splitGradient.addColorStop(1, '#33691e');
@@ -378,8 +603,8 @@ export class GalleryScreen {
                 ctx.lineTo(radius * 0.4, radius * 0.8);
                 ctx.stroke();
                 break;
-            case 'boss':
-                // Large dark red zombie
+            }
+            case 'boss': {
                 const bossGradient = ctx.createRadialGradient(-4, -4, 0, 0, 0, radius * 1.3);
                 bossGradient.addColorStop(0, '#d32f2f');
                 bossGradient.addColorStop(1, '#b71c1c');
@@ -387,7 +612,6 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius * 1.3, 0, Math.PI * 2);
                 ctx.fill();
-                // Glowing red eyes
                 ctx.shadowBlur = 8;
                 ctx.shadowColor = '#ff0000';
                 ctx.fillStyle = '#ff5252';
@@ -397,6 +621,47 @@ export class GalleryScreen {
                 ctx.fill();
                 ctx.shadowBlur = 0;
                 break;
+            }
+            case 'warden': {
+                const pulse = 0.85 + Math.sin(time / 180) * 0.15;
+                const wardenGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 1.6 * pulse);
+                wardenGlow.addColorStop(0, 'rgba(156, 39, 176, 0.45)');
+                wardenGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = wardenGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 1.6 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+
+                const wardenGrad = ctx.createRadialGradient(-4, -5, 0, 0, 0, radius * 1.35);
+                wardenGrad.addColorStop(0, '#7e57c2');
+                wardenGrad.addColorStop(0.5, '#4a148c');
+                wardenGrad.addColorStop(1, '#1a0033');
+                ctx.fillStyle = wardenGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 2, radius * 1.15, radius * 1.35, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Crown / crest
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.55, -radius * 0.7);
+                ctx.lineTo(-radius * 0.25, -radius * 1.15);
+                ctx.lineTo(0, -radius * 0.75);
+                ctx.lineTo(radius * 0.25, -radius * 1.15);
+                ctx.lineTo(radius * 0.55, -radius * 0.7);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#e040fb';
+                ctx.fillStyle = `rgba(224, 64, 251, ${0.75 + Math.sin(time / 120) * 0.25})`;
+                ctx.beginPath();
+                ctx.arc(-radius * 0.4, -radius * 0.15, radius * 0.22, 0, Math.PI * 2);
+                ctx.arc(radius * 0.4, -radius * 0.15, radius * 0.22, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                break;
+            }
         }
         ctx.restore();
     }
@@ -409,70 +674,80 @@ export class GalleryScreen {
         const width = size * 0.6;
         const height = size * 0.3;
 
-        switch(weaponKey) {
+        switch (weaponKey) {
             case 'pistol':
-                // Simple pistol shape
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width, height);
+                ctx.fillRect(-width / 2, -height / 2, width, height);
                 ctx.fillStyle = '#212121';
-                ctx.fillRect(-width/2 + width * 0.7, -height/2, width * 0.3, height);
+                ctx.fillRect(-width / 2 + width * 0.7, -height / 2, width * 0.3, height);
                 break;
             case 'shotgun':
-                // Wider shotgun
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width * 1.2, height * 1.2);
+                ctx.fillRect(-width / 2, -height / 2, width * 1.2, height * 1.2);
                 ctx.fillStyle = '#212121';
-                ctx.fillRect(-width/2 + width * 0.8, -height/2, width * 0.4, height * 1.2);
+                ctx.fillRect(-width / 2 + width * 0.8, -height / 2, width * 0.4, height * 1.2);
                 break;
             case 'rifle':
-                // Long rifle
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width * 1.5, height);
+                ctx.fillRect(-width / 2, -height / 2, width * 1.5, height);
                 ctx.fillStyle = '#212121';
-                ctx.fillRect(-width/2 + width * 1.2, -height/2, width * 0.3, height);
+                ctx.fillRect(-width / 2 + width * 1.2, -height / 2, width * 0.3, height);
                 break;
-            case 'flamethrower':
-                // Flamethrower with flame
+            case 'flamethrower': {
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width * 1.2, height * 1.3);
-                // Flame effect
-                const flameGradient = ctx.createRadialGradient(width/2, 0, 0, width/2, 0, width * 0.4);
+                ctx.fillRect(-width / 2, -height / 2, width * 1.2, height * 1.3);
+                const flameGradient = ctx.createRadialGradient(width / 2, 0, 0, width / 2, 0, width * 0.4);
                 flameGradient.addColorStop(0, '#ffeb3b');
                 flameGradient.addColorStop(0.5, '#ff9800');
                 flameGradient.addColorStop(1, 'rgba(255, 152, 0, 0)');
                 ctx.fillStyle = flameGradient;
                 ctx.beginPath();
-                ctx.arc(width/2, 0, width * 0.4, 0, Math.PI * 2);
+                ctx.arc(width / 2, 0, width * 0.4, 0, Math.PI * 2);
                 ctx.fill();
                 break;
+            }
             case 'smg':
-                // Compact SMG
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width * 1.1, height * 0.9);
+                ctx.fillRect(-width / 2, -height / 2, width * 1.1, height * 0.9);
                 ctx.fillStyle = '#212121';
-                ctx.fillRect(-width/2 + width * 0.9, -height/2, width * 0.2, height * 0.9);
+                ctx.fillRect(-width / 2 + width * 0.9, -height / 2, width * 0.2, height * 0.9);
                 break;
             case 'sniper':
-                // Long sniper with scope
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width * 1.8, height);
-                // Scope
+                ctx.fillRect(-width / 2, -height / 2, width * 1.8, height);
                 ctx.fillStyle = '#212121';
-                ctx.fillRect(-width/2 + width * 0.3, -height/2 - height * 0.3, width * 0.4, height * 0.6);
+                ctx.fillRect(-width / 2 + width * 0.3, -height / 2 - height * 0.3, width * 0.4, height * 0.6);
                 break;
             case 'rocketLauncher':
-                // RPG launcher
                 ctx.fillStyle = '#424242';
-                ctx.fillRect(-width/2, -height/2, width * 1.3, height * 1.5);
-                // Rocket tip
+                ctx.fillRect(-width / 2, -height / 2, width * 1.3, height * 1.5);
                 ctx.fillStyle = '#ff1744';
                 ctx.beginPath();
-                ctx.moveTo(width/2, -height/2);
-                ctx.lineTo(width/2 + width * 0.3, 0);
-                ctx.lineTo(width/2, height/2);
+                ctx.moveTo(width / 2, -height / 2);
+                ctx.lineTo(width / 2 + width * 0.3, 0);
+                ctx.lineTo(width / 2, height / 2);
                 ctx.closePath();
                 ctx.fill();
                 break;
+            case 'laser': {
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(-width / 2, -height / 2, width * 1.2, height * 0.9);
+                const beam = ctx.createLinearGradient(width / 2, 0, width / 2 + width * 0.7, 0);
+                beam.addColorStop(0, '#ff0055');
+                beam.addColorStop(0.5, '#ff80ab');
+                beam.addColorStop(1, 'rgba(255, 0, 85, 0)');
+                ctx.strokeStyle = beam;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(width / 2, 0);
+                ctx.lineTo(width / 2 + width * 0.7, 0);
+                ctx.stroke();
+                ctx.fillStyle = '#ff0055';
+                ctx.beginPath();
+                ctx.arc(width / 2, 0, 4, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
         }
         ctx.restore();
     }
@@ -486,9 +761,8 @@ export class GalleryScreen {
         const radius = size * 0.35;
         const pulse = 0.8 + Math.sin(time / 500) * 0.15;
 
-        switch(type) {
-            case 'health':
-                // Red health orb
+        switch (type) {
+            case 'health': {
                 const healthGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 healthGlow.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
                 healthGlow.addColorStop(1, 'rgba(255, 0, 80, 0)');
@@ -503,18 +777,17 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Cross
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(-radius/2, 0);
-                ctx.lineTo(radius/2, 0);
-                ctx.moveTo(0, -radius/2);
-                ctx.lineTo(0, radius/2);
+                ctx.moveTo(-radius / 2, 0);
+                ctx.lineTo(radius / 2, 0);
+                ctx.moveTo(0, -radius / 2);
+                ctx.lineTo(0, radius / 2);
                 ctx.stroke();
                 break;
-            case 'ammo':
-                // Yellow ammo box
+            }
+            case 'ammo': {
                 const ammoGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 ammoGlow.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
                 ammoGlow.addColorStop(1, 'rgba(255, 152, 0, 0)');
@@ -529,12 +802,11 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Bullet icon
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(-radius/3, -radius/2, radius * 0.4, radius);
+                ctx.fillRect(-radius / 3, -radius / 2, radius * 0.4, radius);
                 break;
-            case 'damage':
-                // Purple damage buff
+            }
+            case 'damage': {
                 const damageGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 damageGlow.addColorStop(0, 'rgba(224, 64, 251, 0.9)');
                 damageGlow.addColorStop(1, 'rgba(123, 31, 162, 0)');
@@ -549,15 +821,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // 2x text
                 ctx.fillStyle = '#ffffff';
                 ctx.font = `bold ${radius * 0.8}px "Roboto Mono", monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('2x', 0, 0);
                 break;
-            case 'nuke':
-                // Black/yellow nuke
+            }
+            case 'nuke': {
                 const nukeGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.5 * pulse);
                 nukeGlow.addColorStop(0, 'rgba(255, 235, 59, 0.9)');
                 nukeGlow.addColorStop(1, 'rgba(255, 235, 59, 0)');
@@ -572,9 +843,6 @@ export class GalleryScreen {
                 ctx.strokeStyle = '#ffeb3b';
                 ctx.lineWidth = 2;
                 ctx.stroke();
-                // Radiation symbol
-                ctx.strokeStyle = '#ffeb3b';
-                ctx.lineWidth = 2;
                 for (let i = 0; i < 3; i++) {
                     const angle = (i * Math.PI * 2 / 3) - Math.PI / 2;
                     ctx.beginPath();
@@ -586,8 +854,8 @@ export class GalleryScreen {
                 ctx.arc(0, 0, radius * 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 break;
-            case 'speed':
-                // Cyan speed boost
+            }
+            case 'speed': {
                 const speedGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 speedGlow.addColorStop(0, 'rgba(0, 255, 255, 0.9)');
                 speedGlow.addColorStop(1, 'rgba(0, 172, 193, 0)');
@@ -602,15 +870,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Double arrow
                 ctx.fillStyle = '#ffffff';
                 ctx.font = `bold ${radius * 0.8}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('»', 0, 0);
                 break;
-            case 'rapidfire':
-                // Orange rapid fire
+            }
+            case 'rapidfire': {
                 const rapidGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 rapidGlow.addColorStop(0, 'rgba(255, 152, 0, 0.9)');
                 rapidGlow.addColorStop(1, 'rgba(245, 124, 0, 0)');
@@ -625,15 +892,14 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Lightning
                 ctx.fillStyle = '#ffffff';
                 ctx.font = `bold ${radius * 0.8}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('⚡', 0, 0);
                 break;
-            case 'shield':
-                // Light blue shield
+            }
+            case 'shield': {
                 const shieldGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 shieldGlow.addColorStop(0, 'rgba(129, 212, 250, 0.9)');
                 shieldGlow.addColorStop(1, 'rgba(2, 136, 209, 0)');
@@ -648,7 +914,6 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Shield hexagon
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -662,8 +927,8 @@ export class GalleryScreen {
                 ctx.closePath();
                 ctx.stroke();
                 break;
-            case 'adrenaline':
-                // Green/yellow adrenaline
+            }
+            case 'adrenaline': {
                 const adrenGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.2 * pulse);
                 adrenGlow.addColorStop(0, 'rgba(200, 230, 201, 0.9)');
                 adrenGlow.addColorStop(1, 'rgba(76, 175, 80, 0)');
@@ -678,17 +943,17 @@ export class GalleryScreen {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fill();
-                // Plus symbol
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(-radius/2, 0);
-                ctx.lineTo(radius/2, 0);
-                ctx.moveTo(0, -radius/2);
-                ctx.lineTo(0, radius/2);
+                ctx.moveTo(-radius / 2, 0);
+                ctx.lineTo(radius / 2, 0);
+                ctx.moveTo(0, -radius / 2);
+                ctx.lineTo(0, radius / 2);
                 ctx.stroke();
                 break;
-            case 'frost':
+            }
+            case 'frost': {
                 const frostGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.4 * pulse);
                 frostGlow.addColorStop(0, 'rgba(224, 247, 250, 1.0)');
                 frostGlow.addColorStop(1, 'rgba(3, 169, 244, 0)');
@@ -713,18 +978,34 @@ export class GalleryScreen {
                     ctx.stroke();
                 }
                 break;
+            }
         }
         ctx.restore();
     }
 
     checkButtonClick(x, y) {
+        // Tabs
+        for (let i = 0; i < this._tabHitboxes.length; i++) {
+            const t = this._tabHitboxes[i];
+            if (x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h) {
+                return `gallery_tab_${t.id}`;
+            }
+        }
+
+        // Back
+        if (this._backHitbox) {
+            const b = this._backHitbox;
+            if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+                return 'gallery_back';
+            }
+        }
+
+        // Legacy fallback
         const centerX = this.canvas.width / 2;
         const scale = this.getUIScale();
         const mainMenuButtonWidth = 240 * scale;
         const mainMenuButtonHeight = 50 * scale;
         const backY = this.canvas.height - 100;
-
-        // Check Gallery screen back button
         if (x >= centerX - mainMenuButtonWidth / 2 && x <= centerX + mainMenuButtonWidth / 2 &&
             y >= backY - mainMenuButtonHeight / 2 && y <= backY + mainMenuButtonHeight / 2) {
             return 'gallery_back';
@@ -732,9 +1013,40 @@ export class GalleryScreen {
         return null;
     }
 
+    handleTabClick(tabId) {
+        if (this.activeTab === tabId) return;
+        this.activeTab = tabId;
+        this.galleryScrollY = 0;
+        this.galleryTargetScrollY = 0;
+        this.hoveredCard = null;
+    }
+
     updateHover(x, y) {
+        this.hoveredButton = null;
+        this.hoveredTab = null;
+        this.hoveredCard = null;
+
+        for (let i = 0; i < this._tabHitboxes.length; i++) {
+            const t = this._tabHitboxes[i];
+            if (x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h) {
+                this.hoveredTab = t.id;
+                return `gallery_tab_${t.id}`;
+            }
+        }
+
+        for (let i = 0; i < this._cardHitboxes.length; i++) {
+            const c = this._cardHitboxes[i];
+            if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
+                this.hoveredCard = c.id;
+                return c.id;
+            }
+        }
+
         this.hoveredButton = this.checkButtonClick(x, y);
         return this.hoveredButton;
     }
-}
 
+    handleScroll(deltaY) {
+        this.galleryTargetScrollY += deltaY * 0.5;
+    }
+}

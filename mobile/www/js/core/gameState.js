@@ -91,6 +91,10 @@ export function createPlayer(x, y, colorIndex = 0) {
         equipmentReloadSpeedMultiplier: 1,
         equipmentXpGainMultiplier: 1,
         equipmentScrapMultiplier: 1,
+        equipmentCritChance: 0,
+        equipmentDamageReduction: 0,
+        activeEquipmentSets: [],
+        heroScrapAuraBonus: 0,
 
         flashlight: {
             active: false
@@ -132,6 +136,39 @@ export const gameState = {
     campaignObjectiveTarget: null,
     campaignZoneCleared: false,
     campaignZoneClearTime: 0,
+    campaignActClear: false,
+    campaignScript: {
+        powerRequired: 0,
+        powerCompleted: 0,
+        powerIds: [],
+        gateOnline: false,
+        debrisCleared: false,
+        lightsOutUntil: 0,
+        lightsOutFired: false,
+        hackProgress: 0,
+        hackActiveId: null,
+        hackComplete: false,
+        defendActive: false,
+        defendEndsAt: 0,
+        defendDurationMs: 0,
+        wardenSpawned: false,
+        wardenDead: false,
+        actClear: false,
+        interactHoldId: null,
+        interactHoldStart: 0,
+        extractTaxFired: false,
+        activeNpcs: [],
+        nearbyNpcId: null,
+        survivorBubble: null
+    },
+    /** Persists across zone transitions within one campaign run. */
+    campaignSurvivorRun: {
+        met: {},
+        quest: null,
+        questDone: {},
+        recruited: {},
+        killsAtQuestStart: 0
+    },
     showSettingsPanel: false,
     showLobby: false,
     isCoop: false,
@@ -433,6 +470,10 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.equipmentReloadSpeedMultiplier = 1;
             player.equipmentXpGainMultiplier = 1;
             player.equipmentScrapMultiplier = 1;
+            player.equipmentCritChance = 0;
+            player.equipmentDamageReduction = 0;
+            player.activeEquipmentSets = [];
+            player.heroScrapAuraBonus = 0;
             player.hasLastStand = false;
             player.lastStandUsed = false;
             player.lastStandActiveUntil = 0;
@@ -594,5 +635,37 @@ export function resetGameState(canvasWidth, canvasHeight) {
         gameState.campaignObjectiveTarget = null;
         gameState.campaignZoneCleared = false;
         gameState.campaignZoneClearTime = 0;
+        gameState.campaignActClear = false;
+        gameState.campaignScript = {
+            powerRequired: 0,
+            powerCompleted: 0,
+            powerIds: [],
+            gateOnline: false,
+            debrisCleared: false,
+            lightsOutUntil: 0,
+            lightsOutFired: false,
+            hackProgress: 0,
+            hackActiveId: null,
+            hackComplete: false,
+            defendActive: false,
+            defendEndsAt: 0,
+            defendDurationMs: 0,
+            wardenSpawned: false,
+            wardenDead: false,
+            actClear: false,
+            interactHoldId: null,
+            interactHoldStart: 0,
+            extractTaxFired: false,
+            activeNpcs: [],
+            nearbyNpcId: null,
+            survivorBubble: null
+        };
+        gameState.campaignSurvivorRun = {
+            met: {},
+            quest: null,
+            questDone: {},
+            recruited: {},
+            killsAtQuestStart: 0
+        };
     }
 }

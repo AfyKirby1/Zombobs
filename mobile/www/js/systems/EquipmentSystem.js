@@ -1,15 +1,18 @@
-// [TRACE: CAMPAIGN_DESIGN.md] Equipment system — drops, inventory, and stat bonuses.
+// [TRACE: CAMPAIGN_DESIGN.md] Equipment system — drops, inventory, sets, stat bonuses.
 
 import { PLAYER_MAX_HEALTH } from '../core/constants.js';
-import { generateEquipmentItem } from '../core/equipmentDefinitions.js';
+import {
+    generateEquipmentItem,
+    getActiveSetBonuses
+} from '../core/equipmentDefinitions.js';
 
 export class EquipmentSystem {
     constructor() {
-        this.maxInventorySize = 16;
+        this.maxInventorySize = 24;
     }
 
-    createRandomItem(rarity) {
-        return generateEquipmentItem(rarity);
+    createRandomItem(rarity, opts) {
+        return generateEquipmentItem(rarity, opts);
     }
 
     addItemToInventory(player, item) {
@@ -49,6 +52,16 @@ export class EquipmentSystem {
         }
     }
 
+    _mergeBonuses(target, source) {
+        for (const [type, value] of Object.entries(source)) {
+            if (type === 'maxHealth' || type === 'critChance' || type === 'damageReduction') {
+                target[type] = (target[type] || 0) + value;
+            } else {
+                target[type] = (target[type] || 1) + value;
+            }
+        }
+    }
+
     recalcPlayerEquipment(player) {
         const bonuses = {
             maxHealth: 0,
@@ -57,21 +70,25 @@ export class EquipmentSystem {
             fireRate: 1,
             reloadSpeed: 1,
             xpGain: 1,
-            scrapGain: 1
+            scrapGain: 1,
+            critChance: 0,
+            damageReduction: 0
         };
 
         if (player.equippedItems) {
             for (const slot of Object.keys(player.equippedItems)) {
                 const item = player.equippedItems[slot];
                 if (!item || !item.bonuses) continue;
-                for (const [type, value] of Object.entries(item.bonuses)) {
-                    if (type === 'maxHealth') {
-                        bonuses.maxHealth += value;
-                    } else {
-                        bonuses[type] = (bonuses[type] || 1) + value;
-                    }
-                }
+                this._mergeBonuses(bonuses, item.bonuses);
             }
+
+            const sets = getActiveSetBonuses(player.equippedItems);
+            player.activeEquipmentSets = sets;
+            for (let i = 0; i < sets.length; i++) {
+                this._mergeBonuses(bonuses, sets[i].bonuses);
+            }
+        } else {
+            player.activeEquipmentSets = [];
         }
 
         player.equipmentMaxHealthBonus = bonuses.maxHealth;
@@ -81,16 +98,19 @@ export class EquipmentSystem {
         player.equipmentReloadSpeedMultiplier = bonuses.reloadSpeed;
         player.equipmentXpGainMultiplier = bonuses.xpGain;
         player.equipmentScrapMultiplier = bonuses.scrapGain;
+        player.equipmentCritChance = bonuses.critChance;
+        player.equipmentDamageReduction = Math.min(0.45, bonuses.damageReduction);
 
         const newMaxHealth = PLAYER_MAX_HEALTH + bonuses.maxHealth;
-        const healthDiff = newMaxHealth - player.maxHealth;
+        const healthDiff = newMaxHealth - (player.maxHealth || PLAYER_MAX_HEALTH);
         player.maxHealth = newMaxHealth;
-        player.health = Math.min(player.maxHealth, player.health + healthDiff);
+        player.health = Math.min(player.maxHealth, (player.health || 0) + Math.max(0, healthDiff));
     }
 
     resetPlayerEquipment(player) {
         player.equippedItems = {};
         player.inventory = [];
+        player.activeEquipmentSets = [];
         player.equipmentMaxHealthBonus = 0;
         player.equipmentSpeedMultiplier = 1;
         player.equipmentDamageMultiplier = 1;
@@ -98,16 +118,28 @@ export class EquipmentSystem {
         player.equipmentReloadSpeedMultiplier = 1;
         player.equipmentXpGainMultiplier = 1;
         player.equipmentScrapMultiplier = 1;
+        player.equipmentCritChance = 0;
+        player.equipmentDamageReduction = 0;
     }
 
     tryDropFromZombie(zombie) {
-        if (Math.random() > 0.07) return null;
+        const isBoss = zombie && (zombie.type === 'boss' || zombie.isBoss === true);
+        const dropChance = isBoss ? 0.55 : 0.09;
+        if (Math.random() > dropChance) return null;
+
         const r = Math.random();
         let rarity = 'common';
-        if (r > 0.96) rarity = 'legendary';
-        else if (r > 0.88) rarity = 'epic';
-        else if (r > 0.70) rarity = 'rare';
-        else if (r > 0.40) rarity = 'uncommon';
+        if (isBoss) {
+            if (r > 0.85) rarity = 'legendary';
+            else if (r > 0.55) rarity = 'epic';
+            else if (r > 0.25) rarity = 'rare';
+            else rarity = 'uncommon';
+        } else {
+            if (r > 0.97) rarity = 'legendary';
+            else if (r > 0.90) rarity = 'epic';
+            else if (r > 0.72) rarity = 'rare';
+            else if (r > 0.42) rarity = 'uncommon';
+        }
         return this.createRandomItem(rarity);
     }
 
