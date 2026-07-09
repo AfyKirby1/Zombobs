@@ -33,6 +33,7 @@ import { mapLoader } from './MapLoader.js';
 import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
+import { equipmentSystem } from './EquipmentSystem.js';
 import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
@@ -57,6 +58,7 @@ export class GameLoopSystem {
      * @param {() => void} deps.updatePlayers
      * @param {() => void} deps.drawPlayers
      * @param {() => void} deps.onGameOver
+     * @param {() => void} deps.onZoneComplete
      * @param {(count: number) => void} deps.spawnZombies
      */
     constructor(deps) {
@@ -75,12 +77,18 @@ export class GameLoopSystem {
         this.updatePlayers = deps.updatePlayers;
         this.drawPlayers = deps.drawPlayers;
         this.onGameOver = deps.onGameOver;
+        this.onZoneComplete = deps.onZoneComplete;
         this.spawnZombies = deps.spawnZombies;
     }
 
     update() {
         if (isGameplayBlocked(gameState)) return;
         if (gameState.showLevelUp) return;
+
+        // Sync virtual pad edges before player/action consumers read justPressed
+        if (this.touchControlSystem?.active) {
+            this.touchControlSystem.tick();
+        }
 
         const now = Date.now();
         const activePlayers = gameState.players.filter(p => p.health > 0);
@@ -105,6 +113,10 @@ export class GameLoopSystem {
                     propSpawnSystem.update(gameState, localPlayer);
                 } else if (mapLoader.isLoaded()) {
                     mapLoader.updateTriggers();
+                    if (gameState.campaignZoneCleared) {
+                        this.onZoneComplete();
+                        return;
+                    }
                 }
 
                 if (gameState.props && gameState.props.length > 0) {
@@ -265,15 +277,33 @@ export class GameLoopSystem {
             }
         }
 
-        if (this.mouse.isDown && gameState.gameRunning && !gameState.gamePaused) {
+        // Mouse hold-fire OR virtual right-stick auto-fire (mobile)
+        if (gameState.gameRunning && !gameState.gamePaused) {
             const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
             if (localPlayer && localPlayer.health > 0) {
-                let target = this.mouse;
-                if (isSinglePlayerArcadeMode(gameState)) {
-                    const worldPos = cameraSystem.screenToWorld(this.mouse.x, this.mouse.y);
-                    target = { x: worldPos.x, y: worldPos.y };
+                const virtual = this.touchControlSystem?.active
+                    ? this.touchControlSystem.getVirtualState()
+                    : null;
+                const aim = virtual?.axes?.aim;
+                const aimMag = aim ? Math.sqrt(aim.x * aim.x + aim.y * aim.y) : 0;
+                const virtualFire = virtual?.buttons?.fire?.pressed && aimMag > 0.3;
+
+                if (this.mouse.isDown || virtualFire) {
+                    let target;
+                    if (virtualFire) {
+                        target = {
+                            x: localPlayer.x + aim.x * 200,
+                            y: localPlayer.y + aim.y * 200
+                        };
+                    } else {
+                        target = this.mouse;
+                        if (isSinglePlayerArcadeMode(gameState)) {
+                            const worldPos = cameraSystem.screenToWorld(this.mouse.x, this.mouse.y);
+                            target = { x: worldPos.x, y: worldPos.y };
+                        }
+                    }
+                    shootBullet(target, canvas, localPlayer);
                 }
-                shootBullet(target, canvas, localPlayer);
             }
         }
 
@@ -281,6 +311,7 @@ export class GameLoopSystem {
         handlePlayerZombieCollisions();
         pickupSpawnSystem.updateScrapPickups(gameState, now);
         handlePickupCollisions();
+        this._updateEquipmentPickups();
 
         if (gameState.zombies.length === 0 && gameState.gameRunning && !gameState.isSpawningWave) {
             if (!gameState.waveBreakActive) {
@@ -322,6 +353,26 @@ export class GameLoopSystem {
         }
 
         setGameMusicIntensity(targetIntensity);
+    }
+
+    _updateEquipmentPickups() {
+        const player = gameState.players[0];
+        if (!player || player.health <= 0) return;
+
+        for (let i = gameState.equipmentPickups.length - 1; i >= 0; i--) {
+            const pickup = gameState.equipmentPickups[i];
+            pickup.update();
+
+            const dx = player.x - pickup.x;
+            const dy = player.y - pickup.y;
+            const collectRadius = player.radius + pickup.radius;
+            if (dx * dx + dy * dy <= collectRadius * collectRadius) {
+                equipmentSystem.autoEquipIfSlotEmpty(player, pickup.item);
+                gameState.equipmentPickups.splice(i, 1);
+            } else if (pickup.life <= 0) {
+                gameState.equipmentPickups.splice(i, 1);
+            }
+        }
     }
 
     draw() {
@@ -601,6 +652,10 @@ export class GameLoopSystem {
 
         entityRenderSystem.drawEntities(gameState, ctx, viewport);
         this.drawPlayers();
+
+        for (let i = 0; i < gameState.equipmentPickups.length; i++) {
+            gameState.equipmentPickups[i].draw(ctx);
+        }
 
         ctx.restore();
 

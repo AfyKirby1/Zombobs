@@ -1,5 +1,6 @@
-import { shouldUpdateEntity } from '../utils/gameUtils.js';
+import { shouldUpdateEntity, isCampaignMode } from '../utils/gameUtils.js';
 import { gameState } from '../core/gameState.js';
+import { mapLoader } from './MapLoader.js';
 
 /**
  * ZombieUpdateSystem handles zombie AI updates, multiplayer interpolation,
@@ -109,6 +110,16 @@ export class ZombieUpdateSystem {
             }
             zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow * sirenBoost;
             zombie.update(closestPlayer);
+
+            if (isCampaignMode(gameState) && mapLoader.isLoaded()) {
+                const resolved = mapLoader.resolvePosition(zombie.x, zombie.y, zombie.radius);
+                zombie.x = resolved.x;
+                zombie.y = resolved.y;
+                if (zombie.lowerBodyHitbox) {
+                    zombie.lowerBodyHitbox.x = zombie.x;
+                    zombie.lowerBodyHitbox.y = zombie.y + 15;
+                }
+            }
         }
     }
 

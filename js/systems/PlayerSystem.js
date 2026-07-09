@@ -18,6 +18,7 @@ import { cameraSystem } from './CameraSystem.js';
 import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
 import { isMobileDevice, isCampaignMode } from '../utils/gameUtils.js';
 import { mapLoader } from './MapLoader.js';
+import { scrapShopSystem } from './ScrapShopSystem.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -77,38 +78,44 @@ export class PlayerSystem {
                     if (gpState.buttons.sprint.pressed) isSprintingInput = true;
                 }
             }
-            // Mouse/Keyboard Controls (P1 only)
+            // Mouse/Keyboard Controls (P1 only) — also consumes virtual touch gamepad
             else if (player.inputSource === 'mouse') {
-                // Check for keyboard input first
                 if (keys[controls.moveUp]) moveY -= 1;
                 if (keys[controls.moveDown]) moveY += 1;
                 if (keys[controls.moveLeft]) moveX -= 1;
                 if (keys[controls.moveRight]) moveX += 1;
 
-                // If no keyboard movement, check for virtual touch controls
-                if (moveX === 0 && moveY === 0) {
-                    const virtualMove = inputSystem.getMoveInput();
-                    if (virtualMove) {
-                        moveX = virtualMove.x;
-                        moveY = virtualMove.y;
-                    }
+                const virtualState = isMobileDevice() ? inputSystem.virtualState : null;
+                if (moveX === 0 && moveY === 0 && virtualState) {
+                    moveX = virtualState.axes.move.x;
+                    moveY = virtualState.axes.move.y;
                 }
 
                 const sprintKey = controls.sprint || 'shift';
                 if (keys[sprintKey] || keys['shift']) isSprintingInput = true;
 
-                // v0.8.1.2: Convert mouse screen coordinates to world coordinates in single player arcade mode
                 const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
-                let mouseWorldX = mouse.x;
-                let mouseWorldY = mouse.y;
-                if (isSinglePlayerArcade) {
-                    const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
-                    mouseWorldX = worldPos.x;
-                    mouseWorldY = worldPos.y;
-                }
+                const aim = virtualState?.axes?.aim;
+                const aimMag = aim ? Math.sqrt(aim.x * aim.x + aim.y * aim.y) : 0;
 
-                target = { x: mouseWorldX, y: mouseWorldY };
-                player.angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
+                // Prefer right-stick aim on mobile; fall back to mouse/touch pointer
+                if (aimMag > 0.15) {
+                    player.angle = Math.atan2(aim.y, aim.x);
+                    target = {
+                        x: player.x + aim.x * 200,
+                        y: player.y + aim.y * 200
+                    };
+                } else {
+                    let mouseWorldX = mouse.x;
+                    let mouseWorldY = mouse.y;
+                    if (isSinglePlayerArcade) {
+                        const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
+                        mouseWorldX = worldPos.x;
+                        mouseWorldY = worldPos.y;
+                    }
+                    target = { x: mouseWorldX, y: mouseWorldY };
+                    player.angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
+                }
             }
             // Keyboard Arrow Controls (P2 only, for backward compatibility)
             else if (index === 1 && player.inputSource === 'keyboard_arrow') {
@@ -176,7 +183,8 @@ export class PlayerSystem {
                 waveRiderMult = player.waveRiderSpeedMult || 1.2;
             }
 
-            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult * waveRiderMult;
+            const equipmentSpeedMultiplier = player.equipmentSpeedMultiplier || 1.0;
+            const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier * feralRageSpeedMult * waveRiderMult * equipmentSpeedMultiplier;
 
             // autoSprint: Check settings, but force enable on mobile for better ergonomics
             const autoSprint = isMobileDevice() || settingsManager.getSetting('gameplay', 'autoSprint') || false;
@@ -327,17 +335,30 @@ export class PlayerSystem {
             // P1 Actions (if mouse) handled in event listeners mostly, but gamepad actions here
             // P2 Actions
 
-            // Gamepad Actions (For either player if using gamepad)
+            // Gamepad Actions (physical pad OR virtual touch for mouse-source mobile)
+            let gpState = null;
             if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
-                const gpState = inputSystem.getGamepad(player.gamepadIndex);
-                if (gpState) {
-                    if (gpState.buttons.fire.pressed) shootBullet(target, canvas, player);
-                    if (gpState.buttons.melee.justPressed) performMeleeAttackCallback(player);
-                    if (gpState.buttons.reload.justPressed) reloadWeapon(player);
-                    if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
-                    if (gpState.buttons.cycleThrowable.justPressed) cycleThrowable(player);
-                    if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
-                    if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
+                gpState = inputSystem.getGamepad(player.gamepadIndex);
+            } else if (player.inputSource === 'mouse' && isMobileDevice() && inputSystem.virtualState) {
+                gpState = inputSystem.virtualState;
+            }
+            if (gpState) {
+                // Fire for physical gamepad only — mouse/mobile fire handled in GameLoopSystem
+                if (player.inputSource === 'gamepad' && gpState.buttons.fire.pressed) {
+                    shootBullet(target, canvas, player);
+                }
+                if (gpState.buttons.melee.justPressed) performMeleeAttackCallback(player);
+                if (gpState.buttons.reload.justPressed) reloadWeapon(player);
+                if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
+                if (gpState.buttons.cycleThrowable.justPressed) cycleThrowable(player);
+                if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
+                if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
+                if (gpState.buttons.interact.justPressed) {
+                    scrapShopSystem.tryPurchase(player);
+                }
+                if (gpState.buttons.flashlight.justPressed) {
+                    if (!player.flashlight) player.flashlight = { active: false };
+                    player.flashlight.active = !player.flashlight.active;
                 }
             }
 

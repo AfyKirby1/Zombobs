@@ -21,12 +21,148 @@
     <title>ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</title>
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
     <link rel="apple-touch-icon" href="assets/icons/favicon.png">
-    <link rel="preload" href="assets/fonts/L0xuDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vqPQw.ttf" as="font"
-        type="font/ttf" crossorigin>
+    <link rel="preload" href="assets/fonts/roboto-mono-latin-400.woff2" as="font"
+        type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/fonts.css">
     <!-- Relative paths for robust Itch.io and CDN path resolution -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/ui-overlay.css">
+    <style>
+        /* Critical boot overlay — visible before style.css loads */
+        .boot-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at center, #051b1f 0%, #02040a 72%);
+            color: #e8e8e8;
+            overflow: hidden;
+        }
+
+        .boot-overlay::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 35%, rgba(0, 0, 0, 0.72) 100%);
+            pointer-events: none;
+        }
+
+        .boot-overlay::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .boot-overlay__inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: min(92vw, 380px);
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .boot-overlay__title {
+            font-family: 'Creepster', 'Roboto Mono', monospace;
+            font-size: clamp(36px, 10vw, 52px);
+            font-weight: 400;
+            letter-spacing: 0.06em;
+            color: #ff1744;
+            text-shadow: 0 0 20px rgba(255, 23, 68, 0.75), 0 0 48px rgba(255, 23, 68, 0.35);
+            margin: 0;
+            line-height: 1;
+        }
+
+        .boot-overlay__meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .boot-overlay__version {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            color: rgba(255, 255, 255, 0.62);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .boot-overlay__badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border: 1px solid rgba(56, 189, 248, 0.5);
+            border-radius: 999px;
+            color: #7dd3fc;
+            background: rgba(14, 165, 233, 0.1);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.18);
+        }
+
+        .boot-overlay__bar {
+            width: 100%;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .boot-overlay__bar-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #ff1744, #ff5252);
+            box-shadow: 0 0 12px rgba(255, 23, 68, 0.55);
+            transition: width 0.35s ease;
+        }
+
+        .boot-overlay--webgpu .boot-overlay__bar-fill {
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+        }
+
+        .boot-overlay__label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        .boot-overlay__sub {
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: none;
+            color: rgba(125, 211, 252, 0.72);
+            max-width: 100%;
+            text-align: center;
+            line-height: 1.45;
+        }
+
+        .boot-overlay__tip {
+            font-size: 10px;
+            letter-spacing: 0.04em;
+            color: rgba(158, 158, 158, 0.88);
+            text-align: center;
+            line-height: 1.5;
+            min-height: 2.8em;
+            max-width: 100%;
+        }
+    </style>
     <script>
         // Suppress console warnings from Itch.io iframe Permissions Policy
         (function () {
@@ -51,8 +187,17 @@
 <body>
     <div id="boot-overlay" class="boot-overlay" role="status" aria-live="polite" aria-busy="true">
         <div class="boot-overlay__inner">
-            <span class="boot-overlay__spinner" aria-hidden="true"></span>
-            <span class="boot-overlay__label">Loading</span>
+            <h1 class="boot-overlay__title">ZOMBOBS</h1>
+            <div class="boot-overlay__meta">
+                <span class="boot-overlay__version">V0.9.1 ALPHA</span>
+                <span class="boot-overlay__badge" hidden>WebGPU</span>
+            </div>
+            <div class="boot-overlay__bar" aria-label="Loading progress">
+                <div class="boot-overlay__bar-fill"></div>
+            </div>
+            <span class="boot-overlay__label">Loading game</span>
+            <span class="boot-overlay__sub" hidden></span>
+            <span class="boot-overlay__tip"></span>
         </div>
     </div>
     <noscript>

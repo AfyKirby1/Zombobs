@@ -9,6 +9,7 @@ import {
     getViewportBounds,
     shouldUpdateEntity,
     isSinglePlayerArcadeMode,
+    isCampaignMode,
     isGameplayBlocked,
     isUICanvasInteractive,
     isHTMLOverlayActive,
@@ -28,10 +29,11 @@ import { propSpawnSystem } from './PropSpawnSystem.js';
 import { propRenderSystem } from './PropRenderSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
 import { cameraSystem } from './CameraSystem.js';
+import { mapLoader } from './MapLoader.js';
 import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
-import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawFpsCounter } from '../utils/drawingUtils.js';
+import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
  * GameLoopSystem — per-frame gameplay update and world/HUD rendering.
@@ -55,6 +57,7 @@ export class GameLoopSystem {
      * @param {() => void} deps.updatePlayers
      * @param {() => void} deps.drawPlayers
      * @param {() => void} deps.onGameOver
+     * @param {() => void} deps.onZoneComplete
      * @param {(count: number) => void} deps.spawnZombies
      */
     constructor(deps) {
@@ -73,12 +76,18 @@ export class GameLoopSystem {
         this.updatePlayers = deps.updatePlayers;
         this.drawPlayers = deps.drawPlayers;
         this.onGameOver = deps.onGameOver;
+        this.onZoneComplete = deps.onZoneComplete;
         this.spawnZombies = deps.spawnZombies;
     }
 
     update() {
         if (isGameplayBlocked(gameState)) return;
         if (gameState.showLevelUp) return;
+
+        // Sync virtual pad edges before player/action consumers read justPressed
+        if (this.touchControlSystem?.active) {
+            this.touchControlSystem.tick();
+        }
 
         const now = Date.now();
         const activePlayers = gameState.players.filter(p => p.health > 0);
@@ -99,7 +108,15 @@ export class GameLoopSystem {
             if (localPlayer) {
                 cameraSystem.update(localPlayer);
                 groundTextureSystem.updateFromCamera(cameraSystem);
-                propSpawnSystem.update(gameState, localPlayer);
+                if (!isCampaignMode(gameState)) {
+                    propSpawnSystem.update(gameState, localPlayer);
+                } else if (mapLoader.isLoaded()) {
+                    mapLoader.updateTriggers();
+                    if (gameState.campaignZoneCleared) {
+                        this.onZoneComplete();
+                        return;
+                    }
+                }
 
                 if (gameState.props && gameState.props.length > 0) {
                     for (const prop of gameState.props) {
@@ -259,15 +276,33 @@ export class GameLoopSystem {
             }
         }
 
-        if (this.mouse.isDown && gameState.gameRunning && !gameState.gamePaused) {
+        // Mouse hold-fire OR virtual right-stick auto-fire (mobile)
+        if (gameState.gameRunning && !gameState.gamePaused) {
             const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
             if (localPlayer && localPlayer.health > 0) {
-                let target = this.mouse;
-                if (isSinglePlayerArcadeMode(gameState)) {
-                    const worldPos = cameraSystem.screenToWorld(this.mouse.x, this.mouse.y);
-                    target = { x: worldPos.x, y: worldPos.y };
+                const virtual = this.touchControlSystem?.active
+                    ? this.touchControlSystem.getVirtualState()
+                    : null;
+                const aim = virtual?.axes?.aim;
+                const aimMag = aim ? Math.sqrt(aim.x * aim.x + aim.y * aim.y) : 0;
+                const virtualFire = virtual?.buttons?.fire?.pressed && aimMag > 0.3;
+
+                if (this.mouse.isDown || virtualFire) {
+                    let target;
+                    if (virtualFire) {
+                        target = {
+                            x: localPlayer.x + aim.x * 200,
+                            y: localPlayer.y + aim.y * 200
+                        };
+                    } else {
+                        target = this.mouse;
+                        if (isSinglePlayerArcadeMode(gameState)) {
+                            const worldPos = cameraSystem.screenToWorld(this.mouse.x, this.mouse.y);
+                            target = { x: worldPos.x, y: worldPos.y };
+                        }
+                    }
+                    shootBullet(target, canvas, localPlayer);
                 }
-                shootBullet(target, canvas, localPlayer);
             }
         }
 
@@ -360,13 +395,7 @@ export class GameLoopSystem {
 
         if (gameState.showMainMenu) {
             gameHUD.mainMenu = true;
-            if (gameHUD.newsTickerDragging) {
-                uiCanvas.style.cursor = 'grabbing';
-            } else if (gameHUD.checkNewsTickerHit(mouse.x, mouse.y)) {
-                uiCanvas.style.cursor = 'grab';
-            } else {
-                uiCanvas.style.cursor = 'none';
-            }
+            uiCanvas.style.cursor = 'none';
             gameHUD.draw();
             return;
         }
@@ -593,6 +622,9 @@ export class GameLoopSystem {
         const viewport = gameState.cachedViewport || getViewportBounds(canvas);
 
         if (isSinglePlayerArcade) {
+            if (isCampaignMode(gameState) && mapLoader.isLoaded()) {
+                mapLoader.render(viewport);
+            }
             propRenderSystem.render(gameState, viewport);
         }
 
@@ -734,6 +766,7 @@ export class GameLoopSystem {
             gameHUD.drawCompass();
         }
         drawWaveNotification();
+        drawCampaignObjective();
         drawWaveBreak();
         drawFpsCounter();
 

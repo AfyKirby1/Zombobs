@@ -1352,7 +1352,7 @@ export class WebGPURenderer {
         }
 
         fn hash21(p: vec2<f32>) -> f32 {
-            var p3 = fract(vec3(p.x, p.y, p.x) * 0.1031);
+            var p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
             p3 += dot(p3, p3.yzx + 33.33);
             return fract((p3.x + p3.y) * p3.z);
         }
@@ -1361,9 +1361,9 @@ export class WebGPURenderer {
             let i = floor(p);
             let f = fract(p);
             let a = hash21(i);
-            let b = hash21(i + vec2(1.0, 0.0));
-            let c = hash21(i + vec2(0.0, 1.0));
-            let d = hash21(i + vec2(1.0, 1.0));
+            let b = hash21(i + vec2<f32>(1.0, 0.0));
+            let c = hash21(i + vec2<f32>(0.0, 1.0));
+            let d = hash21(i + vec2<f32>(1.0, 1.0));
             let u = f * f * (3.0 - 2.0 * f);
             return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
         }
@@ -1374,7 +1374,7 @@ export class WebGPURenderer {
             var pos = p;
             for (var i = 0; i < 4; i++) {
                 value += amplitude * noise2(pos);
-                pos = pos * 2.05 + vec2(17.3, 9.2);
+                pos = pos * 2.05 + vec2<f32>(17.3, 9.2);
                 amplitude *= 0.5;
             }
             return value;
@@ -1387,7 +1387,7 @@ export class WebGPURenderer {
             }
 
             let uv = input.uv;
-            let res = vec2(blood.resolutionX, blood.resolutionY);
+            let res = vec2<f32>(blood.resolutionX, blood.resolutionY);
             let px = min(min(uv.x, 1.0 - uv.x) * res.x, min(uv.y, 1.0 - uv.y) * res.y);
 
             let injury = clamp((1.0 - blood.healthRatio) * 0.75 + blood.damagePulse * 0.85, 0.0, 1.0);
@@ -1399,25 +1399,25 @@ export class WebGPURenderer {
             var edgeMask = 1.0 - smoothstep(0.0, band, px);
 
             // Corner pooling — blood collects in corners when hurt
-            let corner = vec2(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+            let corner = vec2<f32>(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
             let cornerDist = length(corner);
             let cornerBoost = 1.0 - smoothstep(0.0, 0.22, cornerDist);
             edgeMask = clamp(edgeMask + cornerBoost * injury * 0.55, 0.0, 1.0);
 
             // Top-edge drips sliding down
             let topDist = uv.y * res.y;
-            let dripCoord = vec2(uv.x * res.x * 0.018 + blood.time * 0.04, topDist * 0.012 - blood.time * 0.55);
+            let dripCoord = vec2<f32>(uv.x * res.x * 0.018 + blood.time * 0.04, topDist * 0.012 - blood.time * 0.55);
             let dripNoise = fbm(dripCoord);
-            let dripStreaks = fbm(vec2(uv.x * 42.0, uv.y * 6.0 - blood.time * 1.1));
+            let dripStreaks = fbm(vec2<f32>(uv.x * 42.0, uv.y * 6.0 - blood.time * 1.1));
             let topDrip = (1.0 - smoothstep(0.0, band * 1.6, topDist)) * (0.45 + dripNoise * 0.55) * (0.35 + dripStreaks * 0.65);
 
             // Side smears
             let sideDist = min(uv.x, 1.0 - uv.x) * res.x;
-            let sideSmear = (1.0 - smoothstep(0.0, band * 0.85, sideDist));
-            sideSmear *= 0.5 + fbm(vec2(uv.y * 8.0 + blood.time * 0.2, uv.x * 30.0)) * 0.5;
+            var sideSmear = (1.0 - smoothstep(0.0, band * 0.85, sideDist));
+            sideSmear *= 0.5 + fbm(vec2<f32>(uv.y * 8.0 + blood.time * 0.2, uv.x * 30.0)) * 0.5;
 
             var pattern = edgeMask * 0.55 + topDrip * 0.35 + sideSmear * 0.25;
-            pattern *= 0.65 + fbm(vec2(uv.x * 24.0, uv.y * 18.0 + blood.time * 0.15)) * 0.35;
+            pattern *= 0.65 + fbm(vec2<f32>(uv.x * 24.0, uv.y * 18.0 + blood.time * 0.15)) * 0.35;
 
             // Damage hit — brief crimson surge
             pattern += blood.damagePulse * (1.0 - smoothstep(0.0, band * 2.0, px)) * 0.45;
@@ -1427,14 +1427,14 @@ export class WebGPURenderer {
                 discard;
             }
 
-            let wet = fbm(vec2(uv.x * 60.0, uv.y * 40.0));
-            let bloodDark = vec3(0.22, 0.01, 0.02);
-            let bloodMid = vec3(0.55, 0.03, 0.05);
-            let bloodHot = vec3(0.82, 0.08, 0.06);
+            let wet = fbm(vec2<f32>(uv.x * 60.0, uv.y * 40.0));
+            let bloodDark = vec3<f32>(0.22, 0.01, 0.02);
+            let bloodMid = vec3<f32>(0.55, 0.03, 0.05);
+            let bloodHot = vec3<f32>(0.82, 0.08, 0.06);
             var color = mix(bloodDark, bloodMid, wet);
             color = mix(color, bloodHot, blood.damagePulse * 0.35 + topDrip * 0.2);
 
-            return vec4(color * alpha, alpha);
+            return vec4<f32>(color * alpha, alpha);
         }
         `;
 

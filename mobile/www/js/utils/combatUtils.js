@@ -29,7 +29,8 @@ export function shootBullet(target, canvas, player) {
     // Check if reloading
     if (player.isReloading) {
         const reloadMultiplier = player.reloadSpeedMultiplier || 1.0;
-        const adjustedReloadTime = player.currentWeapon.reloadTime * reloadMultiplier;
+        const equipmentReloadMultiplier = player.equipmentReloadSpeedMultiplier || 1.0;
+        const adjustedReloadTime = player.currentWeapon.reloadTime * reloadMultiplier * equipmentReloadMultiplier;
         if (now - player.reloadStartTime >= adjustedReloadTime) {
             player.isReloading = false;
             // Apply ammo multiplier (from Hoarder skill) when reloading
@@ -47,9 +48,10 @@ export function shootBullet(target, canvas, player) {
         }
     }
 
-    // Check fire rate cooldown (with rapid fire buff + skill fire rate)
+    // Check fire rate cooldown (with rapid fire buff + skill fire rate + equipment fire rate)
     const fireRateMultiplier = (gameState.rapidFireEndTime > now) ? 0.5 : 1;
     const skillFireRate = player.fireRateSkillMultiplier || 1.0;
+    const equipmentFireRate = player.equipmentFireRateMultiplier || 1.0;
     let killMomentumRate = 1.0;
     if (player.hasKillMomentum && player.killMomentumEndTime > now) {
         const stacks = player.killMomentumStacks || 0;
@@ -57,7 +59,7 @@ export function shootBullet(target, canvas, player) {
     } else if (player.hasKillMomentum) {
         player.killMomentumStacks = 0;
     }
-    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier * skillFireRate * killMomentumRate) {
+    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier * skillFireRate * equipmentFireRate * killMomentumRate) {
         return;
     }
 
@@ -889,7 +891,8 @@ export function handlePickupCollisions() {
                 if (checkCollision(player, scrap)) {
                     const scrapValue = scrap.value || SCRAP_VALUE;
                     const multiplier = player.scrapMultiplier || 1.0;
-                    let gained = Math.floor(scrapValue * multiplier);
+                    const equipmentScrapMultiplier = player.equipmentScrapMultiplier || 1.0;
+                    let gained = Math.floor(scrapValue * multiplier * equipmentScrapMultiplier);
                     if (player.goldRushEndTime && player.goldRushEndTime > Date.now()) {
                         gained *= 2;
                     }
@@ -1105,7 +1108,8 @@ export function countNearbyZombies(x, y, range) {
  * Applies tree/flat skill damage modifiers to a hit
  */
 export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
-    let d = damage * (shootingPlayer.damageSkillMultiplier || 1.0);
+    const equipmentDamageMultiplier = shootingPlayer.equipmentDamageMultiplier || 1.0;
+    let d = damage * (shootingPlayer.damageSkillMultiplier || 1.0) * equipmentDamageMultiplier;
     if (shootingPlayer.hordeSlayerBonus) {
         const range = shootingPlayer.hordeSlayerRange || 200;
         if (countNearbyZombies(shootingPlayer.x, shootingPlayer.y, range) >= 4) {

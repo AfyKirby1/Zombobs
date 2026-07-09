@@ -8,9 +8,13 @@ import {
     clampCircleInBounds
 } from '../utils/mapCollisionUtils.js';
 import { crashSiteMap } from '../maps/crashSite.js';
+import { maintenanceTunnelsMap } from '../maps/maintenanceTunnels.js';
+import { switchingYardMap } from '../maps/switchingYard.js';
 
 const MAP_REGISTRY = {
-    crash_site: crashSiteMap
+    crash_site: crashSiteMap,
+    maintenance_tunnels: maintenanceTunnelsMap,
+    switching_yard: switchingYardMap
 };
 
 const WALL_COLORS = {
@@ -48,6 +52,9 @@ export class MapLoader {
         gameState.campaignMapId = map.id;
         gameState.campaignObjective = map.objective || '';
         gameState.campaignZone = map.zone || 1;
+        gameState.campaignObjectiveTarget = null;
+        gameState.campaignZoneCleared = false;
+        gameState.campaignZoneClearTime = 0;
         return true;
     }
 
@@ -58,6 +65,9 @@ export class MapLoader {
         gameState.campaignMapId = null;
         gameState.campaignObjective = '';
         gameState.campaignZone = 0;
+        gameState.campaignObjectiveTarget = null;
+        gameState.campaignZoneCleared = false;
+        gameState.campaignZoneClearTime = 0;
     }
 
     isLoaded() {
@@ -66,6 +76,10 @@ export class MapLoader {
 
     getMap() {
         return this.activeMap;
+    }
+
+    getNextMapId() {
+        return this.activeMap?.nextMapId || null;
     }
 
     getSpawn() {
@@ -104,6 +118,8 @@ export class MapLoader {
         if (this.activeMap.ambiance.forceNight) {
             gameState.isNight = true;
             gameState.gameTime = 0.75;
+            const cycle = gameState.dayNightCycle?.cycleDuration || 120000;
+            gameState.dayNightCycle.startTime = Date.now() - 0.75 * cycle;
         }
     }
 
@@ -136,16 +152,34 @@ export class MapLoader {
 
             if (!this._pointInRect(player.x, player.y, trigger)) continue;
 
+            if (trigger.requiresWave && gameState.wave < trigger.requiresWave) continue;
+            if (trigger.requiresKills && gameState.zombiesKilled < trigger.requiresKills) continue;
+
             this.triggeredIds.add(trigger.id);
 
             if (trigger.message) {
                 gameState.campaignObjective = trigger.message;
             }
 
+            if (trigger.target) {
+                gameState.campaignObjectiveTarget = trigger.target;
+            }
+
             if (trigger.type === 'objective' && !gameState.waveNotification.active) {
                 gameState.waveNotification = {
                     active: true,
                     text: trigger.message || this.activeMap.objective,
+                    life: 0,
+                    maxLife: 180
+                };
+            }
+
+            if (trigger.type === 'extraction') {
+                gameState.campaignZoneCleared = true;
+                gameState.campaignZoneClearTime = Date.now();
+                gameState.waveNotification = {
+                    active: true,
+                    text: `ZONE ${this.activeMap.zone} CLEAR — EXTRACTION SECURED`,
                     life: 0,
                     maxLife: 180
                 };
@@ -176,6 +210,10 @@ export class MapLoader {
             const decal = decals[i];
             if (!this._rectInViewport(decal, viewport, margin)) continue;
             this._drawDecal(decal);
+        }
+
+        if (gameState.campaignObjectiveTarget) {
+            this._drawObjectiveBeacon(gameState.campaignObjectiveTarget, viewport, margin);
         }
     }
 
@@ -233,6 +271,34 @@ export class MapLoader {
             ctx.stroke();
         }
 
+        ctx.restore();
+    }
+
+    _drawObjectiveBeacon(target, viewport, margin) {
+        const x = target.x;
+        const y = target.y;
+        if (x < viewport.left - margin || x > viewport.right + margin ||
+            y < viewport.top - margin || y > viewport.bottom + margin) {
+            return;
+        }
+
+        const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 200);
+        ctx.save();
+        ctx.globalAlpha = 0.5 + 0.3 * pulse;
+        ctx.strokeStyle = '#00ff7f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y, 18 + 6 * pulse, 12 + 4 * pulse, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(0, 255, 127, 0.25)';
+        ctx.fill();
+
+        ctx.fillStyle = '#00ff7f';
+        ctx.font = 'bold 10px "Roboto Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('EXIT', x, y);
         ctx.restore();
     }
 

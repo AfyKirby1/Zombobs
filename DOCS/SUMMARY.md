@@ -5,6 +5,8 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+✅ **External Accounts Inventory (2026-07-09)** — `DOCS/Accounts.md` lists MongoDB Atlas, Hugging Face Spaces, itch.io, GitHub/Pages, secrets checklist, and brand aliases.
+
 **Release: V0.9.1 ALPHA (2026-07-06)** — *Skills & Survivability Update*. **93 skills** (63 flat + 30 tree) across **6 class trees** (Gunner, Survivor, Scavenger, Brawler, Pyromancer, Shadow), **15 synergies** with HUD toasts, corrupted wildcards (~14%), 4 cards / 10 slots / reroll (+ MP sync), **Splitter & Siren** zombies, **zombie face QoL** (procedural faces + gaze eyes), **mobile 2×2 level-up grid**, boot **localStorage** hardening, **BootLoader** gated startup overlay (menu + WebGPU ready before dismiss), **34,773 LOC** audit + landing copy, v0.9.1 modality sweep. Prior **V0.9.0** performance (lazy WebGPU/Socket.IO, startup metrics, smooth game entry, 3 class trees, music balance) and **V0.8.4** horde/scrap systems remain live.
 
 ✅ **Clickable Version Modal — Patch Notes (2026-07-06)** — Main-menu `🎃` version badge opens spooky arcade **PATCH NOTES** modal (`js/ui/VersionModal.js`). Content driven by `VERSION_HISTORY` in `js/core/constants.js` alongside `GAME_VERSION` / `ENGINE_VERSION`. About screen + badge auto-read constants. Version-bump workflow: `DOCS/VERSION_UPDATE_CHECKLIST.md` §1–§2.
@@ -13,7 +15,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 
 ✅ **Campaign Zone 1 — The Crash Site (2026-07-06)** — First playable campaign map: **`MapLoader`** + **`js/maps/crashSite.js`** (2400×1800 static walls, heli wreck, debris rings, decals, props). `gameMode: 'campaign'` from main menu; wall collision for player/zombies; map-edge zombie spawns; objective HUD banner; forced night ambiance. Procedural chunk props skipped in campaign. Triggers stubbed (start objective toast). Design: `DOCS/CAMPAIGN_DESIGN.md`. Key files: `MapLoader.js`, `mapCollisionUtils.js`, `GameStateManager.js`, `GameLoopSystem.js`.
 
-✅ **Mobile UX & Performance (2026-07-06)** — Phones and Capacitor builds: level-up **2×2 grid** on narrow screens, touch hover for cards/reroll, scroll lock (`touch-action: none`), improved **`isMobileDevice()`** (UA + coarse pointer + ≤900px), first-run **low video preset** on mobile, `mobile/www` synced. Run `cd mobile && npm run sync:web` before Android builds.
+✅ **Mobile Touch Coherence (2026-07-09)** — Virtual pad now drives aim/fire/reload/melee/grenade/weapon/interact/flashlight for mouse-source mobile; HUD weapon/grenade taps call real APIs; scrap **Tap E** + E button; safe-area + immersive focus; `mobile/www` synced. Prior **Mobile UX (2026-07-06)**: level-up 2×2 grid, `isMobileDevice()`, low video preset. Run `cd mobile && npm run sync:web` before Android builds.
 
 ✅ **Functional Codebase Audit (2026-07-05)** — `tools/count_functional_loc.py` reports **34,773 functional LOC** across **125 maintained source files** after excluding docs, assets, generated mobile `www`, dependencies, IDE metadata, vendored/minified bundles, and duplicate snapshots. JavaScript accounts for **30,237 LOC** across **88 files**. The landing website now advertises the large vanilla codebase.
 

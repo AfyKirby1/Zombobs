@@ -2,6 +2,7 @@ import { gameState } from '../core/gameState.js';
 import { canvas, ctx } from '../core/canvas.js';
 import { MELEE_RANGE } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { cameraSystem } from '../systems/CameraSystem.js';
 import { isCampaignMode } from './gameUtils.js';
 
 /**
@@ -346,6 +347,40 @@ export function drawCampaignObjective() {
     ctx.fillStyle = 'rgba(245, 245, 245, 0.95)';
     ctx.font = 'bold 14px "Roboto Mono", monospace';
     ctx.fillText(text, canvas.width / 2, bannerY + 28);
+
+    const target = gameState.campaignObjectiveTarget;
+    const player = gameState.players[0];
+    if (target && player) {
+        const dx = target.x - player.x;
+        const dy = target.y - player.y;
+        const dist = Math.round(Math.hypot(dx, dy));
+        ctx.fillStyle = 'rgba(0, 255, 127, 0.85)';
+        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.fillText(`${dist}m`, canvas.width / 2, bannerY + 46);
+
+        const screen = cameraSystem.worldToScreen(target.x, target.y);
+        const offScreen = screen.x < 0 || screen.x > canvas.width || screen.y < 0 || screen.y > canvas.height;
+        if (offScreen) {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const angle = Math.atan2(dy, dx);
+            const radius = Math.min(canvas.width, canvas.height) * 0.38;
+            const ax = cx + Math.cos(angle) * radius;
+            const ay = cy + Math.sin(angle) * radius;
+
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(angle);
+            ctx.fillStyle = 'rgba(0, 255, 127, 0.9)';
+            ctx.beginPath();
+            ctx.moveTo(10, 0);
+            ctx.lineTo(-6, -5);
+            ctx.lineTo(-6, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+    }
 
     ctx.restore();
 }

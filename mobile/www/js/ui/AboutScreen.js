@@ -1,5 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { GAME_VERSION, ENGINE_VERSION } from '../core/constants.js';
 
 export class AboutScreen {
     constructor(canvas, ctx, hud) {
@@ -43,10 +44,10 @@ export class AboutScreen {
         const versionFontSize = Math.max(12, 16 * scale);
         this.ctx.font = `${versionFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#9e9e9e';
-        this.ctx.fillText('Version: V0.9.1 ALPHA', centerX, y);
+        this.ctx.fillText(`Version: ${GAME_VERSION}`, centerX, y);
         y += 30;
         
-        this.ctx.fillText('Engine: ZOMBS-XFX-NGIN V0.9.1 ALPHA', centerX, y);
+        this.ctx.fillText(`Engine: ${ENGINE_VERSION}`, centerX, y);
         y += 50;
 
         const descriptionFontSize = Math.max(11, 14 * scale);

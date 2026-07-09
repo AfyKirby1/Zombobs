@@ -3,6 +3,7 @@ import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { updateAudioSettings, playMenuClickSound, playMenuHoverSound } from '../systems/AudioSystem.js';
 import { inputSystem } from '../systems/InputSystem.js';
+import { isMobileDevice } from '../utils/gameUtils.js';
 
 // Style constants matching Style Guide
 const COLORS = {
@@ -143,10 +144,7 @@ export class SettingsPanel {
     }
 
     getMobileScale() {
-        // Mobile-specific shrink for settings panel
-        const ua = (navigator && navigator.userAgent) || '';
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
-        return isMobile ? 0.6 : 1.0; // Shrink to 60% on mobile
+        return isMobileDevice() ? 0.6 : 1.0;
     }
 
     getEffectiveScale() {

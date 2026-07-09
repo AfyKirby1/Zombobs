@@ -80,6 +80,22 @@ export function createPlayer(x, y, colorIndex = 0) {
         // Visual
         color: color,
         equippedSkin: null,
+
+        // Equipment system
+        equippedItems: {},
+        inventory: [],
+        equipmentMaxHealthBonus: 0,
+        equipmentSpeedMultiplier: 1,
+        equipmentDamageMultiplier: 1,
+        equipmentFireRateMultiplier: 1,
+        equipmentReloadSpeedMultiplier: 1,
+        equipmentXpGainMultiplier: 1,
+        equipmentScrapMultiplier: 1,
+        equipmentCritChance: 0,
+        equipmentDamageReduction: 0,
+        activeEquipmentSets: [],
+        heroScrapAuraBonus: 0,
+
         flashlight: {
             active: false
         },
@@ -117,6 +133,9 @@ export const gameState = {
     campaignMapId: null,
     campaignObjective: '',
     campaignZone: 0,
+    campaignObjectiveTarget: null,
+    campaignZoneCleared: false,
+    campaignZoneClearTime: 0,
     showSettingsPanel: false,
     showLobby: false,
     isCoop: false,
@@ -169,7 +188,7 @@ export const gameState = {
     // XP & Skills System
     xp: 0,
     level: 1,
-    nextLevelXP: 100,
+    nextLevelXP: 200,
     activeSkills: [],
     showLevelUp: false,
     levelUpChoices: [],
@@ -177,6 +196,9 @@ export const gameState = {
     unlockedSynergies: null,
     synergyNotifications: [],
     phantomDecoys: [],
+
+    showEquipment: false,
+    equipmentPickups: [],
 
     isSpawningWave: false,
     waveBreakActive: false,
@@ -404,6 +426,21 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.dodgeCooldownMultiplier = 1.0;
             player.dodgeStaminaMultiplier = 1.0;
             player.regenRate = 0;
+
+            // Reset equipment per run
+            player.equippedItems = {};
+            player.inventory = [];
+            player.equipmentMaxHealthBonus = 0;
+            player.equipmentSpeedMultiplier = 1;
+            player.equipmentDamageMultiplier = 1;
+            player.equipmentFireRateMultiplier = 1;
+            player.equipmentReloadSpeedMultiplier = 1;
+            player.equipmentXpGainMultiplier = 1;
+            player.equipmentScrapMultiplier = 1;
+            player.equipmentCritChance = 0;
+            player.equipmentDamageReduction = 0;
+            player.activeEquipmentSets = [];
+            player.heroScrapAuraBonus = 0;
             player.hasLastStand = false;
             player.lastStandUsed = false;
             player.lastStandActiveUntil = 0;
@@ -514,6 +551,8 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.frostPickups = [];
     gameState.scrapPickups = [];
     gameState.scrapShrines = [];
+    gameState.equipmentPickups = [];
+    gameState.showEquipment = false;
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
@@ -560,5 +599,8 @@ export function resetGameState(canvasWidth, canvasHeight) {
         gameState.campaignMapId = null;
         gameState.campaignObjective = '';
         gameState.campaignZone = 0;
+        gameState.campaignObjectiveTarget = null;
+        gameState.campaignZoneCleared = false;
+        gameState.campaignZoneClearTime = 0;
     }
 }

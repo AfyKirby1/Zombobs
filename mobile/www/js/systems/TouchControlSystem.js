@@ -1,5 +1,24 @@
 import { GamepadState } from './InputSystem.js';
 
+/** Read CSS env(safe-area-inset-*) via measured custom props on :root */
+function getSafeInsets() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return { top: 0, right: 0, bottom: 0, left: 0 };
+    }
+    const root = document.documentElement;
+    const read = (prop) => {
+        const raw = getComputedStyle(root).getPropertyValue(prop).trim();
+        const n = parseFloat(raw);
+        return Number.isFinite(n) ? n : 0;
+    };
+    return {
+        top: read('--sat') || read('--safe-top'),
+        right: read('--sar') || read('--safe-right'),
+        bottom: read('--sab') || read('--safe-bottom'),
+        left: read('--sal') || read('--safe-left')
+    };
+}
+
 export class TouchControlSystem {
     constructor(canvas) {
         this.canvas = canvas;
@@ -9,19 +28,19 @@ export class TouchControlSystem {
         this.virtualState = new GamepadState();
 
         // Configuration
-        this.joystickRadius = 45; // Shrunk from 60
-        this.joystickInnerRadius = 20; // Shrunk from 30
-        this.buttonRadius = 30; // Shrunk from 35
-        this.padding = 60; // Increased padding to bring controls into frame (was 40)
+        this.joystickRadius = 45;
+        this.joystickInnerRadius = 20;
+        this.buttonRadius = 30;
+        this.padding = 60;
 
         // Touch tracking
-        this.touches = new Map(); // identifier -> { x, y, startX, startY, type }
+        this.touches = new Map();
 
         // Controls definition
         this.controls = {
             leftStick: {
                 id: 'leftStick',
-                x: 100, y: 0, // y calculated on resize 
+                x: 100, y: 0,
                 active: false,
                 touchId: null,
                 value: { x: 0, y: 0 }
@@ -33,11 +52,12 @@ export class TouchControlSystem {
                 touchId: null,
                 value: { x: 0, y: 0 }
             },
-            // Virtual Buttons
             reload: { id: 'reload', x: 0, y: 0, radius: 25, active: false, touchId: null, label: 'R' },
             grenade: { id: 'grenade', x: 0, y: 0, radius: 25, active: false, touchId: null, label: 'G' },
             melee: { id: 'melee', x: 0, y: 0, radius: 25, active: false, touchId: null, label: 'M' },
-            pause: { id: 'pause', x: 0, y: 0, radius: 20, active: false, touchId: null, label: 'II' },
+            interact: { id: 'interact', x: 0, y: 0, radius: 25, active: false, touchId: null, label: 'E' },
+            nextWeapon: { id: 'nextWeapon', x: 0, y: 0, radius: 22, active: false, touchId: null, label: 'W+' },
+            prevWeapon: { id: 'prevWeapon', x: 0, y: 0, radius: 22, active: false, touchId: null, label: 'W-' },
             flashlight: { id: 'flashlight', x: 0, y: 0, radius: 25, active: false, touchId: null, label: '🔦' }
         };
 
@@ -46,62 +66,71 @@ export class TouchControlSystem {
     }
 
     initEvents() {
-        // Use passive: false to allow preventing default (scrolling)
         window.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
         window.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
         window.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
         window.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
         window.addEventListener('resize', () => this.resize());
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => this.resize(), 100);
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.active) {
+                this._resetAllControls();
+            }
+        });
     }
 
     resize() {
-        // Use Screen Dimensions for positioning (not canvas internal resolution)
         const w = window.innerWidth;
         const h = window.innerHeight;
+        const insets = getSafeInsets();
 
-        // Calculate DPR for scaling radii and hit detection
         const rect = this.canvas.getBoundingClientRect();
-        const dpr = this.canvas.width / rect.width;
+        const dpr = rect.width > 0 ? this.canvas.width / rect.width : 1;
 
-        // Use padding to shift controls in (default padding is 60 now)
         const shiftX = Math.max(0, this.padding - 40);
         const shiftY = Math.max(0, this.padding - 40);
+        const leftPad = 80 + shiftX + insets.left;
+        const rightPad = shiftX + insets.right;
+        const bottomPad = 120 + shiftY + insets.bottom;
+        const topPad = 40 + insets.top;
 
-        // Position Left Stick (Bottom Left) - Moved UP
-        this.controls.leftStick.x = 80 + shiftX;
-        this.controls.leftStick.y = h - 120 - shiftY; // Higher up (was h - 80)
+        this.controls.leftStick.x = leftPad;
+        this.controls.leftStick.y = h - bottomPad;
 
-        // Position Right Stick (Bottom Right) - Moved WAY LEFT
-        this.controls.rightStick.x = w - 220 - shiftX; // Way more left (was w - 140)
-        this.controls.rightStick.y = h - 120 - shiftY;
+        this.controls.rightStick.x = w - 220 - rightPad;
+        this.controls.rightStick.y = h - bottomPad;
 
-        // Position Buttons (Right side, clustered around Right Stick) - All moved WAY LEFT
-        // Reload (Top Left of stick)
-        this.controls.reload.x = w - 280 - shiftX; // Way more left
-        this.controls.reload.y = h - 180 - shiftY;
+        this.controls.reload.x = w - 280 - rightPad;
+        this.controls.reload.y = h - 180 - shiftY - insets.bottom;
 
-        // Grenade (Top of stick)
-        this.controls.grenade.x = w - 220 - shiftX;
-        this.controls.grenade.y = h - 200 - shiftY;
+        this.controls.grenade.x = w - 220 - rightPad;
+        this.controls.grenade.y = h - 200 - shiftY - insets.bottom;
 
-        // Melee (Left of stick)
-        this.controls.melee.x = w - 340 - shiftX; // Way more left
-        this.controls.melee.y = h - 120 - shiftY;
+        this.controls.melee.x = w - 340 - rightPad;
+        this.controls.melee.y = h - bottomPad;
 
-        // Pause (Top Right Corner)
-        this.controls.pause.x = w - 40;
-        this.controls.pause.y = 40;
+        // Interact near left stick (scrap shrine / E)
+        this.controls.interact.x = leftPad + 90;
+        this.controls.interact.y = h - bottomPad - 70;
 
-        // Flashlight (Below Pause)
-        this.controls.flashlight.x = w - 40;
-        this.controls.flashlight.y = 100;
+        // Weapon cycle above right cluster
+        this.controls.prevWeapon.x = w - 340 - rightPad;
+        this.controls.prevWeapon.y = h - 200 - shiftY - insets.bottom;
+        this.controls.nextWeapon.x = w - 280 - rightPad;
+        this.controls.nextWeapon.y = h - 240 - shiftY - insets.bottom;
 
-        // Store DPR for scaling radii in draw/hit detection
+        // Flashlight top-right (pause lives on GameHUD to avoid double hitboxes)
+        this.controls.flashlight.x = w - 40 - insets.right;
+        this.controls.flashlight.y = topPad + 60;
+
         this.scale = dpr;
     }
 
     handleTouchStart(e) {
         if (!this.active) return;
+        if (e.cancelable) e.preventDefault();
         for (const touch of e.changedTouches) {
             this.processTouch(touch, 'start');
         }
@@ -109,6 +138,7 @@ export class TouchControlSystem {
 
     handleTouchMove(e) {
         if (!this.active) return;
+        if (e.cancelable) e.preventDefault();
         for (const touch of e.changedTouches) {
             this.processTouch(touch, 'move');
         }
@@ -123,81 +153,84 @@ export class TouchControlSystem {
 
     setActive(active) {
         this.active = active;
-        // If deactivating, reset all controls
         if (!active) {
-            this.virtualState.resetJustPressed();
-            this.virtualState.buttons.fire.pressed = false;
-            this.virtualState.buttons.reload.pressed = false;
-            this.virtualState.buttons.grenade.pressed = false;
-            this.virtualState.buttons.melee.pressed = false;
-            this.virtualState.buttons.pause.pressed = false;
-            this.virtualState.axes.move.x = 0;
-            this.virtualState.axes.move.y = 0;
-            this.virtualState.axes.aim.x = 0;
-            this.virtualState.axes.aim.y = 0;
-
-            // Reset control states
-            this.controls.leftStick.active = false;
-            this.controls.rightStick.active = false;
-            this.controls.reload.active = false;
-            this.controls.grenade.active = false;
-            this.controls.melee.active = false;
-            this.controls.pause.active = false;
-            this.controls.flashlight.active = false;
+            this._resetAllControls();
+        } else {
+            this.resize();
         }
     }
 
+    _resetAllControls() {
+        this.virtualState.resetJustPressed();
+        const names = ['fire', 'reload', 'grenade', 'melee', 'pause', 'flashlight',
+            'interact', 'prevWeapon', 'nextWeapon'];
+        for (let i = 0; i < names.length; i++) {
+            const btn = this.virtualState.buttons[names[i]];
+            if (btn) {
+                btn.pressed = false;
+                btn.justPressed = false;
+            }
+        }
+        this.virtualState.axes.move.x = 0;
+        this.virtualState.axes.move.y = 0;
+        this.virtualState.axes.aim.x = 0;
+        this.virtualState.axes.aim.y = 0;
+
+        const keys = Object.keys(this.controls);
+        for (let i = 0; i < keys.length; i++) {
+            const c = this.controls[keys[i]];
+            c.active = false;
+            c.touchId = null;
+            if (c.value) {
+                c.value.x = 0;
+                c.value.y = 0;
+            }
+        }
+    }
+
+    /**
+     * Per-frame edge sync — call once at start of game update before reading buttons.
+     * Sets justPressed from active edges (gamepad-compatible).
+     */
+    tick() {
+        if (!this.active) return;
+        this.updateVirtualState();
+    }
+
     processTouch(touch, phase) {
-        // Use Screen Coordinates directly (controls are positioned in screen space)
         const x = touch.clientX;
         const y = touch.clientY;
         const id = touch.identifier;
 
         if (phase === 'start') {
-            // Check if touch hits any control
+            // Skip HUD-reserved taps (pause / weapon / grenade sidebars) — handled by main.js
+            if (this._isHudReservedTouch(x, y)) return;
 
-            // 1. Buttons
             if (this.checkButtonHit(this.controls.reload, x, y, id)) return;
             if (this.checkButtonHit(this.controls.grenade, x, y, id)) return;
             if (this.checkButtonHit(this.controls.melee, x, y, id)) return;
-            if (this.checkButtonHit(this.controls.pause, x, y, id)) return;
+            if (this.checkButtonHit(this.controls.interact, x, y, id)) return;
+            if (this.checkButtonHit(this.controls.nextWeapon, x, y, id)) return;
+            if (this.checkButtonHit(this.controls.prevWeapon, x, y, id)) return;
             if (this.checkButtonHit(this.controls.flashlight, x, y, id)) return;
 
-            // 2. Joysticks
-            // Check distance to Left Stick center
             if (this.checkStickHit(this.controls.leftStick, x, y, id)) return;
-
-            // Check distance to Right Stick center
             if (this.checkStickHit(this.controls.rightStick, x, y, id)) return;
-
-            // Dynamic Stick Logic - Strict Half-Screen Split
-            // If we didn't hit a specific button, the entire half of the screen acts as the stick
 
             const midX = window.innerWidth / 2;
 
             if (x < midX) {
-                // LEFT SIDE -> LEFT STICK (Movement)
                 if (!this.controls.leftStick.active) {
                     this.controls.leftStick.active = true;
                     this.controls.leftStick.touchId = id;
-                    // Optional: Recenter stick to touch position for comfort? 
-                    // For now, let's keep the stick static but allow the input to 'grab' it from anywhere on left
-                    // But we need initial delta to be 0 or consistent.
-                    // If we just latch on, the player might jump if they touch far from center.
-                    // Standard mobile latch: Touch anywhere -> that becomes center OR Stick moves to touch.
-                    // Let's implement: Stick stays put, but we treat the touch as valid input controlling it.
                     this.updateStickValue(this.controls.leftStick, x, y);
                 }
-            } else {
-                // RIGHT SIDE -> RIGHT STICK (Aiming/Firing)
-                if (!this.controls.rightStick.active) {
-                    this.controls.rightStick.active = true;
-                    this.controls.rightStick.touchId = id;
-                    this.updateStickValue(this.controls.rightStick, x, y);
-                }
+            } else if (!this.controls.rightStick.active) {
+                this.controls.rightStick.active = true;
+                this.controls.rightStick.touchId = id;
+                this.updateStickValue(this.controls.rightStick, x, y);
             }
         } else if (phase === 'move') {
-            // Update Sticks
             if (this.controls.leftStick.active && this.controls.leftStick.touchId === id) {
                 this.updateStickValue(this.controls.leftStick, x, y);
             }
@@ -205,23 +238,56 @@ export class TouchControlSystem {
                 this.updateStickValue(this.controls.rightStick, x, y);
             }
         } else if (phase === 'end') {
-            // Reset controls associated with this touch
             this.resetControl(this.controls.leftStick, id);
             this.resetControl(this.controls.rightStick, id);
             this.resetControl(this.controls.reload, id);
             this.resetControl(this.controls.grenade, id);
             this.resetControl(this.controls.melee, id);
-            this.resetControl(this.controls.pause, id);
+            this.resetControl(this.controls.interact, id);
+            this.resetControl(this.controls.nextWeapon, id);
+            this.resetControl(this.controls.prevWeapon, id);
+            this.resetControl(this.controls.flashlight, id);
+        }
+        // Virtual state synced once per frame in tick() — avoids eating justPressed
+    }
+
+    _isHudReservedTouch(x, y) {
+        const hud = typeof window !== 'undefined' ? window.gameHUD : null;
+        if (!hud || !hud.isMobile || !hud.isMobile()) return false;
+
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
+        const cx = (x - rect.left) * (this.canvas.width / rect.width);
+        const cy = (y - rect.top) * (this.canvas.height / rect.height);
+        const pad = 20;
+
+        if (hud.pauseButtonBounds) {
+            const b = hud.pauseButtonBounds;
+            if (cx >= b.x - pad && cx <= b.x + b.width + pad &&
+                cy >= b.y - pad && cy <= b.y + b.height + pad) {
+                return true;
+            }
         }
 
-        // Update Virtual State
-        this.updateVirtualState();
+        if (hud.mobileBounds) {
+            const zones = [hud.mobileBounds.weapon, hud.mobileBounds.grenade];
+            for (let i = 0; i < zones.length; i++) {
+                const z = zones[i];
+                if (!z) continue;
+                if (cx >= z.x - pad && cx <= z.x + z.w + pad &&
+                    cy >= z.y - pad && cy <= z.y + z.h + pad) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     checkButtonHit(btn, x, y, touchId) {
+        const hitR = btn.radius + 20;
         const dx = x - btn.x;
         const dy = y - btn.y;
-        if (dx * dx + dy * dy < (btn.radius + 20) ** 2) {
+        if (dx * dx + dy * dy < hitR * hitR) {
             btn.active = true;
             btn.touchId = touchId;
             return true;
@@ -230,10 +296,10 @@ export class TouchControlSystem {
     }
 
     checkStickHit(stick, x, y, touchId) {
-        // Larger hit area for sticks
         const dx = x - stick.x;
         const dy = y - stick.y;
-        if (dx * dx + dy * dy < (this.joystickRadius * 2) ** 2) {
+        const hitR = this.joystickRadius * 2;
+        if (dx * dx + dy * dy < hitR * hitR) {
             stick.active = true;
             stick.touchId = touchId;
             this.updateStickValue(stick, x, y);
@@ -246,7 +312,6 @@ export class TouchControlSystem {
         let dx = x - stick.x;
         let dy = y - stick.y;
 
-        // Clamp length
         const len = Math.sqrt(dx * dx + dy * dy);
         if (len > this.joystickRadius) {
             const scale = this.joystickRadius / len;
@@ -254,7 +319,6 @@ export class TouchControlSystem {
             dy *= scale;
         }
 
-        // Normalize for output (-1 to 1)
         stick.value.x = dx / this.joystickRadius;
         stick.value.y = dy / this.joystickRadius;
     }
@@ -270,25 +334,32 @@ export class TouchControlSystem {
         }
     }
 
+    _syncButton(name, active) {
+        const btn = this.virtualState.buttons[name];
+        if (!btn) return;
+        btn.justPressed = active && !btn.pressed;
+        btn.pressed = active;
+    }
+
     updateVirtualState() {
         const state = this.virtualState;
 
-        // Reset JustPressed happens in InputSystem loop, but we set Pressed here
         state.axes.move.x = this.controls.leftStick.value.x;
         state.axes.move.y = this.controls.leftStick.value.y;
 
         state.axes.aim.x = this.controls.rightStick.value.x;
         state.axes.aim.y = this.controls.rightStick.value.y;
 
-        // Auto-fire if right stick is moved significantly
         const aimMag = Math.sqrt(state.axes.aim.x ** 2 + state.axes.aim.y ** 2);
-        state.buttons.fire.pressed = aimMag > 0.3; // Deadzone
+        this._syncButton('fire', aimMag > 0.3);
 
-        state.buttons.reload.pressed = this.controls.reload.active;
-        state.buttons.grenade.pressed = this.controls.grenade.active;
-        state.buttons.melee.pressed = this.controls.melee.active;
-        state.buttons.pause.pressed = this.controls.pause.active;
-        state.buttons.flashlight.pressed = this.controls.flashlight.active;
+        this._syncButton('reload', this.controls.reload.active);
+        this._syncButton('grenade', this.controls.grenade.active);
+        this._syncButton('melee', this.controls.melee.active);
+        this._syncButton('interact', this.controls.interact.active);
+        this._syncButton('prevWeapon', this.controls.prevWeapon.active);
+        this._syncButton('nextWeapon', this.controls.nextWeapon.active);
+        this._syncButton('flashlight', this.controls.flashlight.active);
     }
 
     getVirtualState() {
@@ -300,20 +371,17 @@ export class TouchControlSystem {
 
         ctx.save();
 
-        // Scale to match canvas resolution (controls are in screen space, canvas is high-res)
         const dpr = this.scale || 1;
 
-        // Draw Left Stick
         this.drawStick(ctx, this.controls.leftStick, dpr);
-
-        // Draw Right Stick
         this.drawStick(ctx, this.controls.rightStick, dpr);
 
-        // Draw Buttons
         this.drawButton(ctx, this.controls.reload, dpr);
         this.drawButton(ctx, this.controls.grenade, dpr);
         this.drawButton(ctx, this.controls.melee, dpr);
-        this.drawButton(ctx, this.controls.pause, dpr);
+        this.drawButton(ctx, this.controls.interact, dpr);
+        this.drawButton(ctx, this.controls.prevWeapon, dpr);
+        this.drawButton(ctx, this.controls.nextWeapon, dpr);
         this.drawButton(ctx, this.controls.flashlight, dpr);
 
         ctx.restore();
@@ -353,7 +421,8 @@ export class TouchControlSystem {
         ctx.stroke();
 
         ctx.fillStyle = 'white';
-        ctx.font = `bold ${16 * dpr}px Arial`;
+        const fontSize = btn.label.length > 1 ? 12 : 16;
+        ctx.font = `bold ${fontSize * dpr}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(btn.label, x, y);

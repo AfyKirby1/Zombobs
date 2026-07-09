@@ -57,6 +57,19 @@ import { BadgeScreen } from './ui/BadgeScreen.js';
 import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
 import { TouchControlSystem } from './systems/TouchControlSystem.js';
 import { groundTextureSystem } from './systems/GroundTextureSystem.js';
+import {
+    initBootLoader,
+    setBootStatus,
+    setBootSubstatus,
+    setBootWebGPUMode,
+    advanceBootStage,
+    requireWebGPUBootGate,
+    notifyWebGPUBootReady,
+    skipWebGPUBootGate,
+    notifyBootFirstFrame,
+    tryDismissBootOverlay,
+    isBootOverlayDismissed
+} from './core/BootLoader.js';
 
 const perfEnabled = (() => {
     try {
@@ -94,6 +107,7 @@ window.zombobsPerf = {
 };
 
 perfMark('zombobs:main:init:start');
+initBootLoader();
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -208,7 +222,16 @@ function scheduleWebGPUInit() {
     }
 
     perfMark('zombobs:webgpu:init:start');
+    if (!isBootOverlayDismissed()) {
+        advanceBootStage('webgpuModule');
+        setBootSubstatus('Loading WebGPU renderer module');
+    }
     webgpuInitPromise = loadWebGPURendererModule().then(Renderer => {
+        if (!isBootOverlayDismissed()) {
+            advanceBootStage('webgpuCompile');
+            setBootStatus('Initializing WebGPU');
+            setBootSubstatus('Compiling WGSL shaders · bloom · particles');
+        }
         if (!webgpuRenderer) {
             webgpuRenderer = new Renderer();
             window.webgpuRenderer = webgpuRenderer;
@@ -564,6 +587,7 @@ const gameLoopSystem = new GameLoopSystem({
     updatePlayers,
     drawPlayers,
     onGameOver: () => gameStateManager.gameOver(),
+    onZoneComplete: () => gameStateManager.zoneComplete(),
     spawnZombies
 });
 
@@ -638,25 +662,7 @@ gameEngine.update = (dt) => {
     }
 };
 
-let bootOverlayDismissed = false;
-function dismissBootOverlayOnce() {
-    if (bootOverlayDismissed) return;
-    bootOverlayDismissed = true;
-    perfMark('zombobs:first-draw');
-    perfMeasure('zombobs:init-to-first-draw', 'zombobs:main:init:start', 'zombobs:first-draw');
-    const el = document.getElementById('boot-overlay');
-    if (!el) return;
-    el.setAttribute('aria-busy', 'false');
-    el.classList.add('boot-overlay--done');
-    const removeEl = () => {
-        if (el.parentNode) el.remove();
-    };
-    el.addEventListener('transitionend', removeEl, { once: true });
-    window.setTimeout(removeEl, 450);
-}
-
 gameEngine.draw = () => {
-    dismissBootOverlayOnce();
     const now = performance.now();
     gameState.framesSinceFpsUpdate++;
     if (now - gameState.lastFpsUpdateTime >= 500) {
@@ -749,8 +755,29 @@ gameEngine.draw = () => {
 
         // If I update WebGPURenderer.js to respect 'isGameplay' state, that's cleanest.
 
+        if (webgpuRenderer.updateBloodEdge) {
+            const player = gameState.players[0];
+            const lowHealthWarning = settingsManager.getSetting('video', 'lowHealthWarning') ?? true;
+            let healthRatio = 1;
+            let damageIntensity = 0;
+            if (player && player.health > 0) {
+                healthRatio = player.health / Math.max(1, player.maxHealth);
+                if (gameState.damageIndicator.active) {
+                    damageIntensity = gameState.damageIndicator.intensity;
+                }
+            }
+            webgpuRenderer.updateBloodEdge({
+                enabled: lowHealthWarning && isGameplay,
+                healthRatio,
+                damageIntensity
+            });
+        }
+
         webgpuRenderer.render(dt, shakeCamera, isGameplay);
     }
+
+    notifyBootFirstFrame();
+    tryDismissBootOverlay();
 };
 
 // Event Listeners
@@ -780,8 +807,8 @@ function handleMenuInteraction(clickX, clickY) {
 
     // Main Menu
     if (gameState.showMainMenu) {
-        // Check for news ticker drag first
-        if (gameHUD.startNewsTickerDrag(clickX, clickY)) {
+        // Check for news ticker drag first (skip while version modal is open)
+        if (!gameState.showVersionModal && gameHUD.startNewsTickerDrag(clickX, clickY)) {
             return; // Don't process button clicks if starting drag
         }
 
@@ -796,6 +823,7 @@ function handleMenuInteraction(clickX, clickY) {
         if (clickedButton === 'single') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false;
+            gameState.gameMode = 'arcade';
             if (isWebGPUActive() && webgpuRenderer.resetSnow) {
                 webgpuRenderer.resetSnow();
             }
@@ -803,6 +831,7 @@ function handleMenuInteraction(clickX, clickY) {
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false;
+            gameState.gameMode = 'campaign';
             gameState.showCampaignIntro = true;
             if (isAudioInitialized()) {
                 stopMenuMusic();
@@ -823,6 +852,10 @@ function handleMenuInteraction(clickX, clickY) {
             playerProfileSystem.trackSettingsVisit();
         } else if (clickedButton === 'username') {
             if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.openUsernameModal();
+        } else if (clickedButton === 'version') {
+            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.openVersionModal();
+        } else if (clickedButton === 'version_close' || clickedButton === 'version_background') {
+            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.closeVersionModal();
         } else if (clickedButton === 'username_ok') {
             if (gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
                 gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
@@ -1075,6 +1108,10 @@ document.addEventListener('keydown', (e) => {
     }
 
     if (e.key === 'Escape') {
+        if (gameState.showVersionModal) {
+            if (gameHUD.mainMenuScreen) gameHUD.mainMenuScreen.closeVersionModal();
+            return;
+        }
         if (gameState.showSettingsPanel) {
             if (settingsPanel.rebindingAction) {
                 settingsPanel.cancelRebind();
@@ -1190,9 +1227,13 @@ window.addEventListener('mousemove', (e) => {
         gameHUD.mouseY = mouse.y;
     }
 
-    // Handle news ticker dragging
+    // Handle news ticker dragging (end if button released without mouseup, e.g. alt-tab)
     if (gameHUD.newsTickerDragging) {
-        gameHUD.updateNewsTickerDrag(mouse.x);
+        if (e.buttons === 0) {
+            gameHUD.endNewsTickerDrag();
+        } else {
+            gameHUD.updateNewsTickerDrag(mouse.x);
+        }
     }
 
     if (gameState.showSettingsPanel) {
@@ -1245,7 +1286,18 @@ window.addEventListener('mouseup', (e) => {
 });
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
-window.addEventListener('mouseleave', () => mouse.isDown = false);
+window.addEventListener('blur', () => {
+    if (gameHUD?.newsTickerDragging) {
+        gameHUD.endNewsTickerDrag();
+    }
+});
+
+window.addEventListener('mouseleave', () => {
+    mouse.isDown = false;
+    if (gameHUD?.newsTickerDragging) {
+        gameHUD.endNewsTickerDrag();
+    }
+});
 
 window.addEventListener('wheel', (e) => {
     if (gameState.showSettingsPanel) {
@@ -1382,11 +1434,14 @@ window.addEventListener('touchstart', (e) => {
 
     // GAMEPLAY INPUT HANDLING
 
-    // 0. Mobile Movement Safety: If touching left side (UI Space), DON'T triggering shooting (mouse down)
-    if (gameState.gameRunning && !gameState.gamePaused && gameHUD && gameHUD.isMobile()) {
+    // Virtual pad owns aim/fire — raw touch must not latch mouse.isDown (would shoot on R/G/M taps)
+    if (gameState.gameRunning && !gameState.gamePaused && touchControlSystem.active) {
+        mouse.isDown = false;
+    } else if (gameState.gameRunning && !gameState.gamePaused && gameHUD && gameHUD.isMobile()) {
+        // Fallback: left half = move, cancel shoot
         const midX = uiCanvas.width / 2;
         if (uiPos.x < midX) {
-            mouse.isDown = false; // Cancel shooting for movement touches
+            mouse.isDown = false;
         }
     }
 
@@ -1401,19 +1456,8 @@ window.addEventListener('touchstart', (e) => {
             return;
         }
 
-        // 2. Check Flashlight Button (from virtual controls)
-        const virtualState = touchControlSystem.getVirtualState();
-        if (virtualState && virtualState.buttons.flashlight.pressed) {
-            if (e.cancelable) e.preventDefault();
-            const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
-            if (localPlayer) {
-                if (!localPlayer.flashlight) localPlayer.flashlight = { active: false };
-                localPlayer.flashlight.active = !localPlayer.flashlight.active;
-            }
-            return;
-        }
-
-        // 2. Check Sidebars (Weapon/Grenade) or Grenade Throw (UI Coords)
+        // Flashlight toggled via TouchControlSystem → PlayerSystem (justPressed)
+        // Check Sidebars (Weapon/Grenade) or Grenade Throw (UI Coords)
         const hudAction = gameHUD.checkMobileHUDInteraction(uiPos.x, uiPos.y);
 
         if (hudAction) {
@@ -1424,23 +1468,17 @@ window.addEventListener('touchstart', (e) => {
             mouse.isDown = false;
 
             if (hudAction.action === 'switch_weapon') {
-                // Cycle Weapon
-                input.mouseWheel = -1; // Simulate scroll down
-                input.gamepadState.buttons.weaponNext = true; // Or use gamepad state
-                // Reset flag next frame handled by system
+                const player = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
+                if (player) cycleWeapon(1, player);
             }
             else if (hudAction.action === 'toggle_grenade_mode') {
-                // Handled in HUD state, nothing else to do here
+                // Handled in HUD state
             }
             else if (hudAction.action === 'throw_grenade') {
-                // Handle Throw!
                 const player = gameState.players[0];
-                if (player && player.grenadeCount > 0) {
-                    // Convert screen tap (Game Coords) to world coordinates (Use pos for ScreenToWorld used in game logic)
+                if (player && (player.grenadeCount > 0 || player.molotovCount > 0)) {
                     const worldPos = cameraSystem.screenToWorld(pos.x, pos.y);
-
-                    // Force throw input
-                    input.keys['g'] = true;
+                    throwGrenade(worldPos, canvas, player);
                 }
             }
         }
@@ -1533,6 +1571,21 @@ window.clearScoreboard = clearScoreboard;
 
 perfMark('zombobs:bootstrap:end');
 perfMeasure('zombobs:bootstrap', 'zombobs:bootstrap:start', 'zombobs:bootstrap:end');
+
+advanceBootStage('systems');
+
+const bootWebgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+if (bootWebgpuEnabled && hasNativeWebGPU()) {
+    requireWebGPUBootGate();
+    setBootWebGPUMode(true);
+    setBootSubstatus('Requesting GPU adapter · WGSL pipeline');
+    webgpuInitStarted = true;
+    scheduleWebGPUInit()
+        .then(() => notifyWebGPUBootReady())
+        .catch(() => notifyWebGPUBootReady());
+} else {
+    skipWebGPUBootGate();
+}
 
 requestAnimationFrame(() => {
     perfMark('zombobs:game-loop:start');

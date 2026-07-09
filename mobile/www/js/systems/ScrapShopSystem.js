@@ -11,7 +11,7 @@ import {
 import { ScrapShrine } from '../entities/ScrapShrine.js';
 import { createParticles } from './ParticleSystem.js';
 import { DamageNumber } from '../entities/Particle.js';
-import { isSinglePlayerArcadeMode } from '../utils/gameUtils.js';
+import { isSinglePlayerArcadeMode, isMobileDevice } from '../utils/gameUtils.js';
 
 /**
  * ScrapShopSystem — wave-break scrap shrine spawn and purchases.
@@ -87,7 +87,8 @@ export class ScrapShopSystem {
 
         const canAfford = (player.scrap || 0) >= shrine.offer.cost;
         const affordTag = canAfford ? '' : ' (low scrap)';
-        return `${shrine.offer.icon} ${shrine.offer.label} [${shrine.offer.cost}] — Press E${affordTag}`;
+        const actionHint = isMobileDevice() ? 'Tap E' : 'Press E';
+        return `${shrine.offer.icon} ${shrine.offer.label} [${shrine.offer.cost}] — ${actionHint}${affordTag}`;
     }
 
     _applyUpgrade(player, offerId) {

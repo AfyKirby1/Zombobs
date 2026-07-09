@@ -1,7 +1,7 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
-import { getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
+import { getLastRuns, formatTime, loadScoreboard, isMobileDevice } from '../utils/gameUtils.js';
 import { NEWS_UPDATES, GAME_VERSION } from '../core/constants.js';
 import { RankDisplay } from './RankDisplay.js';
 import { LeaderboardDisplay } from './LeaderboardDisplay.js';
@@ -18,9 +18,8 @@ export class MainMenuScreen {
         this.leaderboardDisplay = hud.leaderboardDisplay;
         this.hoveredButton = null;
         
-        // Cache device type
-        const ua = (navigator && navigator.userAgent) || '';
-        this.isMobileDevice = /Android|iPhone|iPad|iPod/i.test(ua);
+        // Live mobile detect (UA + coarse pointer + narrow) — refresh each draw via getter
+        this._refreshMobileFlag();
         
         // News ticker state (shared with GameHUD)
         this.newsTickerDragging = false;
@@ -56,6 +55,10 @@ export class MainMenuScreen {
         this.versionBoxY = 0;
         this.versionBoxWidth = 0;
         this.versionBoxHeight = 0;
+    }
+
+    _refreshMobileFlag() {
+        this.isMobileDevice = isMobileDevice();
     }
 
     getUIScale() {
@@ -296,6 +299,7 @@ export class MainMenuScreen {
         }
 
         const scale = this.getMenuScale();
+        this._refreshMobileFlag();
         const isMobile = this.isMobileDevice;
         this.isMobileLayout = isMobile;
 

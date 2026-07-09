@@ -29,13 +29,18 @@ export class GameOverScreen {
             scale *= 0.8;
         }
 
+        const isZoneClear = gameState.campaignZoneCleared;
+        const title = isZoneClear ? 'ZONE CLEAR' : 'GAME OVER';
+        const titleColor = isZoneClear ? '#00ff00' : '#ff0000';
+        const titleShadow = isZoneClear ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)';
+
         const gameOverFontSize = Math.max(32, 48 * scale);
         this.ctx.font = `${gameOverFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
-        this.ctx.fillStyle = '#ff0000';
+        this.ctx.fillStyle = titleColor;
         this.ctx.shadowBlur = 20 * scale;
-        this.ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 100 * scale);
+        this.ctx.shadowColor = titleShadow;
+        this.ctx.fillText(title, this.canvas.width / 2, this.canvas.height / 2 - 100 * scale);
         this.ctx.shadowBlur = 0;
 
         const scoreFontSize = Math.max(14, Math.round(20 * scale));

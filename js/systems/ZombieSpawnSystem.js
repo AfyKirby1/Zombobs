@@ -51,8 +51,28 @@ export class ZombieSpawnSystem {
 
     _computeSpawnPosition(isSinglePlayerArcade, localPlayer, side) {
         if (isCampaignMode(gameState) && mapLoader.isLoaded() && localPlayer) {
-            const edgeSpawn = mapLoader.getEdgeSpawnPosition(localPlayer);
-            if (edgeSpawn) return edgeSpawn;
+            const spawnDistance = Math.max(canvas.width, canvas.height) * 0.6;
+            let sx, sy;
+            switch (side) {
+                case 0:
+                    sx = localPlayer.x + (Math.random() - 0.5) * canvas.width;
+                    sy = localPlayer.y - spawnDistance;
+                    break;
+                case 1:
+                    sx = localPlayer.x + spawnDistance;
+                    sy = localPlayer.y + (Math.random() - 0.5) * canvas.height;
+                    break;
+                case 2:
+                    sx = localPlayer.x + (Math.random() - 0.5) * canvas.width;
+                    sy = localPlayer.y + spawnDistance;
+                    break;
+                default:
+                    sx = localPlayer.x - spawnDistance;
+                    sy = localPlayer.y + (Math.random() - 0.5) * canvas.height;
+                    break;
+            }
+            const resolved = mapLoader.resolvePosition(sx, sy, 20);
+            return resolved;
         }
 
         if (isSinglePlayerArcade && localPlayer) {
@@ -204,6 +224,12 @@ export class ZombieSpawnSystem {
         } else {
             bossX = canvas.width / 2;
             bossY = -50;
+        }
+
+        if (isCampaignMode(gameState) && mapLoader.isLoaded()) {
+            const resolved = mapLoader.resolvePosition(bossX, bossY, 30);
+            bossX = resolved.x;
+            bossY = resolved.y;
         }
 
         const boss = new BossZombie(bossX, bossY);

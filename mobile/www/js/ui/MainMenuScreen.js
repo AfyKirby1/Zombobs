@@ -1,10 +1,13 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
-import { getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
-import { NEWS_UPDATES } from '../core/constants.js';
+import { getLastRuns, formatTime, loadScoreboard, isMobileDevice } from '../utils/gameUtils.js';
+import { NEWS_UPDATES, GAME_VERSION } from '../core/constants.js';
 import { RankDisplay } from './RankDisplay.js';
 import { LeaderboardDisplay } from './LeaderboardDisplay.js';
+import { MenuHandHorrorEffect } from './MenuHandHorrorEffect.js';
+import { MenuMetalGunshotEffect } from './MenuMetalGunshotEffect.js';
+import { VersionModal } from './VersionModal.js';
 
 export class MainMenuScreen {
     constructor(canvas, ctx, hud) {
@@ -15,9 +18,8 @@ export class MainMenuScreen {
         this.leaderboardDisplay = hud.leaderboardDisplay;
         this.hoveredButton = null;
         
-        // Cache device type
-        const ua = (navigator && navigator.userAgent) || '';
-        this.isMobileDevice = /Android|iPhone|iPad|iPod/i.test(ua);
+        // Live mobile detect (UA + coarse pointer + narrow) — refresh each draw via getter
+        this._refreshMobileFlag();
         
         // News ticker state (shared with GameHUD)
         this.newsTickerDragging = false;
@@ -45,6 +47,18 @@ export class MainMenuScreen {
         this.particles = [];
         this.lastEyeSpawn = 0;
         this.lastExplosionSpawn = 0;
+
+        this.handHorror = new MenuHandHorrorEffect(() => this.canvas);
+        this.metalGunshots = new MenuMetalGunshotEffect(() => this.canvas);
+        this.versionModal = new VersionModal(() => this.canvas);
+        this.versionBoxX = 0;
+        this.versionBoxY = 0;
+        this.versionBoxWidth = 0;
+        this.versionBoxHeight = 0;
+    }
+
+    _refreshMobileFlag() {
+        this.isMobileDevice = isMobileDevice();
     }
 
     getUIScale() {
@@ -180,6 +194,9 @@ export class MainMenuScreen {
             p.vy *= 0.95;
             if (p.life <= 0) this.particles.splice(i, 1);
         }
+
+        this.handHorror.update(this.isMobileDevice);
+        this.metalGunshots.update();
     }
 
     isWebGPUActive() {
@@ -260,14 +277,29 @@ export class MainMenuScreen {
             this.ctx.fillRect(p.x, p.y, p.size, p.size);
         }
         this.ctx.restore();
+
+        this.metalGunshots.draw(this.ctx);
     }
 
     draw() {
         this.updateEffects();
-        this.hud.drawCreepyBackground();
+
+        const horror = this.handHorror.getRenderState();
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        this.hud.drawCreepyBackground(horror.bgDragY);
+        this.handHorror.drawTearZone(this.ctx, width, height, horror);
         this.drawEffects();
+        this.handHorror.drawHand(this.ctx, horror);
+
+        this.ctx.save();
+        if (horror.shakeX || horror.shakeY) {
+            this.ctx.translate(horror.shakeX, horror.shakeY);
+        }
 
         const scale = this.getMenuScale();
+        this._refreshMobileFlag();
         const isMobile = this.isMobileDevice;
         this.isMobileLayout = isMobile;
 
@@ -516,6 +548,13 @@ export class MainMenuScreen {
         if (gameState.showUsernameModal) {
             this.drawUsernameModal();
         }
+
+        // Draw version patch-notes modal if open
+        if (gameState.showVersionModal) {
+            this.versionModal.draw(this.ctx, this.hud, this.getUIScale());
+        }
+
+        this.ctx.restore();
     }
 
     drawRankBadge() {
@@ -533,7 +572,7 @@ export class MainMenuScreen {
         // Draw rank badge to the right of username box
         const badgeX = centerX + usernameBoxWidth / 2 + 20 * scale;
         const badgeY = 30 * scale + 25 * scale - 25 * scale; // Aligned with username box center
-        this.rankDisplay.drawRankBadge(badgeX, badgeY, 50 * scale);
+        this.rankDisplay.drawRankBadge(badgeX, badgeY, 56 * scale);
     }
 
     drawLocalHighscores() {
@@ -893,31 +932,53 @@ export class MainMenuScreen {
 
     drawVersionBox() {
         if (this.isMobileLayout) return;
-        const version = "V0.9.1 ALPHA";
         const padding = 15;
-        const boxHeight = 24;
+        const boxHeight = 26;
         const x = this.getMenuTopLeftContentX();
         const y = padding;
+        const hovered = this.hoveredButton === 'version';
+        const t = Date.now();
+        const pulse = 0.9 + 0.1 * Math.sin(t / 700);
 
         this.ctx.save();
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
-        const textWidth = this.ctx.measureText(version).width;
-        const boxWidth = textWidth + 24;
+        const label = `🎃 ${GAME_VERSION}`;
+        const textWidth = this.ctx.measureText(label).width;
+        const boxWidth = textWidth + 28;
 
-        // Background
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.versionBoxX = x;
+        this.versionBoxY = y;
+        this.versionBoxWidth = boxWidth;
+        this.versionBoxHeight = boxHeight;
+
+        if (hovered) {
+            this.ctx.shadowBlur = 14;
+            this.ctx.shadowColor = 'rgba(255, 111, 0, 0.65)';
+        }
+
+        const bgGrad = this.ctx.createLinearGradient(x, y, x, y + boxHeight);
+        bgGrad.addColorStop(0, hovered ? 'rgba(40, 12, 8, 0.92)' : 'rgba(0, 0, 0, 0.75)');
+        bgGrad.addColorStop(1, hovered ? 'rgba(20, 6, 10, 0.92)' : 'rgba(0, 0, 0, 0.7)');
+        this.ctx.fillStyle = bgGrad;
         this.ctx.fillRect(x, y, boxWidth, boxHeight);
 
-        // Border
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        this.ctx.lineWidth = 1;
+        this.ctx.shadowBlur = 0;
+        this.ctx.strokeStyle = hovered
+            ? `rgba(255, 111, 0, ${0.85 * pulse})`
+            : 'rgba(255, 87, 34, 0.35)';
+        this.ctx.lineWidth = hovered ? 2 : 1;
         this.ctx.strokeRect(x, y, boxWidth, boxHeight);
 
-        // Text
-        this.ctx.fillStyle = '#ff1744';
+        this.ctx.fillStyle = hovered ? '#ffab40' : '#ff1744';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(version, x + boxWidth / 2, y + boxHeight / 2);
+        this.ctx.fillText(label, x + boxWidth / 2, y + boxHeight / 2);
+
+        if (hovered) {
+            this.ctx.font = '9px "Roboto Mono", monospace';
+            this.ctx.fillStyle = 'rgba(255, 183, 77, 0.8)';
+            this.ctx.fillText('PATCH NOTES', x + boxWidth / 2, y + boxHeight + 10);
+        }
 
         this.ctx.restore();
     }
@@ -956,8 +1017,8 @@ export class MainMenuScreen {
         const panelHeight = lines.length * lineHeight + textPadding * 2;
 
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
-        const versionTextWidth = this.ctx.measureText("V0.9.1 ALPHA").width;
-        const versionBoxWidth = versionTextWidth + 24;
+        const versionTextWidth = this.ctx.measureText(`🎃 ${GAME_VERSION}`).width;
+        const versionBoxWidth = versionTextWidth + 28;
         const panelX = this.getMenuTopLeftContentX() + versionBoxWidth + spacing;
         const panelY = padding;
 
@@ -989,6 +1050,11 @@ export class MainMenuScreen {
     }
 
     checkButtonClick(x, y) {
+        // Version modal takes priority
+        if (gameState.showVersionModal) {
+            return this.checkVersionModalClick(x, y);
+        }
+
         // Check username modal clicks first
         if (gameState.showUsernameModal) {
             return this.checkUsernameModalClick(x, y);
@@ -999,6 +1065,15 @@ export class MainMenuScreen {
         const isMobile = this.isMobileDevice;
         const { width: mainMenuButtonWidth, height: mainMenuButtonHeight, spacing: buttonSpacing, colSpacing: columnSpacing } = this.getButtonLayout(scale);
         const centerY = this.canvas.height / 2;
+
+        // Version badge (top-left arcade plaque)
+        if (!this.isMobileLayout && this.versionBoxWidth > 0) {
+            const pad = 4;
+            if (x >= this.versionBoxX - pad && x <= this.versionBoxX + this.versionBoxWidth + pad &&
+                y >= this.versionBoxY - pad && y <= this.versionBoxY + this.versionBoxHeight + pad) {
+                return 'version';
+            }
+        }
 
         // Username box hit detection (moved to top)
         const usernameBoxWidth = (isMobile ? 240 : 320) * scale;
@@ -1074,8 +1149,9 @@ export class MainMenuScreen {
     updateHover(x, y) {
         this.lastMouseX = x;
         this.lastMouseY = y;
-        // Check username modal hover first
-        if (gameState.showUsernameModal) {
+        if (gameState.showVersionModal) {
+            this.hoveredButton = this.checkVersionModalClick(x, y);
+        } else if (gameState.showUsernameModal) {
             this.hoveredButton = this.checkUsernameModalClick(x, y);
         } else {
             this.hoveredButton = this.checkButtonClick(x, y);
@@ -1084,14 +1160,17 @@ export class MainMenuScreen {
     }
 
     checkNewsTickerHit(x, y) {
-        return x >= this.newsTickerBoxX &&
-            x <= this.newsTickerBoxX + this.newsTickerBoxWidth &&
-            y >= this.newsTickerBoxY &&
-            y <= this.newsTickerBoxY + this.newsTickerBoxHeight;
+        if (!this.newsTickerBoxWidth || !this.newsTickerBoxHeight) return false;
+        const padX = 4;
+        const padY = 6;
+        return x >= this.newsTickerBoxX - padX &&
+            x <= this.newsTickerBoxX + this.newsTickerBoxWidth + padX &&
+            y >= this.newsTickerBoxY - padY &&
+            y <= this.newsTickerBoxY + this.newsTickerBoxHeight + padY;
     }
 
     startNewsTickerDrag(x, y) {
-        if (!this.checkNewsTickerHit(x, y)) return false;
+        if (this.isMobileLayout || !this.checkNewsTickerHit(x, y)) return false;
         this.newsTickerDragging = true;
         this.newsTickerDragStartX = x;
         this.newsTickerDragStartOffset = this.newsTickerOffset;
@@ -1101,14 +1180,19 @@ export class MainMenuScreen {
     updateNewsTickerDrag(x) {
         if (!this.newsTickerDragging) return;
         const dragDistance = this.newsTickerDragStartX - x;
+        const loopLength = this.newsTickerTextWidth + this.newsTickerBoxWidth;
+        if (loopLength <= 0) return;
         const newOffset = this.newsTickerDragStartOffset + dragDistance;
-        const maxOffset = this.newsTickerTextWidth + this.newsTickerBoxWidth;
-        // Clamp offset to valid range
-        this.newsTickerOffset = Math.max(0, Math.min(maxOffset, newOffset));
+        this.newsTickerOffset = ((newOffset % loopLength) + loopLength) % loopLength;
     }
 
     endNewsTickerDrag() {
+        if (!this.newsTickerDragging) return;
         this.newsTickerDragging = false;
+        const loopLength = this.newsTickerTextWidth + this.newsTickerBoxWidth;
+        if (loopLength > 0) {
+            this.newsTickerOffset = ((this.newsTickerOffset % loopLength) + loopLength) % loopLength;
+        }
     }
 
     drawUsernameModal() {
@@ -1237,6 +1321,19 @@ export class MainMenuScreen {
 
         // Cancel Button
         this.hud.drawMenuButton('Cancel', cancelButtonX, buttonY, buttonWidth, buttonHeight, cancelHovered, false);
+    }
+
+    openVersionModal() {
+        gameState.showVersionModal = true;
+    }
+
+    closeVersionModal() {
+        gameState.showVersionModal = false;
+    }
+
+    checkVersionModalClick(x, y) {
+        if (!gameState.showVersionModal) return null;
+        return this.versionModal.checkClick(x, y, this.getUIScale());
     }
 
     openUsernameModal() {

@@ -2,6 +2,63 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Campaign/Arcade Parity + Slower Leveling + Equipment System (2026-07-09) ✅ COMPLETE
+- **Done**: Campaign spawn parity — `ZombieSpawnSystem._computeSpawnPosition()` now uses arcade-style off-screen spawns for campaign, clamped/resolved against map walls and bounds instead of map edges only. Boss spawn also clamped in campaign.
+- **Done**: Slower leveling — `XP_BASE_REQUIREMENT` 100 → 200, per-level increment 20 → 50 (`SkillSystem.js`).
+- **Done**: Broad equipment system foundation:
+  - `js/core/equipmentDefinitions.js` — 6 slots, 5 rarities, random stat bonuses (HP, speed, damage, fire rate, reload, XP, scrap).
+  - `js/systems/EquipmentSystem.js` — inventory, equip/unequip, recalc bonuses, drop chance, auto-equip if slot empty.
+  - `js/entities/EquipmentPickup.js` — glowing crate pickup with rarity color.
+  - `js/ui/EquipmentScreen.js` — E-key panel showing equipped slots and inventory; click to equip/unequip, close button.
+  - `js/ui/GameHUD.js` — wires equipment screen into draw/click/hover/cursor.
+  - `js/main.js` — E key toggles equipment screen (preserves E shrine purchase when near a scrap shrine during wave break); blocks gameplay input while open.
+  - `js/core/gameState.js` — `showEquipment`, `equipmentPickups`, and player equipment fields; reset logic.
+  - `js/utils/bulletZombieCollisions.js` — 7% chance to drop equipment on zombie death.
+  - `js/systems/GameLoopSystem.js` — updates and draws equipment pickups; auto-collect on player contact.
+  - `js/utils/combatUtils.js`, `js/systems/PlayerSystem.js`, `js/systems/SkillSystem.js` — apply equipment multipliers to damage, fire rate, reload, scrap, XP, and movement speed.
+- **Done**: `DOCS/CHANGELOG.md` updated.
+- **Verify**: `test-syntax.ps1` passes; play a run, kill zombies, press E to manage gear.
+
+### Mobile Touch — Coherent + Edge-Cased (2026-07-09) ✅ COMPLETE
+- **Root cause**: Virtual pad UI existed but mouse-source mobile players never got aim/fire/button edges; HUD weapon/grenade paths were no-ops (`input.mouseWheel` / `input.keys` undefined).
+- **Done**: `TouchControlSystem` — `justPressed` via `tick()`, interact + weapon cycle buttons, flashlight reset, HUD-zone skip, safe-area insets, visibility/orientation reset, removed duplicate pause pad.
+- **Done**: `PlayerSystem` — virtual aim/move + reload/melee/grenade/weapon/interact/flashlight for mouse+mobile.
+- **Done**: `GameLoopSystem` — right-stick auto-fire; tick before `updatePlayers`.
+- **Done**: `main.js` — real `cycleWeapon` / `throwGrenade`; suppress raw `mouse.isDown` while virtual pad active.
+- **Done**: Scrap prompt mobile copy; unify `isMobileDevice()` in MainMenu/Settings/GameHUD; Capacitor immersive on focus; `npm run sync:web`.
+- **Verify**: DevTools phone UA — move/aim/fire, R/G/M/E/W±/🔦, HUD weapon tap, grenade throw mode, scrap E near shrine, pause (HUD only), rotate/background no stuck sticks. Then `cd mobile && npm run sync:web` before Android build.
+
+### Boot Loader Visual + System Upgrade (2026-07-09) ✅ COMPLETE
+- **Done**: Extended `js/core/BootLoader.js` — staged progress bar (bootstrap → systems → WebGPU → first frame), rotating tips, `GAME_VERSION` chip, 12s failsafe timeout.
+- **Done**: Upgraded `#boot-overlay` in `index.html` — Creepster title glow, progress bar, version/WebGPU chips, tip line, vignette + grain (critical inline CSS).
+- **Done**: Mirrored polish in `css/style.css` — abyssal gradient, WebGPU accent bar, `prefers-reduced-motion`.
+- **Done**: Wired `advanceBootStage()` from `js/main.js` at bootstrap + WebGPU init sites.
+- **Verify**: `test-syntax.ps1` passes; cold reload `index.html` — bar advances, overlay fades when menu + GPU ready.
+
+### Campaign Zone 2 — Maintenance Tunnels + Zone Transition (2026-07-09) ✅ COMPLETE
+- **Done**: New map `js/maps/maintenanceTunnels.js` (1800×1200, corridors, side passages, support pillars, steam decals, props, extraction trigger).
+- **Done**: `MapLoader` registry now loads `crash_site` → `maintenance_tunnels` via `nextMapId`.
+- **Done**: `crashSite.js` sets `nextMapId: 'maintenance_tunnels'`; `maintenanceTunnels.js` sets `nextMapId: null` for final victory.
+- **Done**: `MapLoader.applyAmbiance()` now fixes `dayNightCycle.startTime` so forced night persists across the whole map.
+- **Done**: `GameStateManager.zoneComplete()` transitions to next zone if present; `_loadNextCampaignZone()` preserves player health/ammo/score, resets wave/zombies/pickups/shrine, clears props, respawns map props, repositions player, and spawns wave 1.
+- **Done**: `GameStateManager._loadNextCampaignZone()` shows a `ZONE N — MAP NAME` wave notification on entry.
+- **Done**: `DOCS/CHANGELOG.md` updated.
+- **Verify**: Campaign → clear Zone 1 → reach north extraction → Zone 2 loads → clear Zone 2 → `ZONE CLEAR` victory.
+
+### Menu Zombie Hand Visual Polish (2026-07-08) ✅ COMPLETE
+- **Done**: Enhanced `MenuHandHorrorEffect.drawHand()` with cast shadow, torn wrist, knuckle bumps, palm creases, segmented fingers with torn nails and bloodied tips, thumb nail, rotting patch, and glass sheen highlight.
+- **Done**: Added `_drawImpactRing()` shockwave on the tear edge during the slam impact.
+- **Done**: `test-syntax.ps1` passes.
+
+### Campaign Extraction Objective + Zone Clear (2026-07-08) ✅ COMPLETE
+- **Done**: Added `extraction` trigger to `js/maps/crashSite.js` at the north ring gap; requires wave 2.
+- **Done**: `MapLoader` supports `requiresWave`, `requiresKills`, `target`, and `extraction` trigger types; sets `campaignObjectiveTarget` and `campaignZoneCleared`.
+- **Done**: World-space pulsing green beacon marker at the extraction target; HUD distance readout + off-screen arrow in `drawingUtils.drawCampaignObjective`.
+- **Done**: `GameStateManager.zoneComplete()` and `GameLoopSystem.onZoneComplete` callback end the run with a victory overlay; `GameOverScreen` draws "ZONE CLEAR" in green.
+- **Done**: Reset fields in `gameState.js` and `GameStateManager.restartGame()`.
+- **Docs**: `CHANGELOG.md` updated.
+- **Verify**: Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\test-syntax.ps1`.
+
 ### Clickable Version Modal (2026-07-06) ✅ COMPLETE
 - **Done**: Main-menu version badge opens spooky arcade **PATCH NOTES** modal (`js/ui/VersionModal.js`).
 - **Done**: Centralized `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` in `js/core/constants.js`; About screen + version badge read from constants.

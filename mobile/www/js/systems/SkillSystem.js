@@ -11,7 +11,8 @@ export const LEVEL_UP_CHOICE_COUNT = 4;
 export const LEVEL_UP_REROLLS = 1;
 export const CORRUPTED_CHOICE_CHANCE = 0.14;
 export const TREE_SKILL_WEIGHT_MULT = 0.35;
-export const XP_BASE_REQUIREMENT = 100;
+export const XP_BASE_REQUIREMENT = 200;
+export const XP_PER_LEVEL_INCREMENT = 50;
 export const XP_SCALING_FACTOR = 1.2;
 
 // Skill Rarity System
@@ -880,7 +881,8 @@ class SkillSystem {
         const streak = options.streak || gameState.killStreak || 0;
         const multiplier = this.getKillStreakMultiplier(streak);
         const xpSkillMult = gameState.players[0]?.xpGainMultiplier || 1.0;
-        const finalAmount = Math.floor(amount * multiplier * xpSkillMult);
+        const equipmentXpMult = gameState.players[0]?.equipmentXpGainMultiplier || 1.0;
+        const finalAmount = Math.floor(amount * multiplier * xpSkillMult * equipmentXpMult);
 
         gameState.xp += finalAmount;
 
@@ -947,8 +949,8 @@ class SkillSystem {
     levelUp() {
         gameState.level++;
 
-        // Calculate next level XP requirement (linear progression: +20 per level, starting at 100)
-        gameState.nextLevelXP = XP_BASE_REQUIREMENT + (gameState.level - 1) * 20;
+        // Calculate next level XP requirement (linear progression: +50 per level, starting at 200)
+        gameState.nextLevelXP = XP_BASE_REQUIREMENT + (gameState.level - 1) * XP_PER_LEVEL_INCREMENT;
 
         // Reset XP to 0 so XP bar resets properly after level up
         gameState.xp = 0;

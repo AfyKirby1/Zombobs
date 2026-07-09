@@ -21,6 +21,7 @@ import { AboutScreen } from './AboutScreen.js';
 import { GalleryScreen } from './GalleryScreen.js';
 import { LevelUpScreen } from './LevelUpScreen.js';
 import { CampaignIntroScreen } from './CampaignIntroScreen.js';
+import { EquipmentScreen } from './EquipmentScreen.js';
 import { initGroundPattern } from '../systems/GraphicsSystem.js';
 
 export class GameHUD {
@@ -41,6 +42,7 @@ export class GameHUD {
         this.galleryScreen = new GalleryScreen(canvas, this.ctx, this);
         this.levelUpScreen = new LevelUpScreen(canvas, this.ctx, this);
         this.campaignIntroScreen = new CampaignIntroScreen(canvas, this.ctx);
+        this.equipmentScreen = new EquipmentScreen(canvas, this.ctx, this);
         this.basePadding = 15;
         this.baseItemSpacing = 12;
         this.throwableCycleAnimTimer = 0;
@@ -371,6 +373,10 @@ export class GameHUD {
             if (gameState.showLevelUp) {
                 this.levelUpScreen.draw();
             }
+
+            if (gameState.showEquipment) {
+                this.equipmentScreen.draw();
+            }
         }
 
         // Always draw WebGPU status icon on top of everything, except when HTML overlays are active
@@ -385,7 +391,7 @@ export class GameHUD {
             gameState.showBattlepass || gameState.showUsernameModal ||
             gameState.showVersionModal ||
             gameState.showSettingsPanel ||
-            this.paused || gameState.gamePaused || gameState.showLevelUp || this.gameOver) {
+            this.paused || gameState.gamePaused || gameState.showLevelUp || gameState.showEquipment || this.gameOver) {
             this.drawCursor();
         }
 
@@ -1566,8 +1572,7 @@ export class GameHUD {
 
     drawMenuButton(text, x, y, width, height, hovered, disabled) {
         const scale = this.getUIScale();
-        const ua = (navigator && navigator.userAgent) || '';
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+        const isMobile = isMobileDevice();
         const mobileScale = isMobile ? 0.6 : 1.0;
 
         const bgColor = disabled ? '#333333' : (hovered ? '#ff1744' : '#1a1a1a');
@@ -2206,6 +2211,16 @@ export class GameHUD {
         this.mouseX = x;
         this.mouseY = y;
         this.hoveredSkillIndex = this.levelUpScreen.updateHover(x, y);
+    }
+
+    checkEquipmentClick(x, y) {
+        return this.equipmentScreen.checkClick(x, y);
+    }
+
+    updateEquipmentHover(x, y) {
+        this.mouseX = x;
+        this.mouseY = y;
+        this.equipmentScreen.updateHover(x, y);
     }
 
     drawServerStatus() {

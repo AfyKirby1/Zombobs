@@ -103,6 +103,73 @@ export class GameStateManager {
     }
 
     /**
+     * Campaign zone cleared — transition to next zone or end with victory overlay.
+     */
+    zoneComplete() {
+        const nextId = mapLoader.getNextMapId();
+        if (nextId) {
+            this._loadNextCampaignZone(nextId);
+            return;
+        }
+        gameState.campaignZoneCleared = true;
+        this.gameOver();
+        const msg = `Zone ${gameState.campaignZone} cleared — extraction secured!\nKilled: ${gameState.zombiesKilled}`;
+        this.gameHUD.showGameOver(msg);
+    }
+
+    /**
+     * Load the next campaign zone while preserving the player run.
+     */
+    _loadNextCampaignZone(nextId) {
+        gameState.bullets = [];
+        gameState.zombies = [];
+        gameState.particles = [];
+        gameState.grenades = [];
+        gameState.acidProjectiles = [];
+        gameState.acidPools = [];
+        gameState.healthPickups = [];
+        gameState.ammoPickups = [];
+        gameState.damagePickups = [];
+        gameState.nukePickups = [];
+        gameState.scrapPickups = [];
+        gameState.scrapShrines = [];
+        gameState.props = [];
+
+        gameState.wave = 1;
+        gameState.zombiesPerWave = 5;
+        gameState.waveBreakActive = false;
+        gameState.waveBreakEndTime = 0;
+        gameState.isSpawningWave = false;
+        gameState.waveStartTime = 0;
+        gameState.zombiesSpawnedThisWave = 0;
+        gameState.zombiesKilled = 0;
+        gameState.bossActive = false;
+        gameState.showLevelUp = false;
+
+        gameState.campaignZoneCleared = false;
+        gameState.campaignZoneClearTime = 0;
+
+        mapLoader.unload();
+        mapLoader.load(nextId);
+        const spawn = mapLoader.getSpawn();
+        gameState.players[0].x = spawn.x;
+        gameState.players[0].y = spawn.y;
+        mapLoader.spawnMapProps();
+        mapLoader.applyAmbiance();
+        cameraSystem.initialize(gameState.players[0]);
+
+        const map = mapLoader.getMap();
+        gameState.waveNotification = {
+            active: true,
+            text: `ZONE ${map.zone} — ${map.name.toUpperCase()}`,
+            life: 0,
+            maxLife: 180
+        };
+
+        this.spawnZombiesCallback(gameState.zombiesPerWave);
+    }
+
+    /**
      * Restart game (return to main menu)
      */
     restartGame() {
@@ -119,7 +186,13 @@ export class GameStateManager {
         gameState.showLobby = false;
         gameState.showAILobby = false;
         gameState.gameMode = 'arcade';
+        gameState.campaignZoneCleared = false;
+        gameState.campaignZoneClearTime = 0;
+        gameState.campaignObjectiveTarget = null;
         mapLoader.unload();
+        if (window.companionSystem && window.companionSystem.resetHired) {
+            window.companionSystem.resetHired();
+        }
         this.gameHUD.hidePauseMenu();
         this.gameHUD.hideGameOver();
         resetGameState(canvas.width, canvas.height);
@@ -146,6 +219,9 @@ export class GameStateManager {
             groundTextureSystem.reset();
             cameraSystem.reset();
             mapLoader.unload();
+            if (window.companionSystem && window.companionSystem.resetHired) {
+                window.companionSystem.resetHired();
+            }
 
             if (isCampaignMode(gameState)) {
                 mapLoader.load('crash_site');

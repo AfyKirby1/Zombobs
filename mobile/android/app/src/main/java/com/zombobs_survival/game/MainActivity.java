@@ -18,6 +18,14 @@ public class MainActivity extends BridgeActivity {
         enterImmersiveMode();
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            enterImmersiveMode();
+        }
+    }
+
     private void enterImmersiveMode() {
         Window window = getWindow();
         if (window == null) return;
