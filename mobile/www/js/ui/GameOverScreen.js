@@ -1,7 +1,7 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { playerProfileSystem } from '../systems/PlayerProfileSystem.js';
-import { formatTime } from '../utils/gameUtils.js';
+import { formatTime, isCampaignMode } from '../utils/gameUtils.js';
 
 export class GameOverScreen {
     constructor(canvas, ctx, hud) {
@@ -31,9 +31,9 @@ export class GameOverScreen {
 
         const isActClear = gameState.campaignActClear || gameState.campaignScript?.actClear;
         const isZoneClear = gameState.campaignZoneCleared;
-        const title = isActClear ? 'ACT 1 CLEAR' : (isZoneClear ? 'ZONE CLEAR' : 'GAME OVER');
-        const titleColor = isActClear ? '#e0f7ff' : (isZoneClear ? '#00ff00' : '#ff0000');
-        const titleShadow = isActClear ? 'rgba(0, 229, 255, 0.9)' : (isZoneClear ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)');
+        const title = isActClear ? 'ACT 1 CLEAR' : (isZoneClear ? 'ZONE CLEAR' : (isCampaignMode(gameState) && gameState.campaignRetryMapId ? 'ZONE FAIL' : 'GAME OVER'));
+        const titleColor = isActClear ? '#e0f7ff' : (isZoneClear ? '#00ff00' : (isCampaignMode(gameState) && gameState.campaignRetryMapId ? '#ffb300' : '#ff0000'));
+        const titleShadow = isActClear ? 'rgba(0, 229, 255, 0.9)' : (isZoneClear ? 'rgba(0, 255, 0, 0.8)' : (isCampaignMode(gameState) && gameState.campaignRetryMapId ? 'rgba(255, 179, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)'));
 
         const gameOverFontSize = Math.max(32, 48 * scale);
         this.ctx.font = `${gameOverFontSize}px "Creepster", cursive`;
@@ -121,9 +121,18 @@ export class GameOverScreen {
 
         // Check if game was multiplayer
         const wasMultiplayer = gameState.multiplayer.active || gameState.multiplayer.connected;
+        const isCampaignDeath = !isActClear && !isZoneClear &&
+            gameState.campaignRetryMapId && isCampaignMode(gameState);
 
         // Position buttons near bottom
-        let buttonY = this.canvas.height - 160 * scale;
+        let buttonY = this.canvas.height - (isCampaignDeath ? 230 : 160) * scale;
+
+        // Campaign retry (zone fail)
+        if (isCampaignDeath) {
+            const retryHovered = this.hoveredButton === 'gameover_retry';
+            this.hud.drawMenuButton('Retry Zone', centerX - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, retryHovered, false);
+            buttonY += buttonHeight + buttonSpacing;
+        }
 
         // "Back to Lobby" button (only show if multiplayer)
         if (wasMultiplayer) {
@@ -254,10 +263,21 @@ export class GameOverScreen {
         const scale = this.getUIScale();
         const buttonWidth = 200 * scale;
         const buttonHeight = 50 * scale;
-        let buttonY = this.canvas.height - 160 * scale;
+        const buttonSpacing = 15 * scale;
+        const isCampaignDeath = !gameState.campaignActClear && !gameState.campaignZoneCleared &&
+            gameState.campaignRetryMapId && isCampaignMode(gameState);
+        let buttonY = this.canvas.height - (isCampaignDeath ? 230 : 160) * scale;
 
-        // Check if game was multiplayer
         const wasMultiplayer = gameState.multiplayer.active || gameState.multiplayer.connected;
+
+        if (isCampaignDeath) {
+            const retryButtonY = buttonY;
+            if (x >= centerX - buttonWidth / 2 && x <= centerX + buttonWidth / 2 &&
+                y >= retryButtonY && y <= retryButtonY + buttonHeight) {
+                return 'gameover_retry';
+            }
+            buttonY += buttonHeight + buttonSpacing;
+        }
 
         // "Back to Lobby" button (only if multiplayer)
         if (wasMultiplayer) {

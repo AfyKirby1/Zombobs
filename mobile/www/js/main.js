@@ -11,7 +11,7 @@ import {
 import { canvas, ctx, gpuCanvas, uiCanvas, uiCtx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
-import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, pauseGameMusic, resumeGameMusic, isAudioInitialized } from './systems/AudioSystem.js';
+import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, playGameMusic, stopGameMusic, pauseGameMusic, resumeGameMusic, isAudioInitialized } from './systems/AudioSystem.js';
 import { initGroundPattern } from './systems/GraphicsSystem.js';
 import { renderingCache } from './systems/RenderingCache.js';
 import { GameHUD } from './ui/GameHUD.js';
@@ -54,6 +54,7 @@ import { MeleeSystem } from './systems/MeleeSystem.js';
 import { playerProfileSystem } from './systems/PlayerProfileSystem.js';
 import { ProfileScreen } from './ui/ProfileScreen.js';
 import { AchievementScreen } from './ui/AchievementScreen.js';
+import { achievementSystem } from './systems/AchievementSystem.js';
 import { BattlepassScreen } from './ui/BattlepassScreen.js';
 import { BadgeScreen } from './ui/BadgeScreen.js';
 import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
@@ -70,7 +71,8 @@ import {
     skipWebGPUBootGate,
     notifyBootFirstFrame,
     tryDismissBootOverlay,
-    isBootOverlayDismissed
+    isBootOverlayDismissed,
+    reportWebGPUBootPhase
 } from './core/BootLoader.js';
 
 const perfEnabled = (() => {
@@ -133,6 +135,7 @@ const badgeScreen = new BadgeScreen(uiCanvas);
 // Make globally accessible for text rendering quality
 window.profileScreen = profileScreen;
 window.achievementScreen = achievementScreen;
+window.achievementSystem = achievementSystem;
 window.battlepassScreen = battlepassScreen;
 window.badgeScreen = badgeScreen;
 
@@ -239,7 +242,13 @@ function scheduleWebGPUInit() {
             window.webgpuRenderer = webgpuRenderer;
             gameLoopSystem.webgpuRenderer = webgpuRenderer;
         }
-        return webgpuRenderer.init();
+        return webgpuRenderer.init({
+            onPhase: (phase) => {
+                if (!isBootOverlayDismissed()) {
+                    reportWebGPUBootPhase(phase);
+                }
+            }
+        });
     }).then(initialized => {
         if (initialized) {
             applyWebGPUSettings();
@@ -1027,6 +1036,9 @@ function handleMenuInteraction(clickX, clickY) {
             if (isWebGPUActive() && webgpuRenderer.resetSnow) webgpuRenderer.resetSnow();
         } else if (clickedButton === 'gameover_menu') {
             restartGame();
+            gameState.particles = [];
+        } else if (clickedButton === 'gameover_retry') {
+            gameStateManager.retryCampaignZone();
             gameState.particles = [];
         }
         return;

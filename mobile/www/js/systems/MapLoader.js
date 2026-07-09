@@ -8,6 +8,12 @@ import {
     clampCircleInBounds
 } from '../utils/mapCollisionUtils.js';
 import { applyPlayerDamage } from '../utils/combatUtils.js';
+import { triggerWaveNotification } from '../utils/gameUtils.js';
+import {
+    playRadioStaticSound,
+    playCampaignStinger,
+    playSteamHissSound
+} from './AudioSystem.js';
 import { crashSiteMap } from '../maps/crashSite.js';
 import { maintenanceTunnelsMap } from '../maps/maintenanceTunnels.js';
 import { switchingYardMap } from '../maps/switchingYard.js';
@@ -20,6 +26,7 @@ import {
     CrawlerZombie
 } from '../entities/Zombie.js';
 import { getSurvivorById } from '../core/survivorDefinitions.js';
+import { achievementSystem } from './AchievementSystem.js';
 
 const MAP_REGISTRY = {
     crash_site: crashSiteMap,
@@ -37,11 +44,26 @@ const WALL_COLORS = {
 const NPC_RADIUS = 18;
 const NPC_TALK_RANGE = 70;
 
+const RADIO_BEATS = {
+    crash_site: 'Echo Actual, do you copy? ...Damn it. We\'re on our own.',
+    maintenance_tunnels: 'They\'re in the walls! Watch your six!',
+    switching_yard: 'Radio: Gate needs power before we cross the yard.',
+    control_tower: '...broadcasting on emergency frequency... is anyone out there?',
+    lights_out: 'Lights are out — flashlights up!',
+    debris_clear: 'Path north is open. Move!',
+    gate_online: 'Gate power nominal. East exit is live.',
+    power_surge: 'Surge on the line — they\'re coming!',
+    defend_start: 'Signal boot in progress. Hold the tower!',
+    warden_spawn: 'THE WARDEN — YOU ARE NOISE',
+    act_clear: 'Signal Online. Echo Actual, we read you.'
+};
+
 function defaultCampaignScript() {
     return {
         powerRequired: 0,
         powerCompleted: 0,
         powerIds: [],
+        powerSurgeFired: false,
         gateOnline: false,
         debrisCleared: false,
         lightsOutUntil: 0,
@@ -60,7 +82,10 @@ function defaultCampaignScript() {
         extractTaxFired: false,
         activeNpcs: [],
         nearbyNpcId: null,
-        survivorBubble: null
+        survivorBubble: null,
+        survivorBubbleNpcId: null,
+        _lastQuestKillCount: 0,
+        _lastSteamSfx: 0
     };
 }
 
@@ -126,7 +151,59 @@ export class MapLoader {
         }
 
         this._spawnMapSurvivors();
+        this._fireRadioBeat('zone_load');
         return true;
+    }
+
+    _fireRadioBeat(beatKey, toastText = null, toastLife = 180) {
+        const line = RADIO_BEATS[beatKey] || beatKey;
+        if (toastText) {
+            triggerWaveNotification(toastText, toastLife, line, 'campaign');
+        } else if (this.activeMap) {
+            const mapLine = RADIO_BEATS[this.activeMap.id] || line;
+            triggerWaveNotification(
+                `ZONE ${this.activeMap.zone} — ${(this.activeMap.name || '').toUpperCase()}`,
+                toastLife,
+                mapLine,
+                'campaign'
+            );
+        }
+        playRadioStaticSound();
+    }
+
+    _abandonIncompleteQuests() {
+        const run = ensureSurvivorRunState();
+        if (!run.quest) return;
+        if (run.questDone[run.quest.survivorId]) return;
+        const def = getSurvivorById(run.quest.survivorId);
+        if (def) {
+            triggerWaveNotification(
+                `LEFT BEHIND — ${def.name.toUpperCase()}'S QUEST FAILED`,
+                140,
+                null,
+                'campaign'
+            );
+        }
+        run.quest = null;
+    }
+
+    _beginZoneTransition() {
+        const map = this.activeMap;
+        if (!map) return;
+        const nextMap = MAP_REGISTRY[map.nextMapId];
+        const title = nextMap
+            ? `ZONE ${nextMap.zone} — ${(nextMap.name || '').toUpperCase()}`
+            : `ZONE ${map.zone} CLEAR`;
+        const subtitle = nextMap
+            ? (RADIO_BEATS[nextMap.id] || 'Moving out...')
+            : 'Extraction secured.';
+        gameState.campaignTransition = {
+            active: true,
+            until: Date.now() + 1200,
+            title,
+            subtitle
+        };
+        playRadioStaticSound();
     }
 
     _spawnMapSurvivors() {
@@ -213,6 +290,7 @@ export class MapLoader {
             const cycle = gameState.dayNightCycle?.cycleDuration || 120000;
             gameState.dayNightCycle.startTime = Date.now() - 0.75 * cycle;
         }
+        gameState.campaignFogAlpha = this.activeMap.ambiance.fogAlpha ?? 0;
     }
 
     resolvePosition(x, y, radius) {
@@ -270,6 +348,10 @@ export class MapLoader {
             h._lastHit = now;
             applyPlayerDamage(player, h.damage || 10);
             player.sirenAimJitterUntil = now + 200;
+            if (now - (gameState.campaignScript._lastSteamSfx || 0) > 900) {
+                gameState.campaignScript._lastSteamSfx = now;
+                playSteamHissSound();
+            }
         }
     }
 
@@ -292,12 +374,12 @@ export class MapLoader {
                 } else {
                     gameState.players[0].flashlight.active = true;
                 }
-                gameState.waveNotification = {
-                    active: true,
-                    text: ev.message || "THEY'RE IN THE WALLS!",
-                    life: 0,
-                    maxLife: 150
-                };
+                triggerWaveNotification(
+                    ev.message || "THEY'RE IN THE WALLS!",
+                    150,
+                    RADIO_BEATS.lights_out,
+                    'campaign'
+                );
             }
         }
     }
@@ -312,12 +394,12 @@ export class MapLoader {
         script.debrisCleared = true;
         gameState.campaignObjective = 'Debris cleared — reach the north gap!';
         gameState.campaignObjectiveTarget = { x: 1200, y: 440 };
-        gameState.waveNotification = {
-            active: true,
-            text: 'DEBRIS CLEAR — PATH NORTH OPEN',
-            life: 0,
-            maxLife: 180
-        };
+        triggerWaveNotification(
+            'DEBRIS CLEAR — PATH NORTH OPEN',
+            180,
+            RADIO_BEATS.debris_clear,
+            'campaign'
+        );
 
         // Soften north ring walls visually (mark for render shake)
         const walls = this.activeMap.walls;
@@ -388,11 +470,12 @@ export class MapLoader {
         return arr[Math.floor(Math.random() * arr.length)];
     }
 
-    _showSurvivorBubble(text, ms = 3500) {
+    _showSurvivorBubble(text, ms = 3500, npcId = null) {
         gameState.campaignScript.survivorBubble = {
             text,
             until: Date.now() + ms
         };
+        gameState.campaignScript.survivorBubbleNpcId = npcId;
     }
 
     _talkToSurvivor(npc, player) {
@@ -401,6 +484,12 @@ export class MapLoader {
         const id = def.id;
 
         if (run.recruited[id]) return;
+
+        // Block new quest while another is active
+        if (!run.met[id] && run.quest && run.quest.survivorId !== id) {
+            this._showSurvivorBubble('Finish your current job first.', 2500, id);
+            return;
+        }
 
         // First meet
         if (!run.met[id]) {
@@ -411,16 +500,16 @@ export class MapLoader {
                 amount: def.quest.amount,
                 label: def.quest.label,
                 startedAt: Date.now(),
-                killsAtStart: gameState.zombiesKilled || 0
+                progress: 0
             };
-            run.killsAtQuestStart = gameState.zombiesKilled || 0;
-            this._showSurvivorBubble(this._pickLine(def.lines, 'greet'));
-            gameState.waveNotification = {
-                active: true,
-                text: `QUEST — ${def.name.toUpperCase()}: ${def.quest.label}`,
-                life: 0,
-                maxLife: 200
-            };
+            gameState.campaignScript._lastQuestKillCount = gameState.zombiesKilled || 0;
+            this._showSurvivorBubble(this._pickLine(def.lines, 'greet'), 3500, id);
+            triggerWaveNotification(
+                `QUEST — ${def.name.toUpperCase()}: ${def.quest.label}`,
+                200,
+                null,
+                'campaign'
+            );
             return;
         }
 
@@ -428,10 +517,14 @@ export class MapLoader {
         if (!run.questDone[id]) {
             if (this._isSurvivorQuestComplete(def, run, player)) {
                 run.questDone[id] = true;
-                this._showSurvivorBubble(this._pickLine(def.lines, 'complete'));
+                this._showSurvivorBubble(this._pickLine(def.lines, 'complete'), 3500, id);
                 this._recruitOrConsole(def, player);
             } else {
-                this._showSurvivorBubble(this._pickLine(def.lines, 'progress') || def.quest.label);
+                this._showSurvivorBubble(
+                    this._pickLine(def.lines, 'progress') || def.quest.label,
+                    3500,
+                    id
+                );
                 gameState.campaignObjective = `${def.name}: ${def.quest.label} (${this._questProgressText(def, run, player)})`;
             }
             return;
@@ -446,7 +539,7 @@ export class MapLoader {
     _questProgressText(def, run, player) {
         const q = def.quest;
         if (q.type === 'kill_count') {
-            const got = Math.max(0, (gameState.zombiesKilled || 0) - (run.quest?.killsAtStart || 0));
+            const got = run.quest?.survivorId === def.id ? (run.quest.progress || 0) : 0;
             return `${Math.min(got, q.amount)}/${q.amount}`;
         }
         if (q.type === 'scrap_have') {
@@ -462,12 +555,20 @@ export class MapLoader {
         return '';
     }
 
+    getQuestProgressText() {
+        const run = ensureSurvivorRunState();
+        if (!run.quest || run.questDone[run.quest.survivorId]) return null;
+        const def = getSurvivorById(run.quest.survivorId);
+        if (!def) return null;
+        const player = gameState.players[0] || { scrap: 0 };
+        return { name: def.name, progress: this._questProgressText(def, run, player) };
+    }
+
     _isSurvivorQuestComplete(def, run, player) {
         const q = def.quest;
         if (!q) return true;
         if (q.type === 'kill_count') {
-            const got = (gameState.zombiesKilled || 0) - (run.quest?.killsAtStart || 0);
-            return got >= q.amount;
+            return run.quest?.survivorId === def.id && (run.quest.progress || 0) >= q.amount;
         }
         if (q.type === 'scrap_have') {
             return (player.scrap || 0) >= q.amount;
@@ -495,25 +596,36 @@ export class MapLoader {
             // Remove world NPC
             const script = gameState.campaignScript;
             script.activeNpcs = (script.activeNpcs || []).filter(n => n.survivorId !== def.id);
-            gameState.waveNotification = {
-                active: true,
-                text: `SURVIVOR JOINED — ${def.name.toUpperCase()}`,
-                life: 0,
-                maxLife: 160
-            };
+            triggerWaveNotification(
+                `SURVIVOR JOINED — ${def.name.toUpperCase()}`,
+                160,
+                null,
+                'campaign'
+            );
+            this._checkFireteamAchievement();
         } else if (result.reason === 'party_full') {
-            run.recruited[def.id] = true; // consumed — can't join later this run
-            const script = gameState.campaignScript;
-            script.activeNpcs = (script.activeNpcs || []).filter(n => n.survivorId !== def.id);
-            this._showSurvivorBubble(this._pickLine(def.lines, 'refuse_full'));
-            gameState.waveNotification = {
-                active: true,
-                text: `PARTY FULL — +${result.consolation || 0} SCRAP`,
-                life: 0,
-                maxLife: 140
-            };
+            run.questDone[def.id] = true;
+            this._showSurvivorBubble(this._pickLine(def.lines, 'refuse_full'), 3500, def.id);
+            triggerWaveNotification(
+                `PARTY FULL — +${result.consolation || 0} SCRAP`,
+                140,
+                'Come back when you have a slot.',
+                'campaign'
+            );
         } else {
-            this._showSurvivorBubble(result.reason || 'Not yet');
+            this._showSurvivorBubble(result.reason || 'Not yet', 2500, def.id);
+        }
+    }
+
+    _checkFireteamAchievement() {
+        const run = ensureSurvivorRunState();
+        const recruited = Object.keys(run.recruited || {}).filter(k => run.recruited[k]).length;
+        if (recruited >= 3) {
+            const ach = achievementSystem.getAchievement('campaign_fireteam');
+            if (ach && !ach.unlocked) {
+                achievementSystem.unlockAchievement(ach);
+                gameState.achievementNotifications.push({ achievement: ach, life: 300, maxLife: 300 });
+            }
         }
     }
 
@@ -528,6 +640,16 @@ export class MapLoader {
             script.survivorBubble = null;
         }
 
+        // Track kill-quest progress independently of zone resets
+        if (run.quest && run.quest.type === 'kill_count' && !run.questDone[run.quest.survivorId]) {
+            const kills = gameState.zombiesKilled || 0;
+            const last = script._lastQuestKillCount || 0;
+            if (kills > last) {
+                run.quest.progress = (run.quest.progress || 0) + (kills - last);
+                script._lastQuestKillCount = kills;
+            }
+        }
+
         // Auto-toast when quest completes while away
         const run = ensureSurvivorRunState();
         if (run.quest && !run.questDone[run.quest.survivorId]) {
@@ -536,12 +658,12 @@ export class MapLoader {
                 // Soft ping once
                 if (!script._questReadyPing) {
                     script._questReadyPing = true;
-                    gameState.waveNotification = {
-                        active: true,
-                        text: `QUEST READY — TALK TO ${def.name.toUpperCase()}`,
-                        life: 0,
-                        maxLife: 150
-                    };
+                    triggerWaveNotification(
+                        `QUEST READY — TALK TO ${def.name.toUpperCase()}`,
+                        150,
+                        null,
+                        'campaign'
+                    );
                 }
             }
         } else {
@@ -570,8 +692,14 @@ export class MapLoader {
         const keys = window._zombobsKeys;
         const eHeld = keys && (keys.e || keys.E);
         if (!eHeld) {
-            // Allow progress only while held; reset if released
             script.interactHoldStart = now;
+            return;
+        }
+
+        // Damage interrupts hold ritual
+        if (player.lastDamageTime && now - player.lastDamageTime < 500) {
+            script.interactHoldStart = now;
+            script.hackProgress = 0;
             return;
         }
 
@@ -591,12 +719,23 @@ export class MapLoader {
             script.powerCompleted++;
             gameState.campaignObjective =
                 `Power the gate — ${script.powerCompleted}/${script.powerRequired}`;
-            gameState.waveNotification = {
-                active: true,
-                text: `COUPLER ONLINE ${script.powerCompleted}/${script.powerRequired}`,
-                life: 0,
-                maxLife: 120
-            };
+            triggerWaveNotification(
+                `COUPLER ONLINE ${script.powerCompleted}/${script.powerRequired}`,
+                120,
+                null,
+                'campaign'
+            );
+            playCampaignStinger('default');
+            if (script.powerCompleted === 2 && script.powerRequired >= 3 && !script.powerSurgeFired) {
+                script.powerSurgeFired = true;
+                this._spawnCouplerRush();
+                triggerWaveNotification(
+                    'POWER SURGE — RUSH INCOMING',
+                    140,
+                    RADIO_BEATS.power_surge,
+                    'campaign'
+                );
+            }
             if (script.powerCompleted >= script.powerRequired) {
                 script.gateOnline = true;
                 gameState.campaignObjective = 'Gate ONLINE — reach the east exit!';
@@ -604,12 +743,13 @@ export class MapLoader {
                 if (extract?.target) {
                     gameState.campaignObjectiveTarget = extract.target;
                 }
-                gameState.waveNotification = {
-                    active: true,
-                    text: 'GATE ONLINE — EAST!',
-                    life: 0,
-                    maxLife: 180
-                };
+                triggerWaveNotification(
+                    'GATE ONLINE — EAST!',
+                    180,
+                    RADIO_BEATS.gate_online,
+                    'campaign'
+                );
+                playCampaignStinger('default');
             }
         } else if (t.type === 'hack') {
             script.hackComplete = true;
@@ -627,12 +767,13 @@ export class MapLoader {
         script.defendEndsAt = now + duration;
         this._defendSpawnAcc = 0;
 
-        gameState.waveNotification = {
-            active: true,
-            text: 'SIGNAL BOOT — HOLD 50s',
-            life: 0,
-            maxLife: 150
-        };
+        triggerWaveNotification(
+            'SIGNAL BOOT — HOLD 50s',
+            150,
+            RADIO_BEATS.defend_start,
+            'campaign'
+        );
+        playCampaignStinger('warden');
         gameState.campaignObjectiveTarget = hackTrigger.target || {
             x: this.activeMap.spawn.x,
             y: this.activeMap.spawn.y
@@ -648,6 +789,16 @@ export class MapLoader {
         const pct = Math.floor((elapsed / script.defendDurationMs) * 100);
         gameState.campaignObjective = `HOLD THE SIGNAL — ${pct}%`;
 
+        if (pct >= 50 && !script._defendMidFired) {
+            script._defendMidFired = true;
+            triggerWaveNotification(
+                'SIGNAL AT 50% — STAY ON TERMINAL',
+                120,
+                'Almost there — do not break contact.',
+                'campaign'
+            );
+        }
+
         // Spawn pressure
         this._defendSpawnAcc += dt;
         const interval = elapsed < 15000 ? 2800 : elapsed < 30000 ? 2000 : 1400;
@@ -659,6 +810,30 @@ export class MapLoader {
         if (remaining <= 0) {
             script.defendActive = false;
             this._spawnWarden();
+        }
+    }
+
+    _spawnCouplerRush() {
+        const player = gameState.players[0];
+        if (!player) return;
+        const packs = [{ Cls: FastZombie, n: 4 }, { Cls: NormalZombie, n: 2 }];
+        for (let p = 0; p < packs.length; p++) {
+            const { Cls, n } = packs[p];
+            for (let i = 0; i < n; i++) {
+                try {
+                    const z = new Cls(1, 1);
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 220 + Math.random() * 140;
+                    const resolved = this.resolvePosition(
+                        player.x + Math.cos(angle) * dist,
+                        player.y + Math.sin(angle) * dist,
+                        15
+                    );
+                    z.x = resolved.x;
+                    z.y = resolved.y;
+                    gameState.zombies.push(z);
+                } catch (_) { /* ignore */ }
+            }
         }
     }
 
@@ -703,12 +878,13 @@ export class MapLoader {
         gameState.zombies.push(warden);
 
         gameState.campaignObjective = 'DESTROY THE WARDEN';
-        gameState.waveNotification = {
-            active: true,
-            text: 'THE WARDEN — YOU ARE NOISE',
-            life: 0,
-            maxLife: 200
-        };
+        triggerWaveNotification(
+            'THE WARDEN — YOU ARE NOISE',
+            200,
+            RADIO_BEATS.warden_spawn,
+            'campaign'
+        );
+        playCampaignStinger('warden');
     }
 
     _updateWardenDeath() {
@@ -725,12 +901,18 @@ export class MapLoader {
             gameState.campaignZoneCleared = true;
             gameState.campaignZoneClearTime = Date.now();
             gameState.campaignObjective = 'SIGNAL ONLINE — ACT 1 CLEAR';
-            gameState.waveNotification = {
-                active: true,
-                text: 'ACT 1 CLEAR — ECHOES OF SILENCE',
-                life: 0,
-                maxLife: 240
-            };
+            triggerWaveNotification(
+                'ACT 1 CLEAR — ECHOES OF SILENCE',
+                240,
+                RADIO_BEATS.act_clear,
+                'campaign'
+            );
+            playCampaignStinger('victory');
+            const wardenAch = achievementSystem.getAchievement('campaign_warden_slayer');
+            if (wardenAch && !wardenAch.unlocked) {
+                achievementSystem.unlockAchievement(wardenAch);
+                gameState.achievementNotifications.push({ achievement: wardenAch, life: 300, maxLife: 300 });
+            }
             // Signal sunrise flash
             gameState.isNight = false;
             gameState.gameTime = 0.2;
@@ -767,12 +949,12 @@ export class MapLoader {
                 if (!script.extractTaxFired) {
                     script.extractTaxFired = true;
                     this._spawnExtractTax();
-                    gameState.waveNotification = {
-                        active: true,
-                        text: 'EXTRACT TAX — CLEAR THEM THEN EXIT!',
-                        life: 0,
-                        maxLife: 140
-                    };
+                    triggerWaveNotification(
+                        'EXTRACT TAX — CLEAR THEM THEN EXIT!',
+                        140,
+                        null,
+                        'campaign'
+                    );
                     continue;
                 }
                 if (gameState.zombies.length > 2) continue;
@@ -789,23 +971,24 @@ export class MapLoader {
             }
 
             if (trigger.type === 'objective' && !gameState.waveNotification.active) {
-                gameState.waveNotification = {
-                    active: true,
-                    text: trigger.message || this.activeMap.objective,
-                    life: 0,
-                    maxLife: 180
-                };
+                triggerWaveNotification(
+                    trigger.message || this.activeMap.objective,
+                    180,
+                    null,
+                    'campaign'
+                );
             }
 
             if (trigger.type === 'extraction') {
                 gameState.campaignZoneCleared = true;
                 gameState.campaignZoneClearTime = Date.now();
-                gameState.waveNotification = {
-                    active: true,
-                    text: `ZONE ${this.activeMap.zone} CLEAR — EXTRACTION SECURED`,
-                    life: 0,
-                    maxLife: 180
-                };
+                this._beginZoneTransition();
+                triggerWaveNotification(
+                    `ZONE ${this.activeMap.zone} CLEAR — EXTRACTION SECURED`,
+                    180,
+                    null,
+                    'campaign'
+                );
             }
         }
     }
@@ -910,6 +1093,7 @@ export class MapLoader {
         this._drawHazards(viewport, margin);
         this._drawInteractables(viewport, margin);
         this._drawSurvivors(viewport, margin);
+        this._drawFogOverlay();
         this._drawPowerUI();
         this._drawHackProgress();
         this._drawDefendBar();
@@ -972,24 +1156,46 @@ export class MapLoader {
         }
 
         if (bubble && bubble.text) {
-            const player = gameState.players[0];
-            if (player) {
-                ctx.save();
-                ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
-                ctx.strokeStyle = 'rgba(255, 181, 0, 0.5)';
-                ctx.lineWidth = 1;
-                const tw = Math.min(280, bubble.text.length * 7 + 24);
-                const bx = player.x - tw / 2;
-                const by = player.y - 70;
-                ctx.fillRect(bx, by, tw, 28);
-                ctx.strokeRect(bx, by, tw, 28);
-                ctx.fillStyle = '#ffe082';
-                ctx.font = '11px "Roboto Mono", monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(bubble.text, player.x, by + 18);
-                ctx.restore();
+            const npcId = gameState.campaignScript?.survivorBubbleNpcId;
+            let bx = 0;
+            let by = 0;
+            let anchorX = 0;
+            if (npcId) {
+                const anchor = npcs.find(n => n.survivorId === npcId);
+                if (anchor) {
+                    anchorX = anchor.x;
+                    bx = anchor.x;
+                    by = anchor.y - NPC_RADIUS - 44;
+                }
             }
+            if (!anchorX) {
+                const player = gameState.players[0];
+                if (!player) return;
+                anchorX = player.x;
+                bx = player.x;
+                by = player.y - 70;
+            }
+            ctx.save();
+            ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+            ctx.strokeStyle = 'rgba(255, 181, 0, 0.5)';
+            ctx.lineWidth = 1;
+            const tw = Math.min(280, bubble.text.length * 7 + 24);
+            const rectX = bx - tw / 2;
+            ctx.fillRect(rectX, by, tw, 28);
+            ctx.strokeRect(rectX, by, tw, 28);
+            ctx.fillStyle = '#ffe082';
+            ctx.font = '11px "Roboto Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(bubble.text, bx, by + 18);
+            ctx.restore();
         }
+    }
+
+    _drawFogOverlay() {
+        const fog = gameState.campaignFogAlpha ?? this.activeMap?.ambiance?.fogAlpha ?? 0;
+        if (fog <= 0 || !this.bounds) return;
+        ctx.fillStyle = `rgba(12, 16, 22, ${fog})`;
+        ctx.fillRect(0, 0, this.activeMap.width, this.activeMap.height);
     }
 
     _drawHazards(viewport, margin) {
@@ -1101,9 +1307,13 @@ export class MapLoader {
     }
 
     _drawLightsOutOverlay() {
-        const alpha = this.getLightsOutAlpha();
+        let alpha = this.getLightsOutAlpha();
         if (alpha <= 0 || !this.bounds) return;
-        // World-space dark veil (camera already translated)
+        // Flicker pulse during lights-out
+        if (gameState.campaignScript?.lightsOutUntil > Date.now()) {
+            const flicker = 0.85 + 0.15 * Math.sin(Date.now() / 80);
+            alpha *= flicker;
+        }
         ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
         ctx.fillRect(0, 0, this.activeMap.width, this.activeMap.height);
     }

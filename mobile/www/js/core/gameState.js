@@ -311,8 +311,19 @@ export const gameState = {
         active: false,
         text: '',
         life: 0,
-        maxLife: 120
+        maxLife: 120,
+        subtitle: null,
+        kind: 'arcade'
     },
+
+    campaignTransition: {
+        active: false,
+        until: 0,
+        title: '',
+        subtitle: ''
+    },
+
+    campaignRetryMapId: null,
 
     // FPS counter
     fps: 0,

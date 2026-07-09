@@ -6,7 +6,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 Zombobs is a top-down zombie survival shooter built entirely with **vanilla JavaScript (ES6+)**, HTML5 Canvas 2D, and WebGPU. **Zero external runtime dependencies** on the client — no frameworks, no bundlers, no build step. The multiplayer server uses Node.js + Express + Socket.IO.
 
-Version: **V0.9.2 ALPHA**. Proprietary/closed-source license. Codebase scale: **~44,609 functional LOC** across **144** maintained files (JS **~39,065** / **107** files) per `tools/count_functional_loc.py` (2026-07-09).
+Version: **V0.9.3 ALPHA**. Proprietary/closed-source license. Codebase scale: **~44,609 functional LOC** across **144** maintained files (JS **~39,065** / **107** files) per `tools/count_functional_loc.py` (2026-07-09).
 
 **Game modes:** Arcade (wave survival arena), Campaign Act 1 (**Zones 1–4** playable: Crash Site → Maintenance Tunnels → Switching Yard → Control Tower + **The Warden**), Co-op, Multiplayer.
 

@@ -2,6 +2,12 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### V0.9.3 Modality Pass (2026-07-09) ✅ COMPLETE
+- **Done**: Bump **V0.9.3 ALPHA** — *Act 1 Finale Update* per `VERSION_UPDATE_CHECKLIST.md`: `constants.js`, `index.html`, `landing.html`, `README.md`, `ITCH/page_description.md`, server packages, `AGENTS.md`, `CHANGELOG`, `SUMMARY`, `My_Thoughts`, checklist amend.
+- **Highlights**: Z1–4 + Warden + ACT 1 CLEAR, survivor quests, campaign alive, menu horde ambience, boot hardening, achievements/gallery, 44,609 LOC.
+- **Verify**: 🎃 badge + news ticker + patch notes modal show V0.9.3 with `CURRENT` tag.
+- **Next**: `npm run sync:web` for mobile mirror.
+
 ### Docs Sync — Unreleased Features (2026-07-09) ✅ COMPLETE
 - **Done**: Boot hardening + main-menu horde ambience + LOC **44,609** across status + public copy.
 - **Touched**: `SUMMARY`, `CHANGELOG`, `ARCHITECTURE`, `AGENTS.md`, `My_Thoughts.md`, `README.md`, `landing.html`, `mobile/www/landing.html`, `ITCH/page_description.md`, `VERSION_UPDATE_CHECKLIST.md`, `SCRATCHPAD`.

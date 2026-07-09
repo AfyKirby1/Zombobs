@@ -83,9 +83,21 @@ export function getSpawnTiming(wave, mutator, index) {
 }
 
 /**
- * Pick zombie class with optional mutator bias.
+ * Pick zombie class with optional mutator bias and campaign zone flavor.
  */
-export function selectZombieClass(wave, mutator, rand) {
+export function selectZombieClass(wave, mutator, rand, campaignZone = 0) {
+    if (campaignZone === 2) {
+        if (rand < 0.35) return 'crawler';
+        if (rand < 0.55) return 'fast';
+    } else if (campaignZone === 3) {
+        if (rand < 0.2) return 'spitter';
+        if (rand < 0.35) return 'siren';
+        if (rand < 0.5) return 'armored';
+    } else if (campaignZone === 4) {
+        if (rand < 0.25) return 'armored';
+        if (rand < 0.45) return 'fast';
+    }
+
     if (mutator === 'elites') {
         const eliteSlots = wave >= 8 ? 5 : 4;
         const slot = Math.floor(rand * eliteSlots);

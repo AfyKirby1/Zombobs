@@ -8,14 +8,27 @@
 
 ---
 
-### **🆕 Latest on Main — Equipment, Heroes & Campaign**
+### **🆕 Latest on Main — Act 1 Finale**
 
-*   **Campaign Zones 1–3** — Crash Site → Maintenance Tunnels → Switching Yard with extraction beacons; Zone 4 Control Tower designed in `CAMPAIGN_DESIGN.md`
-*   **Equipment Sets** — 6 slots, 5 rarities, crit/DR, named sets (Scavenger / Fireteam Echo / Last Survivor); press **E**
-*   **Hireable Heroes** — Scrap-hire Rex, Mira, Doc, Nix, Kira, Voss with role kits and gold nameplates
-*   **Main Menu Ambience** — Distant silhouette horde, ash/embers, title glitch, emoji button icons (`MenuHordeAmbience.js`)
-*   **Immersion** — WebGPU blood-edge injury overlay, menu metal gunshots, boot creep/stall/settle, coherent mobile touch
+*   **Act 1 Complete** — Zones 1–4 playable: Crash Site → Maintenance Tunnels → Switching Yard → Control Tower; hack/defend → **The Warden** → **ACT 1 CLEAR**
+*   **Survivor Quests** — Rook, Pip, June, Holt: talk **E** → quest → recruit AI teammate; extract tax + hotter zone starts
+*   **Campaign Alive** — Radio/static SFX, companion dialogue bubbles, zone retry, campaign victory path, 3 campaign achievements
+*   **Equipment + Heroes** — 6-slot gear sets, scrap-hire Rex/Mira/Doc/Nix/Kira/Voss; press **E**
+*   **Main Menu Ambience** — Silhouette horde, ash/embers, title glitch, emoji button icons (`MenuHordeAmbience.js`)
 *   **Codebase Audit** — 44,609 functional LOC across 144 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
+
+---
+
+### **🆕 V0.9.3 ALPHA — Act 1 Finale Update**
+
+*   **Act 1 Complete** — Full Z1–Z4 chain with steam hazards, power couplers, hack terminal, 45s defend, **The Warden** 3-phase boss, **ACT 1 CLEAR** victory
+*   **Survivor Quests** — World NPCs per zone: meet → quest → recruit via `CompanionSystem.recruitSurvivor()`; state persists across zones
+*   **Campaign Alive Pass** — Visible campaign toasts + radio subtitles; gamepad Hold-E; zone transition interstitial; ZONE FAIL **Retry Zone**; Echo Actual / Warden Slayer / Fireteam achievements
+*   **Achievements + Gallery Redesign** — Trophy-cabinet achievements overlay; tabbed Zombies/Weapons/Pickups bestiary with Warden + Laser
+*   **Main Menu Ambience** — `MenuHordeAmbience.js` silhouette horde, ash/embers, title pulse + RGB glitch, emoji menu icons
+*   **Boot Hardening** — Progress creep, stall messaging (5s/10s), WebGPU phase callbacks, 3-frame settle, 20s failsafe
+*   **V0.9.2 Systems Still Live** — Equipment sets, hireable heroes, mobile touch, blood-edge overlay, boot progress bar
+*   **V0.9.1 / V0.9.0 Still Live** — 93 skills, 15 synergies, lazy WebGPU/Socket.IO, smooth game entry
 
 ---
 
@@ -176,7 +189,7 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.9.2 ALPHA (Vanilla JS + HTML5 Canvas)
+*   **Engine:** ZOMBS-XFX-NGIN V0.9.3 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
@@ -186,6 +199,6 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.2 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.3 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*

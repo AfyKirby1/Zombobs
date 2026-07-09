@@ -235,6 +235,35 @@ export const ACHIEVEMENT_DEFINITIONS = [
         icon: "🎖️",
         requirement: { type: "gamesPlayed", value: 100 },
         reward: { rankXP: 3000, title: "Veteran" }
+    },
+
+    // Campaign Achievements (Act 1)
+    {
+        id: "campaign_echo_actual",
+        name: "Echo Actual",
+        description: "Clear Act 1 — Echoes of Silence",
+        category: "campaign",
+        icon: "📡",
+        requirement: { type: "campaignFlag", value: "act_clear" },
+        reward: { rankXP: 2000, title: "Echo Actual" }
+    },
+    {
+        id: "campaign_warden_slayer",
+        name: "Warden Slayer",
+        description: "Destroy The Warden",
+        category: "campaign",
+        icon: "👹",
+        requirement: { type: "campaignFlag", value: "warden_kill" },
+        reward: { rankXP: 1500, title: "Warden Slayer" }
+    },
+    {
+        id: "campaign_fireteam",
+        name: "Fireteam",
+        description: "Recruit 3 survivors in one campaign run",
+        category: "campaign",
+        icon: "🤝",
+        requirement: { type: "campaignFlag", value: "fireteam" },
+        reward: { rankXP: 1200, title: "Fireteam" }
     }
 ];
 

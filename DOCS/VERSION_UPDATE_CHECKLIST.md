@@ -108,7 +108,9 @@ Use consistent format: `V0.X.Y.Z ALPHA` (with space before ALPHA)
 
 Example: `V0.8.4 ALPHA`
 
-[AMENDED 2026-06-26]: Current release example: `V0.9.2 ALPHA`
+[AMENDED 2026-06-26]: Current release example: `V0.9.3 ALPHA`
+
+[AMENDED 2026-07-09 — V0.9.3 modality pass]: Updated `NEWS_UPDATES`, landing bubbles (new V0.9.3 section), mobile web mirror, itch `page_description.md`, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.3 public copy leads with *Act 1 Finale Update* (Z1–4 + Warden + ACT 1 CLEAR, survivor quests, campaign alive, menu horde ambience, boot hardening, 44,609 LOC).
 
 [AMENDED 2026-07-09 — V0.9.2 modality pass]: Updated `NEWS_UPDATES`, landing bubbles (new V0.9.2 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.2 public copy leads with *Campaign & Mobile Update* (Act 1 Zones 1–3, equipment/heroes, mobile touch wired, boot progress, 40K LOC).
 

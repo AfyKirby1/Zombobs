@@ -7,6 +7,7 @@ import { shootBullet, reloadWeapon } from '../utils/combatUtils.js';
 import { CompanionDialogue } from './CompanionDialogue.js';
 import { getHeroById, getHireableHeroes, HERO_DEFINITIONS } from '../core/heroDefinitions.js';
 import { getSurvivorById } from '../core/survivorDefinitions.js';
+import { triggerWaveNotification } from '../utils/gameUtils.js';
 
 /**
  * CompanionSystem — AI party members + hireable heroes (Guild Wars vibe).
@@ -106,6 +107,7 @@ export class CompanionSystem {
         p1.scrap = scrap - def.cost;
         const hero = this._spawnHero(def, p1);
         this.hiredHeroIds.add(heroId);
+        triggerWaveNotification(`HERO JOINED — ${def.name.toUpperCase()}`, 150, null, 'campaign');
         return { ok: true, hero };
     }
 
@@ -145,20 +147,15 @@ export class CompanionSystem {
         }
 
         ai.dialogue = new CompanionDialogue(ai);
-        if (def.lines?.hire) {
-            const line = def.lines.hire[Math.floor(Math.random() * def.lines.hire.length)];
+        const hireLines = def.lines?.hire || def.lines?.complete;
+        if (hireLines?.length) {
+            const line = hireLines[Math.floor(Math.random() * hireLines.length)];
             ai.dialogue.addMessage(line, 2);
         } else {
             ai.dialogue.trigger('spawn');
         }
 
         gameState.players.push(ai);
-        gameState.waveNotification = {
-            active: true,
-            text: `HERO JOINED — ${def.name.toUpperCase()}`,
-            life: 0,
-            maxLife: 150
-        };
         return ai;
     }
 

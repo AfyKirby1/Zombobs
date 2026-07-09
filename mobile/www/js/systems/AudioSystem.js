@@ -20,7 +20,8 @@ let gunshotBufferScheduled = false;
 const MENU_MUSIC_SRC = 'assets/Shadows of the Wasteland.mp3';
 const GAME_MUSIC_TRACKS = [
     'assets/the_mountain-game-game-music-508018.mp3',
-    'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3'
+    'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3',
+    'assets/Enthusiast_Tours.mp3'
 ];
 // Code-level music attenuation (settings slider unchanged)
 const MUSIC_OUTPUT_SCALE = 0.5;
@@ -1144,4 +1145,73 @@ export function playMultiplierLostSound() {
 
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+/**
+ * Short radio static burst for campaign beats.
+ */
+export function playRadioStaticSound() {
+    if (!audioContext) initAudio();
+    if (!audioContext) return;
+    const t = audioContext.currentTime;
+    const bufferSize = audioContext.sampleRate * 0.12;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.35;
+    }
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    const gain = audioContext.createGain();
+    const vol = settingsManager.getSetting('audio', 'sfxVolume') ?? 1.0;
+    gain.gain.setValueAtTime(0.18 * vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+    source.connect(gain);
+    gain.connect(sfxGainNode || masterGainNode || audioContext.destination);
+    source.start(t);
+}
+
+/**
+ * Campaign stinger — gate online, defend, act clear.
+ */
+export function playCampaignStinger(variant = 'default') {
+    if (!audioContext) initAudio();
+    if (!audioContext) return;
+    const t = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const base = variant === 'victory' ? 440 : variant === 'warden' ? 180 : 320;
+    osc.type = variant === 'victory' ? 'sine' : 'triangle';
+    osc.frequency.setValueAtTime(base, t);
+    osc.frequency.exponentialRampToValueAtTime(base * 1.8, t + 0.35);
+    const vol = settingsManager.getSetting('audio', 'sfxVolume') ?? 1.0;
+    gain.gain.setValueAtTime(0.22 * vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.45);
+    osc.connect(gain);
+    gain.connect(sfxGainNode || masterGainNode || audioContext.destination);
+    osc.start(t);
+    osc.stop(t + 0.5);
+}
+
+/**
+ * Steam hiss near active hazard.
+ */
+export function playSteamHissSound() {
+    if (!audioContext) initAudio();
+    if (!audioContext) return;
+    const t = audioContext.currentTime;
+    const bufferSize = Math.floor(audioContext.sampleRate * 0.08);
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize) * 0.2;
+    }
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    const gain = audioContext.createGain();
+    const vol = settingsManager.getSetting('audio', 'sfxVolume') ?? 1.0;
+    gain.gain.value = 0.12 * vol;
+    source.connect(gain);
+    gain.connect(sfxGainNode || masterGainNode || audioContext.destination);
+    source.start(t);
 }

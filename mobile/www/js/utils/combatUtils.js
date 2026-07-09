@@ -1509,6 +1509,7 @@ export function applyPlayerDamage(player, rawDamage) {
     }
 
     const previousHealth = player.health;
+    player.lastDamageTime = Date.now();
 
     if (player.shield > 0) {
         player.shield -= damage;

@@ -6,7 +6,7 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
-**Release: V0.9.2 ALPHA (2026-07-09)** — *Campaign & Mobile Update*. Campaign Act 1 **Zones 1–3**, **equipment** + **hireable heroes**, **mobile touch** fully wired, **boot loader** progress/tips, blood-edge overlay, menu FX; **40,910 LOC** / **140** files. Prior **V0.9.1** skills, **V0.9.0** perf, **V0.8.4** horde/scrap live. [AMENDED 2026-07-09]: Post-ship growth (Z4/Warden, survivor quests, menu FX) → **44,609 LOC** / **144** files (JS **39,065** / **107**).
+**Release: V0.9.3 ALPHA (2026-07-09)** — *Act 1 Finale Update*. Campaign Act 1 **Zones 1–4** + **The Warden** + **ACT 1 CLEAR**, **survivor quests**, **campaign alive** pass, **main-menu horde ambience**, boot hardening, achievements/gallery redesign; **44,609 LOC** / **144** files. Prior **V0.9.2** equipment/mobile, **V0.9.1** skills, **V0.9.0** perf live.
 
 [AMENDED 2026-07-09]: **Main menu flavor pass** — shipped in Unreleased; see ✅ entry below + `CHANGELOG` Unreleased.
 
@@ -17,6 +17,8 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Main Menu Flavor Pass (2026-07-09)** — Ambient horde silhouettes (depth-sorted walkers, glowing eyes), ash/ember particles, ground fog band (`MenuHordeAmbience.js`). Title pulse + rare RGB glitch; rotating flavor subtitles; floating 🧟💀🩸🎃 glyphs; emoji icons on all menu buttons; blood drip under username. Draw order: creepy bg → horde → hand tear → eyes/explosions/sparks → UI. Resets via `GameHUD.showMainMenu()`. Key files: `MenuHordeAmbience.js`, `MainMenuScreen.js`, `GameHUD.js`, `MenuHandHorrorEffect.js`, `MenuMetalGunshotEffect.js`.
 
 ✅ **Boot Loader — WebGPU Buffer/Lag Hardening (2026-07-09)** — Loading panel masks WGSL compile / buffer alloc stalls: progress creep, spinner + % + elapsed, stall copy (5s/10s), `WebGPURenderer.init({ onPhase })` → `reportWebGPUBootPhase()`, 3-frame settle, 20s failsafe. Key files: `BootLoader.js`, `WebGPURenderer.js`, `main.js`, `index.html`, `css/style.css`.
+
+✅ **V0.9.3 Modality Pass (2026-07-09)** — `constants.js` hub + landing/README/itch/server/`AGENTS.md`/`CHANGELOG`/`SUMMARY`; `mobile/www` synced.
 
 ✅ **V0.9.2 Modality Pass (2026-07-09)** — `constants.js` hub + landing/README/itch/launcher/server/`AGENTS.md`/`CHANGELOG`/`SUMMARY`; `mobile/www` synced.
 

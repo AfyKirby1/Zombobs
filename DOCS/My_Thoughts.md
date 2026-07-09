@@ -13,6 +13,10 @@ Menu already had hand-horror + metal gunshots — still felt like static UI over
 
 Bible said go deep, not wide — so we did. Hold-E power/hack is the same interact verb as scrap shrine (E), which keeps mobile/gamepad coherent. Defend phase owns spawns so arcade wave-break doesn't steal the finale. Warden extends `BossZombie` but overrides update via `Zombie.prototype.update` to avoid double-attack. Act Clear is just `campaignActClear` + no `nextMapId` — GameOverScreen already had ZONE CLEAR, so white/cyan **ACT 1 CLEAR** was cheap. Still need gallery card + balance pass; don't modality-bump until playtested.
 
+## 2026-07-09 - V0.9.3 ALPHA Modality Pass
+
+V0.9.3 is **Act 1 Finale Update**: player-facing story is complete Campaign Act 1 (4 zones + Warden + ACT 1 CLEAR), survivor quest NPCs, campaign alive presentation pass, plus menu horde ambience and boot hardening from post-0.9.2 work. Kept v0.9.2 equipment/mobile and v0.9.1 skills in copy as "still live." Bumped all modalities per checklist; `mobile/www` synced after `constants.js` hub update.
+
 ## 2026-07-09 - V0.9.2 ALPHA Modality Pass
 
 V0.9.2 is **Campaign & Mobile Update**: player-facing story is playable Act 1 (3 zones + extraction chain), equipment/heroes meta layer, and mobile touch that actually drives gameplay — not just UI chrome. Kept v0.9.1 skill depth and v0.9.0 perf in copy as "still live." Bumped all modalities per checklist; `mobile/www` synced after `constants.js` hub update.

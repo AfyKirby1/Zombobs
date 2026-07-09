@@ -113,13 +113,44 @@
             box-shadow: 0 0 16px rgba(56, 189, 248, 0.18);
         }
 
-        .boot-overlay__bar {
+        .boot-overlay__spinner {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-top-color: #ff1744;
+            animation: boot-spin 0.85s linear infinite;
+            margin-top: 2px;
+        }
+
+        .boot-overlay--webgpu .boot-overlay__spinner {
+            border-top-color: #38bdf8;
+        }
+
+        .boot-overlay--stall .boot-overlay__spinner {
+            animation-duration: 1.4s;
+            border-top-color: #fbbf24;
+        }
+
+        @keyframes boot-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .boot-overlay__bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             width: 100%;
-            height: 4px;
+            margin-top: 4px;
+        }
+
+        .boot-overlay__bar {
+            flex: 1;
+            height: 5px;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.1);
             overflow: hidden;
-            margin-top: 4px;
+            position: relative;
         }
 
         .boot-overlay__bar-fill {
@@ -128,12 +159,46 @@
             border-radius: inherit;
             background: linear-gradient(90deg, #ff1744, #ff5252);
             box-shadow: 0 0 12px rgba(255, 23, 68, 0.55);
-            transition: width 0.35s ease;
+            transition: width 0.2s linear;
+            position: relative;
+        }
+
+        .boot-overlay__bar-fill::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+            background-size: 200% 100%;
+            animation: boot-sheen 1.6s linear infinite;
+            opacity: 0.55;
+        }
+
+        @keyframes boot-sheen {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
         }
 
         .boot-overlay--webgpu .boot-overlay__bar-fill {
             background: linear-gradient(90deg, #0ea5e9, #38bdf8);
             box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+        }
+
+        .boot-overlay--stall .boot-overlay__bar {
+            box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35);
+        }
+
+        .boot-overlay--stall-hard .boot-overlay__label {
+            color: #fbbf24;
+        }
+
+        .boot-overlay__percent {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.55);
+            min-width: 2.6em;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
         }
 
         .boot-overlay__label {
@@ -151,6 +216,15 @@
             max-width: 100%;
             text-align: center;
             line-height: 1.45;
+            min-height: 1.45em;
+        }
+
+        .boot-overlay__elapsed {
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(158, 158, 158, 0.7);
+            font-variant-numeric: tabular-nums;
         }
 
         .boot-overlay__tip {
@@ -161,6 +235,16 @@
             line-height: 1.5;
             min-height: 2.8em;
             max-width: 100%;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .boot-overlay__spinner,
+            .boot-overlay__bar-fill::after {
+                animation: none;
+            }
+            .boot-overlay__bar-fill {
+                transition: none;
+            }
         }
     </style>
     <script>
@@ -189,14 +273,19 @@
         <div class="boot-overlay__inner">
             <h1 class="boot-overlay__title">ZOMBOBS</h1>
             <div class="boot-overlay__meta">
-                <span class="boot-overlay__version">V0.9.2 ALPHA</span>
+                <span class="boot-overlay__version">V0.9.3 ALPHA</span>
                 <span class="boot-overlay__badge" hidden>WebGPU</span>
             </div>
-            <div class="boot-overlay__bar" aria-label="Loading progress">
-                <div class="boot-overlay__bar-fill"></div>
+            <div class="boot-overlay__spinner" aria-hidden="true"></div>
+            <div class="boot-overlay__bar-row">
+                <div class="boot-overlay__bar" aria-label="Loading progress">
+                    <div class="boot-overlay__bar-fill"></div>
+                </div>
+                <span class="boot-overlay__percent">0%</span>
             </div>
             <span class="boot-overlay__label">Loading game</span>
             <span class="boot-overlay__sub" hidden></span>
+            <span class="boot-overlay__elapsed">0s</span>
             <span class="boot-overlay__tip"></span>
         </div>
     </div>

@@ -2,12 +2,13 @@ import { gameState, resetGameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
 import { PLAYER_MAX_HEALTH, PLAYER_STAMINA_MAX, SERVER_URL } from '../core/constants.js';
 import { playRestartSound, playMenuMusic, stopMenuMusic, playGameMusic, stopGameMusic } from '../systems/AudioSystem.js';
-import { saveHighScore, saveMultiplierStats, saveScoreboardEntry, isCampaignMode } from '../utils/gameUtils.js';
+import { saveHighScore, saveMultiplierStats, saveScoreboardEntry, isCampaignMode, triggerWaveNotification } from '../utils/gameUtils.js';
 import { playerProfileSystem } from './PlayerProfileSystem.js';
 import { propSpawnSystem } from './PropSpawnSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
 import { cameraSystem } from './CameraSystem.js';
 import { mapLoader } from './MapLoader.js';
+import { achievementSystem } from './AchievementSystem.js';
 
 /**
  * GameStateManager - Handles game lifecycle (start, restart, game over)
@@ -24,6 +25,11 @@ export class GameStateManager {
     gameOver() {
         gameState.gameRunning = false;
         stopGameMusic();
+
+        if (isCampaignMode(gameState) && !gameState.campaignActClear && !gameState.campaignZoneCleared) {
+            gameState.campaignRetryMapId = gameState.campaignMapId;
+        }
+
         saveHighScore();
 
         // Update and save multiplier stats
@@ -108,16 +114,123 @@ export class GameStateManager {
     zoneComplete() {
         const nextId = mapLoader.getNextMapId();
         if (nextId) {
+            mapLoader._abandonIncompleteQuests();
             this._loadNextCampaignZone(nextId);
             return;
         }
+        this.campaignVictory();
+    }
+
+    /**
+     * Act 1 finale victory — not framed as death.
+     */
+    campaignVictory() {
         gameState.campaignZoneCleared = true;
-        const isActClear = gameState.campaignActClear || gameState.campaignScript?.actClear;
-        this.gameOver();
-        const msg = isActClear
-            ? `ACT 1 CLEAR — Echoes of Silence\nThe Outskirts relay is online.\nKilled: ${gameState.zombiesKilled}`
-            : `Zone ${gameState.campaignZone} cleared — extraction secured!\nKilled: ${gameState.zombiesKilled}`;
+        gameState.campaignActClear = true;
+        gameState.gameRunning = false;
+        stopGameMusic();
+        saveHighScore();
+
+        const recruited = Object.keys(gameState.campaignSurvivorRun?.recruited || {})
+            .filter(k => gameState.campaignSurvivorRun.recruited[k]).length;
+        const zonesCleared = gameState.campaignZone || 4;
+
+        if (gameState.gameStartTime > 0) {
+            const timeSurvived = (Date.now() - gameState.gameStartTime) / 1000;
+            const sessionStats = {
+                score: gameState.score,
+                wave: gameState.wave,
+                kills: gameState.zombiesKilled,
+                timeSurvived,
+                sessionKills: gameState.zombiesKilled,
+                sessionWave: gameState.wave,
+                sessionTime: timeSurvived,
+                sessionCombo: gameState.killStreak,
+                campaignActClear: true
+            };
+            const sessionResults = playerProfileSystem.processSessionEnd(sessionStats);
+            gameState.sessionResults = sessionResults;
+            if (sessionResults.newlyUnlocked?.length) {
+                sessionResults.newlyUnlocked.forEach(achievement => {
+                    gameState.achievementNotifications.push({
+                        achievement,
+                        life: 300,
+                        maxLife: 300
+                    });
+                });
+            }
+        }
+
+        const echoAch = achievementSystem.getAchievement('campaign_echo_actual');
+        if (echoAch && !echoAch.unlocked) {
+            achievementSystem.unlockAchievement(echoAch);
+            gameState.achievementNotifications.push({ achievement: echoAch, life: 300, maxLife: 300 });
+        }
+
+        const msg = `ACT 1 CLEAR — Echoes of Silence\nZones cleared: ${zonesCleared} · Survivors: ${recruited}\nKilled: ${gameState.zombiesKilled}`;
         this.gameHUD.showGameOver(msg);
+    }
+
+    /**
+     * Retry current campaign zone after death.
+     */
+    retryCampaignZone() {
+        const mapId = gameState.campaignRetryMapId || gameState.campaignMapId;
+        if (!mapId) return;
+
+        gameState.gameRunning = true;
+        gameState.gamePaused = false;
+        this.gameHUD.hideGameOver();
+
+        gameState.bullets = [];
+        gameState.zombies = [];
+        gameState.particles = [];
+        gameState.grenades = [];
+        gameState.acidProjectiles = [];
+        gameState.acidPools = [];
+        gameState.healthPickups = [];
+        gameState.ammoPickups = [];
+        gameState.damagePickups = [];
+        gameState.nukePickups = [];
+        gameState.scrapPickups = [];
+        gameState.scrapShrines = [];
+        gameState.props = [];
+
+        gameState.wave = 1;
+        gameState.waveBreakActive = false;
+        gameState.waveBreakEndTime = 0;
+        gameState.isSpawningWave = false;
+        gameState.waveStartTime = 0;
+        gameState.zombiesSpawnedThisWave = 0;
+        gameState.bossActive = false;
+        gameState.showLevelUp = false;
+        gameState.campaignZoneCleared = false;
+        gameState.campaignZoneClearTime = 0;
+        gameState.campaignActClear = false;
+        gameState.campaignTransition = { active: false, until: 0, title: '', subtitle: '' };
+
+        mapLoader.unload();
+        mapLoader.load(mapId);
+        const spawn = mapLoader.getSpawn();
+        for (let i = 0; i < gameState.players.length; i++) {
+            const p = gameState.players[i];
+            p.health = p.maxHealth || PLAYER_MAX_HEALTH;
+            p.stamina = PLAYER_STAMINA_MAX;
+            const ox = (i % 3) * 36;
+            const oy = Math.floor(i / 3) * 36;
+            p.x = spawn.x + ox;
+            p.y = spawn.y + oy;
+        }
+        mapLoader.spawnMapProps();
+        mapLoader.applyAmbiance();
+        cameraSystem.initialize(gameState.players[0]);
+
+        const zone = mapLoader.getMap()?.zone || 1;
+        gameState.zombiesPerWave = 5 + Math.max(0, zone - 1) * 2;
+
+        playGameMusic();
+        triggerWaveNotification('ZONE RETRY — FIGHT ON', 140, null, 'campaign');
+        this.spawnZombiesCallback(gameState.zombiesPerWave);
     }
 
     /**
@@ -171,14 +284,6 @@ export class GameStateManager {
         // Soft ante: each new zone starts slightly hotter
         const zone = mapLoader.getMap()?.zone || 1;
         gameState.zombiesPerWave = 5 + Math.max(0, zone - 1) * 2;
-
-        const map = mapLoader.getMap();
-        gameState.waveNotification = {
-            active: true,
-            text: `ZONE ${map.zone} — ${map.name.toUpperCase()}`,
-            life: 0,
-            maxLife: 180
-        };
 
         this.spawnZombiesCallback(gameState.zombiesPerWave);
     }

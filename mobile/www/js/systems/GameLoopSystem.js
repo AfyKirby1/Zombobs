@@ -34,7 +34,7 @@ import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
 import { equipmentSystem } from './EquipmentSystem.js';
-import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawFpsCounter } from '../utils/drawingUtils.js';
+import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
  * GameLoopSystem — per-frame gameplay update and world/HUD rendering.
@@ -114,6 +114,13 @@ export class GameLoopSystem {
                 } else if (mapLoader.isLoaded()) {
                     mapLoader.update(16.67);
                     if (gameState.campaignZoneCleared) {
+                        const tr = gameState.campaignTransition;
+                        if (tr?.active && Date.now() < tr.until) {
+                            return;
+                        }
+                        if (tr?.active) {
+                            gameState.campaignTransition.active = false;
+                        }
                         this.onZoneComplete();
                         return;
                     }
@@ -797,6 +804,7 @@ export class GameLoopSystem {
         }
         drawWaveNotification();
         drawCampaignObjective();
+        drawCampaignTransition();
         drawWaveBreak();
         drawFpsCounter();
 

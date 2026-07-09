@@ -305,9 +305,14 @@ export function drawWaveNotification() {
     ctx.textBaseline = 'middle';
     ctx.fillText(gameState.waveNotification.text, canvas.width / 2, canvas.height / 2 - 40);
 
-    ctx.fillStyle = `rgba(255, 200, 200, ${finalAlpha * 0.8})`;
-    ctx.font = '14px \"Roboto Mono\", monospace';
-    ctx.fillText('Get ready...', canvas.width / 2, canvas.height / 2 + 10);
+    const sub = gameState.waveNotification.subtitle;
+    const isCampaign = gameState.waveNotification.kind === 'campaign';
+    if (sub || !isCampaign) {
+        ctx.fillStyle = `rgba(255, 200, 200, ${finalAlpha * 0.8})`;
+        ctx.font = '14px \"Roboto Mono\", monospace';
+        const subText = sub || 'Get ready...';
+        ctx.fillText(subText, canvas.width / 2, canvas.height / 2 + 10);
+    }
 
     ctx.shadowBlur = 0;
     ctx.restore();
@@ -348,6 +353,17 @@ export function drawCampaignObjective() {
     ctx.font = 'bold 14px "Roboto Mono", monospace';
     ctx.fillText(text, canvas.width / 2, bannerY + 28);
 
+    // Active quest progress when away from NPC
+    const run = gameState.campaignSurvivorRun;
+    if (run?.quest && !run.questDone?.[run.quest.survivorId] && window.mapLoader?.getQuestProgressText) {
+        const qProg = window.mapLoader.getQuestProgressText();
+        if (qProg?.progress) {
+            ctx.fillStyle = 'rgba(255, 213, 79, 0.9)';
+            ctx.font = '10px "Roboto Mono", monospace';
+            ctx.fillText(`${qProg.name}: ${qProg.progress}`, canvas.width / 2, bannerY + 44);
+        }
+    }
+
     // Hold-E prompt when near coupler / terminal / survivor
     if (typeof window !== 'undefined' && window.mapLoader?.getInteractPrompt) {
         const player = gameState.players[0];
@@ -367,7 +383,7 @@ export function drawCampaignObjective() {
         const dist = Math.round(Math.hypot(dx, dy));
         ctx.fillStyle = 'rgba(0, 255, 127, 0.85)';
         ctx.font = '10px "Roboto Mono", monospace';
-        ctx.fillText(`${dist}m`, canvas.width / 2, bannerY + 46);
+        ctx.fillText(`${dist}m`, canvas.width / 2, bannerY + 58);
 
         const screen = cameraSystem.worldToScreen(target.x, target.y);
         const offScreen = screen.x < 0 || screen.x > canvas.width || screen.y < 0 || screen.y > canvas.height;
@@ -393,6 +409,34 @@ export function drawCampaignObjective() {
         }
     }
 
+    ctx.restore();
+}
+
+/**
+ * Zone transition interstitial overlay (campaign).
+ */
+export function drawCampaignTransition() {
+    const tr = gameState.campaignTransition;
+    if (!tr?.active || Date.now() >= tr.until) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e0f7ff';
+    ctx.font = 'bold 28px "Roboto Mono", monospace';
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
+    ctx.fillText(tr.title || '', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.shadowBlur = 0;
+
+    if (tr.subtitle) {
+        ctx.fillStyle = 'rgba(200, 230, 255, 0.85)';
+        ctx.font = '14px "Roboto Mono", monospace';
+        ctx.fillText(tr.subtitle, canvas.width / 2, canvas.height / 2 + 18);
+    }
     ctx.restore();
 }
 

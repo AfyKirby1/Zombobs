@@ -37,7 +37,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-FF1744?style=for-the-badge" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.9.2_ALPHA-00C853?style=for-the-badge" alt="Version 0.9.2 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.9.3_ALPHA-00C853?style=for-the-badge" alt="Version 0.9.3 ALPHA" />
   </a>
 </p>
 
@@ -49,7 +49,7 @@
   A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.<br>
   <i>Campaign zones, equipment sets, hireable heroes, 93 skills, WebGPU FX — 44,609 functional LOC.</i>
   <br><br>
-  <a href="https://afykirby1.github.io/Zombobs/">
+  <a href="https://otterdays.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
   </a>
   &nbsp;&nbsp;&nbsp;
@@ -88,6 +88,20 @@ From the **repo root**, build the upload zip with:
 `powershell -NoProfile -ExecutionPolicy Bypass -File ITCH/build-itch.ps1`
 
 This writes **`Zombobs_Web.zip`** and **fails the build** if zip entry paths use Windows backslashes or required files are missing (Explorer / `Compress-Archive` zips break itch’s CDN and cause **403** on all assets). Details: `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md`.
+
+## 🔥 What's New in V0.9.3 ALPHA
+
+### 👹 Act 1 Finale Update
+
+> **Complete Campaign Act 1 — four zones, survivor quests, The Warden, ACT 1 CLEAR**
+
+- **👹 Act 1 Complete** — Zones 1–4: Crash Site → Tunnels → Switching Yard → Control Tower; hack/defend → **The Warden** → **ACT 1 CLEAR**
+- **🤝 Survivor Quests** — Rook, Pip, June, Holt: talk **E** → quest → recruit AI teammate; party-full scrap consolation
+- **📻 Campaign Alive** — Radio/static SFX, zone interstitials, fog/mood, ZONE FAIL retry, separate `campaignVictory()` path
+- **🏆 Achievements + Gallery** — Trophy-cabinet achievements UI; tabbed bestiary with Warden + Laser entries
+- **🧟 Main Menu Ambience** — Silhouette horde, ash/embers, title glitch, emoji icons (`MenuHordeAmbience.js`)
+- **🛡 Boot Hardening** — Progress creep, stall copy, WebGPU phase callbacks, 3-frame settle, 20s failsafe
+- **📊 Codebase** — **44,609** functional LOC / **144** files (`tools/count_functional_loc.py`, 2026-07-09)
 
 ## 🔥 What's New in V0.9.2 ALPHA
 
