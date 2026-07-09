@@ -628,9 +628,10 @@ WaveChaos still runs, but **bias tables per zone**:
 3. Z1 debris-clear VFX — ✅ shipped
 4. Z4 map + hack/defend — ✅ shipped
 5. Warden boss — ✅ shipped
-6. Act Clear modality + achievements — ✅ Act Clear UI; ⏳ achievements/gallery
+6. Act Clear modality + achievements — ✅ Act Clear UI; ✅ campaign achievements (Echo Actual, Warden Slayer, Fireteam)
 
 [AMENDED 2026-07-09]: Items 1–5 + Act Clear victory live in Unreleased. Remaining: gallery card, achievements, balance pass.
+[AMENDED 2026-07-09]: Campaign achievements shipped in **Campaign Alive Coverage** pass (§19). Remaining: balance pass, optional gallery polish.
 
 ---
 

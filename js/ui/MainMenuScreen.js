@@ -7,7 +7,25 @@ import { RankDisplay } from './RankDisplay.js';
 import { LeaderboardDisplay } from './LeaderboardDisplay.js';
 import { MenuHandHorrorEffect } from './MenuHandHorrorEffect.js';
 import { MenuMetalGunshotEffect } from './MenuMetalGunshotEffect.js';
+import { MenuHordeAmbience } from './MenuHordeAmbience.js';
 import { VersionModal } from './VersionModal.js';
+
+// [TRACE: SCRATCHPAD.md] Button glyphs — flavor only, hit targets unchanged
+const MENU_BUTTON_ICONS = {
+    Arcade: '🔫',
+    Survival: '⏳',
+    Campaign: '📻',
+    'Local Co-op': '👥',
+    'Play with AI': '🤖',
+    Settings: '⚙️',
+    Multiplayer: '🌐',
+    Gallery: '🖼️',
+    Profile: '👤',
+    Achievements: '🏆',
+    Battlepass: '🎫',
+    Landing: '🏠',
+    About: 'ℹ️'
+};
 
 export class MainMenuScreen {
     constructor(canvas, ctx, hud) {
@@ -50,7 +68,9 @@ export class MainMenuScreen {
 
         this.handHorror = new MenuHandHorrorEffect(() => this.canvas);
         this.metalGunshots = new MenuMetalGunshotEffect(() => this.canvas);
+        this.hordeAmbience = new MenuHordeAmbience(() => this.canvas);
         this.versionModal = new VersionModal(() => this.canvas);
+        this._titleGlitchUntil = 0;
         this.versionBoxX = 0;
         this.versionBoxY = 0;
         this.versionBoxWidth = 0;
@@ -76,7 +96,8 @@ export class MainMenuScreen {
 
     getButtonLayout(scale) {
         const isMobile = this.isMobileDevice;
-        const width = (isMobile ? 150 : 180) * scale;
+        // Slightly wider — emoji icons need room
+        const width = (isMobile ? 168 : 200) * scale;
         const height = (isMobile ? 28 : 36) * scale;
         const spacing = (isMobile ? 10 : 15) * scale;
         const colSpacing = (isMobile ? 12 : 20) * scale;
@@ -197,6 +218,12 @@ export class MainMenuScreen {
 
         this.handHorror.update(this.isMobileDevice);
         this.metalGunshots.update();
+        this.hordeAmbience.update(this.isMobileDevice);
+
+        // Rare title glitch burst
+        if (now > this._titleGlitchUntil && Math.random() < 0.003) {
+            this._titleGlitchUntil = now + 180 + Math.random() * 220;
+        }
     }
 
     isWebGPUActive() {
@@ -281,6 +308,34 @@ export class MainMenuScreen {
         this.metalGunshots.draw(this.ctx);
     }
 
+    _drawMenuButtonLabeled(label, x, y, width, height, hovered, disabled) {
+        const icon = MENU_BUTTON_ICONS[label];
+        const text = icon ? `${icon}  ${label}` : label;
+        this.hud.drawMenuButton(text, x, y, width, height, hovered, disabled);
+    }
+
+    _drawTitleThreatGlyphs(titleY, scale, now) {
+        const glyphs = ['🧟', '💀', '🩸', '🎃'];
+        const cx = this.canvas.width / 2;
+        this.ctx.save();
+        this.ctx.font = `${Math.max(12, 16 * scale)}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        for (let i = 0; i < glyphs.length; i++) {
+            const side = i % 2 === 0 ? -1 : 1;
+            const orbit = 220 * scale + (i % 2) * 40 * scale;
+            const bob = Math.sin(now * 0.002 + i * 1.7) * 8 * scale;
+            const alpha = 0.25 + 0.2 * Math.sin(now * 0.003 + i);
+            this.ctx.globalAlpha = alpha;
+            this.ctx.fillText(
+                glyphs[i],
+                cx + side * orbit,
+                titleY + bob + (i < 2 ? -8 : 18) * scale
+            );
+        }
+        this.ctx.restore();
+    }
+
     draw() {
         this.updateEffects();
 
@@ -289,6 +344,7 @@ export class MainMenuScreen {
         const height = this.canvas.height;
 
         this.hud.drawCreepyBackground(horror.bgDragY);
+        this.hordeAmbience.draw(this.ctx, width, height);
         this.handHorror.drawTearZone(this.ctx, width, height, horror);
         this.drawEffects();
         this.handHorror.drawHand(this.ctx, horror);
@@ -303,24 +359,54 @@ export class MainMenuScreen {
         const isMobile = this.isMobileDevice;
         this.isMobileLayout = isMobile;
 
-        // Main title - scaled
+        // Main title — pulse + rare RGB glitch
         const titleScale = isMobile ? 0.75 : 1.0;
         const titleFontSize = Math.max(18, 40 * scale * titleScale);
+        const titleY = isMobile ? this.canvas.height * 0.18 : this.canvas.height / 2 - 200;
+        const titleText = 'ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS';
+        const nowDraw = Date.now();
+        const pulse = 0.88 + 0.12 * Math.sin(nowDraw / 900);
+        const glitching = nowDraw < this._titleGlitchUntil;
+
         this.ctx.font = `bold ${titleFontSize}px "Creepster", cursive`;
         this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'alphabetic';
+
+        if (glitching) {
+            const gx = (Math.random() - 0.5) * 6 * scale;
+            this.ctx.globalAlpha = 0.55;
+            this.ctx.fillStyle = '#00e5ff';
+            this.ctx.fillText(titleText, this.canvas.width / 2 + gx - 3 * scale, titleY);
+            this.ctx.fillStyle = '#ff1744';
+            this.ctx.fillText(titleText, this.canvas.width / 2 + gx + 3 * scale, titleY);
+            this.ctx.globalAlpha = 1;
+        }
+
         this.ctx.fillStyle = '#ff1744';
-        this.ctx.shadowBlur = 30 * scale;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-        const titleY = isMobile ? this.canvas.height * 0.18 : this.canvas.height / 2 - 200;
-        this.ctx.fillText('ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS', this.canvas.width / 2, titleY);
+        this.ctx.shadowBlur = (28 + 12 * pulse) * scale;
+        this.ctx.shadowColor = `rgba(255, 23, 68, ${0.55 + 0.35 * pulse})`;
+        this.ctx.fillText(titleText, this.canvas.width / 2 + (glitching ? (Math.random() - 0.5) * 2 : 0), titleY);
         this.ctx.shadowBlur = 0;
 
-        // Subtitle - scaled
+        // Subtitle — rotating flavor lines
         const subtitleFontSize = Math.max(10, 18 * scale * titleScale);
         this.ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
+        const flavorLines = [
+            'Survive the Horde',
+            'They never stop coming',
+            'Fireteam Echo — standing by',
+            'Scrap. Shoot. Survive.',
+            'The Warden is watching'
+        ];
+        const flavorIdx = Math.floor(nowDraw / 4500) % flavorLines.length;
         this.ctx.fillStyle = '#9e9e9e';
         const subtitleY = isMobile ? this.canvas.height * 0.24 : this.canvas.height / 2 - 150;
-        this.ctx.fillText('Survive the Horde', this.canvas.width / 2, subtitleY);
+        this.ctx.fillText(flavorLines[flavorIdx], this.canvas.width / 2, subtitleY);
+
+        // Tiny floating threat glyphs near title (desktop)
+        if (!isMobile) {
+            this._drawTitleThreatGlyphs(titleY, scale, nowDraw);
+        }
 
         // Music Tip - Only show if audio hasn't been initialized yet
         if (!isAudioInitialized()) {
@@ -406,6 +492,19 @@ export class MainMenuScreen {
         this.ctx.fillText(gameState.username || 'Survivor', centerX, usernameY);
         this.ctx.shadowBlur = 0;
 
+        // Survivor tag drip under name box
+        if (!isMobile) {
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.35 + 0.15 * Math.sin(Date.now() / 800);
+            this.ctx.fillStyle = '#6b0000';
+            const dripX = usernameBoxX + usernameBoxWidth * 0.72;
+            this.ctx.fillRect(dripX, usernameBoxY + usernameBoxHeight - 1, 2 * scale, 10 * scale);
+            this.ctx.beginPath();
+            this.ctx.ellipse(dripX + scale, usernameBoxY + usernameBoxHeight + 12 * scale, 3 * scale, 4 * scale, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
         // Hint text below box when hovered
         if (usernameHovered && !isMobile) {
             const hintFontSize = Math.max(10, Math.round(12 * scale));
@@ -431,35 +530,35 @@ export class MainMenuScreen {
         const row5Y = buttonStartY + (buttonHeight + buttonSpacing) * 4;
 
         // Row 1: Arcade (left), Survival (right) - disabled
-        this.hud.drawMenuButton('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
-        this.hud.drawMenuButton('Survival', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'survival', true);
+        this._drawMenuButtonLabeled('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
+        this._drawMenuButtonLabeled('Survival', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'survival', true);
 
         // Row 2: Campaign (left), Local Co-op (right)
         if (!this.isMobileLayout) {
-            this.hud.drawMenuButton('Campaign', leftColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'campaign', false);
-            this.hud.drawMenuButton('Local Co-op', rightColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
+            this._drawMenuButtonLabeled('Campaign', leftColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'campaign', false);
+            this._drawMenuButtonLabeled('Local Co-op', rightColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
         }
 
         // Row 3: Play with AI (left), Settings (right)
-        this.hud.drawMenuButton('Play with AI', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
-        this.hud.drawMenuButton('Settings', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
+        this._drawMenuButtonLabeled('Play with AI', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
+        this._drawMenuButtonLabeled('Settings', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
 
         // Row 4: Multiplayer (left), Gallery (right)
-        this.hud.drawMenuButton('Multiplayer', leftColumnX, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
-        this.hud.drawMenuButton('Gallery', rightColumnX, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery', false);
+        this._drawMenuButtonLabeled('Multiplayer', leftColumnX, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
+        this._drawMenuButtonLabeled('Gallery', rightColumnX, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery', false);
 
         // Row 5: Profile (left), Achievements (right)
-        this.hud.drawMenuButton('Profile', leftColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'profile', false);
-        this.hud.drawMenuButton('Achievements', rightColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'achievements', false);
+        this._drawMenuButtonLabeled('Profile', leftColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'profile', false);
+        this._drawMenuButtonLabeled('Achievements', rightColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'achievements', false);
 
         // Row 6: Battlepass (centered)
         const row6Y = buttonStartY + (buttonHeight + buttonSpacing) * 5;
-        this.hud.drawMenuButton('Battlepass', centerX - buttonWidth / 2, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'battlepass', false);
+        this._drawMenuButtonLabeled('Battlepass', centerX - buttonWidth / 2, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'battlepass', false);
 
         // Row 7: Landing (left), About (right)
         const row7Y = buttonStartY + (buttonHeight + buttonSpacing) * 6;
-        this.hud.drawMenuButton('Landing', leftColumnX, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'landing', false);
-        this.hud.drawMenuButton('About', rightColumnX, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
+        this._drawMenuButtonLabeled('Landing', leftColumnX, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'landing', false);
+        this._drawMenuButtonLabeled('About', rightColumnX, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
         // Draw rank badge next to username
         if (!this.isMobileLayout) {

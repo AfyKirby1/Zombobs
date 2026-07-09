@@ -11,7 +11,7 @@ import {
 import { canvas, ctx, gpuCanvas, uiCanvas, uiCtx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
-import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, pauseGameMusic, resumeGameMusic, isAudioInitialized } from './systems/AudioSystem.js';
+import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, playGameMusic, stopGameMusic, pauseGameMusic, resumeGameMusic, isAudioInitialized } from './systems/AudioSystem.js';
 import { initGroundPattern } from './systems/GraphicsSystem.js';
 import { renderingCache } from './systems/RenderingCache.js';
 import { GameHUD } from './ui/GameHUD.js';

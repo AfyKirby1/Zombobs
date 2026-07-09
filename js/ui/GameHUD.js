@@ -1860,6 +1860,7 @@ export class GameHUD {
         this.mainMenu = true;
         this.mainMenuScreen.handHorror.reset();
         this.mainMenuScreen.metalGunshots.reset();
+        this.mainMenuScreen.hordeAmbience.reset();
     }
     hideMainMenu() { this.mainMenu = false; this.hoveredButton = null; }
 

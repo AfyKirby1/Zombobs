@@ -2,6 +2,27 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Docs Sync — Unreleased Features (2026-07-09) ✅ COMPLETE
+- **Done**: Boot hardening + main-menu horde ambience + LOC **44,609** across status + public copy.
+- **Touched**: `SUMMARY`, `CHANGELOG`, `ARCHITECTURE`, `AGENTS.md`, `My_Thoughts.md`, `README.md`, `landing.html`, `mobile/www/landing.html`, `ITCH/page_description.md`, `VERSION_UPDATE_CHECKLIST.md`, `SCRATCHPAD`.
+- **Out-of-Scope**: `assets/Enthusiast_Tours.mp3` — untracked asset, not wired in `AudioSystem`; do not document as shipped until integrated.
+- **Next**: `npm run sync:web` if shipping mobile (root `index.html` boot overlay + `MenuHordeAmbience.js` may drift).
+
+### Functional LOC Re-Audit (2026-07-09) ✅ COMPLETE
+- **Done**: Re-ran `python tools/count_functional_loc.py` + `tools/count-loc.ps1` (PS counter slow on full tree; Python is canonical per prior audits).
+- **Result**: **44,609** functional LOC across **144** maintained files (**39,065** JS LOC / **107** JS files). Prior 2026-07-09 audit was 40,910 / 140 (JS 36,106 / 103).
+- **Growth drivers**: Act 1 finale (Z4 + Warden), survivor quests, campaign alive pass, achievements/gallery redesign, main-menu horde ambience + flavor pass.
+- **Docs updated**: `SUMMARY`, `CHANGELOG` Unreleased, `SBOM`, `README`, `landing.html`, `mobile/www/landing.html`, `ITCH/page_description.md`.
+- **Next**: Optional `npm run sync:web` if mobile mirror drifts beyond landing copy.
+
+### Main Menu Flavor Pass (2026-07-09) ✅ COMPLETE
+- **Done**: `MenuHordeAmbience.js` — silhouette horde (depth-sorted), ash fall, ember sparks, ground fog band; mobile caps lower.
+- **Done**: `MainMenuScreen.js` — button emoji icons (wider buttons), title pulse + RGB glitch, rotating flavor subtitles, floating 🧟💀🩸🎃 glyphs, username blood drip; horde drawn under tear/hand FX.
+- **Done**: `GameHUD.showMainMenu` resets `hordeAmbience`.
+- **Syntax**: `node --check` green on both files.
+- **Verify**: Hard refresh → main menu — silhouettes walk bottom third, ash/embers, icons on buttons, title glitch occasionally.
+- **Next**: Optional `npm run sync:web` for mobile mirror.
+
 ### Boot Loader — WebGPU Buffer/Lag Hardening (2026-07-09) ✅ COMPLETE
 - **Problem**: Overlay bar froze during WGSL compile / buffer alloc; dismiss could flash before GPU present settled.
 - **Done**: `BootLoader.js` — progress creep to next-stage ceiling, stall soft/hard (5s/10s), elapsed + %, 3-frame settle + min 500ms display, failsafe 20s, `reportWebGPUBootPhase()`.
@@ -18,6 +39,7 @@
 - **P2 Atmosphere**: `RADIO_BEATS` table + static SFX; `fogAlpha` veil; lights-out flicker; steam hiss; coupler/gate/defend/warden/act stingers; 2/3 coupler rush; hold interrupt on damage.
 - **P2 Casting**: No arcade boss waves in campaign; zone spawn bias (Z2 crawler/fast, Z3 spitter/siren, Z4 armored).
 - **P3 Fantasy**: `ZONE FAIL` + **Retry Zone**; `campaignVictory()` separate from death; achievements **Echo Actual**, **Warden Slayer**, **Fireteam**.
+- **Docs**: SUMMARY, ARCHITECTURE (§ Campaign Alive Coverage), CAMPAIGN_DESIGN §17/§19, My_Thoughts, SCRATCHPAD last-5; CHANGELOG Unreleased already had entry.
 - **Syntax**: `test-syntax.ps1` all green.
 - **Manual playtest checklist**: Z1→Z4 full clear; 2+ recruits; party-full consolation then recruit when slot opens; mid-quest extract abandon toast; death→retry same zone; act clear achievements; gamepad hold-E on Z3 couplers + Z4 terminal.
 
@@ -85,7 +107,7 @@
 - **Syntax**: All `js/**/*.js` pass `node --check`.
 - **Docs updated**: `SUMMARY`, `CHANGELOG` Unreleased, `ARCHITECTURE` (MapLoader multi-zone), `AGENTS.md` maps/systems, `SBOM` last-audited stamp, landing/README/itch LOC copy.
 - **Gap closed in CHANGELOG**: Blood-edge WebGPU injury overlay; `MenuMetalGunshotEffect`; hero role nameplate (`isHero` / `heroRole`).
-- **Out-of-Scope Observations**: `SUMMARY` file-structure tree still lists pre-expansion modules (annotate later); `mobile/www` LOC excluded by audit tool (generated) — re-sync before Android if source drifted. [AMENDED 2026-07-09]: Zone 4 + Warden now playable (see Act 1 Finale task).
+- **Out-of-Scope Observations**: `SUMMARY` file-structure tree still lists pre-expansion modules (annotate later); `mobile/www` LOC excluded by audit tool (generated) — re-sync before Android if source drifted. [AMENDED 2026-07-09]: Zone 4 + Warden now playable (see Act 1 Finale task). [AMENDED 2026-07-09]: `assets/Enthusiast_Tours.mp3` present but not referenced in code. [AMENDED 2026-07-09]: `mobile/www` may lack root boot-overlay hardening + `MenuHordeAmbience.js` until `npm run sync:web`.
 - **Next**: Optional v0.9.2 modality bump when shipping Unreleased block; playtest Z1→Z3 + hire hero + equipment sets.
 
 ### Massive Expansion — Equipment Sets + Heroes + Zone 3 (2026-07-09) ✅ COMPLETE
@@ -371,11 +393,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Campaign Zone 1 — Crash Site (2026-07-06)**: `MapLoader`, `crashSite.js`, wall collision, objective HUD, campaign `gameMode` wiring; docs in `CAMPAIGN_DESIGN.md`, `ARCHITECTURE.md`, `CHANGELOG`, `SUMMARY`.
-2. **Siren Zombie shipped (2026-07-05)**: Support screamer mob — horde buff, aim jitter, cyan VFX/audio; docs in `ENEMY_TYPES.md`.
-3. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
-4. **Class Tree System shipped (2026-06-25)**: `skillTreeDefinitions.js`, SkillSystem hybrid pool, combat hooks, LevelUp/HUD tree UI, Tree Master achievement.
-5. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
+1. **Docs sync — Unreleased (2026-07-09)**: Boot hardening + `MenuHordeAmbience` + LOC 44,609 across SUMMARY/ARCHITECTURE/AGENTS/README/landing/itch/SCRATCHPAD/VERSION_UPDATE_CHECKLIST.
+2. **Boot Loader WebGPU hardening (2026-07-09)**: creep, stall, settle, `onPhase` callbacks; `BootLoader.js`, `WebGPURenderer.js`, `index.html`, `style.css`.
+3. **Functional LOC re-audit (2026-07-09)**: 44,609 / 144 files (JS 39,065 / 107); public copy updated.
+4. **Main Menu Flavor Pass (2026-07-09)**: `MenuHordeAmbience` silhouettes + ash/embers; button emojis; title glitch; blood drip.
+5. **Campaign Alive Coverage (2026-07-09)**: Toasts/quests/radio-SFX/casting/retry/victory/achievements; docs synced.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

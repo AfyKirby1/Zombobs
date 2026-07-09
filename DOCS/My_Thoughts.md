@@ -1,6 +1,14 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-09 - Campaign Alive Coverage
+
+Act 1 mechanics were done but *felt dead* — root cause was feedback never rendering (`waveNotification.life = 0`) plus quest state bugs across zones. Fixed by routing all MapLoader beats through `triggerWaveNotification()` with `kind: 'campaign'` so radio lines show as subtitle without arcade "Get ready…". Quest integrity: party-full no longer burns NPC (`recruited` only on success); kill quests track `run.quest.progress` not global `zombiesKilled`; zone leave auto-abandons incomplete quest with toast. Presentation layer is thin on purpose — `RADIO_BEATS` + procedural static/stingers, `fogAlpha` veil, 1.2s zone interstitial, companion/NPC bubbles — no VO pipeline, no NavMesh set-pieces. Death fantasy split: `campaignRetryMapId` + Retry Zone vs `campaignVictory()` for act clear (not death screen). Three achievements gate the win beats. Still need manual Z1→Z4 playtest before modality bump.
+
+## 2026-07-09 - Main Menu Flavor Pass
+
+Menu already had hand-horror + metal gunshots — still felt like static UI over a shader bg. Added **`MenuHordeAmbience`** as cheap Canvas2D layer: depth-sorted silhouette walkers (no entity classes, no multiplayer cost), ash + embers, fog band at bottom third. Stacks *under* tear/hand so glass horror stays on top. Button emojis are flavor-only (`MENU_BUTTON_ICONS` map); hit targets unchanged. Title glitch is rare (~0.3%/frame) so it reads as arcade CRT, not seizure bait. Rotating subtitles reuse existing Creepster/Mono stack — no new assets. Mobile gets lower caps (8 zombies vs 14). Reset hook mirrors hand/gunshot in `showMainMenu()`.
+
 ## 2026-07-09 - Act 1 Finale Shipped (Z1–Z4)
 
 Bible said go deep, not wide — so we did. Hold-E power/hack is the same interact verb as scrap shrine (E), which keeps mobile/gamepad coherent. Defend phase owns spawns so arcade wave-break doesn't steal the finale. Warden extends `BossZombie` but overrides update via `Zombie.prototype.update` to avoid double-attack. Act Clear is just `campaignActClear` + no `nextMapId` — GameOverScreen already had ZONE CLEAR, so white/cyan **ACT 1 CLEAR** was cheap. Still need gallery card + balance pass; don't modality-bump until playtested.

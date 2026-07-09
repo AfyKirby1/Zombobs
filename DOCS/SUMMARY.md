@@ -6,21 +6,29 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
-**Release: V0.9.2 ALPHA (2026-07-09)** — *Campaign & Mobile Update*. Campaign Act 1 **Zones 1–3**, **equipment** + **hireable heroes**, **mobile touch** fully wired, **boot loader** progress/tips, blood-edge overlay, menu FX; **40,910 LOC** / **140** files. Prior **V0.9.1** skills, **V0.9.0** perf, **V0.8.4** horde/scrap live.
+**Release: V0.9.2 ALPHA (2026-07-09)** — *Campaign & Mobile Update*. Campaign Act 1 **Zones 1–3**, **equipment** + **hireable heroes**, **mobile touch** fully wired, **boot loader** progress/tips, blood-edge overlay, menu FX; **40,910 LOC** / **140** files. Prior **V0.9.1** skills, **V0.9.0** perf, **V0.8.4** horde/scrap live. [AMENDED 2026-07-09]: Post-ship growth (Z4/Warden, survivor quests, menu FX) → **44,609 LOC** / **144** files (JS **39,065** / **107**).
+
+[AMENDED 2026-07-09]: **Main menu flavor pass** — shipped in Unreleased; see ✅ entry below + `CHANGELOG` Unreleased.
 
 [AMENDED 2026-07-09]: **Act 1 finale playable (Unreleased)** — Zone 4 Control Tower + Warden + power/steam/debris/hack-defend. Full chain Z1→Z4 → **ACT 1 CLEAR**. See `CHANGELOG` Unreleased + `CAMPAIGN_DESIGN.md`.
+
+[AMENDED 2026-07-09]: **Campaign Alive Coverage (Unreleased)** — Feedback/quest/presence/atmosphere pass on Act 1 Z1–Z4; retry zone, campaign victory path, 3 campaign achievements. See `CAMPAIGN_DESIGN.md` §19.
+
+✅ **Main Menu Flavor Pass (2026-07-09)** — Ambient horde silhouettes (depth-sorted walkers, glowing eyes), ash/ember particles, ground fog band (`MenuHordeAmbience.js`). Title pulse + rare RGB glitch; rotating flavor subtitles; floating 🧟💀🩸🎃 glyphs; emoji icons on all menu buttons; blood drip under username. Draw order: creepy bg → horde → hand tear → eyes/explosions/sparks → UI. Resets via `GameHUD.showMainMenu()`. Key files: `MenuHordeAmbience.js`, `MainMenuScreen.js`, `GameHUD.js`, `MenuHandHorrorEffect.js`, `MenuMetalGunshotEffect.js`.
 
 ✅ **Boot Loader — WebGPU Buffer/Lag Hardening (2026-07-09)** — Loading panel masks WGSL compile / buffer alloc stalls: progress creep, spinner + % + elapsed, stall copy (5s/10s), `WebGPURenderer.init({ onPhase })` → `reportWebGPUBootPhase()`, 3-frame settle, 20s failsafe. Key files: `BootLoader.js`, `WebGPURenderer.js`, `main.js`, `index.html`, `css/style.css`.
 
 ✅ **V0.9.2 Modality Pass (2026-07-09)** — `constants.js` hub + landing/README/itch/launcher/server/`AGENTS.md`/`CHANGELOG`/`SUMMARY`; `mobile/www` synced.
 
-✅ **Website + Docs Public Copy Refresh (2026-07-09)** — README badge/What's New, landing hero + feature grid + side changelog, itch page description, and `mobile/www/landing.html` now advertise Campaign Z1–3, equipment sets, hireable heroes, immersion polish, and **40,910** LOC (not just the LOC bump). See `SCRATCHPAD` + `CHANGELOG` [v0.9.2].
+✅ **Website + Docs Public Copy Refresh (2026-07-09)** — README badge/What's New, landing hero + feature grid + side changelog, itch page description, and `mobile/www/landing.html` now advertise Campaign Z1–3, equipment sets, hireable heroes, immersion polish, and **40,910** LOC (not just the LOC bump). See `SCRATCHPAD` + `CHANGELOG` [v0.9.2]. [AMENDED 2026-07-09]: LOC copy refreshed to **44,609** / **144** files.
 
 ✅ **Equipment + Hireable Heroes (2026-07-09)** — 6 slots / 5 rarities / 3 named sets; E-key GEAR + HEROES panel; scrap-hire Rex/Mira/Doc/Nix/Kira/Voss via `CompanionSystem.hireHero()`. Key files: `equipmentDefinitions.js`, `EquipmentSystem.js`, `EquipmentScreen.js`, `heroDefinitions.js`.
 
 ✅ **Campaign Act 1 Zones 1–4 (2026-07-09)** — Playable chain: Crash Site → Maintenance Tunnels → Switching Yard → **Control Tower**; extraction + power couplers + steam/lights-out + hack/defend + **The Warden**; **ACT 1 CLEAR**. [AMENDED]: Was Z1–3 only at v0.9.2 ship; Z4 + scripted beats landed Unreleased. Design bible: `DOCS/CAMPAIGN_DESIGN.md` §5–§17.
 
 ✅ **Survivor Quests + Ante (2026-07-09)** — World NPCs Rook/Pip/June/Holt: E to talk → quest → recruit teammate. Extract tax, hotter zones, party-full scrap consolation. `survivorDefinitions.js` + MapLoader NPC layer.
+
+✅ **Campaign Alive Coverage (2026-07-09)** — Act 1 presentation pass so zones feel alive: visible campaign toasts + radio subtitles (`triggerWaveNotification` + `kind: 'campaign'`); survivor quest integrity (party-full keeps NPC, abandon on extract, HUD kill progress); gamepad Hold-E; companion + NPC dialogue bubbles; 1.2s zone transition interstitial; per-map fog/mood + lights-out flicker; procedural radio/static/stingers; campaign spawn casting (no arcade bosses); ZONE FAIL **Retry Zone**; `campaignVictory()` path; achievements **Echo Actual** / **Warden Slayer** / **Fireteam**. Key files: `MapLoader.js`, `GameStateManager.js`, `GameOverScreen.js`, `drawingUtils.js`, `AudioSystem.js`, `PlayerSystem.js`, `CompanionSystem.js`, `ZombieSpawnSystem.js`, `WaveChaosSystem.js`, `achievementDefinitions.js`. See `CAMPAIGN_DESIGN.md` §19 + `CHANGELOG` Unreleased.
 
 ✅ **Clickable Version Modal — Patch Notes (2026-07-06)** — Main-menu `🎃` version badge opens spooky arcade **PATCH NOTES** modal (`js/ui/VersionModal.js`). Content driven by `VERSION_HISTORY` in `js/core/constants.js` alongside `GAME_VERSION` / `ENGINE_VERSION`. About screen + badge auto-read constants. Version-bump workflow: `DOCS/VERSION_UPDATE_CHECKLIST.md` §1–§2.
 
@@ -30,7 +38,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 
 ✅ **Mobile Touch Coherence (2026-07-09)** — Virtual pad now drives aim/fire/reload/melee/grenade/weapon/interact/flashlight for mouse-source mobile; HUD weapon/grenade taps call real APIs; scrap **Tap E** + E button; safe-area + immersive focus; `mobile/www` synced. Prior **Mobile UX (2026-07-06)**: level-up 2×2 grid, `isMobileDevice()`, low video preset. Run `cd mobile && npm run sync:web` before Android builds.
 
-✅ **Functional Codebase Audit (2026-07-05)** — `tools/count_functional_loc.py` reported **34,773** functional LOC across **125** maintained source files (JS **30,237** / **88**). [AMENDED 2026-07-09]: Re-audit **40,910** / **140** (JS **36,106** / **103**). Landing/README/itch copy refreshed.
+✅ **Functional Codebase Audit (2026-07-05)** — `tools/count_functional_loc.py` reported **34,773** functional LOC across **125** maintained source files (JS **30,237** / **88**). [AMENDED 2026-07-09]: Re-audit **40,910** / **140** (JS **36,106** / **103**). [AMENDED 2026-07-09]: Re-audit **44,609** / **144** (JS **39,065** / **107**). Landing/README/itch copy refreshed.
 
 **Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), **smooth game entry** (idle GPU/ground warm-up, async `startGame()`, session prep overlay, `gpuCanvas` fade-in), v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata. **Audio balance (2026-06-26)**: default music volume halved (`0.5` → `0.25`, settings v3 migration) so gunshots cut through MP3 tracks without raising SFX gain.
 
@@ -284,7 +292,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 
 ## File Structure
 [AMENDED 2026-04-06]: Entry names below reflect the v0.8.3.7 restructure (game vs landing).
-[AMENDED 2026-07-09]: Tree below is a historical snapshot — also present now: `js/maps/` (Z1–Z3), `equipmentDefinitions.js` / `EquipmentSystem.js` / `EquipmentScreen.js` / `EquipmentPickup.js`, `heroDefinitions.js`, `ScrapShopSystem`, `TouchControlSystem`, `MenuMetalGunshotEffect`, etc. Prefer `AGENTS.md` module table + glob for current inventory.
+[AMENDED 2026-07-09]: Tree below is a historical snapshot — also present now: `js/maps/` (Z1–Z4), `equipmentDefinitions.js` / `EquipmentSystem.js` / `EquipmentScreen.js` / `EquipmentPickup.js`, `heroDefinitions.js`, `ScrapShopSystem`, `TouchControlSystem`, `MenuHandHorrorEffect`, `MenuMetalGunshotEffect`, `MenuHordeAmbience`, etc. Prefer `AGENTS.md` module table + glob for current inventory.
 ```
 ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ├── index.html                    # Game entry (itch.io embed, direct play)
@@ -302,6 +310,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── skillTreeDefinitions.js  # Class tree skills (Gunner/Survivor/Scavenger)
 │   │   ├── canvas.js             # Canvas initialization and management
 │   │   ├── BootLoader.js         # Gated boot overlay — creep, stall UI, WebGPU phases, 3-frame settle
+│   │   ├── WebGPURenderer.js     # GPU background, bloom, particles, blood-edge overlay
 │   │   ├── gameState.js          # Centralized game state management
 │   ├── companions/
 │   │   └── CompanionSystem.js   # AI NPC companion behavior and lifecycle

@@ -20,7 +20,8 @@ let gunshotBufferScheduled = false;
 const MENU_MUSIC_SRC = 'assets/Shadows of the Wasteland.mp3';
 const GAME_MUSIC_TRACKS = [
     'assets/the_mountain-game-game-music-508018.mp3',
-    'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3'
+    'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3',
+    'assets/Enthusiast_Tours.mp3'
 ];
 // Code-level music attenuation (settings slider unchanged)
 const MUSIC_OUTPUT_SCALE = 0.5;

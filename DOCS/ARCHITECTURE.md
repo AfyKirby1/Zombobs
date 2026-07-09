@@ -127,6 +127,22 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `#boot-overlay` DOM in `index.html`, `css/style.css` fade transition (`.boot-overlay--done`)
 
+#### MenuHordeAmbience.js
+**Purpose**: Cheap Canvas2D ambient layer for main menu — distant zombie silhouettes without entity/sim cost
+
+**Exports**:
+- `MenuHordeAmbience` class — constructed with canvas getter; `update(dt)`, `draw(ctx)`, `reset()`
+
+**Features**:
+- Depth-sorted silhouette walkers with glowing eyes (bottom-third band)
+- Ash fall + ember sparks + ground fog band
+- Mobile caps: fewer walkers vs desktop (performance-safe)
+- Drawn **under** hand-horror / metal gunshot FX; reset via `GameHUD.showMainMenu()`
+
+**Integration**: `MainMenuScreen.js` owns instance; `GameHUD.showMainMenu()` calls `hordeAmbience.reset()`
+
+**Dependencies**: `MainMenuScreen.js`, `GameHUD.js`
+
 #### WebGPURenderer.js
 **Purpose**: GPU-accelerated background rendering and compute-driven particles
 
@@ -244,8 +260,12 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - `pickupsCollected` - Total pickups gathered in the current session (v0.8.3.5)
 - `headshots` - Total headshots (upper-body hits) in the current session (v0.8.3.5)
 - `sirenScreamEffects[]` - Active siren scream shock-ring VFX `{ x, y, startTime, duration, maxRadius }` [AMENDED 2026-07-05]
-- `achievementNotifications[]` - Array of achievement notifications to display
-    - `sessionResults` - Session results from profile system (rank XP, achievements, badges, battlepass progress)
+- `sessionResults` - Session results from profile system (rank XP, achievements, badges, battlepass progress)
+- `waveNotification` — `{ active, text, life, maxLife, subtitle, kind }`; `kind: 'campaign'` skips arcade subtitle in `drawWaveNotification()` [AMENDED 2026-07-09]
+- `campaignTransition` — Zone interstitial overlay `{ active, until, title, subtitle }` [AMENDED 2026-07-09]
+- `campaignRetryMapId` — Map id for **Retry Zone** on campaign death [AMENDED 2026-07-09]
+- `campaignSurvivorRun` — Persists survivor quest/recruit state across zone loads [AMENDED 2026-07-09]
+- `campaignActClear` — Act 1 victory flag (distinct from death game-over) [AMENDED 2026-07-09]
 
 **Dependencies**: `constants.js`
 
@@ -281,6 +301,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - Collection: Weapon master, skill collector, pickup hoarder
 - Skill: Accuracy, efficiency challenges
 - Social: Co-op wins, games played milestones
+- Campaign: Act 1 clear, Warden kill, fireteam recruit (`campaign_echo_actual`, `campaign_warden_slayer`, `campaign_fireteam`) [AMENDED 2026-07-09]
 
 **Dependencies**: None
 
@@ -565,6 +586,9 @@ flowchart TD
 - `playFootstepSound()` - Play footstep
 - `playExplosionSound()` - Play explosion
 - `playRestartSound()` - Play restart sound
+- `playRadioStaticSound()` — Campaign radio blip before beat toasts [AMENDED 2026-07-09]
+- `playCampaignStinger(variant)` — Procedural stingers (`default`, `warden`, `victory`) [AMENDED 2026-07-09]
+- `playSteamHissSound()` — Hazard steam jet one-shot [AMENDED 2026-07-09]
 
 **Dependencies**: `systems/SettingsManager.js`
 
@@ -1062,10 +1086,15 @@ flowchart TD
   - Determines max multiplier from all players
   - Saves scoreboard entry if session was valid (`gameStartTime > 0`)
   - Saves high score and multiplier stats
+  - Campaign death sets `campaignRetryMapId` for zone retry UI [AMENDED 2026-07-09]
 - `restartGame()` - Restart game (return to main menu)
 - `startGame()` - Start game
   - Sets `gameState.gameStartTime = Date.now()` for session tracking
   - Initializes game state and spawns first wave
+- `zoneComplete()` — Campaign extraction clear; chains `_loadNextCampaignZone()` or `campaignVictory()` on act finale [AMENDED 2026-07-09]
+- `campaignVictory()` — Act 1 clear path (no death framing); unlocks `campaign_echo_actual` [AMENDED 2026-07-09]
+- `retryCampaignZone()` — Reload current `campaignMapId`; keeps `campaignSurvivorRun` + party [AMENDED 2026-07-09]
+- `_loadNextCampaignZone()` — Preserves player stats; calls `mapLoader._abandonIncompleteQuests()` before load [AMENDED 2026-07-09]
 
 **Features**:
 - High score and multiplier stats saving
@@ -1198,6 +1227,11 @@ flowchart TD
 **Methods**:
 - `load(mapId)` / `unload()` — activate or clear campaign map; resets `campaignScript`
 - `update(dt)` — per-frame: steam hazards, lights-out/debris scripts, Hold-E power/hack, defend timer/spawns, Warden death → Act Clear
+- `_fireRadioBeat(key)` / `RADIO_BEATS` — Contextual campaign dialogue + static SFX + `triggerWaveNotification()` [AMENDED 2026-07-09]
+- `_abandonIncompleteQuests()` — Zone leave clears active quest with toast [AMENDED 2026-07-09]
+- `_beginZoneTransition()` — 1.2s interstitial before next zone load [AMENDED 2026-07-09]
+- `_drawFogOverlay()` — Screen/world fog from `activeMap.ambiance.fogAlpha` [AMENDED 2026-07-09]
+- `getQuestProgressText()` — HUD quest progress for `drawCampaignObjective()` [AMENDED 2026-07-09]
 - `tryInteract(player)` / `getInteractPrompt(player)` — Hold E on `power` / `hack` volumes
 - `getSpawn()` / `getBounds()` / `getWalls()` — map metadata and collision data
 - `getNextMapId()` — zone chain (`nextMapId` on map defs)
@@ -1215,11 +1249,15 @@ flowchart TD
 - Shared collision via `js/utils/mapCollisionUtils.js` (player + zombie resolve)
 - Campaign objective banner + Hold-E prompt via `drawCampaignObjective()` in `drawingUtils.js`
 - Zone transitions via `GameStateManager.zoneComplete()` / `_loadNextCampaignZone()`; Act Clear when no `nextMapId` + `campaignActClear`
-- Wired from `GameStateManager.startGame()` when `gameMode === 'campaign'`; `GameLoopSystem` calls `mapLoader.update()`
+- Survivor NPC layer: talk/quest/recruit via `_talkToSurvivor`, `_recruitOrConsole`, `_updateSurvivorQuests`; bubbles anchored to NPC world pos [AMENDED 2026-07-09]
+- Hold-E damage interrupt via `player.lastDamageTime` from `applyPlayerDamage()` [AMENDED 2026-07-09]
+- 2/3 power coupler rush pack + radio beat [AMENDED 2026-07-09]
+- Wired from `GameStateManager.startGame()` when `gameMode === 'campaign'`; `GameLoopSystem` calls `mapLoader.update()`; pauses during `campaignTransition` [AMENDED 2026-07-09]
 
-**Dependencies**: `js/maps/crashSite.js`, `maintenanceTunnels.js`, `switchingYard.js`, `controlTower.js`, `entities/WardenBoss.js`, `utils/mapCollisionUtils.js`, `entities/Prop.js`, `core/gameState.js`
+**Dependencies**: `js/maps/crashSite.js`, `maintenanceTunnels.js`, `switchingYard.js`, `controlTower.js`, `entities/WardenBoss.js`, `utils/mapCollisionUtils.js`, `entities/Prop.js`, `core/gameState.js`, `utils/gameUtils.js` (`triggerWaveNotification`), `systems/AudioSystem.js` [AMENDED 2026-07-09]
 
 [AMENDED 2026-07-09]: Multi-zone chain through Z4; power/hack/defend; steam + lights-out; Warden + Act Clear. Equipment/heroes live outside MapLoader.
+[AMENDED 2026-07-09]: **Campaign Alive Coverage** — radio beats, fog veil, quest integrity, zone interstitial, retry/victory paths. See end-of-doc section.
 
 #### PropRenderSystem.js (v0.8.1.2)
 **Purpose**: Handles rendering of world props with viewport culling
@@ -1486,6 +1524,7 @@ This hybrid approach provides:
   - 9 screen classes handle full-screen UI rendering and interaction
 - **Screen Classes**:
   - `MainMenuScreen.js` - Main menu with leaderboard, news ticker, clickable version badge + patch-notes modal, username input modal
+    - **[AMENDED 2026-07-09] Ambient menu FX stack**: `MenuHordeAmbience.js` (distant silhouette horde, ash, embers, ground fog); `MenuHandHorrorEffect.js` (zombie hand tear + blood); `MenuMetalGunshotEffect.js` (metal spark impacts); built-in eyes/explosion particles. Title pulse + rare RGB glitch; rotating flavor subtitles; button emoji icons (`MENU_BUTTON_ICONS`); username blood drip. Draw order: `drawCreepyBackground` → horde → tear zone → particles/sparks → hand → UI. All FX reset on `GameHUD.showMainMenu()`.
     - **Version Modal** (`VersionModal.js`): arcade-cabinet PATCH NOTES; content from `VERSION_HISTORY` in `constants.js`; opened via top-left version badge
       - Halloween neon frame, flickering marquee bulbs, cobwebs, blood drips
       - Dismiss: CLOSE button, backdrop click, or ESC (`gameState.showVersionModal`)
@@ -1500,7 +1539,7 @@ This hybrid approach provides:
   - `LobbyScreen.js` - Multiplayer lobby with player cards, chat system, connection status
   - `CoopLobbyScreen.js` - Local co-op lobby for player setup
   - `AILobbyScreen.js` - AI companion lobby for adding AI players
-  - `GameOverScreen.js` - Game over screen with quick stats and navigation
+  - `GameOverScreen.js` - Game over screen with quick stats and navigation; campaign death shows **ZONE FAIL** + **Retry Zone** when `campaignRetryMapId` set; act clear via `campaignActClear` [AMENDED 2026-07-09]
   - `PauseMenuScreen.js` - Pause menu with resume/restart/settings options
   - `AboutScreen.js` - About screen with game information
   - `GalleryScreen.js` - Gallery showcase for zombies, weapons, and pickups
@@ -1881,6 +1920,8 @@ This hybrid approach provides:
   - Hex to RGBA conversion with opacity support
 - `drawWaveBreak()` - Draw wave break UI overlay
 - `drawWaveNotification()` - Draw wave notification text
+- `drawCampaignObjective()` — Campaign HUD banner (objective, quest progress, Hold-E prompt) [AMENDED 2026-07-09]
+- `drawCampaignTransition()` — Zone interstitial dim overlay + title/subtitle [AMENDED 2026-07-09]
 - `drawFpsCounter()` - Draw FPS counter and debug stats
 
 **Features**:
@@ -1891,6 +1932,7 @@ This hybrid approach provides:
 - Hex color to RGBA conversion with opacity support
 - Wave break countdown timer display
 - Wave notification with fade-out animation
+- Campaign notifications: `kind: 'campaign'` uses `subtitle` for radio line; skips arcade "Get ready…" [AMENDED 2026-07-09]
 - FPS counter with optional debug stats overlay
 
 **Dependencies**: `core/gameState.js`, `core/canvas.js`, `core/constants.js`, `systems/SettingsManager.js`
@@ -1925,13 +1967,13 @@ flowchart TD
     G --> H[BootLoader fade dismiss overlay]
     H --> I[Main menu interactive]
     I --> J{User clicks Play}
-    I --> J{isWebGPUActive?}
-    J -->|yes| K[GameStateManager.startGame]
-    J -->|no| L[GameHUD.beginSessionPrep overlay]
-    L --> M[await scheduleWebGPUInit]
-    M --> K
-    B --> N{requestIdleCallback}
-    N --> O[warmSessionResourcesInBackground ground texture]
+    J --> K{isWebGPUActive?}
+    K -->|yes| L[GameStateManager.startGame]
+    K -->|no| M[GameHUD.beginSessionPrep overlay]
+    M --> N[await scheduleWebGPUInit]
+    N --> L
+    B --> O{requestIdleCallback}
+    O --> P[warmSessionResourcesInBackground ground texture]
 ```
 
 **Game Session Entry Flow** [2026-06-26]:
@@ -2268,7 +2310,9 @@ All game state is managed through the `gameState` object:
 - `shakeAmount` - Screen shake intensity
 - `damageIndicator` - Damage flash state
 - `muzzleFlash` - Muzzle flash effect state
-- `waveNotification` - Wave start notification state
+- `waveNotification` - Wave start notification state (`subtitle`, `kind` for campaign beats) [AMENDED 2026-07-09]
+- `campaignTransition` - Zone interstitial overlay state [AMENDED 2026-07-09]
+- `campaignRetryMapId` - Campaign zone retry target [AMENDED 2026-07-09]
 - `damageMultiplier` - Current damage multiplier (default 1, 2 when buffed)
 - `damageBuffEndTime` - Timestamp when damage buff expires
 - `killStreak` - Current kill streak count
@@ -2620,3 +2664,45 @@ Menu interactions feature subtle, non-intrusive procedural audio feedback to enh
 - **Menu Click ("Pip")**: A short, high-pitch sine wave sweep (800Hz to 1200Hz over 30ms). Triggered on button clicks, tab switches, and toggle changes.
 - **Menu Hover ("Tick")**: A very subtle, low-pitch sine wave tick (300Hz to 150Hz over 0.02s). Triggered whenever the mouse enters a new interactive control area.
 - **Procedural Generation**: All UI sounds are generated live using `OscillatorNode` and `GainNode`, ensuring zero asset-load overhead and perfect timing.
+
+---
+
+## Campaign Alive Coverage (Act 1 — 2026-07-09)
+
+Minimum presentation layer so Act 1 Z1–Z4 *feels* alive without full design-bible set-pieces. Design reference: `DOCS/CAMPAIGN_DESIGN.md` §19.
+
+### Feedback loop
+```mermaid
+flowchart LR
+  beat[Campaign beat] --> radio[_fireRadioBeat]
+  radio --> toast[triggerWaveNotification kind campaign]
+  radio --> sfx[playRadioStaticSound]
+  toast --> hud[drawWaveNotification]
+```
+
+### Zone flow
+```mermaid
+flowchart TD
+  extract[Extraction trigger] --> interstitial[_beginZoneTransition 1.2s]
+  interstitial --> next[_loadNextCampaignZone]
+  next --> abandon[_abandonIncompleteQuests if quest open]
+  death[Campaign death] --> retryId[campaignRetryMapId]
+  retryId --> ui[GameOverScreen Retry Zone]
+  finale[Act 1 clear] --> victory[campaignVictory]
+```
+
+### Key integration points
+| Layer | Files |
+|-------|-------|
+| Toasts / radio / quests / ambiance | `MapLoader.js` |
+| Zone load / victory / retry | `GameStateManager.js` |
+| Toast helper / campaign detect | `gameUtils.js`, `drawingUtils.js` |
+| Gamepad hold-E | `PlayerSystem.js` (`interact.pressed` → `_zombobsKeys.e`) |
+| Companion bubbles | `CompanionSystem.js`, `PlayerSystem.drawPlayers()` |
+| Casting | `ZombieSpawnSystem.js` (no arcade boss in campaign), `WaveChaosSystem.js` (zone bias) |
+| Campaign SFX | `AudioSystem.js` |
+| Fail/win UI | `GameOverScreen.js`, `main.js` (`gameover_retry`) |
+| Achievements | `achievementDefinitions.js` — Echo Actual, Warden Slayer, Fireteam |
+
+### Out of scope (this pass)
+NavMesh, vent portals, train-horn set-pieces, Warden floodlight sweep, full VO table, Act 2.

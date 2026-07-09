@@ -112,6 +112,10 @@ Example: `V0.8.4 ALPHA`
 
 [AMENDED 2026-07-09 — V0.9.2 modality pass]: Updated `NEWS_UPDATES`, landing bubbles (new V0.9.2 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.2 public copy leads with *Campaign & Mobile Update* (Act 1 Zones 1–3, equipment/heroes, mobile touch wired, boot progress, 40K LOC).
 
+[AMENDED 2026-07-09 — Boot hardening docs]: `BootLoader.js` / `WebGPURenderer.init({ onPhase })` / settle gate documented in `ARCHITECTURE.md`, `AGENTS.md`, `My_Thoughts.md`, `README.md` boot bullet, `SUMMARY` status + file tree. No version bump required — Unreleased `CHANGELOG` entry only.
+
+[AMENDED 2026-07-09 — Unreleased docs sync]: Boot hardening + `MenuHordeAmbience` + LOC **44,609** reflected across `SUMMARY`, `ARCHITECTURE`, `SCRATCHPAD`, `README`, `landing.html`, `mobile/www/landing.html`, `ITCH/page_description.md`. Run `npm run sync:web` before Android if `mobile/www` drifts (boot overlay HTML/CSS, `MenuHordeAmbience.js`, `MainMenuScreen.js`).
+
 [AMENDED 2026-07-06 — V0.9.1 modality pass]: Updated `NEWS_UPDATES`, main-menu/About version boxes, landing bubbles (new V0.9.1 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.1 public copy leads with *Skills & Survivability Update* (93 skills, 15 synergies, corrupted wildcards, mobile 2×2 level-up, Splitter/Siren).
 
 ## Quick Reference

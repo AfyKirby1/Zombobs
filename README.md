@@ -47,7 +47,7 @@
   <br>
   <b>No Engines. No Frameworks. Just Pure Adrenaline.</b><br>
   A fast-paced, top-down shooter built entirely with raw HTML5 Canvas and JavaScript.<br>
-  <i>Campaign zones, equipment sets, hireable heroes, 93 skills, WebGPU FX — 40,910 functional LOC.</i>
+  <i>Campaign zones, equipment sets, hireable heroes, 93 skills, WebGPU FX — 44,609 functional LOC.</i>
   <br><br>
   <a href="https://afykirby1.github.io/Zombobs/">
     <img src="https://img.shields.io/badge/PLAY_NOW-00C853?style=for-the-badge&logo=google-play&logoColor=white&labelColor=101010" height="50" alt="Play Now" />
@@ -99,8 +99,9 @@ This writes **`Zombobs_Web.zip`** and **fails the build** if zip entry paths use
 - **🎒 Equipment + Sets** — 6 slots, 5 rarities, Scavenger Kit / Fireteam Echo / Last Survivor set bonuses; **E** panel
 - **🦸 Hireable Heroes** — Scrap-hired AI companions (Rex, Mira, Doc, Nix, Kira, Voss) with role kits
 - **📱 Mobile Touch** — Virtual pad aim/fire/reload/melee/grenade/weapon/interact; safe-area + Capacitor polish
-- **🛡 Boot + FX** — WebGPU-aware boot overlay (progress creep, stall messaging, % + elapsed, 3-frame settle); blood-edge injury vignette; menu metal gunshots
-- **📊 Codebase** — **40,910** functional LOC / **140** files (`tools/count_functional_loc.py`, 2026-07-09)
+- **🛡 Boot + FX** — WebGPU-aware boot overlay (creep, stall, settle); main-menu horde silhouettes + ash/embers; blood-edge vignette; hand-horror + metal gunshots
+- **🧟 Main Menu Ambience** — Distant silhouette horde, ash/embers, title glitch, emoji button icons (`MenuHordeAmbience.js`)
+- **📊 Codebase** — **44,609** functional LOC / **144** files (`tools/count_functional_loc.py`, 2026-07-09)
 
 ## 🔥 What's New in V0.9.1 ALPHA
 
@@ -768,7 +769,7 @@ We believe in the power of the platform.
 
 ### Frontend Core
 - **100% Vanilla JavaScript (ES6+)** - No frameworks, no libraries, no bloat
-- **40,910 Functional LOC** - Audited with `tools/count_functional_loc.py` (2026-07-09); **140** maintained files / **36,106** JS LOC; large custom codebase across gameplay, UI, rendering, networking, and tooling
+- **44,609 Functional LOC** - Audited with `tools/count_functional_loc.py` (2026-07-09); **144** maintained files / **39,065** JS LOC; large custom codebase across gameplay, UI, rendering, networking, and tooling
 - **HTML5 Canvas API (2D Context)** - Hand-optimized rendering pipeline for gameplay/UI
 - **WebGPU** - Next-generation graphics API for GPU-accelerated background shaders and post-processing (automatic Canvas 2D fallback)
 - **Web Audio API** - Procedurally generated sound effects (Oscillators & Gain Nodes)

@@ -13,8 +13,9 @@
 *   **Campaign Zones 1–3** — Crash Site → Maintenance Tunnels → Switching Yard with extraction beacons; Zone 4 Control Tower designed in `CAMPAIGN_DESIGN.md`
 *   **Equipment Sets** — 6 slots, 5 rarities, crit/DR, named sets (Scavenger / Fireteam Echo / Last Survivor); press **E**
 *   **Hireable Heroes** — Scrap-hire Rex, Mira, Doc, Nix, Kira, Voss with role kits and gold nameplates
-*   **Immersion** — WebGPU blood-edge injury overlay, menu metal gunshots, boot progress/tips, coherent mobile touch
-*   **Codebase Audit** — 40,910 functional LOC across 140 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
+*   **Main Menu Ambience** — Distant silhouette horde, ash/embers, title glitch, emoji button icons (`MenuHordeAmbience.js`)
+*   **Immersion** — WebGPU blood-edge injury overlay, menu metal gunshots, boot creep/stall/settle, coherent mobile touch
+*   **Codebase Audit** — 44,609 functional LOC across 144 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
 
 ---
 
@@ -24,8 +25,9 @@
 *   **Equipment System** — 6 slots, 5 rarities, crit/DR rolls, inventory 24; three named sets with 2/4/6-piece bonuses (press **E**)
 *   **Hireable Heroes** — Rex, Mira, Doc, Nix, Kira, Voss hired with scrap; role-tuned AI companions + gold nameplates
 *   **Mobile Touch Wired** — Virtual pad aim/fire/reload/melee/grenade/weapon/E/flashlight; safe-area, HUD taps, Capacitor immersive focus
-*   **Boot Loader Upgrade** — Progress bar, rotating tips, 12s failsafe, WebGPU accent; blood-edge injury overlay; menu metal gunshots
-*   **Codebase Audit** — 40,910 functional LOC across 140 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
+*   **Main Menu Ambience** — Silhouette horde walkers, ash/embers, rotating subtitles, title pulse + RGB glitch, emoji menu icons
+*   **Boot Loader Upgrade** — Progress creep, stall messaging, % + elapsed, WebGPU phase callbacks, 3-frame settle, 20s failsafe; blood-edge injury overlay; menu metal gunshots
+*   **Codebase Audit** — 44,609 functional LOC across 144 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
 *   **V0.9.1 Systems Still Live** — 93 skills, 15 synergies, 6 class trees, corrupted wildcards, Splitter/Siren, mobile 2×2 level-up
 *   **V0.9.0 / V0.8.4 Still Live** — Lazy WebGPU/Socket.IO, smooth game entry, wave chaos, scrap shrine
 
