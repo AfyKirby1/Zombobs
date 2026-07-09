@@ -564,15 +564,20 @@ export class PlayerSystem {
                 ctx.strokeRect(barX, barY, barWidth, barHeight);
             }
 
-            // Player Name (for AI)
+            // Player Name (for AI / heroes)
             if (player.name && player.inputSource === 'ai') {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = player.isHero ? '#ffd54f' : '#ffffff';
                 ctx.font = "bold 12px 'Roboto Mono', monospace";
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
                 ctx.shadowColor = 'black';
                 ctx.shadowBlur = 4;
                 ctx.fillText(player.name, player.x, player.y - player.radius - 8);
+                if (player.isHero && player.heroRole) {
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.font = "10px 'Roboto Mono', monospace";
+                    ctx.fillText(player.heroRole.toUpperCase(), player.x, player.y - player.radius - 20);
+                }
                 ctx.shadowBlur = 0;
             }
 

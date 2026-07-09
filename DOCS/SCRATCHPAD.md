@@ -2,6 +2,14 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Massive Expansion — Equipment Sets + Heroes + Zone 3 (2026-07-09) ✅ COMPLETE
+- **Done**: Equipment depth — 10 names/slot, crit/DR bonuses, 3 named sets (Scavenger / Fireteam Echo / Last Survivor) with 2/4/6-piece bonuses; inventory 24; boss drop bias; set UI in Equipment screen.
+- **Done**: Guild Wars-style heroes — `js/core/heroDefinitions.js` (6 hireable heroes); `CompanionSystem.hireHero()` spends scrap, spawns AI with role kits (warrior/ranger/medic/scavenger); medic heal + scavenger scrap aura; Equipment screen **HEROES** tab.
+- **Done**: Campaign Zone 3 — `js/maps/switchingYard.js` (2800×1600 train lanes); tunnels → yard via `nextMapId`; extract at wave 3.
+- **Done**: Combat hooks — equipment crit + damage reduction; hero scrap aura on scrap pickup.
+- **Docs**: CHANGELOG + SUMMARY updated.
+- **Verify**: `test-syntax.ps1` OK. Play → farm scrap → E → Heroes → hire Rex; Campaign clear Z1→Z2→Z3.
+
 ### Campaign/Arcade Parity + Slower Leveling + Equipment System (2026-07-09) ✅ COMPLETE
 - **Done**: Campaign spawn parity — `ZombieSpawnSystem._computeSpawnPosition()` now uses arcade-style off-screen spawns for campaign, clamped/resolved against map walls and bounds instead of map edges only. Boss spawn also clamped in campaign.
 - **Done**: Slower leveling — `XP_BASE_REQUIREMENT` 100 → 200, per-level increment 20 → 50 (`SkillSystem.js`).

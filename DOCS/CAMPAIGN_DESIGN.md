@@ -31,17 +31,19 @@ Unlike the Arcade mode's open arena, the Campaign map is a **linear progression*
 *   **Objective:** "Secure the Perimeter."
 *   **Implementation:** `js/maps/crashSite.js` (2400×1800), `js/systems/MapLoader.js`, wall collision, static props, objective HUD, edge spawns. North ring gap reserved for Zone 2 transition.
 
-**Zone 2: The Maintenance Tunnels (Transition)**
+**Zone 2: The Maintenance Tunnels (Transition)** — ✅ **PLAYABLE (2026-07-09)**
 *   **Visuals:** Claustrophobic concrete hallways, flickering emergency lights.
 *   **Layout:** Narrow zig-zag paths. Line of sight is broken often.
 *   **Gameplay:** High tension. Fast Zombies spawn from vents. Shotguns/Melee preferred.
-*   **Hazard:** Leaking steam pipes (environmental damage).
+*   **Hazard:** Leaking steam pipes (environmental damage) — still pending.
+*   **Implementation:** `js/maps/maintenanceTunnels.js`; `nextMapId: 'switching_yard'`.
 
-**Zone 3: The Switching Yard (Open Combat)**
+**Zone 3: The Switching Yard (Open Combat)** — ✅ **PLAYABLE (2026-07-09)**
 *   **Visuals:** Train cars, tracks, rusted shipping containers.
-*   **Layout:** Three parallel lanes separated by long trains. Players can climb on top of trains (2.5D height illusion or just impassable walls with ramps).
-*   **Gameplay:** Long sightlines for Snipers/Rifles. Massive hordes funneling between trains.
-*   **Objective:** "Power the Gate." Players must find fuel cells to open the exit gate.
+*   **Layout:** Three parallel lanes separated by long trains.
+*   **Gameplay:** Long sightlines; hordes funnel between trains.
+*   **Objective:** "Power the Gate" / extract east after wave 3.
+*   **Implementation:** `js/maps/switchingYard.js` (2800×1600); chained from tunnels.
 
 **Zone 4: The Control Tower (Finale)**
 *   **Visuals:** Multi-story brick building, floodlights.
@@ -49,9 +51,10 @@ Unlike the Arcade mode's open arena, the Campaign map is a **linear progression*
 *   **Gameplay:** Defend the point while hacking the terminal. Boss fight (The Warden).
 
 ### Technical Requirements
-1.  **Map Loader:** ✅ **Implemented (2026-07-06)** — `MapLoader` + `js/maps/crashSite.js` (ES module map defs; circle-vs-AABB collision). JSON fetch deferred — no bundler.
-2.  **Trigger System:** ⏳ **Stub** — `updateTriggers()` fires objective text / wave notification on volume enter; dialogue and scripted waves pending.
-3.  **NavMesh:** ❌ **Not started** — zombies use direct chase + wall resolve; no pathfinding around complex geometry yet.
+1.  **Map Loader:** ✅ **Implemented** — `crash_site`, `maintenance_tunnels`, `switching_yard` in registry; `nextMapId` zone chain.
+2.  **Trigger System:** ⏳ **Partial** — objective + extraction triggers; dialogue/radio still light.
+3.  **NavMesh:** ❌ **Not started** — zombies use direct chase + wall resolve.
+4.  **Equipment + Heroes (2026-07-09):** ✅ Equipment sets + E-key GEAR/HEROES panel; hireable scrap heroes via `CompanionSystem.hireHero()`.
 
 ---
 
