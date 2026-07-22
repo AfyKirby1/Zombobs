@@ -9,6 +9,7 @@ import { groundTextureSystem } from './GroundTextureSystem.js';
 import { cameraSystem } from './CameraSystem.js';
 import { mapLoader } from './MapLoader.js';
 import { achievementSystem } from './AchievementSystem.js';
+import { worldShopSystem } from './WorldShopSystem.js';
 
 /**
  * GameStateManager - Handles game lifecycle (start, restart, game over)
@@ -358,6 +359,9 @@ export class GameStateManager {
                 mapLoader.spawnMapProps();
                 mapLoader.applyAmbiance();
                 cameraSystem.initialize(gameState.players[0]);
+            } else {
+                worldShopSystem.reset();
+                worldShopSystem.spawnDepot();
             }
         } else {
             // Just reset game objects, keep players

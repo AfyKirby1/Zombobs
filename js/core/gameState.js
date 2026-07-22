@@ -118,6 +118,7 @@ export function createPlayer(x, y, colorIndex = 0) {
         // Scrap resource (v0.8.2.2: The Scrapen Update)
         scrap: 0, // Scrap currency collected from zombies
         scrapMultiplier: 1.0, // Multiplier for scrap gains (from skills)
+        bonusLevelUpRerolls: 0, // Merchant reroll tokens
 
         // Input
         inputSource: 'mouse', // 'mouse', 'keyboard_arrow', 'gamepad'
@@ -264,6 +265,9 @@ export const gameState = {
     frostPickups: [],
     scrapPickups: [], // v0.8.2.2: Scrap resource pickup
     scrapShrines: [], // Wave-break scrap shop shrines
+    scrapDepot: null, // Arcade fixed restock depot
+    wanderingMerchant: null, // Arcade rare merchant NPC
+    scrapMagnetEndTime: 0, // Merchant scrap magnet buff
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -604,6 +608,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.frostPickups = [];
     gameState.scrapPickups = [];
     gameState.scrapShrines = [];
+    gameState.scrapDepot = null;
+    gameState.wanderingMerchant = null;
+    gameState.scrapMagnetEndTime = 0;
     gameState.equipmentPickups = [];
     gameState.showEquipment = false;
     gameState.grenades = [];

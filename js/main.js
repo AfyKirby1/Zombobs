@@ -50,6 +50,7 @@ import { ZombieSpawnSystem } from './systems/ZombieSpawnSystem.js';
 import { PlayerSystem } from './systems/PlayerSystem.js';
 import { GameStateManager } from './systems/GameStateManager.js';
 import { scrapShopSystem } from './systems/ScrapShopSystem.js';
+import { worldShopSystem } from './systems/WorldShopSystem.js';
 import { MeleeSystem } from './systems/MeleeSystem.js';
 import { playerProfileSystem } from './systems/PlayerProfileSystem.js';
 import { ProfileScreen } from './ui/ProfileScreen.js';
@@ -1223,12 +1224,17 @@ document.addEventListener('keydown', (e) => {
     if (key === 'e' && gameState.gameRunning && localPlayer) {
         if (gameState.waveBreakActive && scrapShopSystem.getNearbyShrine(localPlayer)) {
             scrapShopSystem.tryPurchase(localPlayer);
+        } else if (worldShopSystem.tryPurchase(localPlayer)) {
+            // Depot / merchant purchase
         } else if (isCampaignMode(gameState) && mapLoader.isLoaded() && mapLoader.tryInteract(localPlayer)) {
             // Hold-E power/hack — keep holding; MapLoader tracks progress while keys.e is down
             window._zombobsKeys = keys;
         } else {
             gameState.showEquipment = !gameState.showEquipment;
         }
+    }
+    if (key === 'q' && gameState.gameRunning && !gameState.gamePaused && localPlayer) {
+        worldShopSystem.tryCycleOffer(localPlayer, 1);
     }
 
     if (gameState.gamePaused || (!gameState.gameRunning && !gameHUD.gameOver)) {

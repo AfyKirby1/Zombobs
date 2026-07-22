@@ -1,18 +1,15 @@
 import { gameState } from '../core/gameState.js';
-import { canvas } from '../core/canvas.js';
 import {
     SCRAP_SHRINE_SPAWN_CHANCE,
     SCRAP_SHRINE_MIN_WAVE,
-    SCRAP_SHOP_OFFERS,
-    SCRAP_SHOP_OVERCLOCK_DURATION_MS,
-    SCRAP_SHOP_SHIELD_AMOUNT,
-    WEAPONS
+    SCRAP_SHOP_OFFERS
 } from '../core/constants.js';
 import { ScrapShrine } from '../entities/ScrapShrine.js';
 import { createParticles } from './ParticleSystem.js';
 import { DamageNumber } from '../entities/Particle.js';
-import { SentryTurret } from '../entities/SentryTurret.js';
 import { isSinglePlayerArcadeMode, isMobileDevice } from '../utils/gameUtils.js';
+import { applyScrapOffer } from '../utils/scrapOfferUtils.js';
+import { canvas } from '../core/canvas.js';
 
 /**
  * ScrapShopSystem — wave-break scrap shrine spawn and purchases.
@@ -71,7 +68,7 @@ export class ScrapShopSystem {
             return false;
         }
 
-        if (!this._applyUpgrade(player, offer.id)) {
+        if (!applyScrapOffer(player, offer.id)) {
             return false;
         }
 
@@ -90,51 +87,6 @@ export class ScrapShopSystem {
         const affordTag = canAfford ? '' : ' (low scrap)';
         const actionHint = isMobileDevice() ? 'Tap E' : 'Press E';
         return `${shrine.offer.icon} ${shrine.offer.label} [${shrine.offer.cost}] — ${actionHint}${affordTag}`;
-    }
-
-    _applyUpgrade(player, offerId) {
-        const now = Date.now();
-
-        if (offerId === 'ammo') {
-            const ammoMultiplier = player.ammoMultiplier || 1.0;
-            player.maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
-            player.currentAmmo = player.maxAmmo;
-            player.isReloading = false;
-            const weaponKeys = Object.keys(WEAPONS);
-            const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === player.currentWeapon);
-            if (currentWeaponKey && player.weaponStates[currentWeaponKey]) {
-                player.weaponStates[currentWeaponKey].ammo = player.currentAmmo;
-            }
-            return true;
-        }
-
-        if (offerId === 'shield') {
-            player.shield = Math.min(player.maxShield, (player.shield || 0) + SCRAP_SHOP_SHIELD_AMOUNT);
-            return true;
-        }
-
-        if (offerId === 'overclock') {
-            gameState.rapidFireEndTime = Math.max(
-                gameState.rapidFireEndTime,
-                now + SCRAP_SHOP_OVERCLOCK_DURATION_MS
-            );
-            return true;
-        }
-
-        if (offerId === 'sentry_turret') {
-            const turretX = player.x + Math.cos(player.angle) * 35;
-            const turretY = player.y + Math.sin(player.angle) * 35;
-            gameState.sentryTurrets.push(new SentryTurret(turretX, turretY));
-            return true;
-        }
-
-        if (offerId === 'orbital_strike') {
-            player.orbitalStrikeCount++;
-            player.activeThrowable = 'orbital_strike';
-            return true;
-        }
-
-        return false;
     }
 
     _getSpawnPosition(player) {

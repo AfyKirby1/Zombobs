@@ -25,6 +25,7 @@ import { updateParticles, drawParticles, updateSnowSystem } from './ParticleSyst
 import { zombieUpdateSystem } from './ZombieUpdateSystem.js';
 import { pickupSpawnSystem } from './PickupSpawnSystem.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
+import { worldShopSystem } from './WorldShopSystem.js';
 import { propSpawnSystem } from './PropSpawnSystem.js';
 import { propRenderSystem } from './PropRenderSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
@@ -337,9 +338,11 @@ export class GameLoopSystem {
                 });
                 gameState.waveBreakEndTime = Date.now() + breakDuration;
                 scrapShopSystem.trySpawnShrine();
+                worldShopSystem.onWaveBreakStart();
             } else if (Date.now() >= gameState.waveBreakEndTime) {
                 gameState.waveBreakActive = false;
                 scrapShopSystem.clearShrines();
+                worldShopSystem.onWaveBreakEnd();
                 gameState.wave++;
                 gameState.zombiesPerWave += 2;
                 applyWaveRiderBoost(gameState.players);
@@ -347,6 +350,7 @@ export class GameLoopSystem {
             }
         }
 
+        worldShopSystem.update();
         this._updateMusicIntensity();
     }
 
@@ -666,6 +670,7 @@ export class GameLoopSystem {
         }
 
         entityRenderSystem.drawEntities(gameState, ctx, viewport);
+        worldShopSystem.draw(viewport);
         this.drawPlayers();
 
         for (let i = 0; i < gameState.sentryTurrets.length; i++) {
@@ -804,11 +809,13 @@ export class GameLoopSystem {
         if (gameState.gameRunning && !gameState.gamePaused && localPlayer) {
             this._drawPickupTooltips(localPlayer);
             this._drawScrapShrinePrompt(localPlayer);
+            this._drawWorldShopPrompt(localPlayer);
         }
 
         gameHUD.draw();
         if (gameState.gameRunning && !gameState.gamePaused) {
             gameHUD.drawCompass();
+            gameHUD.drawShopBeacons(worldShopSystem.getBeaconTargets());
         }
         drawWaveNotification();
         drawCampaignObjective();
@@ -897,6 +904,25 @@ export class GameLoopSystem {
         let drawY = shrine.y - shrine.radius - 8;
 
         if (isSinglePlayerArcade) {
+            const screenPos = cameraSystem.worldToScreen(drawX, drawY);
+            drawX = screenPos.x;
+            drawY = screenPos.y;
+        }
+
+        this.gameHUD.drawTooltip(prompt, drawX, drawY);
+    }
+
+    _drawWorldShopPrompt(localPlayer) {
+        const prompt = worldShopSystem.getPromptText(localPlayer);
+        if (!prompt) return;
+
+        const pos = worldShopSystem.getNearbyVendorPosition(localPlayer);
+        if (!pos) return;
+
+        let drawX = pos.x;
+        let drawY = pos.y - (pos.radius || 20) - 8;
+
+        if (isSinglePlayerArcadeMode(gameState)) {
             const screenPos = cameraSystem.worldToScreen(drawX, drawY);
             drawX = screenPos.x;
             drawY = screenPos.y;

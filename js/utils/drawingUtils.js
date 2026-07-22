@@ -413,6 +413,49 @@ export function drawCampaignObjective() {
 }
 
 /**
+ * Persistent Boss Rush mode banner (top-center).
+ * [TRACE: SCRATCHPAD.md] — imported by GameLoopSystem; was missing after Boss Rush commit.
+ */
+export function drawBossRushHeader() {
+    if (gameState.gameMode !== 'boss_rush' || !gameState.gameRunning || gameState.gamePaused) {
+        return;
+    }
+
+    const wave = gameState.wave || 1;
+    const eliteHint = gameState.bossActive ? 'BOSS + ELITES' : 'CLEAR THE WAVE';
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const bannerY = 18;
+    const bannerWidth = Math.min(canvas.width - 40, 320);
+    const bannerX = (canvas.width - bannerWidth) * 0.5;
+
+    ctx.fillStyle = 'rgba(12, 4, 8, 0.78)';
+    ctx.strokeStyle = 'rgba(255, 23, 68, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(bannerX, bannerY, bannerWidth, 52, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 82, 82, 0.95)';
+    ctx.font = 'bold 11px "Roboto Mono", monospace';
+    ctx.fillText('👹 BOSS RUSH', canvas.width / 2, bannerY + 8);
+
+    ctx.fillStyle = 'rgba(245, 245, 245, 0.95)';
+    ctx.font = 'bold 15px "Roboto Mono", monospace';
+    ctx.fillText(`WAVE ${wave}`, canvas.width / 2, bannerY + 24);
+
+    ctx.fillStyle = 'rgba(255, 180, 180, 0.8)';
+    ctx.font = '10px "Roboto Mono", monospace';
+    ctx.fillText(eliteHint, canvas.width / 2, bannerY + 40);
+
+    ctx.restore();
+}
+
+/**
  * Zone transition interstitial overlay (campaign).
  */
 export function drawCampaignTransition() {

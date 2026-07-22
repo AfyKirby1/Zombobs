@@ -1968,7 +1968,126 @@ export class GameHUD {
 
         this.ctx.restore();
 
+        this.drawShopCompassMarkers();
         this.drawMultiplierOverlay();
+    }
+
+    /**
+     * Compass ticks for arcade depot / merchant beacons.
+     */
+    drawShopCompassMarkers() {
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+        if (gameState.players.length === 0) return;
+        if (!window.worldShopSystem) return;
+
+        const targets = window.worldShopSystem.getBeaconTargets();
+        if (!targets || targets.length === 0) return;
+
+        const player = gameState.players[0];
+        const {
+            compassHeight,
+            compassY,
+            compassWidth,
+            compassX,
+            scale
+        } = this.getTopCompassLayout();
+
+        const playerAngle = player.angle;
+        const compassAngle = -playerAngle + Math.PI / 2;
+        const centerX = compassX + compassWidth / 2;
+
+        this.ctx.save();
+        const fontSize = Math.max(9, Math.round(11 * scale));
+        this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+
+        for (let i = 0; i < targets.length; i++) {
+            const t = targets[i];
+            const worldAngle = Math.atan2(t.y - player.y, t.x - player.x);
+            // Convert world aim angle to compass heading (0 = North)
+            const targetCompass = -worldAngle + Math.PI / 2;
+            let normalizedAngle = targetCompass - compassAngle;
+            while (normalizedAngle > Math.PI) normalizedAngle -= Math.PI * 2;
+            while (normalizedAngle < -Math.PI) normalizedAngle += Math.PI * 2;
+
+            if (Math.abs(normalizedAngle) < Math.PI / 2) {
+                const offset = normalizedAngle / (Math.PI / 2) * (compassWidth / 2 - 20);
+                const markerX = centerX + offset;
+                this.ctx.fillStyle = t.color || '#cd7f32';
+                this.ctx.fillText(t.letter || '?', markerX, compassY + compassHeight - 4);
+            }
+        }
+
+        this.ctx.restore();
+    }
+
+    /**
+     * Screen-edge chevrons pointing at world shop beacons when off-screen.
+     * @param {Array<{x:number,y:number,letter:string,color:string}>} targets
+     */
+    drawShopBeacons(targets) {
+        if (!targets || targets.length === 0) return;
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+
+        const margin = 28;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        this.ctx.save();
+
+        for (let i = 0; i < targets.length; i++) {
+            const t = targets[i];
+            const screen = cameraSystem.worldToScreen(t.x, t.y);
+            const onScreen = screen.x >= margin && screen.x <= w - margin &&
+                screen.y >= margin + 40 && screen.y <= h - margin;
+
+            if (onScreen) {
+                // Soft world-marker pip when on screen
+                this.ctx.fillStyle = t.color || '#cd7f32';
+                this.ctx.globalAlpha = 0.85;
+                this.ctx.beginPath();
+                this.ctx.arc(screen.x, screen.y - 48, 5, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.globalAlpha = 1;
+                this.ctx.font = 'bold 11px "Roboto Mono", monospace';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(t.letter || '?', screen.x, screen.y - 62);
+                continue;
+            }
+
+            const dx = screen.x - cx;
+            const dy = screen.y - cy;
+            const angle = Math.atan2(dy, dx);
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+
+            const tMaxX = cos !== 0 ? ((cos > 0 ? w - margin : margin) - cx) / cos : Infinity;
+            const tMaxY = sin !== 0 ? ((sin > 0 ? h - margin : margin + 50) - cy) / sin : Infinity;
+            const tHit = Math.min(Math.abs(tMaxX), Math.abs(tMaxY));
+            const ax = cx + cos * tHit;
+            const ay = cy + sin * tHit;
+
+            this.ctx.fillStyle = t.color || '#cd7f32';
+            this.ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(ax, ay);
+            this.ctx.lineTo(ax - Math.cos(angle - 0.4) * 14, ay - Math.sin(angle - 0.4) * 14);
+            this.ctx.lineTo(ax - Math.cos(angle + 0.4) * 14, ay - Math.sin(angle + 0.4) * 14);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            this.ctx.font = 'bold 10px "Roboto Mono", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(t.letter || '?', ax - Math.cos(angle) * 18, ay - Math.sin(angle) * 18);
+        }
+
+        this.ctx.restore();
     }
 
     drawMultiplierOverlay() {

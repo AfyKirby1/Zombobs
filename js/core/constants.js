@@ -56,6 +56,56 @@ export const SCRAP_SHOP_OFFERS = [
     { id: 'orbital_strike', label: 'Orbital Strike', cost: SCRAP_SHOP_ORBITAL_STRIKE_COST, icon: '🛰️' }
 ];
 
+// Arcade Scrap Depot — fixed map restock shop
+export const DEPOT_INTERACT_RANGE = 80;
+export const DEPOT_SPAWN_DIST_MIN = 800;
+export const DEPOT_SPAWN_DIST_MAX = 1200;
+export const DEPOT_PRICE_SCALE_PER_WAVE = 0.08;
+export const DEPOT_PRICE_SCALE_CAP = 2.0;
+export const DEPOT_MEDKIT_HEAL = 40;
+export const DEPOT_OFFERS = [
+    { id: 'ammo', label: 'Ammo Cache', cost: 15, icon: '📦', stock: 3 },
+    { id: 'medkit', label: 'Medkit', cost: 25, icon: '❤️', stock: 2 },
+    { id: 'grenade', label: 'Grenade', cost: 20, icon: '💣', stock: 2 },
+    { id: 'molotov', label: 'Molotov', cost: 25, icon: '🔥', stock: 1 },
+    { id: 'shield', label: 'Armor Plate', cost: 30, icon: '🛡', stock: 2 }
+];
+
+// Wandering Merchant — rare black-market visit
+export const MERCHANT_INTERACT_RANGE = 75;
+export const MERCHANT_MIN_WAVE = 6;
+export const MERCHANT_SPAWN_CHANCE = 0.35;
+export const MERCHANT_COOLDOWN_WAVES = 2;
+export const MERCHANT_DURATION_MS = 22000;
+export const MERCHANT_SPAWN_DIST_MIN = 400;
+export const MERCHANT_SPAWN_DIST_MAX = 700;
+export const MERCHANT_OVERCLOCK_DURATION_MS = 20000;
+export const MERCHANT_SCRAP_MAGNET_DURATION_MS = 15000;
+export const MERCHANT_SCRAP_MAGNET_RANGE_BONUS = 200;
+export const MERCHANT_SCRAP_VALUE_MULT = 1.5;
+export const MERCHANT_XP_BURST = 150;
+export const MERCHANT_OFFER_SLOTS = 3;
+export const MERCHANT_FLAVOR_ARRIVE = [
+    'Got goods. Got prices. Got outta here.',
+    'Black market open — make it snappy.',
+    'Horde pays well. You pay better.'
+];
+export const MERCHANT_FLAVOR_LEAVE = [
+    'Later, scav.',
+    'Stock gone. I gone.',
+    'Radio says leave. I listen.'
+];
+export const MERCHANT_OFFERS = [
+    { id: 'sentry_turret', label: 'Sentry Turret', cost: 45, icon: '🤖', weight: 3, rare: false },
+    { id: 'orbital_strike', label: 'Orbital Strike', cost: 70, icon: '🛰️', weight: 2, rare: true },
+    { id: 'mystery_crate', label: 'Mystery Crate', cost: 35, icon: '🎁', weight: 4, rare: false },
+    { id: 'overclock_syringe', label: 'Overclock Syringe', cost: 55, icon: '💉', weight: 3, rare: false },
+    { id: 'scrap_magnet', label: 'Scrap Magnet', cost: 40, icon: '🧲', weight: 3, rare: false },
+    { id: 'panic_nuke', label: 'Panic Nuke', cost: 90, icon: '☢️', weight: 1, rare: true },
+    { id: 'reroll_token', label: 'Reroll Token', cost: 50, icon: '🔄', weight: 2, rare: true },
+    { id: 'xp_burst', label: 'XP Burst', cost: 30, icon: '✨', weight: 4, rare: false }
+];
+
 // Low ammo threshold (25% of max ammo)
 export const LOW_AMMO_FRACTION = 0.25;
 

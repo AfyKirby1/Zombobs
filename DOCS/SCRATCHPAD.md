@@ -2,6 +2,13 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Fix missing `drawBossRushHeader` export (2026-07-21) ✅ COMPLETE
+- **Problem**: GitHub Pages crash — `GameLoopSystem.js` imports `drawBossRushHeader` from `drawingUtils.js` but export was never added (Boss Rush commit `ca92d3e`).
+- **Done**: Added `drawBossRushHeader()` in `js/utils/drawingUtils.js` — top banner when `gameMode === 'boss_rush'` (wave + boss/elites hint).
+- **Syntax**: `node --check` green on `drawingUtils.js` + `GameLoopSystem.js`.
+- **Verify**: Hard refresh GitHub Pages / local — main menu loads; Boss Rush shows banner during run.
+- **Deploy**: Push so `otterdays.github.io/Zombobs` picks up the fix.
+
 ### V0.9.3 Modality Pass (2026-07-09) ✅ COMPLETE
 - **Done**: Bump **V0.9.3 ALPHA** — *Act 1 Finale Update* per `VERSION_UPDATE_CHECKLIST.md`: `constants.js`, `index.html`, `landing.html`, `README.md`, `ITCH/page_description.md`, server packages, `AGENTS.md`, `CHANGELOG`, `SUMMARY`, `My_Thoughts`, checklist amend.
 - **Highlights**: Z1–4 + Warden + ACT 1 CLEAR, survivor quests, campaign alive, menu horde ambience, boot hardening, achievements/gallery, 44,609 LOC.
@@ -390,7 +397,7 @@
 - **WebGPU Screen Shake Sync [2025-12-23]**: Synced shake offset between Canvas 2D and WebGPU renderers.
 
 ## Backlog
-- [ ] Implement "Boss Rush" mode
+- [ ] Implement "Boss Rush" mode — [AMENDED 2026-07-21]: Mode + spawn path + menu button shipped (`ca92d3e`); header export fixed. Polish/balance still open.
 - [ ] Add rest of weapon placeholders (Flamethrower is done, Laser is done)
 - [ ] Campaign Zone 2 — Maintenance Tunnels (narrow layout + steam hazards)
 - [ ] Campaign trigger/dialogue system (debris-clear scripted event)
@@ -399,11 +406,13 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Docs sync — Unreleased (2026-07-09)**: Boot hardening + `MenuHordeAmbience` + LOC 44,609 across SUMMARY/ARCHITECTURE/AGENTS/README/landing/itch/SCRATCHPAD/VERSION_UPDATE_CHECKLIST.
-2. **Boot Loader WebGPU hardening (2026-07-09)**: creep, stall, settle, `onPhase` callbacks; `BootLoader.js`, `WebGPURenderer.js`, `index.html`, `style.css`.
-3. **Functional LOC re-audit (2026-07-09)**: 44,609 / 144 files (JS 39,065 / 107); public copy updated.
-4. **Main Menu Flavor Pass (2026-07-09)**: `MenuHordeAmbience` silhouettes + ash/embers; button emojis; title glitch; blood drip.
-5. **Campaign Alive Coverage (2026-07-09)**: Toasts/quests/radio-SFX/casting/retry/victory/achievements; docs synced.
+1. **Fix `drawBossRushHeader` export (2026-07-21)**: Added missing export in `drawingUtils.js` — unblocked module load after Boss Rush commit.
+2. **Docs sync — Unreleased (2026-07-09)**: Boot hardening + `MenuHordeAmbience` + LOC 44,609 across SUMMARY/ARCHITECTURE/AGENTS/README/landing/itch/SCRATCHPAD/VERSION_UPDATE_CHECKLIST.
+3. **Boot Loader WebGPU hardening (2026-07-09)**: creep, stall, settle, `onPhase` callbacks; `BootLoader.js`, `WebGPURenderer.js`, `index.html`, `style.css`.
+4. **Functional LOC re-audit (2026-07-09)**: 44,609 / 144 files (JS 39,065 / 107); public copy updated.
+5. **Main Menu Flavor Pass (2026-07-09)**: `MenuHordeAmbience` silhouettes + ash/embers; button emojis; title glitch; blood drip.
+
+[AMENDED 2026-07-21]: Prior #5 Campaign Alive Coverage retained in history above Active Tasks section; dropped from last-5 for space.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

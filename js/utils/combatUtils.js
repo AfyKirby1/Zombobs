@@ -968,7 +968,7 @@ function triggerFrostNova(x, y, showFloatingText = true) {
     }
 }
 
-function triggerNuke(x, y, showFloatingText = true) {
+export function triggerNuke(x, y, showFloatingText = true) {
     gameState.shakeAmount = 30;
     if (showFloatingText) {
         gameState.damageNumbers.push(new DamageNumber(x, y - 50, "TACTICAL NUKE!"));
