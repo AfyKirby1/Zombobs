@@ -2,15 +2,37 @@ import { ctx } from '../core/canvas.js';
 import { settingsManager } from './SettingsManager.js';
 
 let groundPattern = null;
+// Procedural fallback when sample_assets tile is missing
 const groundImage = new Image();
 groundImage.src = 'sample_assets/tiles/bloody_dark_floor.png';
+groundImage.onerror = () => {
+    // Keep naturalWidth 0 — callers fall back to procedural pattern
+};
 
-// Function to create the ground pattern from image
+// Function to create the ground pattern from image (or procedural blood floor)
 function createGroundPattern() {
     if (groundImage.complete && groundImage.naturalWidth > 0) {
         return ctx.createPattern(groundImage, 'repeat');
     }
-    return null;
+    // Procedural dark bloody floor tile
+    const tile = document.createElement('canvas');
+    tile.width = 128;
+    tile.height = 128;
+    const tctx = tile.getContext('2d');
+    tctx.fillStyle = '#1a1210';
+    tctx.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 40; i++) {
+        const x = Math.random() * 128;
+        const y = Math.random() * 128;
+        const r = 2 + Math.random() * 8;
+        tctx.fillStyle = `rgba(${40 + Math.random() * 40}, ${8 + Math.random() * 12}, ${8 + Math.random() * 10}, ${0.15 + Math.random() * 0.25})`;
+        tctx.beginPath();
+        tctx.arc(x, y, r, 0, Math.PI * 2);
+        tctx.fill();
+    }
+    tctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    tctx.strokeRect(0.5, 0.5, 127, 127);
+    return ctx.createPattern(tile, 'repeat');
 }
 
 // Initialize ground pattern

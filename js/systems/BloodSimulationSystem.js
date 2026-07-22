@@ -1,15 +1,9 @@
 /**
  * BloodSimulationSystem.js
- * 
- * GPU-Accelerated Volumetric Blood Simulation System
- * Uses WebGPU compute shaders for real-time blood flow physics
- * 
- * Features:
- * - Voxel-based fluid dynamics (cellular automata + Navier-Stokes approximation)
- * - Blood pooling and spreading on ground
- * - Viscosity simulation (thick blood physics)
- * - Evaporation over time
- * - Quality scaling (Low: disabled, Medium: 64x64, High: 128x128, Ultra: 128x128 + enhanced)
+ *
+ * Camera-anchored blood pooling (CPU cellular automata).
+ * Optional GPU soft-disc render via WebGPURenderer.syncBloodCells.
+ * [TRACE: engine_vfx_modernize]
  */
 
 import { settingsManager } from './SettingsManager.js';
@@ -39,6 +33,11 @@ export class BloodSimulationSystem {
         // Performance tracking
         this.simulationTime = 0;
         this._gridInitialized = false;
+
+        // Camera-anchored origin (world position of grid[0,0])
+        this.originX = 0;
+        this.originY = 0;
+        this._originSet = false;
     }
     
     /**
@@ -123,19 +122,50 @@ export class BloodSimulationSystem {
     }
 
     /**
+     * Map world → grid using camera-anchored origin (no world modulo tiling).
      * @returns {number} Grid cell index, or -1 if out of bounds
      */
     worldToGridIndex(worldX, worldY) {
-        // For now, use simple modulo wrapping (simpler than chunk system)
-        // This creates a repeating blood grid pattern
-        const gridX = Math.floor(worldX / this.cellSize) % this.gridWidth;
-        const gridY = Math.floor(worldY / this.cellSize) % this.gridHeight;
+        if (!this._originSet) {
+            const halfW = (this.gridWidth * this.cellSize) * 0.5;
+            const halfH = (this.gridHeight * this.cellSize) * 0.5;
+            this.originX = worldX - halfW;
+            this.originY = worldY - halfH;
+            this._originSet = true;
+        }
 
-        // Handle negative coordinates
-        const normalizedX = gridX < 0 ? gridX + this.gridWidth : gridX;
-        const normalizedY = gridY < 0 ? gridY + this.gridHeight : gridY;
+        const gridX = Math.floor((worldX - this.originX) / this.cellSize);
+        const gridY = Math.floor((worldY - this.originY) / this.cellSize);
 
-        return normalizedY * this.gridWidth + normalizedX;
+        if (gridX < 0 || gridY < 0 || gridX >= this.gridWidth || gridY >= this.gridHeight) {
+            // Recenter grid on out-of-bounds deposit (keeps pool under action)
+            const halfW = (this.gridWidth * this.cellSize) * 0.5;
+            const halfH = (this.gridHeight * this.cellSize) * 0.5;
+            this.originX = worldX - halfW;
+            this.originY = worldY - halfH;
+            const gx = Math.floor((worldX - this.originX) / this.cellSize);
+            const gy = Math.floor((worldY - this.originY) / this.cellSize);
+            if (gx < 0 || gy < 0 || gx >= this.gridWidth || gy >= this.gridHeight) {
+                return -1;
+            }
+            return gy * this.gridWidth + gx;
+        }
+
+        return gridY * this.gridWidth + gridX;
+    }
+
+    /**
+     * Follow player so blood grid stays under combat.
+     */
+    setCameraAnchor(worldX, worldY) {
+        if (!this.enabled) return;
+        if (!this._originSet) {
+            const halfW = (this.gridWidth * this.cellSize) * 0.5;
+            const halfH = (this.gridHeight * this.cellSize) * 0.5;
+            this.originX = worldX - halfW;
+            this.originY = worldY - halfH;
+            this._originSet = true;
+        }
     }
 
     /**
@@ -238,11 +268,11 @@ export class BloodSimulationSystem {
                     continue;
                 }
 
-                // Get neighbors (with wrapping) - cache indices
-                const leftIdx = rowOffset + ((x - 1 + gridWidth) % gridWidth);
-                const rightIdx = rowOffset + ((x + 1) % gridWidth);
-                const topIdx = ((y - 1 + gridHeight) % gridHeight) * gridWidth + x;
-                const bottomIdx = ((y + 1) % gridHeight) * gridWidth + x;
+                // Get neighbors (no wrap — clamp at edges for camera-anchored grid)
+                const leftIdx = rowOffset + Math.max(0, x - 1);
+                const rightIdx = rowOffset + Math.min(gridWidth - 1, x + 1);
+                const topIdx = Math.max(0, y - 1) * gridWidth + x;
+                const bottomIdx = Math.min(gridHeight - 1, y + 1) * gridWidth + x;
 
                 // Calculate average height (simple flow model)
                 const avgHeight = (currentGrid[leftIdx].height + currentGrid[rightIdx].height + 
@@ -311,7 +341,8 @@ export class BloodSimulationSystem {
             }
         }
         
-        this.spawnQueue.length = 0; // Clear without allocating new array
+        this.spawnQueue.length = 0;
+        this._originSet = false;
     }
 
     /**

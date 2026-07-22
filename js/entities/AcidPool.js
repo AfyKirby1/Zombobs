@@ -135,36 +135,58 @@ export class AcidPool {
         const alpha = this.life / this.maxLife;
 
         if (this.isFirePool) {
-            // Fire pool glow
-            const glowGradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-            glowGradient.addColorStop(0, `rgba(255, 69, 0, ${alpha * 0.4})`);
-            glowGradient.addColorStop(0.5, `rgba(255, 140, 0, ${alpha * 0.3})`);
-            glowGradient.addColorStop(1, `rgba(255, 69, 0, 0)`);
+            const t = Date.now() / 1000;
+            // Outer heat glow
+            const outerR = this.radius * 1.35;
+            const glowGradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, outerR);
+            glowGradient.addColorStop(0, `rgba(255, 200, 60, ${alpha * 0.35})`);
+            glowGradient.addColorStop(0.35, `rgba(255, 100, 0, ${alpha * 0.4})`);
+            glowGradient.addColorStop(0.7, `rgba(180, 30, 0, ${alpha * 0.2})`);
+            glowGradient.addColorStop(1, `rgba(80, 0, 0, 0)`);
             ctx.fillStyle = glowGradient;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, outerR, 0, Math.PI * 2);
             ctx.fill();
 
-            // Fire pool surface
-            const poolGradient = ctx.createRadialGradient(this.x - 5, this.y - 5, 0, this.x, this.y, this.radius);
-            poolGradient.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.7})`);
-            poolGradient.addColorStop(0.5, `rgba(255, 69, 0, ${alpha * 0.5})`);
-            poolGradient.addColorStop(1, `rgba(139, 0, 0, ${alpha * 0.3})`);
+            // Core fire pool
+            const poolGradient = ctx.createRadialGradient(
+                this.x - 5, this.y - 5, 0, this.x, this.y, this.radius
+            );
+            poolGradient.addColorStop(0, `rgba(255, 240, 120, ${alpha * 0.85})`);
+            poolGradient.addColorStop(0.35, `rgba(255, 140, 0, ${alpha * 0.7})`);
+            poolGradient.addColorStop(0.7, `rgba(220, 40, 0, ${alpha * 0.5})`);
+            poolGradient.addColorStop(1, `rgba(60, 0, 0, ${alpha * 0.15})`);
             ctx.fillStyle = poolGradient;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius * 0.8, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.radius * 0.9, 0, Math.PI * 2);
             ctx.fill();
 
-            // Crackling flames/bubbles/particles rising effect
-            const bubbleTime = Date.now() / 150;
-            for (let i = 0; i < 5; i++) {
-                const angle = bubbleTime + i * (Math.PI * 2 / 5);
-                const r = (0.2 + 0.5 * Math.sin(bubbleTime + i)) * this.radius;
-                const bubbleX = this.x + Math.cos(angle) * r;
-                const bubbleY = this.y + Math.sin(angle) * r - (Math.abs(Math.sin(bubbleTime + i)) * 10);
-                ctx.fillStyle = `rgba(255, ${100 + Math.floor(Math.random() * 155)}, 0, ${alpha * 0.6})`;
+            // Rising flame tongues
+            const flameCount = 8;
+            for (let i = 0; i < flameCount; i++) {
+                const angle = t * 2.5 + i * (Math.PI * 2 / flameCount);
+                const r = (0.15 + 0.55 * (0.5 + 0.5 * Math.sin(t * 3 + i))) * this.radius;
+                const flameX = this.x + Math.cos(angle) * r;
+                const rise = Math.abs(Math.sin(t * 4 + i * 1.7)) * 14;
+                const flameY = this.y + Math.sin(angle) * r * 0.4 - rise;
+                const fr = 2 + Math.abs(Math.sin(t * 5 + i)) * 4;
+                const g = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY, fr);
+                g.addColorStop(0, `rgba(255, 255, 180, ${alpha * 0.9})`);
+                g.addColorStop(0.5, `rgba(255, 120, 0, ${alpha * 0.55})`);
+                g.addColorStop(1, `rgba(255, 40, 0, 0)`);
+                ctx.fillStyle = g;
                 ctx.beginPath();
-                ctx.arc(bubbleX, bubbleY, 2 + Math.random() * 3, 0, Math.PI * 2);
+                ctx.arc(flameX, flameY, fr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Smoke wisps
+            for (let i = 0; i < 3; i++) {
+                const sx = this.x + Math.sin(t * 0.8 + i * 2) * this.radius * 0.3;
+                const sy = this.y - this.radius * 0.4 - ((t * 20 + i * 40) % 50);
+                ctx.fillStyle = `rgba(40, 30, 25, ${alpha * 0.15})`;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 6 + i * 2, 0, Math.PI * 2);
                 ctx.fill();
             }
         } else if (this.isSlimePool) {

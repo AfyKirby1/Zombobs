@@ -21,7 +21,7 @@ import { applyWaveRiderBoost } from '../utils/combatUtils.js';
 import { setGameMusicIntensity } from './AudioSystem.js';
 import { shootBullet, handlePlayerZombieCollisions, handlePickupCollisions } from '../utils/combatUtils.js';
 import { handleBulletZombieCollisions } from '../utils/bulletZombieCollisions.js';
-import { updateParticles, drawParticles, updateSnowSystem } from './ParticleSystem.js';
+import { updateParticles, drawParticles, updateSnowSystem, PARTICLE_KIND, emit } from './ParticleSystem.js';
 import { zombieUpdateSystem } from './ZombieUpdateSystem.js';
 import { pickupSpawnSystem } from './PickupSpawnSystem.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
@@ -33,6 +33,7 @@ import { cameraSystem } from './CameraSystem.js';
 import { mapLoader } from './MapLoader.js';
 import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
+import { decalSystem } from './vfx/DecalSystem.js';
 import { skillSystem } from './SkillSystem.js';
 import { equipmentSystem } from './EquipmentSystem.js';
 import { getRarityColor } from '../core/equipmentDefinitions.js';
@@ -214,6 +215,44 @@ export class GameLoopSystem {
         }
 
         bloodSimulationSystem.update(16.67);
+        const anchorPlayer = gameState.players[0];
+        if (anchorPlayer) {
+            bloodSimulationSystem.setCameraAnchor(anchorPlayer.x, anchorPlayer.y);
+        }
+        decalSystem.update();
+
+        // Fire pool point lights + heat haze + occasional embers
+        if (gameState.acidPools) {
+            for (let i = 0; i < gameState.acidPools.length; i++) {
+                const pool = gameState.acidPools[i];
+                if (!pool || !pool.isFirePool) continue;
+                if (this.webgpuRenderer?.addPointLight) {
+                    this.webgpuRenderer.addPointLight(
+                        pool.x, pool.y,
+                        pool.radius * 2.2,
+                        0.55,
+                        1.0, 0.45, 0.1
+                    );
+                }
+                if (this.webgpuRenderer) {
+                    this.webgpuRenderer.hazeStrength = Math.min(
+                        1.2,
+                        (this.webgpuRenderer.hazeStrength || 0) + 0.08
+                    );
+                }
+                if (Math.random() < 0.15) {
+                    emit(PARTICLE_KIND.ember, pool.x, pool.y, '#ff8800', {
+                        radius: 2 + Math.random() * 2,
+                        vx: (Math.random() - 0.5) * 1.5,
+                        vy: -1 - Math.random() * 2,
+                        life: 25,
+                        maxLife: 25,
+                        drag: 0.96,
+                        gravity: -0.04,
+                    });
+                }
+            }
+        }
 
         compactArrayWithUpdate(gameState.shells, shell => {
             if (shell.life <= 0) return false;
@@ -694,6 +733,7 @@ export class GameLoopSystem {
             propRenderSystem.render(gameState, viewport);
         }
 
+        decalSystem.draw();
         entityRenderSystem.drawEntities(gameState, ctx, viewport);
         worldShopSystem.draw(viewport);
         this.drawPlayers();
@@ -758,7 +798,10 @@ export class GameLoopSystem {
 
         if (bloodSimulationSystem.enabled) {
             const bloodData = bloodSimulationSystem.getBloodData();
-            if (bloodData.length > 0) {
+            const gpuBlood = this.webgpuRenderer?.isAvailable?.() && this.webgpuRenderer.syncBloodCells;
+            if (gpuBlood && bloodData.length > 0) {
+                this.webgpuRenderer.syncBloodCells(bloodData, bloodSimulationSystem.cellSize);
+            } else if (bloodData.length > 0) {
                 ctx.fillStyle = '#8B0000';
                 for (let i = 0; i < bloodData.length; i++) {
                     const cell = bloodData[i];

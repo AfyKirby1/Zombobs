@@ -225,6 +225,9 @@ export const VERSION_HISTORY = [
         date: '2026-07-21',
         tag: 'CURRENT',
         highlights: [
+            'Engine VFX modernize — real bloom/post-FX, typed particles, GPU combat FX',
+            'Explosion/fire fidelity + heat haze, point lights, blood/scorch decals',
+            'Camera-anchored blood pools + WGSL shader extract (js/shaders/)',
             'Arcade Scrap Depot — fixed restock shop + always-on beacon',
             'Wandering Merchant — rare black-market visits + Gear Crate',
             'Equipment drops improved — Warden loot, melee drops, scrap sink',

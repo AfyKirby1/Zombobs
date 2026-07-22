@@ -6,6 +6,10 @@ import { graphicsSettings } from '../systems/GraphicsSystem.js';
 import { ObjectPool } from '../utils/ObjectPool.js';
 import { settingsManager } from './SettingsManager.js';
 import { compactArrayWithUpdate } from '../utils/arrayUtils.js';
+import { parseColorToRgba, PARTICLE_KIND, PARTICLE_KIND_BUDGET } from '../utils/colorParse.js';
+import { decalSystem } from './vfx/DecalSystem.js';
+
+export { PARTICLE_KIND } from '../utils/colorParse.js';
 
 // Reusable batching map to avoid allocation per frame
 const particleBatches = new Map();
@@ -24,41 +28,91 @@ export const particlePool = new ObjectPool(
 function getParticleLimit() {
     const particleCount = graphicsSettings ? graphicsSettings.maxParticles : 'high';
 
-    // Convert quality preset to numeric limit
-    // Low = CPU particles (50), High = GPU 10k (200 CPU fallback), Ultra = GPU 50k (500 CPU fallback)
-    // For CPU particles (non-WebGPU), we use lower limits
     if (particleCount === 'low') {
         return 50;
     } else if (particleCount === 'high') {
-        return 200; // Reasonable limit for high quality CPU particles
+        return 200;
     } else if (particleCount === 'ultra') {
-        return 500; // Higher limit for ultra quality
+        return 500;
     }
 
-    // Default fallback
     return MAX_PARTICLES;
 }
 
+function countParticlesOfType(type) {
+    const particles = gameState.particles;
+    let n = 0;
+    for (let i = 0; i < particles.length; i++) {
+        if (particles[i] && particles[i].type === type) n++;
+    }
+    return n;
+}
+
+function enqueueGpuCombat(p) {
+    const effects = window.webgpuRenderer?.effects;
+    if (!effects?.enqueueCombat || !p) return;
+    const kind = p.type;
+    if (
+        kind !== PARTICLE_KIND.fire &&
+        kind !== PARTICLE_KIND.flash &&
+        kind !== PARTICLE_KIND.smoke &&
+        kind !== PARTICLE_KIND.ember &&
+        kind !== PARTICLE_KIND.shockwave
+    ) {
+        return;
+    }
+    effects.enqueueCombat(
+        p.x, p.y, p.vx || 0, p.vy || 0,
+        p.rgba || parseColorToRgba(p.color),
+        p.radius || 2,
+        p.life || 30,
+        kind
+    );
+}
+
+/**
+ * Typed emitter facade — soft per-kind budgets under global limit.
+ */
+export function emit(kind, x, y, color, props = {}) {
+    const limit = getParticleLimit();
+    const budgetFrac = PARTICLE_KIND_BUDGET[kind];
+    if (budgetFrac !== undefined) {
+        const softCap = Math.max(4, Math.floor(limit * budgetFrac));
+        if (countParticlesOfType(kind) >= softCap) {
+            return null;
+        }
+    }
+    const merged = {
+        ...props,
+        type: kind,
+        rgba: props.rgba || parseColorToRgba(color),
+    };
+    const p = spawnParticle(x, y, color, merged);
+    enqueueGpuCombat(p);
+    return p;
+}
+
 export function spawnParticle(x, y, color, props = {}) {
-    // Early return if already at particle limit (prevents creating particles we'll immediately remove)
     const limit = getParticleLimit();
     if (gameState.particles.length >= limit) {
-        // Don't spawn more particles - we're at the limit
-
         return null;
     }
 
-    const p = particlePool.get(x, y, color, props);
+    const merged = {
+        ...props,
+        type: props.type !== undefined ? props.type : PARTICLE_KIND.spark,
+        rgba: props.rgba || parseColorToRgba(color),
+    };
+
+    const p = particlePool.get(x, y, color, merged);
     if (!p) {
         return null;
     }
 
     gameState.particles.push(p);
 
-
-    // Double-check limit (in case multiple particles spawned in same frame)
     if (gameState.particles.length > limit) {
-        const removed = gameState.particles.shift(); // Remove oldest
+        const removed = gameState.particles.shift();
         if (removed) {
             particlePool.release(removed);
         }
@@ -100,16 +154,18 @@ export function spawnSnowParticle(viewport) {
     
     // Use rgba to avoid batching with #ffffff sparks (which would mess up opacity)
     const p = spawnParticle(x, y, 'rgba(255, 255, 255, 1)', {
-        life: 600, // Long life
-        maxLife: 600
+        life: 600,
+        maxLife: 600,
+        type: PARTICLE_KIND.snow,
+        drag: 1,
+        gravity: 0,
     });
     
     if (!p) return;
     
-    // Custom properties for snow
     p.radius = Math.random() * 2 + 1;
-    p.vx = (Math.random() - 0.5) * 2; // Slight horizontal drift
-    p.vy = Math.random() * 2 + 1; // Falling speed
+    p.vx = (Math.random() - 0.5) * 2;
+    p.vy = Math.random() * 2 + 1;
     p.swayOffset = Math.random() * Math.PI * 2;
     p.swaySpeed = Math.random() * 0.05 + 0.02;
     
@@ -160,6 +216,8 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
     const bloodGoreLevel = settingsManager.getSetting('video', 'bloodGoreLevel') ?? 1.0;
     if (bloodGoreLevel === 0) return;
 
+    decalSystem.addBlood(x, y, isKill ? 1 : 0.4);
+
     const quality = graphicsSettings.quality;
     const limit = getParticleLimit();
     const availableSlots = Math.max(0, limit - gameState.particles.length);
@@ -201,17 +259,19 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
         const speed = isKill ? (Math.random() * 6 + 2) : (Math.random() * 4 + 1);
         const radius = quality === 'ultra' ? (Math.random() * 3 + 1.5) : (Math.random() * 2.5 + 1.5);
 
-        const p = spawnParticle(x, y, bloodColors[Math.floor(Math.random() * bloodColors.length)], {
+        const p = emit(PARTICLE_KIND.blood, x, y,
+            bloodColors[Math.floor(Math.random() * bloodColors.length)], {
             radius: radius,
             vx: Math.cos(spreadAngle) * speed,
             vy: Math.sin(spreadAngle) * speed,
             life: isKill ? 40 : 25,
-            maxLife: isKill ? 40 : 25
+            maxLife: isKill ? 40 : 25,
+            drag: 0.98,
+            gravity: 0.04,
         });
         if (!p) break;
     }
 
-    // Large detail particles for kills (high/ultra quality)
     if (isKill && hasDetailParticles && gameState.particles.length < limit) {
         const remainingSlots = limit - gameState.particles.length;
         let largeParticleCount = quality === 'ultra' ? 5 : 3;
@@ -219,7 +279,7 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
         const largeParticlesToSpawn = Math.min(largeParticleCount, remainingSlots);
 
         for (let i = 0; i < largeParticlesToSpawn; i++) {
-            const p = spawnParticle(
+            const p = emit(PARTICLE_KIND.blood,
                 x + (Math.random() - 0.5) * 15,
                 y + (Math.random() - 0.5) * 15,
                 '#5a0000',
@@ -228,21 +288,20 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
                     vx: (Math.random() - 0.5) * 0.5,
                     vy: (Math.random() - 0.5) * 0.5,
                     life: 60,
-                    maxLife: 60
+                    maxLife: 60,
                 }
             );
             if (!p) break;
         }
     }
 
-    // Ultra quality: Pooling effect (stationary blood puddles)
     if (isKill && quality === 'ultra' && gameState.particles.length < limit) {
         const remainingSlots = limit - gameState.particles.length;
         let poolParticleCount = 3;
         poolParticleCount = Math.floor(poolParticleCount * bloodGoreLevel);
         const poolParticles = Math.min(poolParticleCount, remainingSlots);
         for (let i = 0; i < poolParticles; i++) {
-            const p = spawnParticle(
+            const p = emit(PARTICLE_KIND.blood,
                 x + (Math.random() - 0.5) * 20,
                 y + (Math.random() - 0.5) * 20,
                 'rgba(139, 0, 0, 0.6)',
@@ -251,7 +310,7 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
                     vx: (Math.random() - 0.5) * 0.2,
                     vy: (Math.random() - 0.5) * 0.2,
                     life: 80,
-                    maxLife: 80
+                    maxLife: 80,
                 }
             );
             if (!p) break;
@@ -260,23 +319,15 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
 }
 
 export function createExplosion(x, y, size = 1.0) {
-
-
-    // Safety check - ensure we have valid coordinates
     if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
         return;
     }
 
-
-
-    // Force create explosion even if at particle limit - explosions are critical
-    const originalLength = gameState.particles.length;
-
+    decalSystem.addScorch(x, y, size);
 
     const limit = getParticleLimit();
     const availableSlots = Math.max(0, limit - gameState.particles.length);
 
-    // Safety check for graphicsSettings
     let explosionQuality;
     try {
         explosionQuality = graphicsSettings ? graphicsSettings.getQualityValues('explosion') : {
@@ -296,196 +347,145 @@ export function createExplosion(x, y, size = 1.0) {
         };
     }
 
-    // Scale explosion based on size parameter (1.0 = normal, 1.5 = rocket, etc.)
     const sizeMultiplier = size;
+    const baseFlashSize = 150 * sizeMultiplier;
 
-    // Stage 1: Initial bright flash (white/yellow, MASSIVE radius, longer fade)
-    // ALWAYS create flash - even if we have to remove old particles
-    // Much larger flash - grenades get 150px, rockets get 225px base
-    const baseFlashSize = 150 * sizeMultiplier; // HUGE base size
-
-    // Force create flash particles - remove old particles if needed to make room
-    // These are the most critical visual element
     if (gameState.particles.length >= limit && limit > 10) {
-        // Remove oldest particles to make room for explosion (keep at least 10)
         const particlesToRemove = Math.min(20, gameState.particles.length - 10);
         for (let i = 0; i < particlesToRemove; i++) {
             const removed = gameState.particles.shift();
-            if (removed) {
-                particlePool.release(removed);
+            if (removed) particlePool.release(removed);
+        }
+    }
+
+    const flashSpecs = [
+        { color: '#ffffff', radius: baseFlashSize, life: 30 },
+        { color: '#ffff00', radius: baseFlashSize * 0.95, life: 35 },
+        { color: '#ff8800', radius: baseFlashSize * 0.8, life: 40 },
+        { color: '#ff4400', radius: baseFlashSize * 0.6, life: 45 },
+    ];
+    for (let f = 0; f < flashSpecs.length; f++) {
+        const spec = flashSpecs[f];
+        let flash = emit(PARTICLE_KIND.flash, x, y, spec.color, {
+            radius: spec.radius,
+            life: spec.life,
+            maxLife: spec.life,
+            vx: 0,
+            vy: 0,
+        });
+        if (!flash) {
+            const p = particlePool.get(x, y, spec.color, {
+                radius: spec.radius,
+                life: spec.life,
+                maxLife: spec.life,
+                vx: 0,
+                vy: 0,
+                type: PARTICLE_KIND.flash,
+                rgba: parseColorToRgba(spec.color),
+            });
+            if (p) {
+                gameState.particles.push(p);
+                enqueueGpuCombat(p);
             }
         }
     }
 
-    // Force create flash particles - they're critical for visibility
-    // Always create these, even if we have to bypass the limit
+    // Point light for explosion
+    const fx = window.webgpuRenderer?.effects;
+    if (fx?.addLight) {
+        fx.addLight(x, y, 120 * sizeMultiplier, 1.2 * sizeMultiplier, 1.0, 0.55, 0.15);
+    }
+    if (window.webgpuRenderer) {
+        window.webgpuRenderer.hazeStrength = Math.min(1.5,
+            (window.webgpuRenderer.hazeStrength || 0) + 0.6 * sizeMultiplier);
+    }
 
-    let flash1 = spawnParticle(x, y, '#ffffff', {
-        radius: baseFlashSize,
-        life: 30, // Longer life so it's very visible
-        maxLife: 30,
-        vx: 0,
-        vy: 0
-    });
-
-
-    // If we couldn't create it, force create by directly adding to array
-    if (!flash1) {
-        const p = particlePool.get(x, y, '#ffffff', {
-            radius: baseFlashSize,
-            life: 30,
-            maxLife: 30,
-            vx: 0,
-            vy: 0
+    const minFireParticles = Math.max(15, Math.floor(explosionQuality.fireParticles * sizeMultiplier * 1.5));
+    const fireParticlesToSpawn = Math.min(minFireParticles, Math.max(0, availableSlots - 3));
+    for (let i = 0; i < fireParticlesToSpawn; i++) {
+        const angle = (Math.PI * 2 / fireParticlesToSpawn) * i + (Math.random() - 0.5) * 0.3;
+        const speed = (Math.random() * 6 + 3) * sizeMultiplier;
+        const colors = ['#ff6600', '#ff8800', '#ffaa00', '#ffff00', '#ff4400', '#ff0000'];
+        const p = emit(PARTICLE_KIND.fire, x, y, colors[Math.floor(Math.random() * colors.length)], {
+            radius: (Math.random() * 6 + 4) * sizeMultiplier,
+            life: Math.random() * 30 + 25,
+            maxLife: Math.random() * 30 + 25,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            drag: 0.96,
+            gravity: -0.03,
         });
-        if (p) {
-            gameState.particles.push(p);
+        if (!p) break;
+    }
 
+    const remainingSlots = limit - gameState.particles.length;
+    if (explosionQuality.hasShockwave !== false) {
+        const shockwaveCount = Math.floor(25 * sizeMultiplier);
+        for (let i = 0; i < shockwaveCount && remainingSlots > i; i++) {
+            const angle = (Math.PI * 2 / shockwaveCount) * i;
+            const p = emit(PARTICLE_KIND.shockwave, x, y, 'rgba(255, 220, 150, 0.95)', {
+                radius: 6 * sizeMultiplier,
+                life: 30,
+                maxLife: 30,
+                vx: Math.cos(angle) * 8 * sizeMultiplier,
+                vy: Math.sin(angle) * 8 * sizeMultiplier,
+            });
+            if (!p) break;
         }
     }
 
-
-
-    // Add yellow flash - also massive
-    let flash2 = spawnParticle(x, y, '#ffff00', {
-        radius: baseFlashSize * 0.95,
-        life: 35, // Even longer for yellow
-        maxLife: 35,
-        vx: 0,
-        vy: 0
-    });
-    if (!flash2) {
-        const p = particlePool.get(x, y, '#ffff00', {
-            radius: baseFlashSize * 0.95,
-            life: 35,
-            maxLife: 35,
-            vx: 0,
-            vy: 0
-        });
-        if (p) gameState.particles.push(p);
-    }
-
-    // Add orange flash for extra visibility
-    let flash3 = spawnParticle(x, y, '#ff8800', {
-        radius: baseFlashSize * 0.8,
-        life: 40,
-        maxLife: 40,
-        vx: 0,
-        vy: 0
-    });
-    if (!flash3) {
-        const p = particlePool.get(x, y, '#ff8800', {
-            radius: baseFlashSize * 0.8,
-            life: 40,
-            maxLife: 40,
-            vx: 0,
-            vy: 0
-        });
-        if (p) gameState.particles.push(p);
-    }
-
-    // Add red flash for maximum visibility
-    let flash4 = spawnParticle(x, y, '#ff4400', {
-        radius: baseFlashSize * 0.6,
-        life: 45,
-        maxLife: 45,
-        vx: 0,
-        vy: 0
-    });
-    if (!flash4) {
-        const p = particlePool.get(x, y, '#ff4400', {
-            radius: baseFlashSize * 0.6,
-            life: 45,
-            maxLife: 45,
-            vx: 0,
-            vy: 0
-        });
-        if (p) gameState.particles.push(p);
-    }
-
-    // Stage 2: Expanding fire ring (orange/red gradient) - MORE PARTICLES, BIGGER
-    // Always spawn at least 15 fire particles, even on low quality
-    const minFireParticles = Math.max(15, Math.floor(explosionQuality.fireParticles * sizeMultiplier * 1.5));
-    const fireParticlesToSpawn = Math.min(
-        minFireParticles,
-        availableSlots - 3 // Reserve 3 slots for flash
-    );
-    for (let i = 0; i < fireParticlesToSpawn; i++) {
-        const angle = (Math.PI * 2 / fireParticlesToSpawn) * i + (Math.random() - 0.5) * 0.3;
-        const speed = (Math.random() * 6 + 3) * sizeMultiplier; // Faster spread
-        const colors = ['#ff6600', '#ff8800', '#ffaa00', '#ffff00', '#ff4400', '#ff0000'];
-        const p = spawnParticle(x, y, colors[Math.floor(Math.random() * colors.length)], {
-            radius: (Math.random() * 6 + 4) * sizeMultiplier, // Much larger particles (4-10px base)
-            life: Math.random() * 30 + 25, // Longer life
-            maxLife: Math.random() * 30 + 25,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed
-        });
-        if (!p) break;
-    }
-
-    // Stage 3: Secondary shockwave ring (lighter color, larger radius) - ALWAYS SHOW
-    const remainingSlots = limit - gameState.particles.length;
-    // Always show shockwave, not just on high quality
-    const shockwaveCount = Math.floor(25 * sizeMultiplier);
-    for (let i = 0; i < shockwaveCount && remainingSlots > i; i++) {
-        const angle = (Math.PI * 2 / shockwaveCount) * i;
-        const p = spawnParticle(x, y, 'rgba(255, 220, 150, 0.95)', {
-            radius: 6 * sizeMultiplier, // Larger shockwave particles
-            life: 30, // Longer life
-            maxLife: 30,
-            vx: Math.cos(angle) * 8 * sizeMultiplier, // Faster spread
-            vy: Math.sin(angle) * 8 * sizeMultiplier
-        });
-        if (!p) break;
-    }
-
-    // Stage 4: Debris particles (dark particles flying outward) - MORE AND BIGGER
     const debrisSlots = limit - gameState.particles.length;
     const debrisCount = Math.min(Math.floor(12 * sizeMultiplier), debrisSlots);
     for (let i = 0; i < debrisCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = (Math.random() * 5 + 3) * sizeMultiplier; // Faster debris
-        const p = spawnParticle(x, y, ['#2a2a2a', '#1a1a1a', '#3a3a3a', '#4a4a4a'][Math.floor(Math.random() * 4)], {
-            radius: Math.random() * 3 + 2, // Larger debris (2-5px)
-            life: Math.random() * 40 + 30, // Longer life
+        const speed = (Math.random() * 5 + 3) * sizeMultiplier;
+        const p = emit(PARTICLE_KIND.debris, x, y,
+            ['#2a2a2a', '#1a1a1a', '#3a3a3a', '#4a4a4a'][Math.floor(Math.random() * 4)], {
+            radius: Math.random() * 3 + 2,
+            life: Math.random() * 40 + 30,
             maxLife: Math.random() * 40 + 30,
             vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed
+            vy: Math.sin(angle) * speed,
+            drag: 0.97,
+            gravity: 0.08,
         });
         if (!p) break;
     }
 
-    // Stage 5: Lingering smoke cloud (gray particles that fade slowly) - ALWAYS SHOW, BIGGER
     const smokeSlots = limit - gameState.particles.length;
-    // Always spawn at least 10 smoke particles
     const minSmokeParticles = Math.max(10, Math.floor(explosionQuality.smokeParticles * sizeMultiplier * 1.2));
     const smokeParticlesToSpawn = Math.min(minSmokeParticles, smokeSlots);
     for (let i = 0; i < smokeParticlesToSpawn; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = (Math.random() * 3 + 1.5) * sizeMultiplier;
-        const p = spawnParticle(x, y, `rgba(40, 40, 40, ${Math.random() * 0.6 + 0.5})`, { // Darker, more opaque
-            radius: (Math.random() * 8 + 5) * sizeMultiplier, // Much larger smoke (5-13px base)
-            life: Math.random() * 50 + 40, // Longer life for lingering effect
-            maxLife: Math.random() * 50 + 40,
-            vx: Math.cos(angle) * speed * 0.4, // Slower horizontal movement
-            vy: Math.sin(angle) * speed * 0.4 - 0.8 // More upward drift
+        const smokeLife = Math.random() * 50 + 40 + (sizeMultiplier > 1 ? 20 : 0);
+        const p = emit(PARTICLE_KIND.smoke, x, y,
+            `rgba(40, 40, 40, ${Math.random() * 0.6 + 0.5})`, {
+            radius: (Math.random() * 8 + 5) * sizeMultiplier,
+            life: smokeLife,
+            maxLife: smokeLife,
+            vx: Math.cos(angle) * speed * 0.4,
+            vy: Math.sin(angle) * speed * 0.4 - 0.8,
+            drag: 0.97,
+            gravity: -0.05,
+            sizeOverLife: 1.15,
         });
         if (!p) break;
     }
 
-    // High/Ultra quality: Particle trails
     const trailSlots = limit - gameState.particles.length;
     if (explosionQuality.hasTrails && trailSlots > 0) {
         const trailCount = Math.min(Math.floor(10 * sizeMultiplier), trailSlots);
         for (let i = 0; i < trailCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const p = spawnParticle(x, y, '#ffaa00', {
+            const p = emit(PARTICLE_KIND.ember, x, y, '#ffaa00', {
                 radius: 2 * sizeMultiplier,
                 life: 25,
                 maxLife: 25,
                 vx: Math.cos(angle) * 3 * sizeMultiplier,
-                vy: Math.sin(angle) * 3 * sizeMultiplier
+                vy: Math.sin(angle) * 3 * sizeMultiplier,
+                drag: 0.95,
+                gravity: -0.02,
             });
             if (!p) break;
         }

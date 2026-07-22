@@ -1,5 +1,6 @@
 import { ctx } from '../core/canvas.js';
 import { graphicsSettings } from '../systems/GraphicsSystem.js';
+import { parseColorToRgba, PARTICLE_KIND } from '../utils/colorParse.js';
 
 export class Particle {
     constructor(x, y, color) {
@@ -15,10 +16,15 @@ export class Particle {
         this.vy = props.vy !== undefined ? props.vy : (Math.random() - 0.5) * 4;
         this.life = props.life !== undefined ? props.life : 30;
         this.maxLife = props.maxLife !== undefined ? props.maxLife : (props.life || 30);
-        
-        // Optional update/draw overrides if passed (for custom particles like explosion flash)
-        // But ideally we avoid function properties on pooled objects for GC reasons, 
-        // though replacing them is fine.
+
+        this.type = props.type !== undefined ? props.type : PARTICLE_KIND.spark;
+        this.drag = props.drag !== undefined ? props.drag : 1;
+        this.gravity = props.gravity !== undefined ? props.gravity : 0;
+        this.fadeMode = props.fadeMode || 'linear';
+        this.blendHint = props.blendHint || 'alpha';
+        this.sizeOverLife = props.sizeOverLife !== undefined ? props.sizeOverLife : 1;
+        this.rgba = props.rgba || parseColorToRgba(color);
+
         this.customUpdate = null;
         this.customDraw = null;
     }
@@ -28,33 +34,38 @@ export class Particle {
             this.customUpdate();
             return;
         }
+        this.vx *= this.drag;
+        this.vy *= this.drag;
+        this.vy += this.gravity;
         this.x += this.vx;
         this.y += this.vy;
+        if (this.sizeOverLife !== 1 && this.maxLife > 0) {
+            const t = this.life / this.maxLife;
+            // shrink or grow toward end based on sizeOverLife factor
+            this.radius *= 1 + (this.sizeOverLife - 1) * 0.02 * (1 - t);
+        }
         this.life--;
     }
-
-    // Removed draw() method to allow ParticleSystem to handle rendering
-    // This ensures fallback logic (with proper color/alpha handling) is used
 }
 
 export class DamageNumber {
     constructor(x, y, value, isCrit = false, customColor = null, customFontSize = null) {
-        this.x = x + (Math.random() - 0.5) * 10; // Start at zombie's x with some jitter
+        this.x = x + (Math.random() - 0.5) * 10;
         this.y = y;
         this.value = value;
         this.isCrit = isCrit;
-        this.customColor = customColor; // Optional custom color (e.g., '#00ffff' for cyan)
-        this.customFontSize = customFontSize; // Optional custom font size (V0.7.1)
-        this.life = 60; // 1 second at 60fps
+        this.customColor = customColor;
+        this.customFontSize = customFontSize;
+        this.life = 60;
         this.maxLife = 60;
-        this.vy = isCrit ? -2.0 : -1.5; // Faster upward velocity for crits
-        this.vx = (Math.random() - 0.5) * 0.5; // Slight horizontal drift
+        this.vy = isCrit ? -2.0 : -1.5;
+        this.vx = (Math.random() - 0.5) * 0.5;
     }
 
     update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.vy += 0.03; // A bit of gravity to slow the ascent
+        this.vy += 0.03;
         this.life--;
     }
 
@@ -63,25 +74,21 @@ export class DamageNumber {
         ctx.save();
         const alpha = Math.max(0, this.life / this.maxLife);
         const damageQuality = graphicsSettings.getQualityValues('damageNumber');
-        // Use custom font size if provided, otherwise calculate based on crit status
-        const baseFontSize = this.customFontSize !== null 
-            ? this.customFontSize 
+        const baseFontSize = this.customFontSize !== null
+            ? this.customFontSize
             : (this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16);
         const fontSize = baseFontSize * damageQuality.fontSize;
-        
+
         if (this.isCrit) {
-            // Critical hit styling: larger, yellow/red gradient, more prominent
             ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
             ctx.textAlign = 'center';
-            
-            // Yellow to red gradient for crits
+
             const gradient = ctx.createLinearGradient(this.x - 30, this.y, this.x + 30, this.y);
             gradient.addColorStop(0, `rgba(255, 255, 0, ${alpha})`);
             gradient.addColorStop(0.5, `rgba(255, 200, 0, ${alpha})`);
             gradient.addColorStop(1, `rgba(255, 100, 0, ${alpha})`);
             ctx.fillStyle = gradient;
-            
-            // Quality-based glow and outline
+
             if (damageQuality.hasGlow) {
                 ctx.shadowColor = `rgba(255, 0, 0, ${0.8 * damageQuality.glowIntensity})`;
                 ctx.shadowBlur = 8 * damageQuality.glowIntensity;
@@ -89,30 +96,26 @@ export class DamageNumber {
                 ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
                 ctx.shadowBlur = 8;
             }
-            
-            // Outline for high/ultra quality
+
             if (damageQuality.hasOutline) {
                 ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
                 ctx.lineWidth = damageQuality.outlineWidth;
                 ctx.strokeText(this.value, this.x, this.y);
             }
-            
+
             ctx.fillText(this.value, this.x, this.y);
         } else {
-            // Use custom color if provided, otherwise default to yellow
             if (this.customColor) {
-                // Parse hex color and apply alpha
                 const r = parseInt(this.customColor.slice(1, 3), 16);
                 const g = parseInt(this.customColor.slice(3, 5), 16);
                 const b = parseInt(this.customColor.slice(5, 7), 16);
                 ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             } else {
-                ctx.fillStyle = `rgba(255, 255, 100, ${alpha})`; // Yellow color for normal damage
+                ctx.fillStyle = `rgba(255, 255, 100, ${alpha})`;
             }
             ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
             ctx.textAlign = 'center';
-            
-            // Quality-based shadow/glow
+
             if (damageQuality.hasGlow) {
                 ctx.shadowColor = `rgba(0, 0, 0, ${0.7 * damageQuality.glowIntensity})`;
                 ctx.shadowBlur = 4 * damageQuality.glowIntensity;
@@ -120,18 +123,16 @@ export class DamageNumber {
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
                 ctx.shadowBlur = 4;
             }
-            
-            // Outline for high/ultra quality
+
             if (damageQuality.hasOutline) {
                 ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
                 ctx.lineWidth = damageQuality.outlineWidth;
                 ctx.strokeText(this.value, this.x, this.y);
             }
-            
+
             ctx.fillText(this.value, this.x, this.y);
         }
-        
+
         ctx.restore();
     }
 }
-
