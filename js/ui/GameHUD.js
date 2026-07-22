@@ -564,10 +564,10 @@ export class GameHUD {
             // Let's use drawStat but save bounds for tap
             const grenadeY = rightBlockStartY + weaponHeight + sidebarSpacing;
             const activeThrowable = player.activeThrowable || 'grenade';
-            const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
-            const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
-            const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
-            const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+            const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : (activeThrowable === 'orbital_strike' ? 'Orbital Strike' : 'Molotovs');
+            const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : (activeThrowable === 'orbital_strike' ? player.orbitalStrikeCount : player.molotovCount);
+            const throwableIcon = activeThrowable === 'grenade' ? '💣' : (activeThrowable === 'orbital_strike' ? '🛰️' : '🍾');
+            const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : (activeThrowable === 'orbital_strike' ? '#ff1744' : '#ff4500')) : '#666666';
             this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, rightX, grenadeY, weaponWidth, weaponHeight);
 
             // Store interactable bounds for Mobile Touches
@@ -1071,10 +1071,10 @@ export class GameHUD {
         // Grenades
         currentY += height + itemSpacing;
         const activeThrowable = player.activeThrowable || 'grenade';
-        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
-        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
-        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
-        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : (activeThrowable === 'orbital_strike' ? 'Orbital Strike' : 'Molotovs');
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : (activeThrowable === 'orbital_strike' ? player.orbitalStrikeCount : player.molotovCount);
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : (activeThrowable === 'orbital_strike' ? '🛰️' : '🍾');
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : (activeThrowable === 'orbital_strike' ? '#ff1744' : '#ff4500')) : '#666666';
         this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, x, currentY, width);
     }
 
@@ -1162,10 +1162,10 @@ export class GameHUD {
 
         // Grenades box - side by side
         const activeThrowable = player.activeThrowable || 'grenade';
-        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
-        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
-        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
-        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : (activeThrowable === 'orbital_strike' ? 'Orbital Strike' : 'Molotovs');
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : (activeThrowable === 'orbital_strike' ? player.orbitalStrikeCount : player.molotovCount);
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : (activeThrowable === 'orbital_strike' ? '🛰️' : '🍾');
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : (activeThrowable === 'orbital_strike' ? '#ff1744' : '#ff4500')) : '#666666';
         this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, grenadeX, y, width);
     }
 

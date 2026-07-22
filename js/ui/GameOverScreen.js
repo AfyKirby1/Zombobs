@@ -44,12 +44,29 @@ export class GameOverScreen {
         this.ctx.fillText(title, this.canvas.width / 2, this.canvas.height / 2 - 100 * scale);
         this.ctx.shadowBlur = 0;
 
+        // Survival Dossier Banner & Epitaph
+        const epitaph = gameState.lastDeathCause || 'Overwhelmed by Undead';
+        const epitaphFontSize = Math.max(12, Math.round(16 * scale));
+        this.ctx.font = `italic ${epitaphFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#ff8a80';
+        this.ctx.fillText(`"This is how you died: ${epitaph}"`, this.canvas.width / 2, this.canvas.height / 2 - 65 * scale);
+
+        // Accuracy & Combat Stats
+        const fired = gameState.totalShotsFired || 0;
+        const hit = gameState.totalShotsHit || 0;
+        const accuracy = fired > 0 ? Math.min(100, Math.round((hit / fired) * 100)) : 0;
+        const statsSub = `Accuracy: ${accuracy}%  |  Headshots: ${gameState.headshots || 0}  |  Scrap: ${gameState.scrapCollected || 0}`;
+        const subFontSize = Math.max(10, Math.round(13 * scale));
+        this.ctx.font = `${subFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#81d4fa';
+        this.ctx.fillText(statsSub, this.canvas.width / 2, this.canvas.height / 2 - 40 * scale);
+
         const scoreFontSize = Math.max(14, Math.round(20 * scale));
         this.ctx.font = `${scoreFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#cccccc';
         this.ctx.textAlign = 'center';
 
-        this.ctx.fillText(this.finalScore, this.canvas.width / 2, this.canvas.height / 2 - 30 * scale);
+        this.ctx.fillText(this.finalScore, this.canvas.width / 2, this.canvas.height / 2 - 15 * scale);
 
         // Display multiplier stats
         const player = gameState.players[0];
@@ -141,6 +158,12 @@ export class GameOverScreen {
             this.hud.drawMenuButton('Back to Lobby', centerX - buttonWidth / 2, lobbyButtonY, buttonWidth, buttonHeight, lobbyHovered, false);
             buttonY = this.canvas.height - 90 * scale;
         }
+
+        // Copy Survival Report button
+        const copyHovered = this.hoveredButton === 'gameover_copy';
+        const copyButtonY = buttonY - (buttonHeight + buttonSpacing);
+        const copyLabel = (this.reportCopiedTime && Date.now() - this.reportCopiedTime < 2500) ? '✓ Report Copied!' : '📋 Copy Report';
+        this.hud.drawMenuButton(copyLabel, centerX - buttonWidth / 2, copyButtonY, buttonWidth, buttonHeight, copyHovered, false);
 
         // "Back to Main Menu" button (always show)
         const menuButtonY = buttonY;
@@ -289,6 +312,13 @@ export class GameOverScreen {
             buttonY = this.canvas.height - 90 * scale;
         }
 
+        // "Copy Survival Report" button
+        const copyButtonY = buttonY - (buttonHeight + buttonSpacing);
+        if (x >= centerX - buttonWidth / 2 && x <= centerX + buttonWidth / 2 &&
+            y >= copyButtonY && y <= copyButtonY + buttonHeight) {
+            return 'gameover_copy';
+        }
+
         // "Back to Main Menu" button (always show)
         const menuButtonY = buttonY;
         if (x >= centerX - buttonWidth / 2 && x <= centerX + buttonWidth / 2 &&
@@ -296,6 +326,27 @@ export class GameOverScreen {
             return 'gameover_menu';
         }
         return null;
+    }
+
+    copyReportToClipboard() {
+        const fired = gameState.totalShotsFired || 0;
+        const hit = gameState.totalShotsHit || 0;
+        const accuracy = fired > 0 ? Math.min(100, Math.round((hit / fired) * 100)) : 0;
+        const text = `🧟 ZOMBOBS SURVIVAL REPORT 🧟\n` +
+            `Player: ${gameState.username || 'Survivor'}\n` +
+            `Mode: ${(gameState.gameMode || 'arcade').toUpperCase()}\n` +
+            `Wave Reached: ${gameState.wave}\n` +
+            `Kills: ${gameState.zombiesKilled}\n` +
+            `Accuracy: ${accuracy}%\n` +
+            `Headshots: ${gameState.headshots || 0}\n` +
+            `Scrap Collected: ${gameState.scrapCollected || 0}\n` +
+            `Score: ${gameState.score.toLocaleString()}\n` +
+            `Cause of Death: ${gameState.lastDeathCause || 'Overwhelmed'}`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(() => {});
+        }
+        this.reportCopiedTime = Date.now();
     }
 
     updateHover(x, y) {

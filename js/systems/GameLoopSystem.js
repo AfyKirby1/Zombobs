@@ -34,7 +34,7 @@ import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
 import { equipmentSystem } from './EquipmentSystem.js';
-import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
+import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawBossRushHeader, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
  * GameLoopSystem — per-frame gameplay update and world/HUD rendering.
@@ -198,6 +198,10 @@ export class GameLoopSystem {
         });
 
         zombieUpdateSystem.updateZombies(gameState, this.gameEngine, viewport, now);
+        compactArrayWithUpdate(gameState.sentryTurrets, turret => {
+            turret.update();
+            return !turret.isDestroyed;
+        });
         updateParticles();
         updateSnowSystem(viewport);
 
@@ -664,6 +668,10 @@ export class GameLoopSystem {
         entityRenderSystem.drawEntities(gameState, ctx, viewport);
         this.drawPlayers();
 
+        for (let i = 0; i < gameState.sentryTurrets.length; i++) {
+            gameState.sentryTurrets[i].draw(ctx, isSinglePlayerArcade ? cameraSystem : null);
+        }
+
         for (let i = 0; i < gameState.equipmentPickups.length; i++) {
             gameState.equipmentPickups[i].draw(ctx);
         }
@@ -804,6 +812,7 @@ export class GameLoopSystem {
         }
         drawWaveNotification();
         drawCampaignObjective();
+        drawBossRushHeader();
         drawCampaignTransition();
         drawWaveBreak();
         drawFpsCounter();

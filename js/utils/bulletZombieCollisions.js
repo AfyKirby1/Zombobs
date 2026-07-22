@@ -169,6 +169,7 @@ export function handleBulletZombieCollisions() {
 
             const collisionResult = checkZombieCollision(bullet, zombie);
             if (collisionResult.hit) {
+                gameState.totalShotsHit = (gameState.totalShotsHit || 0) + 1;
                 // v0.8.3.5 Store headshot status for the kill reward
                 const isHeadshot = collisionResult.isHeadshot;
                 // Handle Rocket collisions FIRST (before marking as hit)

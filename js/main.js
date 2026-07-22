@@ -846,6 +846,14 @@ function handleMenuInteraction(clickX, clickY) {
                 webgpuRenderer.resetSnow();
             }
             startGame();
+        } else if (clickedButton === 'boss_rush') {
+            gameState.isCoop = false;
+            gameState.multiplayer.active = false;
+            gameState.gameMode = 'boss_rush';
+            if (isWebGPUActive() && webgpuRenderer.resetSnow) {
+                webgpuRenderer.resetSnow();
+            }
+            startGame();
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false;
@@ -1040,6 +1048,8 @@ function handleMenuInteraction(clickX, clickY) {
         } else if (clickedButton === 'gameover_retry') {
             gameStateManager.retryCampaignZone();
             gameState.particles = [];
+        } else if (clickedButton === 'gameover_copy') {
+            if (gameHUD.gameOverScreen) gameHUD.gameOverScreen.copyReportToClipboard();
         }
         return;
     }

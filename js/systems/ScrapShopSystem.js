@@ -11,6 +11,7 @@ import {
 import { ScrapShrine } from '../entities/ScrapShrine.js';
 import { createParticles } from './ParticleSystem.js';
 import { DamageNumber } from '../entities/Particle.js';
+import { SentryTurret } from '../entities/SentryTurret.js';
 import { isSinglePlayerArcadeMode, isMobileDevice } from '../utils/gameUtils.js';
 
 /**
@@ -117,6 +118,19 @@ export class ScrapShopSystem {
                 gameState.rapidFireEndTime,
                 now + SCRAP_SHOP_OVERCLOCK_DURATION_MS
             );
+            return true;
+        }
+
+        if (offerId === 'sentry_turret') {
+            const turretX = player.x + Math.cos(player.angle) * 35;
+            const turretY = player.y + Math.sin(player.angle) * 35;
+            gameState.sentryTurrets.push(new SentryTurret(turretX, turretY));
+            return true;
+        }
+
+        if (offerId === 'orbital_strike') {
+            player.orbitalStrikeCount++;
+            player.activeThrowable = 'orbital_strike';
             return true;
         }
 

@@ -13,7 +13,7 @@ import { VersionModal } from './VersionModal.js';
 // [TRACE: SCRATCHPAD.md] Button glyphs — flavor only, hit targets unchanged
 const MENU_BUTTON_ICONS = {
     Arcade: '🔫',
-    Survival: '⏳',
+    'Boss Rush': '👹',
     Campaign: '📻',
     'Local Co-op': '👥',
     'Play with AI': '🤖',
@@ -529,9 +529,9 @@ export class MainMenuScreen {
         const row4Y = buttonStartY + (buttonHeight + buttonSpacing) * 3;
         const row5Y = buttonStartY + (buttonHeight + buttonSpacing) * 4;
 
-        // Row 1: Arcade (left), Survival (right) - disabled
+        // Row 1: Arcade (left), Boss Rush (right)
         this._drawMenuButtonLabeled('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
-        this._drawMenuButtonLabeled('Survival', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'survival', true);
+        this._drawMenuButtonLabeled('Boss Rush', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'boss_rush', false);
 
         // Row 2: Campaign (left), Local Co-op (right)
         if (!this.isMobileLayout) {
@@ -1210,7 +1210,7 @@ export class MainMenuScreen {
 
         // Check right column
         if (x >= rightColumnX && x <= rightColumnX + mainMenuButtonWidth) {
-            if (y >= row1Y - mainMenuButtonHeight / 2 && y <= row1Y + mainMenuButtonHeight / 2) return 'survival';
+            if (y >= row1Y - mainMenuButtonHeight / 2 && y <= row1Y + mainMenuButtonHeight / 2) return 'boss_rush';
             if (!this.isMobileLayout && y >= row2Y - mainMenuButtonHeight / 2 && y <= row2Y + mainMenuButtonHeight / 2) {
                 return 'local_coop';
             }

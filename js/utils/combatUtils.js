@@ -13,6 +13,7 @@ import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entit
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { Molotov } from '../entities/Molotov.js';
+import { OrbitalStrikeBeacon } from '../entities/OrbitalStrikeBeacon.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { Prop } from '../entities/Prop.js';
 import { settingsManager } from '../systems/SettingsManager.js';
@@ -382,7 +383,9 @@ export function throwGrenade(target, canvas, player) {
     const now = Date.now();
 
     const activeThrowable = player.activeThrowable || 'grenade';
-    const cooldown = activeThrowable === 'grenade' ? GRENADE_COOLDOWN : MOLOTOV_COOLDOWN;
+    let cooldown = GRENADE_COOLDOWN;
+    if (activeThrowable === 'molotov') cooldown = MOLOTOV_COOLDOWN;
+    else if (activeThrowable === 'orbital_strike') cooldown = 2000;
 
     // Check cooldown
     if (now - player.lastGrenadeThrowTime < cooldown) {
@@ -392,8 +395,10 @@ export function throwGrenade(target, canvas, player) {
     // Check throwable count
     if (activeThrowable === 'grenade') {
         if (player.grenadeCount <= 0) return;
-    } else {
+    } else if (activeThrowable === 'molotov') {
         if (player.molotovCount <= 0) return;
+    } else if (activeThrowable === 'orbital_strike') {
+        if (player.orbitalStrikeCount <= 0) return;
     }
 
     // v0.8.1.2: In single player arcade mode, don't clamp target to canvas bounds
@@ -417,9 +422,16 @@ export function throwGrenade(target, canvas, player) {
     if (activeThrowable === 'grenade') {
         gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
         player.grenadeCount--;
-    } else {
+    } else if (activeThrowable === 'molotov') {
         gameState.grenades.push(new Molotov(throwX, throwY, targetX, targetY, player));
         player.molotovCount--;
+    } else if (activeThrowable === 'orbital_strike') {
+        gameState.grenades.push(new OrbitalStrikeBeacon(throwX, throwY, targetX, targetY, player));
+        player.orbitalStrikeCount--;
+        // Auto-switch back to grenade if out of orbital strikes
+        if (player.orbitalStrikeCount <= 0) {
+            player.activeThrowable = player.molotovCount > 0 ? 'molotov' : 'grenade';
+        }
     }
     
     player.lastGrenadeThrowTime = now;
@@ -447,7 +459,18 @@ export function cycleThrowable(player) {
     const now = Date.now();
     if (now - player.lastThrowableCycleTime < 200) return; // Debounce
 
-    player.activeThrowable = (player.activeThrowable || 'grenade') === 'grenade' ? 'molotov' : 'grenade';
+    player.activeThrowable = player.activeThrowable || 'grenade';
+    
+    // Cycle through available throwables
+    let options = ['grenade'];
+    if (player.molotovCount > 0) options.push('molotov');
+    if (player.orbitalStrikeCount > 0) options.push('orbital_strike');
+    
+    let currentIndex = options.indexOf(player.activeThrowable);
+    if (currentIndex === -1) currentIndex = 0;
+    
+    let nextIndex = (currentIndex + 1) % options.length;
+    player.activeThrowable = options[nextIndex];
     player.lastThrowableCycleTime = now;
     
     // Spawn visual indicator / effect trigger on HUD
@@ -1471,7 +1494,7 @@ export function getPlayerMaxGrenades(player) {
  * Centralized incoming damage — shield, reduction, last stand, second wind
  * @returns {number} actual health lost (0 if shield absorbed all)
  */
-export function applyPlayerDamage(player, rawDamage) {
+export function applyPlayerDamage(player, rawDamage, source = 'Horde Attack') {
     if (player.health <= 0 || rawDamage <= 0) return 0;
 
     let damage = rawDamage;
@@ -1523,14 +1546,18 @@ export function applyPlayerDamage(player, rawDamage) {
         createParticles(player.x, player.y, '#ff0000', 3);
     }
 
-    if (player.health <= 0 && trySecondWind(player)) {
-        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-        if (damageNumberStyle !== 'off') {
-            gameState.damageNumbers.push(new DamageNumber(
-                player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
-            ));
+    if (player.health <= 0) {
+        if (trySecondWind(player)) {
+            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+            if (damageNumberStyle !== 'off') {
+                gameState.damageNumbers.push(new DamageNumber(
+                    player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
+                ));
+            }
+            createParticles(player.x, player.y, '#66bb6a', 8);
+        } else {
+            gameState.lastDeathCause = source;
         }
-        createParticles(player.x, player.y, '#66bb6a', 8);
     }
 
     if (player.hasVengeance && player.health < previousHealth) {

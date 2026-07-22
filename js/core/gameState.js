@@ -62,6 +62,7 @@ export function createPlayer(x, y, colorIndex = 0) {
         // Grenade state
         grenadeCount: MAX_GRENADES,
         molotovCount: MAX_MOLOTOVS,
+        orbitalStrikeCount: 0,
         activeThrowable: 'grenade',
         lastGrenadeThrowTime: 0,
         lastThrowableCycleTime: 0,
@@ -210,6 +211,9 @@ export const gameState = {
     zombiesKilled: 0,
     pickupsCollected: 0, // v0.8.3.5: Tracks pickups in current session
     headshots: 0, // v0.8.3.5: Tracks headshots in current session
+    totalShotsFired: 0,
+    totalShotsHit: 0,
+    lastDeathCause: 'Overwhelmed by Zombies',
     scrapCollected: 0, // v0.8.2.2: Scrap resource collected in current session
     zombiesPerWave: 5,
     zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
@@ -266,6 +270,7 @@ export const gameState = {
     grenades: [],
     acidProjectiles: [],
     acidPools: [],
+    sentryTurrets: [],
     spawnIndicators: [],
     props: [], // v0.8.1.2: World props (rocks, debris, burnt cars) - single player arcade only
 
@@ -383,6 +388,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesKilled = 0;
     gameState.pickupsCollected = 0;
     gameState.headshots = 0;
+    gameState.totalShotsFired = 0;
+    gameState.totalShotsHit = 0;
+    gameState.lastDeathCause = 'Overwhelmed by Zombies';
     gameState.scrapCollected = 0;
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
@@ -421,6 +429,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.maxAmmo = WEAPONS.pistol.maxAmmo;
             player.isReloading = false;
             player.grenadeCount = MAX_GRENADES;
+            player.orbitalStrikeCount = 0;
 
             // Reset score multiplier
             player.scoreMultiplier = 1.0;
@@ -600,6 +609,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
+    gameState.sentryTurrets = [];
     gameState.spawnIndicators = [];
     gameState.props = []; // v0.8.1.2: Reset props for new game
 

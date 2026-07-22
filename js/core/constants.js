@@ -43,13 +43,17 @@ export const SCRAP_SHRINE_INTERACT_RANGE = 70;
 export const SCRAP_SHOP_AMMO_COST = 20;
 export const SCRAP_SHOP_SHIELD_COST = 30;
 export const SCRAP_SHOP_OVERCLOCK_COST = 40;
+export const SCRAP_SHOP_TURRET_COST = 35;
+export const SCRAP_SHOP_ORBITAL_STRIKE_COST = 60;
 export const SCRAP_SHOP_OVERCLOCK_DURATION_MS = 10000;
 export const SCRAP_SHOP_SHIELD_AMOUNT = 25;
 
 export const SCRAP_SHOP_OFFERS = [
     { id: 'ammo', label: 'Ammo Cache', cost: SCRAP_SHOP_AMMO_COST, icon: '📦' },
     { id: 'shield', label: 'Armor Plate', cost: SCRAP_SHOP_SHIELD_COST, icon: '🛡' },
-    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' }
+    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' },
+    { id: 'sentry_turret', label: 'Sentry Turret', cost: SCRAP_SHOP_TURRET_COST, icon: '🤖' },
+    { id: 'orbital_strike', label: 'Orbital Strike', cost: SCRAP_SHOP_ORBITAL_STRIKE_COST, icon: '🛰️' }
 ];
 
 // Low ammo threshold (25% of max ammo)
