@@ -963,7 +963,12 @@ class SkillSystem {
 
             gameState.levelUpChoices = this.generateChoices();
             gameState.showLevelUp = true;
-            gameState.levelUpRerollsLeft = LEVEL_UP_REROLLS;
+            const p1 = gameState.players[0];
+            const bonusRerolls = p1?.bonusLevelUpRerolls || 0;
+            gameState.levelUpRerollsLeft = LEVEL_UP_REROLLS + bonusRerolls;
+            if (p1 && bonusRerolls > 0) {
+                p1.bonusLevelUpRerolls = 0;
+            }
 
             gameState.multiplayer.socket.emit('game:levelup', {
                 level: gameState.level,
@@ -974,7 +979,12 @@ class SkillSystem {
         } else {
             gameState.levelUpChoices = this.generateChoices();
             gameState.showLevelUp = true;
-            gameState.levelUpRerollsLeft = LEVEL_UP_REROLLS;
+            const p1 = gameState.players[0];
+            const bonusRerolls = p1?.bonusLevelUpRerolls || 0;
+            gameState.levelUpRerollsLeft = LEVEL_UP_REROLLS + bonusRerolls;
+            if (p1 && bonusRerolls > 0) {
+                p1.bonusLevelUpRerolls = 0;
+            }
         }
     }
 

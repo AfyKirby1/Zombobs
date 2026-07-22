@@ -2,6 +2,29 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Update Modals — Scrap Economy Depth (2026-07-21) ✅ COMPLETE
+- **Done**: In-game modalities only (no GAME_VERSION / landing / itch bump).
+  - `VERSION_HISTORY` — prepended **UNRELEASED / Scrap Economy Depth** with `tag: 'CURRENT'`; removed CURRENT from V0.9.3; trimmed V0.8.3 to keep ~6 entries.
+  - `NEWS_UPDATES` — ticker leads with Arcade Depot + Wandering Merchant.
+- **Verify**: Main menu news reel shows Depot/Merchant; 🎃 badge → PATCH NOTES shows UNRELEASED CURRENT block first; badge text still `V0.9.3 ALPHA` until next modality bump.
+- **Out of scope**: Full V0.9.4 checklist (landing/README/servers/`mobile/www`).
+
+### Docs Sync — Arcade Depot + Wandering Merchant (2026-07-21) ✅ COMPLETE
+- **Done**: Status docs aligned to Unreleased arcade shop depth (no public README/landing/itch bump — code-only feature until modality pass).
+- **Touched**: `SUMMARY`, `ARCHITECTURE` (`WorldShopSystem` + shrine amend), `AGENTS.md` (entities/systems/utils), `My_Thoughts`, `roadmap` (economy/trading amend), `CHANGELOG` Unreleased (already present), this SCRATCHPAD.
+- **Next**: Optional `npm run sync:web` if shipping mobile; modality pass when ready to advertise.
+
+### Arcade Depot + Wandering Merchant (Extreme) (2026-07-21) ✅ COMPLETE
+- **Done**: Arcade-only scrap economy depth on top of wave-break shrine.
+  - Fixed **Scrap Depot** at run start (~800–1200px from spawn), multi-offer restock (ammo/medkit/grenade/molotov/shield), wave-scaled prices, stock refresh each wave break, always-on bronze HUD beacon (compass `D` + edge chevron).
+  - Rare **Wandering Merchant** (wave 6+, 35% on break, 2-wave cooldown): 2–3 weighted black-market offers (turret/orbital/mystery/overclock syringe/scrap magnet/panic nuke/reroll token/XP burst), toast + purple beacon, wander + leave on break end / sold out / timer.
+  - Shared `applyScrapOffer` in `js/utils/scrapOfferUtils.js`; shrine catalog untouched.
+- **Files**: `ScrapDepot.js`, `WanderingMerchant.js`, `WorldShopSystem.js`, `scrapOfferUtils.js`, `constants.js`, `gameState.js`, `ScrapShopSystem.js`, `GameLoopSystem.js`, `GameStateManager.js`, `GameHUD.js`, `main.js`, `PlayerSystem.js`, `PickupSpawnSystem.js`, `SkillSystem.js`, `combatUtils.js` (export `triggerNuke`).
+- **Input**: E priority shrine → depot/merchant → equipment; Q/scroll/gamepad bumpers cycle offers near vendor.
+- **Syntax**: `test-syntax.ps1` all green (includes new files).
+- **Verify**: Arcade start → follow `D` to depot → buy mid-wave; wave break shrine still rolls; wave 6+ merchant toast + `M` beacon; MP/campaign no depot/merchant.
+- **Out of scope**: Campaign map shops, between-run permanent shop, multiplayer sync.
+
 ### Fix missing `drawBossRushHeader` export (2026-07-21) ✅ COMPLETE
 - **Problem**: GitHub Pages crash — `GameLoopSystem.js` imports `drawBossRushHeader` from `drawingUtils.js` but export was never added (Boss Rush commit `ca92d3e`).
 - **Done**: Added `drawBossRushHeader()` in `js/utils/drawingUtils.js` — top banner when `gameMode === 'boss_rush'` (wave + boss/elites hint).

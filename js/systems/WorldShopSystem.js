@@ -16,8 +16,7 @@ import { WanderingMerchant } from '../entities/WanderingMerchant.js';
 import { applyScrapOffer } from '../utils/scrapOfferUtils.js';
 import { createParticles } from './ParticleSystem.js';
 import { DamageNumber } from '../entities/Particle.js';
-import { isCampaignMode, isMobileDevice, triggerWaveNotification } from '../utils/gameUtils.js';
-import { isInViewport } from '../utils/gameUtils.js';
+import { isCampaignMode, isMobileDevice, triggerWaveNotification, isInViewport } from '../utils/gameUtils.js';
 
 /**
  * Arcade-only world shops: fixed Scrap Depot + rare Wandering Merchant.

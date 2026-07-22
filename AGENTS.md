@@ -90,11 +90,11 @@ All JS uses native `import`/`export`. No webpack, no vite, no transpilation. Fil
 | Directory | Purpose |
 |---|---|
 | `js/core/` | Constants (`GAME_VERSION`, `VERSION_HISTORY`, `NEWS_UPDATES`), canvas init, gameState, GameEngine, BootLoader, WebGPURenderer, ZombobsFX; definitions: skills/trees/synergies, equipment, heroes, survivors, achievements, badges, battlepass, ranks |
-| `js/entities/` | Entity classes: Zombie (11 variants + Shard minions + Boss + **WardenBoss**; see `DOCS/ENEMY_TYPES.md`), Bullet, Particle, Pickup, Grenade, Molotov, Shell, AcidProjectile, AcidPool, Prop, ScrapPickup, ScrapShrine, EquipmentPickup |
-| `js/systems/` | Self-contained systems: **GameLoopSystem**, Audio, Particle, Camera, Input, Settings, Skill, Rank, Achievement, Battlepass, Badge, Multiplayer, ZombieSpawn, ZombieUpdate, PlayerSystem, PlayerRenderer, EntityRender, PropSpawn, PropRender, GroundTexture, BloodSimulation, Melee, PickupSpawn, GameStateManager, ArcadeMusic, TouchControl, ScrapShop, Equipment, WaveChaos, Graphics, RenderingCache, PlayerProfile, **MapLoader** (campaign) |
+| `js/entities/` | Entity classes: Zombie (11 variants + Shard minions + Boss + **WardenBoss**; see `DOCS/ENEMY_TYPES.md`), Bullet, Particle, Pickup, Grenade, Molotov, Shell, AcidProjectile, AcidPool, Prop, ScrapPickup, ScrapShrine, **ScrapDepot**, **WanderingMerchant**, EquipmentPickup, SentryTurret, OrbitalStrikeBeacon |
+| `js/systems/` | Self-contained systems: **GameLoopSystem**, Audio, Particle, Camera, Input, Settings, Skill, Rank, Achievement, Battlepass, Badge, Multiplayer, ZombieSpawn, ZombieUpdate, PlayerSystem, PlayerRenderer, EntityRender, PropSpawn, PropRender, GroundTexture, BloodSimulation, Melee, PickupSpawn, GameStateManager, ArcadeMusic, TouchControl, ScrapShop, **WorldShop**, Equipment, WaveChaos, Graphics, RenderingCache, PlayerProfile, **MapLoader** (campaign) |
 | `js/maps/` | Static campaign zones for `MapLoader`: `crashSite.js` (Z1), `maintenanceTunnels.js` (Z2), `switchingYard.js` (Z3), `controlTower.js` (Z4 finale) |
 | `js/ui/` | Canvas-drawn UI: GameHUD, SettingsPanel, MainMenuScreen, LobbyScreen, CoopLobbyScreen, GameOverScreen, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, EquipmentScreen, GalleryScreen, LevelUpScreen, VersionModal, CampaignIntroScreen, etc. Main-menu ambient FX: `MenuHordeAmbience.js`, `MenuHandHorrorEffect.js`, `MenuMetalGunshotEffect.js` |
-| `js/utils/` | Pure functions: combatUtils, gameUtils, drawingUtils, arrayUtils, bulletZombieCollisions, mapCollisionUtils, Quadtree, ObjectPool, ChunkManager |
+| `js/utils/` | Pure functions: combatUtils, gameUtils, drawingUtils, arrayUtils, bulletZombieCollisions, mapCollisionUtils, **scrapOfferUtils**, Quadtree, ObjectPool, ChunkManager |
 | `js/companions/` | `CompanionSystem.js` (hireable heroes + survivor recruits), `CompanionDialogue.js` (speech bubbles) |
 | `js/vendor/` | Vendored `socket.io.min.js` (avoids itch.io CSP blocking) |
 

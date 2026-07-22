@@ -4,7 +4,8 @@ import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
-    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN, SCRAP_VALUE
+    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN, SCRAP_VALUE,
+    MERCHANT_SCRAP_VALUE_MULT
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
@@ -919,6 +920,9 @@ export function handlePickupCollisions() {
                     let gained = Math.floor(scrapValue * multiplier * equipmentScrapMultiplier * (1 + heroScrapAura));
                     if (player.goldRushEndTime && player.goldRushEndTime > Date.now()) {
                         gained *= 2;
+                    }
+                    if (gameState.scrapMagnetEndTime && Date.now() < gameState.scrapMagnetEndTime) {
+                        gained = Math.floor(gained * MERCHANT_SCRAP_VALUE_MULT);
                     }
                     player.scrap = (player.scrap || 0) + gained;
                     gameState.scrapCollected += gained;

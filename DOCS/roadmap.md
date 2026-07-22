@@ -355,8 +355,10 @@
 
 - [ ] **Survival Mode** - Resource management with hunger/thirst/temperature mechanics 🔴
 - [ ] **Trading System** - NPC merchants, economy, rare item marketplace 🔴
+  [AMENDED 2026-07-21]: Partial arcade — rare **Wandering Merchant** visits (black-market stock, toast + beacon). No persistent marketplace / sell / trade yet.
 - [ ] **In-Game Economy/Shop** - Buy/sell/trade items with currency earned 🟡  
   [AMENDED 2026-06-25]: Partial — wave-break `ScrapShrine` mid-run upgrades only; no persistent between-run shop yet.
+  [AMENDED 2026-07-21]: Arcade deepened — fixed **Scrap Depot** (multi-offer restock + always-on beacon) + **Wandering Merchant** + shared `applyScrapOffer`. Still no between-run permanent upgrade shop; campaign map shops out of scope this pass.
 
 ---
 

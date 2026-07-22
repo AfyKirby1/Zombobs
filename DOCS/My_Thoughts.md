@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-07-21 - Arcade Depot + Wandering Merchant
+
+Scrap shrine alone was a nice spike but the open arcade world still felt empty between waves. Split economy into three roles so spend loops don't cannibalize each other: **shrine** = one random combat buff on break; **depot** = always-on restock landmark with a permanent beacon (risk trek mid-horde); **merchant** = rare FOMO visit with pricey uniques. Shared `applyScrapOffer` so turret/nuke/magnet don't fork three code paths. Gated hard to arcade SP — campaign already dense with MapLoader POIs; MP sync deferred. Compass `D`/`M` + edge chevrons reuse existing HUD language instead of a minimap. Next depth pass if wanted: campaign shop triggers, or between-run permanent shop from roadmap.
+
 ## 2026-07-09 - Campaign Alive Coverage
 
 Act 1 mechanics were done but *felt dead* — root cause was feedback never rendering (`waveNotification.life = 0`) plus quest state bugs across zones. Fixed by routing all MapLoader beats through `triggerWaveNotification()` with `kind: 'campaign'` so radio lines show as subtitle without arcade "Get ready…". Quest integrity: party-full no longer burns NPC (`recruited` only on success); kill quests track `run.quest.progress` not global `zombiesKilled`; zone leave auto-abandons incomplete quest with toast. Presentation layer is thin on purpose — `RADIO_BEATS` + procedural static/stingers, `fogAlpha` veil, 1.2s zone interstitial, companion/NPC bubbles — no VO pipeline, no NavMesh set-pieces. Death fantasy split: `campaignRetryMapId` + Retry Zone vs `campaignVictory()` for act clear (not death screen). Three achievements gate the win beats. Still need manual Z1→Z4 playtest before modality bump.

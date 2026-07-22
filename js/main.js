@@ -127,6 +127,7 @@ window.companionSystem = companionSystem;
 // Initialize HUD (needed by GameStateManager)
 const gameHUD = new GameHUD(uiCanvas);
 window.gameHUD = gameHUD; // Make globally accessible for text rendering quality
+window.worldShopSystem = worldShopSystem;
 
 // Initialize profile UI screens
 const profileScreen = new ProfileScreen(uiCanvas);
@@ -1378,6 +1379,20 @@ window.addEventListener('wheel', (e) => {
     if (gameState.showBattlepass) {
         e.preventDefault(); // Prevent page scroll, overlay handles its own scrolling
         return;
+    }
+
+    // Near depot/merchant: always allow offer cycle (even if weapon scroll disabled)
+    if (gameState.gameRunning && !gameState.gamePaused &&
+        !gameState.showMainMenu && !gameState.showLobby &&
+        !gameState.showCoopLobby && !gameState.showAILobby) {
+        const nearPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        if (nearPlayer && nearPlayer.health > 0 &&
+            (worldShopSystem.getNearbyDepot(nearPlayer) || worldShopSystem.getNearbyMerchant(nearPlayer))) {
+            e.preventDefault();
+            const shopDir = Math.sign(e.deltaY) || 1;
+            worldShopSystem.tryCycleOffer(nearPlayer, shopDir);
+            return;
+        }
     }
 
     // Only handle scroll wheel weapon switching if enabled and game is running

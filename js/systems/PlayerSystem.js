@@ -19,6 +19,7 @@ import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
 import { isMobileDevice, isCampaignMode } from '../utils/gameUtils.js';
 import { mapLoader } from './MapLoader.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
+import { worldShopSystem } from './WorldShopSystem.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -351,14 +352,24 @@ export class PlayerSystem {
                 if (gpState.buttons.reload.justPressed) reloadWeapon(player);
                 if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
                 if (gpState.buttons.cycleThrowable.justPressed) cycleThrowable(player);
-                if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
-                if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 if (gpState.buttons.interact.justPressed) {
                     if (scrapShopSystem.getNearbyShrine(player) && gameState.waveBreakActive) {
                         scrapShopSystem.tryPurchase(player);
+                    } else if (worldShopSystem.tryPurchase(player)) {
+                        // Depot / merchant
                     } else if (window.mapLoader?.isLoaded?.()) {
                         window.mapLoader.tryInteract(player);
                     }
+                }
+                if (worldShopSystem.getNearbyDepot(player) || worldShopSystem.getNearbyMerchant(player)) {
+                    if (gpState.buttons.prevWeapon.justPressed) {
+                        worldShopSystem.tryCycleOffer(player, -1);
+                    } else if (gpState.buttons.nextWeapon.justPressed) {
+                        worldShopSystem.tryCycleOffer(player, 1);
+                    }
+                } else {
+                    if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
+                    if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 }
                 if (window.mapLoader?.isLoaded?.()) {
                     window._zombobsKeys = window._zombobsKeys || {};

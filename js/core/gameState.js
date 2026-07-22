@@ -449,6 +449,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.hasRegeneration = false;
             player.scrap = 0;
             player.scrapMultiplier = 1.0;
+            player.bonusLevelUpRerolls = 0;
             player.fireRateSkillMultiplier = 1.0;
             player.damageSkillMultiplier = 1.0;
             player.pierceChance = 0;

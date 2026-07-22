@@ -219,10 +219,21 @@ export const ENGINE_VERSION = `${ENGINE_NAME} ${GAME_VERSION}`;
 /** Patch notes shown in the main-menu version modal (newest first) */
 export const VERSION_HISTORY = [
     {
+        version: 'UNRELEASED',
+        codename: 'Scrap Economy Depth',
+        date: '2026-07-21',
+        tag: 'CURRENT',
+        highlights: [
+            'Arcade Scrap Depot — fixed restock shop + always-on beacon',
+            'Wandering Merchant — rare black-market visits (wave 6+)',
+            'Wave-break Scrap Shrine kept — combat buffs on break',
+            'Shared scrap offers — turret, orbital, magnet, nuke, reroll'
+        ]
+    },
+    {
         version: 'V0.9.3 ALPHA',
         codename: 'Act 1 Finale',
         date: '2026-07-09',
-        tag: 'CURRENT',
         highlights: [
             'Campaign Act 1 Zones 1–4 + The Warden + ACT 1 CLEAR',
             'Survivor quests — Rook, Pip, June, Holt talk/quest/recruit',
@@ -274,22 +285,11 @@ export const VERSION_HISTORY = [
             'MP3 arcade soundtrack',
             'GameLoopSystem engine refactor'
         ]
-    },
-    {
-        version: 'V0.8.3 ALPHA',
-        codename: 'Survival Polish',
-        date: '2026-06-20',
-        highlights: [
-            'Rank & achievement systems',
-            'Battlepass season overhaul',
-            'Dodge roll & explosive barrels',
-            'Molotov throwable weapon'
-        ]
     }
 ];
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.9.3 ALPHA — Act 1 Finale: Zones 1–4 + Warden 👹 | Survivor Quests 🤝 | ACT 1 CLEAR 🏆 | Campaign Alive Radio 📻 | Menu Horde Ambience 🧟 | Boot Hardening 🛡 | 44K+ LOC 📊 | V0.9.2: Equipment + Mobile 📱 | And More...";
+export const NEWS_UPDATES = "NEW: UNRELEASED — Scrap Economy Depth: Arcade Depot 🏪 + Beacon | Wandering Merchant 🧙 | Shrine Still Live ⚡ | V0.9.3: Act 1 Finale Zones 1–4 + Warden 👹 | Survivor Quests 🤝 | Menu Horde 🧟 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

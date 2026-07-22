@@ -195,6 +195,9 @@ export class GameStateManager {
         gameState.nukePickups = [];
         gameState.scrapPickups = [];
         gameState.scrapShrines = [];
+        gameState.scrapDepot = null;
+        gameState.wanderingMerchant = null;
+        gameState.scrapMagnetEndTime = 0;
         gameState.props = [];
 
         gameState.wave = 1;
@@ -250,6 +253,9 @@ export class GameStateManager {
         gameState.nukePickups = [];
         gameState.scrapPickups = [];
         gameState.scrapShrines = [];
+        gameState.scrapDepot = null;
+        gameState.wanderingMerchant = null;
+        gameState.scrapMagnetEndTime = 0;
         gameState.props = [];
 
         gameState.wave = 1;

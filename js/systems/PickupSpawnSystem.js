@@ -8,7 +8,8 @@ import {
     SCRAP_DROP_CHANCE,
     SCRAP_BOSS_VALUE,
     MAX_SCRAP_PICKUPS,
-    SCRAP_MAGNETIC_RANGE
+    SCRAP_MAGNETIC_RANGE,
+    MERCHANT_SCRAP_MAGNET_RANGE_BONUS
 } from '../core/constants.js';
 import {
     HealthPickup,
@@ -61,6 +62,9 @@ export class PickupSpawnSystem {
             if ((pl.pickupMagnetBonus || 0) > maxMagnetBonus) {
                 maxMagnetBonus = pl.pickupMagnetBonus;
             }
+        }
+        if (gameState.scrapMagnetEndTime && now < gameState.scrapMagnetEndTime) {
+            maxMagnetBonus += MERCHANT_SCRAP_MAGNET_RANGE_BONUS;
         }
         const magnetRange = SCRAP_MAGNETIC_RANGE + maxMagnetBonus;
         const magnetRangeSq = magnetRange * magnetRange;

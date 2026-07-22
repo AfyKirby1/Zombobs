@@ -1050,9 +1050,32 @@ flowchart TD
 - `clearShrines()` — On wave advance / reset
 - `getPromptText(player)` — Tooltip copy for HUD
 
-**Offers** (one random per shrine): Ammo Cache (20), Armor Plate (30), Overclock (40)
+**Offers** (one random per shrine): Ammo Cache (20), Armor Plate (30), Overclock (40), Sentry Turret (35), Orbital Strike (60)
+[AMENDED 2026-07-21]: Effects applied via shared `utils/scrapOfferUtils.js` (`applyScrapOffer`).
 
-**Dependencies**: `entities/ScrapShrine.js`, `core/constants.js`, `GameLoopSystem` (spawn on break start, tooltip draw)
+**Dependencies**: `entities/ScrapShrine.js`, `core/constants.js`, `GameLoopSystem` (spawn on break start, tooltip draw), `utils/scrapOfferUtils.js`
+
+#### WorldShopSystem.js (2026-07-21)
+**Purpose**: Arcade-only fixed Scrap Depot + rare Wandering Merchant (mid-run scrap economy depth)
+
+**Exports**: `WorldShopSystem` class, `worldShopSystem` singleton
+
+**Gate**: `gameMode === 'arcade'` and not coop/MP/campaign
+
+**Methods**:
+- `spawnDepot()` — Once per run at start (~800–1200px from player); bronze stall + mast
+- `onWaveBreakStart()` / `onWaveBreakEnd()` — Refresh depot stock; roll/dismiss merchant
+- `trySpawnMerchant()` — Wave 6+, 35% chance, 2-wave cooldown; toast + purple beacon
+- `tryPurchase(player)` / `tryCycleOffer(player, dir)` — Proximity E buy; Q/scroll/bumpers cycle
+- `getBeaconTargets()` — HUD compass + edge chevrons (`D` depot, `M` merchant)
+- `update()` / `draw(viewport)` — Merchant wander; world draw after entity render
+
+**Depot offers** (`DEPOT_OFFERS`): Ammo / Medkit / Grenade / Molotov / Armor — limited stock, wave-scaled cost
+**Merchant offers** (`MERCHANT_OFFERS`): Weighted black market (turret, orbital, mystery crate, overclock syringe, scrap magnet, panic nuke, reroll token, XP burst) — at least one rare per visit
+
+**State**: `gameState.scrapDepot`, `gameState.wanderingMerchant`, `gameState.scrapMagnetEndTime`
+
+**Dependencies**: `entities/ScrapDepot.js`, `entities/WanderingMerchant.js`, `utils/scrapOfferUtils.js`, `GameStateManager` (spawn on arcade start), `GameLoopSystem`, `GameHUD.drawShopBeacons` / compass markers
 
 #### PlayerSystem.js
 **Purpose**: Handles player updates, rendering, and co-op lobby management

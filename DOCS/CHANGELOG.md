@@ -5,6 +5,12 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+### Changed
+- **Update Modals — Scrap Economy Depth (2026-07-21)** — Main-menu news ticker + patch-notes modal (`VERSION_HISTORY` / `NEWS_UPDATES` in `constants.js`) now lead with Unreleased Arcade Depot + Wandering Merchant. `GAME_VERSION` stays **V0.9.3 ALPHA** until next modality bump.
+
+### Added
+- **Arcade Depot + Wandering Merchant (2026-07-21)** — Mid-run scrap economy depth (arcade single-player only). Fixed **Scrap Depot** landmark with multi-offer restock (ammo/medkit/grenade/molotov/armor), wave-scaled prices, stock limits, always-on bronze compass/`D` + edge beacon. Rare **Wandering Merchant** visits on wave breaks (wave 6+, weighted black-market stock: turret, orbital, mystery crate, overclock syringe, scrap magnet, panic nuke, reroll token, XP burst) with toast + purple `M` beacon. Wave-break **Scrap Shrine** unchanged. Shared `applyScrapOffer` helper. Key files: `WorldShopSystem.js`, `ScrapDepot.js`, `WanderingMerchant.js`, `scrapOfferUtils.js`, `GameHUD.js`, `ScrapShopSystem.js`.
+
 ## [v0.9.3] - 2026-07-09
 
 > **Act 1 Finale Update** — Complete Campaign Act 1 Zones 1–4 with The Warden, survivor quests, campaign alive pass, main-menu horde ambience, boot hardening, achievements/gallery redesign, and synchronized v0.9.3 public modalities.
