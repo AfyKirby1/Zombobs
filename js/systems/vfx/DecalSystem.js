@@ -2,7 +2,7 @@
  * Ground/scorch/blood decal ring buffer (Canvas draw under entities).
  * [TRACE: engine_vfx_modernize]
  */
-import { ctx } from '../core/canvas.js';
+import { ctx } from '../../core/canvas.js';
 
 const MAX_DECALS = 128;
 

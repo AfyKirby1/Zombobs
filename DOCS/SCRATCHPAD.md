@@ -9,7 +9,8 @@
 - **Done (Phase 3)**: Camera-anchored blood; GPU blood discs; point lights; `DecalSystem`; procedural floor fallback.
 - **Validate**: `test-syntax.ps1` green; `node tools/vfx_smoke_test.mjs` 21/21.
 - **Doc drift (flagged)**: AGENTS/ARCHITECTURE still say GPU bottom layer / old bloom/100k FX — overlay z=2, bloom now real, FX=25k.
-- **Next**: Optional V0.9.4 modality; browser playtest bloom slider + grenade/molotov; `npm run sync:web`.
+- **Hotfix (2026-07-22)**: `js/systems/vfx/*` used one-level `../` imports → resolved to `js/systems/core|shaders|utils` (404 HTML MIME on GH Pages). Fixed to `../../core`, `../../shaders`, `../../utils`.
+- **Next**: Push for GitHub Pages; optional V0.9.4 modality; browser playtest bloom slider + grenade/molotov; `npm run sync:web`.
 
 ### Improve Drops + Equipment Pass B (2026-07-21) ✅ COMPLETE
 - **Done**: Boss/Warden loot parity (`isBossEntity`); Warden 100% legendary-biased gear + boss scrap; melee equipment drops; crate magnet + name label + full-inv leave crate; equip swap abort if inv full; EquipmentScreen scroll 24 + Shift+click scrap sink; merchant **Gear Crate** offer.

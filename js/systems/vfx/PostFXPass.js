@@ -6,7 +6,7 @@ import {
     BLOOM_EXTRACT_SHADER,
     BLOOM_BLUR_SHADER,
     BLOOM_COMPOSITE_SHADER,
-} from '../shaders/bloom.js';
+} from '../../shaders/bloom.js';
 
 export class PostFXPass {
     constructor() {

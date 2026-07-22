@@ -2,9 +2,9 @@
  * Extra WebGPU FX: combat compute particles, point lights, blood-grid render.
  * [TRACE: engine_vfx_modernize]
  */
-import { COMBAT_PARTICLE_COMPUTE, COMBAT_PARTICLE_RENDER } from '../shaders/combatParticles.js';
-import { BLOOD_GRID_RENDER, POINT_LIGHTS_SHADER } from '../shaders/bloodAndLights.js';
-import { PARTICLE_KIND } from '../utils/colorParse.js';
+import { COMBAT_PARTICLE_COMPUTE, COMBAT_PARTICLE_RENDER } from '../../shaders/combatParticles.js';
+import { BLOOD_GRID_RENDER, POINT_LIGHTS_SHADER } from '../../shaders/bloodAndLights.js';
+import { PARTICLE_KIND } from '../../utils/colorParse.js';
 
 const FLOATS_PER_COMBAT = 12; // pos2 vel2 color4 radius life maxLife kind
 
