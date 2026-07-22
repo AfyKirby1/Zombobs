@@ -1,7 +1,7 @@
 import { gpuCanvas } from './canvas.js';
 import { ZombobsFX } from './ZombobsFX.js';
 import { GAME_PARTICLE_SHADER } from '../shaders/gameParticles.js';
-import { FLASHLIGHT_SHADER } from '../shaders/flashlight.js';
+import { FLASHLIGHT_SHADER } from '../shaders/coneLight.js';
 import { BLOOD_EDGE_SHADER } from '../shaders/bloodEdge.js';
 import { PostFXPass } from '../systems/vfx/PostFXPass.js';
 import { WebGPUEffects } from '../systems/vfx/WebGPUEffects.js';
