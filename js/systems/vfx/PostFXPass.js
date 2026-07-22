@@ -31,8 +31,8 @@ export class PostFXPass {
         this.compositeParams = null;
 
         this.extractBG = null;
-        this.blurHBG = null;
-        this.blurVBG = null;
+        this.blurSampleA = null; // sample A → write B
+        this.blurSampleB = null; // sample B → write A
         this.compositeBG = null;
 
         this.width = 0;
@@ -89,11 +89,6 @@ export class PostFXPass {
 
         const pipeLayout = device.createPipelineLayout({ bindGroupLayouts: [texLayout] });
         const compPipeLayout = device.createPipelineLayout({ bindGroupLayouts: [compLayout] });
-
-        const blend = {
-            color: { srcFactor: 'one', dstFactor: 'zero', operation: 'add' },
-            alpha: { srcFactor: 'one', dstFactor: 'zero', operation: 'add' },
-        };
 
         this.extractPipeline = device.createRenderPipeline({
             layout: pipeLayout,
@@ -157,7 +152,8 @@ export class PostFXPass {
         this.halfW = Math.max(1, width >> 1);
         this.halfH = Math.max(1, height >> 1);
 
-        const makeTex = (w, h) => this.device.createTexture({
+        const makeTex = (w, h, label) => this.device.createTexture({
+            label,
             size: { width: w, height: h },
             format: this.format,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
@@ -167,18 +163,18 @@ export class PostFXPass {
         this.bloomA?.destroy?.();
         this.bloomB?.destroy?.();
 
-        this.fxTexture = makeTex(width, height);
+        this.fxTexture = makeTex(width, height, 'postfx-fx');
         this.fxView = this.fxTexture.createView();
-        this.bloomA = makeTex(this.halfW, this.halfH);
+        this.bloomA = makeTex(this.halfW, this.halfH, 'postfx-bloom-a');
         this.bloomAView = this.bloomA.createView();
-        this.bloomB = makeTex(this.halfW, this.halfH);
+        this.bloomB = makeTex(this.halfW, this.halfH, 'postfx-bloom-b');
         this.bloomBView = this.bloomB.createView();
 
         this._rebuildBindGroups();
     }
 
     _rebuildBindGroups() {
-        if (!this.fxView || !this.bloomAView) return;
+        if (!this.fxView || !this.bloomAView || !this.bloomBView) return;
 
         this.extractBG = this.device.createBindGroup({
             layout: this._texLayout,
@@ -189,7 +185,8 @@ export class PostFXPass {
             ],
         });
 
-        this.blurHBG = this.device.createBindGroup({
+        // Never sample a texture in the same pass that writes to it
+        this.blurSampleA = this.device.createBindGroup({
             layout: this._texLayout,
             entries: [
                 { binding: 0, resource: this.bloomAView },
@@ -198,7 +195,7 @@ export class PostFXPass {
             ],
         });
 
-        this.blurVBG = this.device.createBindGroup({
+        this.blurSampleB = this.device.createBindGroup({
             layout: this._texLayout,
             entries: [
                 { binding: 0, resource: this.bloomBView },
@@ -224,8 +221,24 @@ export class PostFXPass {
         return this.fxView;
     }
 
+    _blurPass(encoder, sampleBG, targetView) {
+        const pass = encoder.beginRenderPass({
+            colorAttachments: [{
+                view: targetView,
+                clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                loadOp: 'clear',
+                storeOp: 'store',
+            }],
+        });
+        pass.setPipeline(this.blurPipeline);
+        pass.setBindGroup(0, sampleBG);
+        pass.draw(3);
+        pass.end();
+    }
+
     /**
      * Run bloom + composite into swapchain view.
+     * Ping-pong: never sample the texture currently bound as color target.
      */
     run(encoder, swapchainView, {
         bloomIntensity = 0.5,
@@ -234,15 +247,21 @@ export class PostFXPass {
         hazeStrength = 0,
     } = {}) {
         if (!this.ready || this.quality === 0 || !this.fxView) return false;
+        if (!this.extractBG || !this.blurSampleA || !this.blurSampleB || !this.compositeBG) {
+            return false;
+        }
 
+        const tw = 1 / this.halfW;
+        const th = 1 / this.halfH;
         const threshold = this.quality === 1 ? 0.55 : 0.4;
+
         this.device.queue.writeBuffer(
             this.extractParams,
             0,
             new Float32Array([threshold, Math.max(0.05, bloomIntensity), 0, 0])
         );
 
-        // Extract → bloomA
+        // Extract bright from FX → bloomA
         {
             const pass = encoder.beginRenderPass({
                 colorAttachments: [{
@@ -258,142 +277,38 @@ export class PostFXPass {
             pass.end();
         }
 
-        // Blur H: A → B
+        // Blur H: sample A → B
         this.device.queue.writeBuffer(
             this.blurParams,
             0,
-            new Float32Array([1, 0, 1 / this.halfW, 1 / this.halfH])
+            new Float32Array([1, 0, tw, th])
         );
-        {
-            const pass = encoder.beginRenderPass({
-                colorAttachments: [{
-                    view: this.bloomBView,
-                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                    loadOp: 'clear',
-                    storeOp: 'store',
-                }],
-            });
-            pass.setPipeline(this.blurPipeline);
-            pass.setBindGroup(0, this.blurHBG);
-            pass.draw(3);
-            pass.end();
-        }
+        this._blurPass(encoder, this.blurSampleA, this.bloomBView);
+
+        // Blur V: sample B → A
+        this.device.queue.writeBuffer(
+            this.blurParams,
+            0,
+            new Float32Array([0, 1, tw, th])
+        );
+        this._blurPass(encoder, this.blurSampleB, this.bloomAView);
 
         if (this.quality >= 2) {
-            // Blur V: B → A, then H again A → B for wider bloom
+            // Extra H: sample A → B (wider bloom)
             this.device.queue.writeBuffer(
                 this.blurParams,
                 0,
-                new Float32Array([0, 1, 1 / this.halfW, 1 / this.halfH])
+                new Float32Array([1, 0, tw, th])
             );
-            {
-                const pass = encoder.beginRenderPass({
-                    colorAttachments: [{
-                        view: this.bloomAView,
-                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                        loadOp: 'clear',
-                        storeOp: 'store',
-                    }],
-                });
-                pass.setPipeline(this.blurPipeline);
-                // reuse blurVBG pointing at B — need bind group with A as src after swap
-                const bg = this.device.createBindGroup({
-                    layout: this._texLayout,
-                    entries: [
-                        { binding: 0, resource: this.bloomBView },
-                        { binding: 1, resource: this.sampler },
-                        { binding: 2, resource: { buffer: this.blurParams } },
-                    ],
-                });
-                pass.setBindGroup(0, bg);
-                pass.draw(3);
-                pass.end();
-            }
-            this.device.queue.writeBuffer(
-                this.blurParams,
-                0,
-                new Float32Array([1, 0, 1 / this.halfW, 1 / this.halfH])
-            );
-            {
-                const pass = encoder.beginRenderPass({
-                    colorAttachments: [{
-                        view: this.bloomBView,
-                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                        loadOp: 'clear',
-                        storeOp: 'store',
-                    }],
-                });
-                pass.setPipeline(this.blurPipeline);
-                const bg = this.device.createBindGroup({
-                    layout: this._texLayout,
-                    entries: [
-                        { binding: 0, resource: this.bloomAView },
-                        { binding: 1, resource: this.sampler },
-                        { binding: 2, resource: { buffer: this.blurParams } },
-                    ],
-                });
-                pass.setBindGroup(0, bg);
-                pass.draw(3);
-                pass.end();
-            }
+            this._blurPass(encoder, this.blurSampleA, this.bloomBView);
         } else {
-            // Simple: one V blur B stays as bloom (blur A→B was H; do V into A then copy role)
+            // Simple: copy A → B so composite always reads bloomB
             this.device.queue.writeBuffer(
                 this.blurParams,
                 0,
-                new Float32Array([0, 1, 1 / this.halfW, 1 / this.halfH])
+                new Float32Array([0, 0, tw, th])
             );
-            {
-                const pass = encoder.beginRenderPass({
-                    colorAttachments: [{
-                        view: this.bloomAView,
-                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                        loadOp: 'clear',
-                        storeOp: 'store',
-                    }],
-                });
-                pass.setPipeline(this.blurPipeline);
-                pass.setBindGroup(0, this.blurHBG); // samples bloomA — wrong after H wrote B
-                const bg = this.device.createBindGroup({
-                    layout: this._texLayout,
-                    entries: [
-                        { binding: 0, resource: this.bloomBView },
-                        { binding: 1, resource: this.sampler },
-                        { binding: 2, resource: { buffer: this.blurParams } },
-                    ],
-                });
-                pass.setBindGroup(0, bg);
-                pass.draw(3);
-                pass.end();
-            }
-            // Swap roles: composite expects bloomB — copy A→B via blur identity-ish
-            this.device.queue.writeBuffer(
-                this.blurParams,
-                0,
-                new Float32Array([0, 0, 1 / this.halfW, 1 / this.halfH])
-            );
-            {
-                const pass = encoder.beginRenderPass({
-                    colorAttachments: [{
-                        view: this.bloomBView,
-                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                        loadOp: 'clear',
-                        storeOp: 'store',
-                    }],
-                });
-                pass.setPipeline(this.blurPipeline);
-                const bg = this.device.createBindGroup({
-                    layout: this._texLayout,
-                    entries: [
-                        { binding: 0, resource: this.bloomAView },
-                        { binding: 1, resource: this.sampler },
-                        { binding: 2, resource: { buffer: this.blurParams } },
-                    ],
-                });
-                pass.setBindGroup(0, bg);
-                pass.draw(3);
-                pass.end();
-            }
+            this._blurPass(encoder, this.blurSampleA, this.bloomBView);
         }
 
         this.device.queue.writeBuffer(
