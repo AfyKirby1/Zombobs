@@ -23,7 +23,8 @@ export class BossHealthBar {
         const scaledHeight = this.height * scale;
         const scaledPadding = this.padding * scale;
         const x = (this.canvas.width - scaledWidth) / 2;
-        const y = 40 * scale; // Top of screen
+        // Boss Rush has a persistent mode banner at the very top.
+        const y = (gameState.gameMode === 'boss_rush' ? 80 : 40) * scale;
 
         ctx.save();
 
@@ -57,7 +58,9 @@ export class BossHealthBar {
         ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
         ctx.shadowBlur = 4 * scale;
-        ctx.fillText(`BOSS - ${Math.ceil(boss.health)} / ${boss.maxHealth}`, this.canvas.width / 2, y + scaledHeight / 2);
+        const phaseLabel = boss.bossRushPhase > 0 ? `  // RAGE ${boss.bossRushPhase + 1}` : '';
+        const name = gameState.gameMode === 'boss_rush' ? 'OVERLORD' : 'BOSS';
+        ctx.fillText(`${name}${phaseLabel} - ${Math.ceil(boss.health)} / ${boss.maxHealth}`, this.canvas.width / 2, y + scaledHeight / 2);
 
         ctx.restore();
     }

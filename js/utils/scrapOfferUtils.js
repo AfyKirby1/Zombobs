@@ -21,6 +21,8 @@ import {
 } from '../entities/Pickup.js';
 import { triggerNuke, getPlayerMaxGrenades } from './combatUtils.js';
 import { skillSystem } from '../systems/SkillSystem.js';
+import { equipmentSystem } from '../systems/EquipmentSystem.js';
+import { EquipmentPickup } from '../entities/EquipmentPickup.js';
 
 /**
  * Wave-scaled scrap cost. Caps at DEPOT_PRICE_SCALE_CAP× base.
@@ -141,7 +143,31 @@ export function applyScrapOffer(player, offerId) {
         return true;
     }
 
+    if (offerId === 'gear_crate') {
+        spawnMerchantGearCrate(player);
+        return true;
+    }
+
     return false;
+}
+
+/**
+ * Merchant gear crate — rare+ biased equipment drop near player.
+ * @param {Object} player
+ */
+function spawnMerchantGearCrate(player) {
+    const r = Math.random();
+    let rarity = 'rare';
+    if (r > 0.75) rarity = 'legendary';
+    else if (r > 0.40) rarity = 'epic';
+
+    const item = equipmentSystem.createRandomItem(rarity);
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 30;
+    const x = player.x + Math.cos(angle) * dist;
+    const y = player.y + Math.sin(angle) * dist;
+    if (!gameState.equipmentPickups) gameState.equipmentPickups = [];
+    gameState.equipmentPickups.push(new EquipmentPickup(x, y, item));
 }
 
 /**

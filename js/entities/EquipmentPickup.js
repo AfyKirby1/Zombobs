@@ -2,6 +2,10 @@
 
 import { getRarityColor } from '../core/equipmentDefinitions.js';
 
+const EQUIP_MAGNET_RANGE = 180;
+const EQUIP_MAGNET_RANGE_SQ = EQUIP_MAGNET_RANGE * EQUIP_MAGNET_RANGE;
+const EQUIP_MAGNET_SPEED = 3.2;
+
 export class EquipmentPickup {
     constructor(x, y, item) {
         this.x = x;
@@ -9,14 +13,30 @@ export class EquipmentPickup {
         this.item = item;
         this.radius = 14;
         this.bob = Math.random() * Math.PI * 2;
-        this.life = 900;
-        this.maxLife = 900;
+        this.life = 1200;
+        this.maxLife = 1200;
         this.collected = false;
+        this._fullInvToastAt = 0;
     }
 
-    update() {
+    /**
+     * @param {number} [playerX]
+     * @param {number} [playerY]
+     */
+    update(playerX, playerY) {
         this.bob += 0.05;
         this.life--;
+
+        if (playerX === undefined || playerY === undefined) return;
+
+        const dx = playerX - this.x;
+        const dy = playerY - this.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > 0 && distSq <= EQUIP_MAGNET_RANGE_SQ) {
+            const dist = Math.sqrt(distSq);
+            this.x += (dx / dist) * EQUIP_MAGNET_SPEED;
+            this.y += (dy / dist) * EQUIP_MAGNET_SPEED;
+        }
     }
 
     draw(ctx) {
@@ -49,6 +69,14 @@ export class EquipmentPickup {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(this.item.icon, this.x, this.y + yOffset);
+
+        // Short name / rarity label above crate
+        const label = this.item.name
+            ? (this.item.name.length > 14 ? `${this.item.name.slice(0, 12)}…` : this.item.name)
+            : (this.item.rarity || 'gear');
+        ctx.font = 'bold 9px "Roboto Mono", monospace';
+        ctx.fillStyle = color;
+        ctx.fillText(label, this.x, this.y - 18 + yOffset);
 
         ctx.restore();
     }

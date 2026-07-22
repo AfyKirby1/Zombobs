@@ -24,6 +24,7 @@ import {
 } from '../entities/Pickup.js';
 import { ScrapPickup } from '../entities/ScrapPickup.js';
 import { canvas } from '../core/canvas.js';
+import { isBossEntity } from './EquipmentSystem.js';
 
 /**
  * PickupSpawnSystem handles spawning of health, ammo, and powerup pickups
@@ -125,7 +126,7 @@ export class PickupSpawnSystem {
      * @param {number} y
      */
     tryDropScrapFromZombie(gameState, zombie, x, y) {
-        const isBoss = zombie.type === 'boss';
+        const isBoss = isBossEntity(zombie);
         const dropChance = isBoss ? 1.0 : SCRAP_DROP_CHANCE;
         if (Math.random() >= dropChance) {
             return;

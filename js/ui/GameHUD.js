@@ -2333,8 +2333,12 @@ export class GameHUD {
         this.hoveredSkillIndex = this.levelUpScreen.updateHover(x, y);
     }
 
-    checkEquipmentClick(x, y) {
-        return this.equipmentScreen.checkClick(x, y);
+    checkEquipmentClick(x, y, opts = {}) {
+        return this.equipmentScreen.checkClick(x, y, opts);
+    }
+
+    handleEquipmentWheel(deltaY) {
+        return this.equipmentScreen.handleWheel(deltaY);
     }
 
     updateEquipmentHover(x, y) {

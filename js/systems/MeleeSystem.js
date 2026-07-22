@@ -8,6 +8,8 @@ import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from './SettingsManager.js';
 import { skillSystem } from './SkillSystem.js';
 import { pickupSpawnSystem } from './PickupSpawnSystem.js';
+import { equipmentSystem } from './EquipmentSystem.js';
+import { EquipmentPickup } from '../entities/EquipmentPickup.js';
 
 /**
  * MeleeSystem - Handles melee attack logic and range checking
@@ -82,6 +84,13 @@ export class MeleeSystem {
                     }
 
                     pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
+
+                    const equipmentItem = equipmentSystem.tryDropFromZombie(zombie);
+                    if (equipmentItem) {
+                        gameState.equipmentPickups.push(
+                            new EquipmentPickup(zombieX, zombieY, equipmentItem)
+                        );
+                    }
 
                     gameState.score += 10;
                     gameState.zombiesKilled++;

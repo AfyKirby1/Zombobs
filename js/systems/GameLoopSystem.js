@@ -35,6 +35,8 @@ import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
 import { skillSystem } from './SkillSystem.js';
 import { equipmentSystem } from './EquipmentSystem.js';
+import { getRarityColor } from '../core/equipmentDefinitions.js';
+import { DamageNumber } from '../entities/Particle.js';
 import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawBossRushHeader, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
@@ -378,16 +380,39 @@ export class GameLoopSystem {
         const player = gameState.players[0];
         if (!player || player.health <= 0) return;
 
+        const now = Date.now();
         for (let i = gameState.equipmentPickups.length - 1; i >= 0; i--) {
             const pickup = gameState.equipmentPickups[i];
-            pickup.update();
+            pickup.update(player.x, player.y);
 
             const dx = player.x - pickup.x;
             const dy = player.y - pickup.y;
             const collectRadius = player.radius + pickup.radius;
             if (dx * dx + dy * dy <= collectRadius * collectRadius) {
-                equipmentSystem.autoEquipIfSlotEmpty(player, pickup.item);
-                gameState.equipmentPickups.splice(i, 1);
+                const ok = equipmentSystem.autoEquipIfSlotEmpty(player, pickup.item);
+                if (ok) {
+                    const item = pickup.item;
+                    const color = getRarityColor(item.rarity);
+                    if (gameState.damageNumbers) {
+                        gameState.damageNumbers.push(
+                            new DamageNumber(
+                                player.x,
+                                player.y - 40,
+                                `${item.icon} ${item.name}`,
+                                false,
+                                color
+                            )
+                        );
+                    }
+                    gameState.equipmentPickups.splice(i, 1);
+                } else if (!pickup._fullInvToastAt || now - pickup._fullInvToastAt > 1200) {
+                    pickup._fullInvToastAt = now;
+                    if (gameState.damageNumbers) {
+                        gameState.damageNumbers.push(
+                            new DamageNumber(pickup.x, pickup.y - 28, 'Inventory full', false, '#ff5252')
+                        );
+                    }
+                }
             } else if (pickup.life <= 0) {
                 gameState.equipmentPickups.splice(i, 1);
             }

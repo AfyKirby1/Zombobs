@@ -794,7 +794,7 @@ gameEngine.draw = () => {
 };
 
 // Event Listeners
-function handleMenuInteraction(clickX, clickY) {
+function handleMenuInteraction(clickX, clickY, opts = {}) {
     if (gameState.showSettingsPanel) {
         settingsPanel.handleClick(clickX, clickY);
         return;
@@ -802,7 +802,7 @@ function handleMenuInteraction(clickX, clickY) {
 
     // Equipment Screen
     if (gameState.showEquipment) {
-        if (gameHUD.checkEquipmentClick(clickX, clickY)) {
+        if (gameHUD.checkEquipmentClick(clickX, clickY, opts)) {
             return;
         }
     }
@@ -1313,7 +1313,7 @@ window.addEventListener('mousedown', (e) => {
     const pos = getCanvasMousePos(e);
 
     // Use common handler for all menu interactions
-    handleMenuInteraction(pos.x, pos.y);
+    handleMenuInteraction(pos.x, pos.y, { shiftKey: e.shiftKey });
 
     // Gameplay Mouse Input (Shooting / Melee)
     // Only process if not on a menu screen
@@ -1357,6 +1357,13 @@ window.addEventListener('mouseleave', () => {
 window.addEventListener('wheel', (e) => {
     if (gameState.showSettingsPanel) {
         settingsPanel.handleWheel(e);
+        return;
+    }
+
+    // Equipment inventory scroll
+    if (gameState.showEquipment) {
+        e.preventDefault();
+        gameHUD.handleEquipmentWheel(e.deltaY);
         return;
     }
 

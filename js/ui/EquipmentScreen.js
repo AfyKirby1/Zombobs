@@ -17,7 +17,7 @@ export class EquipmentScreen {
         this.hud = hud;
         this.tab = 'gear';
         this.hoveredSlot = null;
-        this.hoveredItemIndex = -1;
+        this.hoveredItemIndex = -1; // absolute inventory index
         this.hoveredClose = false;
         this.hoveredTab = null;
         this.hoveredHeroId = null;
@@ -26,6 +26,8 @@ export class EquipmentScreen {
         this.heroRects = [];
         this.tabRects = [];
         this.closeRect = null;
+        this.inventoryScroll = 0;
+        this.visibleInventoryRows = 10;
     }
 
     getUIScale() {
@@ -184,20 +186,28 @@ export class EquipmentScreen {
         const boxW = 470 * scale;
         const boxH = 36 * scale;
         const gap = 5 * scale;
+        const rows = this.visibleInventoryRows;
+        const maxSlots = equipmentSystem.maxInventorySize;
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.font = `bold ${Math.max(11, 13 * scale)}px "Roboto Mono", monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        const invCount = (player.inventory || []).length;
-        ctx.fillText(`INVENTORY (${invCount}/24)`, x, y - 18 * scale);
-
         const inventory = player.inventory || [];
+        const invCount = inventory.length;
+        const maxScroll = Math.max(0, maxSlots - rows);
+        this.inventoryScroll = Math.max(0, Math.min(this.inventoryScroll, maxScroll));
+        const start = this.inventoryScroll;
+        const end = Math.min(maxSlots, start + rows);
+
+        ctx.fillText(`INVENTORY (${invCount}/${maxSlots})  ${start + 1}–${end}`, x, y - 18 * scale);
+
         this.inventoryRects = [];
-        for (let i = 0; i < 10; i++) {
-            const by = y + i * (boxH + gap);
-            const item = inventory[i];
-            const hovered = this.hoveredItemIndex === i;
+        for (let row = 0; row < rows; row++) {
+            const absIndex = start + row;
+            const by = y + row * (boxH + gap);
+            const item = inventory[absIndex];
+            const hovered = this.hoveredItemIndex === absIndex;
 
             ctx.fillStyle = hovered ? 'rgba(60, 60, 68, 0.9)' : 'rgba(38, 40, 46, 0.85)';
             ctx.strokeStyle = item ? getRarityColor(item.rarity) : 'rgba(120, 120, 120, 0.3)';
@@ -216,9 +226,13 @@ export class EquipmentScreen {
                 ctx.fillStyle = 'rgba(180, 180, 180, 0.85)';
                 ctx.font = `${Math.max(8, 9 * scale)}px "Roboto Mono", monospace`;
                 ctx.textAlign = 'right';
+                const scrapVal = equipmentSystem.getScrapValue(item);
                 const bonusText = Object.entries(item.bonuses)
                     .map(([type, value]) => formatBonus(type, value)).join(', ');
-                ctx.fillText(bonusText, x + boxW - 8 * scale, by + boxH / 2);
+                const rightLabel = hovered
+                    ? `${bonusText}  ·  scrap ${scrapVal}`
+                    : bonusText;
+                ctx.fillText(rightLabel, x + boxW - 8 * scale, by + boxH / 2);
             } else {
                 ctx.fillStyle = 'rgba(120, 120, 120, 0.45)';
                 ctx.font = `${Math.max(9, 11 * scale)}px "Roboto Mono", monospace`;
@@ -227,8 +241,37 @@ export class EquipmentScreen {
                 ctx.fillText('—', x + boxW / 2, by + boxH / 2);
             }
 
-            this.inventoryRects.push({ index: i, x, y: by, w: boxW, h: boxH });
+            this.inventoryRects.push({ index: absIndex, x, y: by, w: boxW, h: boxH });
         }
+
+        // Hint + scroll indicator
+        const hintY = y + rows * (boxH + gap) + 4 * scale;
+        ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
+        ctx.font = `${Math.max(8, 10 * scale)}px "Roboto Mono", monospace`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Shift+click scrap · scroll for more', x, hintY);
+
+        if (maxScroll > 0) {
+            const trackH = rows * (boxH + gap) - gap;
+            const trackX = x + boxW + 6 * scale;
+            const thumbH = Math.max(20 * scale, trackH * (rows / maxSlots));
+            const thumbY = y + (trackH - thumbH) * (this.inventoryScroll / maxScroll);
+            ctx.fillStyle = 'rgba(80, 80, 90, 0.6)';
+            ctx.fillRect(trackX, y, 4 * scale, trackH);
+            ctx.fillStyle = 'rgba(255, 107, 53, 0.75)';
+            ctx.fillRect(trackX, thumbY, 4 * scale, thumbH);
+        }
+    }
+
+    handleWheel(deltaY) {
+        if (!gameState.showEquipment || this.tab !== 'gear') return false;
+        const maxSlots = equipmentSystem.maxInventorySize;
+        const maxScroll = Math.max(0, maxSlots - this.visibleInventoryRows);
+        if (maxScroll <= 0) return false;
+        const dir = Math.sign(deltaY) || 1;
+        this.inventoryScroll = Math.max(0, Math.min(maxScroll, this.inventoryScroll + dir));
+        return true;
     }
 
     _drawSetBonuses(player, x, y, scale) {
@@ -387,11 +430,12 @@ export class EquipmentScreen {
         }
     }
 
-    checkClick(mouseX, mouseY) {
+    checkClick(mouseX, mouseY, opts = {}) {
         if (!gameState.showEquipment) return false;
         this.updateHover(mouseX, mouseY);
         const player = gameState.players[0];
         if (!player) return false;
+        const shiftKey = !!opts.shiftKey;
 
         if (this.hoveredTab) {
             this.tab = this.hoveredTab;
@@ -409,7 +453,22 @@ export class EquipmentScreen {
             }
             if (this.hoveredItemIndex >= 0) {
                 const item = player.inventory ? player.inventory[this.hoveredItemIndex] : null;
-                if (item) equipmentSystem.equipItem(player, item);
+                if (item) {
+                    if (shiftKey) {
+                        equipmentSystem.scrapItem(player, this.hoveredItemIndex);
+                    } else {
+                        const ok = equipmentSystem.equipItem(player, item);
+                        if (!ok && gameState.damageNumbers) {
+                            // feedback via toast on player world pos — screen-only panel, use waveNotification lite
+                            gameState.waveNotification = {
+                                active: true,
+                                text: 'INVENTORY FULL — SCRAP OR UNEQUIP',
+                                life: 90,
+                                maxLife: 90
+                            };
+                        }
+                    }
+                }
                 return true;
             }
         } else if (this.hoveredHeroId && window.companionSystem) {

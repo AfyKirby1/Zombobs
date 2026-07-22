@@ -2,6 +2,12 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Improve Drops + Equipment Pass B (2026-07-21) ✅ COMPLETE
+- **Done**: Boss/Warden loot parity (`isBossEntity`); Warden 100% legendary-biased gear + boss scrap; melee equipment drops; crate magnet + name label + full-inv leave crate; equip swap abort if inv full; EquipmentScreen scroll 24 + Shift+click scrap sink; merchant **Gear Crate** offer.
+- **Files**: `EquipmentSystem.js`, `EquipmentPickup.js`, `EquipmentScreen.js`, `MeleeSystem.js`, `PickupSpawnSystem.js`, `GameLoopSystem.js`, `scrapOfferUtils.js`, `constants.js`, `GameHUD.js`, `main.js`.
+- **Verify**: Melee drop; Warden always gear; full bag crate stays; E panel scroll + Shift scrap; merchant Gear Crate spawns equipment.
+- **Syntax**: `test-syntax.ps1` / `node --check` on touched files.
+
 ### Update Modals — Scrap Economy Depth (2026-07-21) ✅ COMPLETE
 - **Done**: In-game modalities only (no GAME_VERSION / landing / itch bump).
   - `VERSION_HISTORY` — prepended **UNRELEASED / Scrap Economy Depth** with `tag: 'CURRENT'`; removed CURRENT from V0.9.3; trimmed V0.8.3 to keep ~6 entries.

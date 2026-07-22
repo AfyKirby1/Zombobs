@@ -99,6 +99,7 @@ export const MERCHANT_OFFERS = [
     { id: 'sentry_turret', label: 'Sentry Turret', cost: 45, icon: '🤖', weight: 3, rare: false },
     { id: 'orbital_strike', label: 'Orbital Strike', cost: 70, icon: '🛰️', weight: 2, rare: true },
     { id: 'mystery_crate', label: 'Mystery Crate', cost: 35, icon: '🎁', weight: 4, rare: false },
+    { id: 'gear_crate', label: 'Gear Crate', cost: 65, icon: '📦', weight: 2, rare: true },
     { id: 'overclock_syringe', label: 'Overclock Syringe', cost: 55, icon: '💉', weight: 3, rare: false },
     { id: 'scrap_magnet', label: 'Scrap Magnet', cost: 40, icon: '🧲', weight: 3, rare: false },
     { id: 'panic_nuke', label: 'Panic Nuke', cost: 90, icon: '☢️', weight: 1, rare: true },
@@ -225,8 +226,8 @@ export const VERSION_HISTORY = [
         tag: 'CURRENT',
         highlights: [
             'Arcade Scrap Depot — fixed restock shop + always-on beacon',
-            'Wandering Merchant — rare black-market visits (wave 6+)',
-            'Wave-break Scrap Shrine kept — combat buffs on break',
+            'Wandering Merchant — rare black-market visits + Gear Crate',
+            'Equipment drops improved — Warden loot, melee drops, scrap sink',
             'Shared scrap offers — turret, orbital, magnet, nuke, reroll'
         ]
     },
@@ -289,7 +290,7 @@ export const VERSION_HISTORY = [
 ];
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: UNRELEASED — Scrap Economy Depth: Arcade Depot 🏪 + Beacon | Wandering Merchant 🧙 | Shrine Still Live ⚡ | V0.9.3: Act 1 Finale Zones 1–4 + Warden 👹 | Survivor Quests 🤝 | Menu Horde 🧟 | And More...";
+export const NEWS_UPDATES = "NEW: UNRELEASED — Scrap Economy Depth: Arcade Depot 🏪 | Merchant Gear Crate 📦 | Equip Drops + Scrap Sink 🛡 | Warden Loot Fix 👹 | V0.9.3: Act 1 Finale | Survivor Quests 🤝 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

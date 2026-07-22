@@ -9,7 +9,9 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Update Modals — Scrap Economy Depth (2026-07-21)** — Main-menu news ticker + patch-notes modal (`VERSION_HISTORY` / `NEWS_UPDATES` in `constants.js`) now lead with Unreleased Arcade Depot + Wandering Merchant. `GAME_VERSION` stays **V0.9.3 ALPHA** until next modality bump.
 
 ### Added
+- **Improve Drops + Equipment Pass B (2026-07-21)** — Warden/boss loot parity (`isBossEntity`, Warden guaranteed legendary-biased gear + boss scrap); melee kill equipment drops; equipment crates magnet + name label + full-inventory leave-on-ground; equip swap abort when bag full; Equipment panel scroll (all 24) + Shift+click scrap sink; Wandering Merchant **Gear Crate** offer drops real equipment. Key files: `EquipmentSystem.js`, `EquipmentPickup.js`, `EquipmentScreen.js`, `MeleeSystem.js`, `PickupSpawnSystem.js`, `GameLoopSystem.js`, `scrapOfferUtils.js`.
 - **Arcade Depot + Wandering Merchant (2026-07-21)** — Mid-run scrap economy depth (arcade single-player only). Fixed **Scrap Depot** landmark with multi-offer restock (ammo/medkit/grenade/molotov/armor), wave-scaled prices, stock limits, always-on bronze compass/`D` + edge beacon. Rare **Wandering Merchant** visits on wave breaks (wave 6+, weighted black-market stock: turret, orbital, mystery crate, overclock syringe, scrap magnet, panic nuke, reroll token, XP burst) with toast + purple `M` beacon. Wave-break **Scrap Shrine** unchanged. Shared `applyScrapOffer` helper. Key files: `WorldShopSystem.js`, `ScrapDepot.js`, `WanderingMerchant.js`, `scrapOfferUtils.js`, `GameHUD.js`, `ScrapShopSystem.js`.
+[AMENDED 2026-07-21]: Merchant catalog also includes **Gear Crate** (see Pass B above).
 
 ## [v0.9.3] - 2026-07-09
 
