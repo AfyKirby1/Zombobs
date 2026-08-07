@@ -19,7 +19,12 @@ export class WanderingMerchant {
     constructor(x, y, leaveAt = Date.now() + MERCHANT_DURATION_MS) {
         this.x = x;
         this.y = y;
-        this.radius = 18;
+        // A rare shop should read as a destination at a glance. Interaction
+        // distance remains separately fixed below.
+        this.radius = 58;
+        this.renderRadius = 126;
+        this.tooltipOffset = 120;
+        this.beaconOffset = 114;
         this.pulseOffset = Math.random() * Math.PI * 2;
         this.interactRange = MERCHANT_INTERACT_RANGE;
         this.interactRangeSq = MERCHANT_INTERACT_RANGE * MERCHANT_INTERACT_RANGE;
@@ -146,7 +151,7 @@ export class WanderingMerchant {
     draw() {
         const t = Date.now() / 500 + this.pulseOffset;
         const pulse = 0.85 + Math.sin(t) * 0.15;
-        const glowRadius = this.radius * 3.2 * pulse;
+        const glowRadius = this.radius * 1.85 * pulse;
 
         ctx.save();
 
@@ -159,32 +164,78 @@ export class WanderingMerchant {
         ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Body
+        // Moving market stall shadow.
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y + 35, 69, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cargo-cart body, wheels, and canopy make the merchant distinct from
+        // a normal NPC while retaining its wandering behavior.
+        ctx.fillStyle = '#25122f';
+        ctx.fillRect(this.x - 58, this.y - 19, 116, 55);
+        ctx.strokeStyle = '#d6a9ee';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(this.x - 58, this.y - 19, 116, 55);
+        ctx.fillStyle = '#160c20';
+        ctx.fillRect(this.x - 64, this.y + 30, 128, 10);
+        for (let i = -1; i <= 1; i += 2) {
+            ctx.fillStyle = '#111018';
+            ctx.beginPath();
+            ctx.arc(this.x + i * 43, this.y + 42, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ab72ca';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
         ctx.fillStyle = '#4a148c';
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.moveTo(this.x - 70, this.y - 22);
+        ctx.lineTo(this.x - 48, this.y - 64);
+        ctx.lineTo(this.x + 48, this.y - 64);
+        ctx.lineTo(this.x + 70, this.y - 22);
+        ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = 'rgba(224, 190, 255, 0.85)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#e1bee7';
+        ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Hood / coat
+        ctx.fillStyle = 'rgba(229, 190, 255, 0.22)';
+        for (let i = -1; i <= 1; i++) {
+            ctx.fillRect(this.x + i * 28 - 5, this.y - 55, 10, 29);
+        }
+
+        // Merchant silhouette inside the kiosk.
         ctx.fillStyle = '#7b1fa2';
         ctx.beginPath();
-        ctx.ellipse(this.x, this.y - 6, 14, 10, 0, 0, Math.PI * 2);
+        ctx.ellipse(this.x, this.y - 16, 18, 21, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = '#180c24';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y - 30, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f5e6ff';
+        ctx.fillRect(this.x - 5, this.y - 33, 3, 3);
+        ctx.fillRect(this.x + 3, this.y - 33, 3, 3);
 
-        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#160d1e';
+        ctx.fillRect(this.x - 65, this.y - 92, 130, 25);
+        ctx.strokeStyle = '#d6a9ee';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x - 65, this.y - 92, 130, 25);
+
+        ctx.font = 'bold 11px "Roboto Mono", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = '#f4dcff';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 4;
-        ctx.fillText('🧙', this.x, this.y - 1);
+        ctx.shadowBlur = 6;
+        ctx.fillText('NIGHT MARKET', this.x, this.y - 79);
 
         ctx.font = 'bold 9px "Roboto Mono", monospace';
         ctx.fillStyle = '#e1bee7';
-        ctx.fillText('MERCHANT', this.x, this.y + this.radius + 12);
+        ctx.fillText('RARE GOODS // MOVING', this.x, this.y + 61);
 
         ctx.restore();
     }

@@ -14,6 +14,29 @@ export { PARTICLE_KIND } from '../utils/colorParse.js';
 // Reusable batching map to avoid allocation per frame
 const particleBatches = new Map();
 
+// Shared arcade-weather state. Wind is intentionally horizontal-only: snow may
+// flutter and gust sideways, but its vertical velocity is always clamped down.
+// Snow is SCREEN-anchored: flakes live in screen coordinates (sx/sy) and their
+// world position is re-derived from the viewport every frame. World-anchored
+// snow read as "rising" whenever the player outran the fall speed (player base
+// speed 4 vs fall speed 1.8-5.0), so screen space is the correct model here.
+const snowWeather = {
+    wind: 0,
+    targetWind: 0,
+    gustTimer: 0,
+    spawnCarry: 0,
+    viewLeft: 0,
+    viewTop: 0,
+    viewWidth: 0,
+    viewHeight: 0,
+};
+
+const SNOW_COLORS = [
+    'rgba(255, 255, 255, 0.96)',
+    'rgba(226, 242, 255, 0.88)',
+    'rgba(196, 224, 255, 0.78)',
+];
+
 // Particle Pool
 export const particlePool = new ObjectPool(
     () => new Particle(0, 0, '#fff'),
@@ -147,39 +170,69 @@ export function createParticles(x, y, color, count) {
 export function spawnSnowParticle(viewport) {
     const width = viewport.right - viewport.left;
     const height = viewport.bottom - viewport.top;
-    
-    // Spawn slightly above the viewport
-    const x = viewport.left + Math.random() * width;
-    const y = viewport.top - 10;
-    
-    // Use rgba to avoid batching with #ffffff sparks (which would mess up opacity)
-    const p = spawnParticle(x, y, 'rgba(255, 255, 255, 1)', {
-        life: 600,
-        maxLife: 600,
+
+    // Depth controls size, speed and opacity together so flakes read as a
+    // layered weather volume rather than identically-sized white dots.
+    const depth = Math.random();
+    const radius = 0.75 + depth * depth * 2.35;
+    const fallSpeed = 1.8 + depth * 3.2;
+    const travelFrames = Math.ceil((height + 100) / fallSpeed);
+    const life = Math.max(180, travelFrames + 45);
+    const colorIndex = depth > 0.72 ? 0 : (depth > 0.32 ? 1 : 2);
+
+    // Spawn in SCREEN coordinates just above the top edge, with horizontal
+    // overscan in the wind direction. Screen-anchored flakes always travel
+    // down the screen no matter how fast the camera moves.
+    const overscan = 50 + Math.abs(snowWeather.wind) * 35;
+    const sx = -overscan + Math.random() * (width + overscan * 2);
+    const sy = -12 - Math.random() * 70;
+    const x = viewport.left + sx;
+    const y = viewport.top + sy;
+
+    const p = spawnParticle(x, y, SNOW_COLORS[colorIndex], {
+        life,
+        maxLife: life,
         type: PARTICLE_KIND.snow,
+        radius,
+        vx: 0,
+        vy: fallSpeed,
         drag: 1,
         gravity: 0,
     });
-    
+
     if (!p) return;
-    
-    p.radius = Math.random() * 2 + 1;
-    p.vx = (Math.random() - 0.5) * 2;
-    p.vy = Math.random() * 2 + 1;
+
+    p.snowDepth = depth;
+    p.isSnowflake = true;
+    p.baseFallSpeed = fallSpeed;
+    p.screenX = sx;
+    p.screenY = sy;
+    p.flutterAmount = 0.12 + (1 - depth) * 0.48;
     p.swayOffset = Math.random() * Math.PI * 2;
-    p.swaySpeed = Math.random() * 0.05 + 0.02;
-    
+    p.swaySpeed = 0.025 + Math.random() * 0.035;
+    p.rotation = Math.random() * Math.PI * 2;
+    p.rotationSpeed = (Math.random() - 0.5) * (0.025 + depth * 0.035);
+
     // Custom update for snow behavior
     p.customUpdate = function() {
-        this.y += this.vy;
-        this.x += Math.sin(this.life * this.swaySpeed + this.swayOffset) * 0.5;
+        const age = this.maxLife - this.life;
+        const flutter = Math.sin(age * this.swaySpeed + this.swayOffset);
+
+        // Screen-space fall: screenY only ever increases, so flakes always
+        // travel down the visible screen regardless of camera velocity. World
+        // position is re-derived from the current viewport so every render
+        // path (GPU camera-subtract, Canvas2D camera transform) lands the
+        // flake at the same screen spot.
+        this.vy = this.baseFallSpeed;
+        this.vx = snowWeather.wind * (0.35 + this.snowDepth * 0.65)
+            + flutter * this.flutterAmount;
+        this.screenX += this.vx;
+        this.screenY += this.vy;
+        this.x = snowWeather.viewLeft + this.screenX;
+        this.y = snowWeather.viewTop + this.screenY;
+        this.rotation += this.rotationSpeed;
         this.life--;
-        
-        // Wrap around if it goes below the viewport (optional, but good for density)
-        // For now, let's just let them die to respect the pool, or we can reset them.
-        // If we reset them, they might hog the pool. Let's just let them die and spawn new ones.
     };
-    // No customDraw needed - default rendering handles white particles well
 }
 
 /**
@@ -188,27 +241,55 @@ export function spawnSnowParticle(viewport) {
  */
 export function updateSnowSystem(viewport) {
     const limit = getParticleLimit();
-    
-    // Target about 30% of the particle limit for snow
-    // This leaves room for gameplay effects (blood, explosions)
-    const targetSnowCount = Math.floor(limit * 0.3);
-    
-    // Calculate spawn probability to maintain target count
-    // Steady state: spawn_rate * life = count
-    // spawn_rate = count / life
-    // Life is 600
-    const spawnRate = targetSnowCount / 600;
-    
-    // Spawn based on calculated rate
-    if (Math.random() < spawnRate) {
-        spawnSnowParticle(viewport);
+
+    // Cache the viewport so snow customUpdate can convert screen -> world.
+    snowWeather.viewLeft = viewport.left;
+    snowWeather.viewTop = viewport.top;
+    snowWeather.viewWidth = viewport.right - viewport.left;
+    snowWeather.viewHeight = viewport.bottom - viewport.top;
+
+    // Slow prevailing wind plus short gust changes. No vertical wind component.
+    snowWeather.gustTimer--;
+    if (snowWeather.gustTimer <= 0) {
+        snowWeather.gustTimer = 150 + Math.floor(Math.random() * 330);
+        snowWeather.targetWind = (Math.random() - 0.5) * 2.8;
     }
-    
-    // Add a second chance for higher densities if needed
-    if (spawnRate > 1.0) {
-         if (Math.random() < (spawnRate - 1.0)) {
-            spawnSnowParticle(viewport);
+    snowWeather.wind += (snowWeather.targetWind - snowWeather.wind) * 0.008;
+
+    // Reserve most of the pool for combat VFX while keeping weather visibly
+    // layered. Deficit correction makes snow recover after particle-heavy fights.
+    const targetSnowCount = Math.max(12, Math.floor(limit * 0.34));
+    const snowCount = countParticlesOfType(PARTICLE_KIND.snow);
+    const deficit = Math.max(0, targetSnowCount - snowCount);
+    const spawnRate = Math.min(1.25, targetSnowCount / 520 + deficit * 0.008);
+    snowWeather.spawnCarry += spawnRate;
+
+    while (snowWeather.spawnCarry >= 1 && countParticlesOfType(PARTICLE_KIND.snow) < targetSnowCount) {
+        spawnSnowParticle(viewport);
+        snowWeather.spawnCarry--;
+    }
+
+    // Recycle flakes that left the screen (screen-anchored weather). Wind
+    // drift and resizes all funnel back to the top edge.
+    const margin = 60 + Math.abs(snowWeather.wind) * 35;
+    const screenW = snowWeather.viewWidth;
+    const screenH = snowWeather.viewHeight;
+    const particles = gameState.particles;
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (!p || p.type !== PARTICLE_KIND.snow || !p.isSnowflake) continue;
+        const outBottom = p.screenY > screenH + 60;
+        const outSide = p.screenX < -margin - 80 || p.screenX > screenW + margin + 80;
+        const outTop = p.screenY < -220;
+        if (outBottom || outSide || outTop) {
+            p.screenX = -margin + Math.random() * (screenW + margin * 2);
+            p.screenY = -12 - Math.random() * 70;
+            p.life = p.maxLife;
         }
+        // Keep world position pinned to the screen anchor even when the
+        // particle update pass ran before this frame's viewport refresh.
+        p.x = snowWeather.viewLeft + p.screenX;
+        p.y = snowWeather.viewTop + p.screenY;
     }
 }
 
@@ -398,6 +479,7 @@ export function createExplosion(x, y, size = 1.0) {
     if (window.webgpuRenderer) {
         window.webgpuRenderer.hazeStrength = Math.min(1.5,
             (window.webgpuRenderer.hazeStrength || 0) + 0.6 * sizeMultiplier);
+        window.webgpuRenderer.addPostImpulse(0.28 * sizeMultiplier);
     }
 
     const minFireParticles = Math.max(15, Math.floor(explosionQuality.fireParticles * sizeMultiplier * 1.5));
@@ -535,6 +617,7 @@ function drawParticlesBatched() {
     for (let i = 0; i < len; i++) {
         const p = particles[i];
         if (!p || p.life <= 0) continue;
+        if (p.type === PARTICLE_KIND.snow && p.isSnowflake) continue;
         
         // Use color as key (for hex colors, batch exactly; for rgba, approximate)
         const key = p.color;
@@ -584,6 +667,49 @@ function drawParticlesBatched() {
         ctx.fill();
     });
     
+    return drawnCount + drawSnowflakesCanvas();
+}
+
+/**
+ * Canvas fallback for the crystalline snow flakes. Drawn under the current
+ * transform (world camera in SP arcade; identity in co-op/MP where world
+ * space equals screen space), so flakes stay anchored to the ground.
+ */
+function drawSnowflakesCanvas() {
+    const particles = gameState.particles;
+    let drawnCount = 0;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (!p || p.life <= 0 || p.type !== PARTICLE_KIND.snow || !p.isSnowflake) continue;
+
+        const alpha = Math.max(0, Math.min(1, p.life / (p.maxLife || 1)));
+        const armLength = Math.max(1.2, p.radius * 1.75);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation || 0);
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(0.65, p.radius * 0.34);
+        ctx.shadowColor = 'rgba(190, 225, 255, 0.75)';
+        ctx.shadowBlur = p.radius > 2 ? 4 : 2;
+        ctx.beginPath();
+        for (let branch = 0; branch < 3; branch++) {
+            const angle = branch * Math.PI / 3;
+            const dx = Math.cos(angle) * armLength;
+            const dy = Math.sin(angle) * armLength;
+            ctx.moveTo(-dx, -dy);
+            ctx.lineTo(dx, dy);
+        }
+        ctx.stroke();
+        ctx.restore();
+        drawnCount++;
+    }
+
+    ctx.restore();
     return drawnCount;
 }
 
@@ -626,6 +752,9 @@ export function drawParticles() {
         const particle = gameState.particles[i];
 
         if (!particle) {
+            continue;
+        }
+        if (particle.type === PARTICLE_KIND.snow && particle.isSnowflake) {
             continue;
         }
 
@@ -752,6 +881,8 @@ export function drawParticles() {
             drawnCount++;
         }
     }
+
+    drawnCount += drawSnowflakesCanvas();
 
     // Reset globalAlpha at the end to ensure it's always 1
     ctx.globalAlpha = 1;

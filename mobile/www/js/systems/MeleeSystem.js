@@ -8,6 +8,8 @@ import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from './SettingsManager.js';
 import { skillSystem } from './SkillSystem.js';
 import { pickupSpawnSystem } from './PickupSpawnSystem.js';
+import { equipmentSystem } from './EquipmentSystem.js';
+import { EquipmentPickup } from '../entities/EquipmentPickup.js';
 
 /**
  * MeleeSystem - Handles melee attack logic and range checking
@@ -83,11 +85,32 @@ export class MeleeSystem {
 
                     pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
 
+                    const equipmentItem = equipmentSystem.tryDropFromZombie(zombie);
+                    if (equipmentItem) {
+                        gameState.equipmentPickups.push(
+                            new EquipmentPickup(zombieX, zombieY, equipmentItem)
+                        );
+                    }
+
                     gameState.score += 10;
                     gameState.zombiesKilled++;
                     // Award XP for kill (with multiplier)
                     const zombieType4 = zombie.type || 'normal';
                     let xpAmount4 = skillSystem.getXPForZombieType(zombieType4);
+                    // Golden Zombie: 5x XP bonus
+                    if (zombie.isGolden) {
+                        xpAmount4 *= 5;
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 45, 'GOLDEN KILL!', false, '#ffd700', 26));
+                        pickupSpawnSystem.spawnGoldenScrapBurst(gameState, zombieX, zombieY);
+                    }
+                    // Bounty Zombie: claim reward
+                    if (zombie.isBounty) {
+                        const bounty = 40 + Math.min(60, gameState.wave * 4);
+                        player.scrap = (player.scrap || 0) + bounty;
+                        gameState.scrapCollected += bounty;
+                        gameState.score += bounty;
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 45, `💀 BOUNTY +${bounty}`, false, '#ff5252', 24));
+                    }
                     xpAmount4 = Math.floor(xpAmount4 * player.scoreMultiplier);
                     skillSystem.gainXP(xpAmount4);
                     applyKillMomentum(player);

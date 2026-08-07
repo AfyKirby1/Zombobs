@@ -4,21 +4,26 @@ import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
-    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN, SCRAP_VALUE
+    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN, SCRAP_VALUE,
+    MERCHANT_SCRAP_VALUE_MULT
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
-import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
+import { createExplosion, createBloodSplatter, createParticles, addParticle, emit } from '../systems/ParticleSystem.js';
+import { PARTICLE_KIND } from './colorParse.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkPickupCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { Molotov } from '../entities/Molotov.js';
+import { OrbitalStrikeBeacon } from '../entities/OrbitalStrikeBeacon.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { Prop } from '../entities/Prop.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
 import { pickupSpawnSystem } from '../systems/PickupSpawnSystem.js';
+import { equipmentSystem } from '../systems/EquipmentSystem.js';
+import { EquipmentPickup } from '../entities/EquipmentPickup.js';
 
 export function shootBullet(target, canvas, player) {
     // Fallback to p1 for backward compat if player not provided
@@ -65,7 +70,9 @@ export function shootBullet(target, canvas, player) {
 
     // Check ammo
     if (player.currentAmmo <= 0) {
-        reloadWeapon(player);
+        const autoReload = player.inputSource === 'ai'
+            || settingsManager.getSetting('gameplay', 'autoReload') !== false;
+        if (autoReload) reloadWeapon(player);
         return;
     }
 
@@ -237,7 +244,8 @@ export function shootBullet(target, canvas, player) {
         if (player.instantReloadChance && Math.random() < player.instantReloadChance) {
             player.currentAmmo = maxAmmoWithMultiplier;
             player.isReloading = false;
-        } else {
+        } else if (player.inputSource === 'ai'
+            || settingsManager.getSetting('gameplay', 'autoReload') !== false) {
             reloadWeapon(player);
         }
     }
@@ -259,6 +267,32 @@ export function shootBullet(target, canvas, player) {
     player.muzzleFlash.angle = angle;
     player.muzzleFlash.life = player.muzzleFlash.maxLife;
     player.muzzleFlash.intensity = 1;
+
+    // Weapon muzzle micro-FX: smoke/ember trail at the barrel (AAA gun feel).
+    // The world point-light is re-added per-frame in GameLoopSystem while the flash is alive.
+    {
+        const muzzleKind = PARTICLE_KIND.muzzle;
+        const maxPuffs = player.currentWeapon === WEAPONS.smg ? 1 : 3;
+        for (let i = 0; i < maxPuffs; i++) {
+            const puff = emit(muzzleKind, gunX + (Math.random() - 0.5) * 8, gunY + (Math.random() - 0.5) * 8,
+                i === 0 ? '#ffe9a8' : '#ffb066', {
+                    radius: 3 + Math.random() * 3,
+                    life: 8 + Math.random() * 6,
+                    maxLife: 14,
+                    vx: Math.cos(angle) * (1.5 + Math.random() * 2),
+                    vy: Math.sin(angle) * (1.5 + Math.random() * 2),
+                    drag: 0.9,
+                });
+            if (!puff) break;
+        }
+        emit(PARTICLE_KIND.ember, gunX, gunY, '#ffd27a', {
+            radius: 2.5,
+            life: 12,
+            maxLife: 12,
+            vx: Math.cos(angle + Math.PI) * 1.2,
+            vy: Math.sin(angle + Math.PI) * 1.2,
+        });
+    }
 
     // Create shell casing (not for rockets)
     if (player.currentWeapon !== WEAPONS.rocketLauncher) {
@@ -382,7 +416,9 @@ export function throwGrenade(target, canvas, player) {
     const now = Date.now();
 
     const activeThrowable = player.activeThrowable || 'grenade';
-    const cooldown = activeThrowable === 'grenade' ? GRENADE_COOLDOWN : MOLOTOV_COOLDOWN;
+    let cooldown = GRENADE_COOLDOWN;
+    if (activeThrowable === 'molotov') cooldown = MOLOTOV_COOLDOWN;
+    else if (activeThrowable === 'orbital_strike') cooldown = 2000;
 
     // Check cooldown
     if (now - player.lastGrenadeThrowTime < cooldown) {
@@ -392,8 +428,10 @@ export function throwGrenade(target, canvas, player) {
     // Check throwable count
     if (activeThrowable === 'grenade') {
         if (player.grenadeCount <= 0) return;
-    } else {
+    } else if (activeThrowable === 'molotov') {
         if (player.molotovCount <= 0) return;
+    } else if (activeThrowable === 'orbital_strike') {
+        if (player.orbitalStrikeCount <= 0) return;
     }
 
     // v0.8.1.2: In single player arcade mode, don't clamp target to canvas bounds
@@ -417,9 +455,16 @@ export function throwGrenade(target, canvas, player) {
     if (activeThrowable === 'grenade') {
         gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
         player.grenadeCount--;
-    } else {
+    } else if (activeThrowable === 'molotov') {
         gameState.grenades.push(new Molotov(throwX, throwY, targetX, targetY, player));
         player.molotovCount--;
+    } else if (activeThrowable === 'orbital_strike') {
+        gameState.grenades.push(new OrbitalStrikeBeacon(throwX, throwY, targetX, targetY, player));
+        player.orbitalStrikeCount--;
+        // Auto-switch back to grenade if out of orbital strikes
+        if (player.orbitalStrikeCount <= 0) {
+            player.activeThrowable = player.molotovCount > 0 ? 'molotov' : 'grenade';
+        }
     }
     
     player.lastGrenadeThrowTime = now;
@@ -447,7 +492,18 @@ export function cycleThrowable(player) {
     const now = Date.now();
     if (now - player.lastThrowableCycleTime < 200) return; // Debounce
 
-    player.activeThrowable = (player.activeThrowable || 'grenade') === 'grenade' ? 'molotov' : 'grenade';
+    player.activeThrowable = player.activeThrowable || 'grenade';
+    
+    // Cycle through available throwables
+    let options = ['grenade'];
+    if (player.molotovCount > 0) options.push('molotov');
+    if (player.orbitalStrikeCount > 0) options.push('orbital_strike');
+    
+    let currentIndex = options.indexOf(player.activeThrowable);
+    if (currentIndex === -1) currentIndex = 0;
+    
+    let nextIndex = (currentIndex + 1) % options.length;
+    player.activeThrowable = options[nextIndex];
     player.lastThrowableCycleTime = now;
     
     // Spawn visual indicator / effect trigger on HUD
@@ -520,6 +576,11 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 const dropY = zombie.y;
                 gameState.zombies.splice(zombieIndex, 1);
                 pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, dropX, dropY);
+                // Explosion kills can drop equipment too (was bullet/melee only)
+                const explosionEquipDrop = equipmentSystem.tryDropFromZombie(zombie);
+                if (explosionEquipDrop) {
+                    gameState.equipmentPickups.push(new EquipmentPickup(dropX, dropY, explosionEquipDrop));
+                }
 
                 // Check if boss was killed
                 if (zombie.type === 'boss' || zombie.type === 'warden' || zombie === gameState.boss) {
@@ -556,6 +617,21 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 // Award XP for kill (with multiplier if from player)
                 const zombieType1 = zombie.type || 'normal';
                 let xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
+                // Golden Zombie: 5x XP bonus
+                if (zombie.isGolden) {
+                    xpAmount1 *= 5;
+                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y - 45, 'GOLDEN KILL!', false, '#ffd700', 26));
+                    pickupSpawnSystem.spawnGoldenScrapBurst(gameState, zombie.x, zombie.y);
+                }
+                // Bounty Zombie: claim reward (credit source player or P1)
+                if (zombie.isBounty) {
+                    const bounty = 40 + Math.min(60, gameState.wave * 4);
+                    const bountyPlayer = (sourceIsPlayer && sourcePlayer) ? sourcePlayer : gameState.players[0];
+                    if (bountyPlayer) bountyPlayer.scrap = (bountyPlayer.scrap || 0) + bounty;
+                    gameState.scrapCollected += bounty;
+                    gameState.score += bounty;
+                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y - 45, `💀 BOUNTY +${bounty}`, false, '#ff5252', 24));
+                }
                 if (sourceIsPlayer && sourcePlayer) {
                     xpAmount1 = Math.floor(xpAmount1 * sourcePlayer.scoreMultiplier);
                     // Show XP popup over player instead of zombie
@@ -625,6 +701,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 const previousHealth = player.health;
 
                 player.health -= playerDamage;
+                gameState.waveDamageTaken = true;
                 createParticles(player.x, player.y, '#ff0000', 5);
 
                 // Reset multiplier if health was reduced
@@ -789,7 +866,7 @@ export function handlePickupCollisions() {
             let collected = false;
             for (const player of gameState.players) {
                 if (checkPickupCollision(player, pickup)) {
-                    gameState.speedBoostEndTime = Date.now() + 8000; // 8 seconds
+                    gameState.speedBoostEndTime = Date.now() + 12000; // 12 seconds (was 8s — felt too short)
                     if (showFloatingText) {
                         gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "SPEED BOOST!"));
                     }
@@ -897,6 +974,9 @@ export function handlePickupCollisions() {
                     if (player.goldRushEndTime && player.goldRushEndTime > Date.now()) {
                         gained *= 2;
                     }
+                    if (gameState.scrapMagnetEndTime && Date.now() < gameState.scrapMagnetEndTime) {
+                        gained = Math.floor(gained * MERCHANT_SCRAP_VALUE_MULT);
+                    }
                     player.scrap = (player.scrap || 0) + gained;
                     gameState.scrapCollected += gained;
                     gameState.score += gained;
@@ -945,7 +1025,7 @@ function triggerFrostNova(x, y, showFloatingText = true) {
     }
 }
 
-function triggerNuke(x, y, showFloatingText = true) {
+export function triggerNuke(x, y, showFloatingText = true) {
     gameState.shakeAmount = 30;
     if (showFloatingText) {
         gameState.damageNumbers.push(new DamageNumber(x, y - 50, "TACTICAL NUKE!"));
@@ -1471,7 +1551,7 @@ export function getPlayerMaxGrenades(player) {
  * Centralized incoming damage — shield, reduction, last stand, second wind
  * @returns {number} actual health lost (0 if shield absorbed all)
  */
-export function applyPlayerDamage(player, rawDamage) {
+export function applyPlayerDamage(player, rawDamage, source = 'Horde Attack') {
     if (player.health <= 0 || rawDamage <= 0) return 0;
 
     let damage = rawDamage;
@@ -1510,6 +1590,11 @@ export function applyPlayerDamage(player, rawDamage) {
 
     const previousHealth = player.health;
     player.lastDamageTime = Date.now();
+    gameState.waveDamageTaken = true;
+
+    if (window.webgpuRenderer?.addPostImpulse) {
+        window.webgpuRenderer.addPostImpulse(Math.min(0.5, 0.15 + damage * 0.012));
+    }
 
     if (player.shield > 0) {
         player.shield -= damage;
@@ -1523,14 +1608,18 @@ export function applyPlayerDamage(player, rawDamage) {
         createParticles(player.x, player.y, '#ff0000', 3);
     }
 
-    if (player.health <= 0 && trySecondWind(player)) {
-        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-        if (damageNumberStyle !== 'off') {
-            gameState.damageNumbers.push(new DamageNumber(
-                player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
-            ));
+    if (player.health <= 0) {
+        if (trySecondWind(player)) {
+            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+            if (damageNumberStyle !== 'off') {
+                gameState.damageNumbers.push(new DamageNumber(
+                    player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
+                ));
+            }
+            createParticles(player.x, player.y, '#66bb6a', 8);
+        } else {
+            gameState.lastDeathCause = source;
         }
-        createParticles(player.x, player.y, '#66bb6a', 8);
     }
 
     if (player.hasVengeance && player.health < previousHealth) {

@@ -16,9 +16,11 @@ import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
 import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
+import { getRoleKit } from './HumanCompanionRenderer.js';
 import { isMobileDevice, isCampaignMode } from '../utils/gameUtils.js';
 import { mapLoader } from './MapLoader.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
+import { worldShopSystem } from './WorldShopSystem.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -320,6 +322,12 @@ export class PlayerSystem {
                 player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
             }
 
+            // Compact cosmetic motion data for the procedural human renderer.
+            // Gameplay never reads these fields.
+            player.visualMoveX = moveX;
+            player.visualMoveY = moveY;
+            player.visualMoveAmount = Math.min(1, Math.abs(moveX) + Math.abs(moveY));
+
             // Footstep sounds (more frequent and louder when sprinting)
             if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {
                 const currentTime = Date.now();
@@ -351,14 +359,24 @@ export class PlayerSystem {
                 if (gpState.buttons.reload.justPressed) reloadWeapon(player);
                 if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
                 if (gpState.buttons.cycleThrowable.justPressed) cycleThrowable(player);
-                if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
-                if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 if (gpState.buttons.interact.justPressed) {
                     if (scrapShopSystem.getNearbyShrine(player) && gameState.waveBreakActive) {
                         scrapShopSystem.tryPurchase(player);
+                    } else if (worldShopSystem.tryPurchase(player)) {
+                        // Depot / merchant
                     } else if (window.mapLoader?.isLoaded?.()) {
                         window.mapLoader.tryInteract(player);
                     }
+                }
+                if (worldShopSystem.getNearbyDepot(player) || worldShopSystem.getNearbyMerchant(player)) {
+                    if (gpState.buttons.prevWeapon.justPressed) {
+                        worldShopSystem.tryCycleOffer(player, -1);
+                    } else if (gpState.buttons.nextWeapon.justPressed) {
+                        worldShopSystem.tryCycleOffer(player, 1);
+                    }
+                } else {
+                    if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
+                    if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 }
                 if (window.mapLoader?.isLoaded?.()) {
                     window._zombobsKeys = window._zombobsKeys || {};
@@ -582,7 +600,7 @@ export class PlayerSystem {
                 ctx.shadowBlur = 4;
                 ctx.fillText(player.name, player.x, player.y - player.radius - 8);
                 if (player.isHero && player.heroRole) {
-                    ctx.fillStyle = '#ff6b35';
+                    ctx.fillStyle = getRoleKit(player).accent;
                     ctx.font = "10px 'Roboto Mono', monospace";
                     ctx.fillText(player.heroRole.toUpperCase(), player.x, player.y - player.radius - 20);
                 }

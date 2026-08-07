@@ -121,6 +121,23 @@ export class ZombieSpawnSystem {
         zombie.x = spawnX;
         zombie.y = spawnY;
         applyMutatorHealth(zombie, mutator);
+
+        // Golden Zombie: rare 1.5% roll (single-player only to avoid MP desync; never bosses/shards)
+        if (!gameState.multiplayer.active &&
+            zombie.type !== 'boss' && zombie.type !== 'warden' && zombie.type !== 'shard' &&
+            Math.random() < 0.015) {
+            zombie.isGolden = true;
+        }
+
+        // Bounty Zombie: one marked target per wave (arcade local only, wave 3+, never bosses/shards)
+        if (!gameState.multiplayer.active && gameState.gameMode !== 'campaign' &&
+            !gameState.bountyAssignedThisWave && gameState.wave >= 3 &&
+            zombie.type !== 'boss' && zombie.type !== 'warden' && zombie.type !== 'shard' &&
+            Math.random() < 0.12) {
+            zombie.isBounty = true;
+            gameState.bountyAssignedThisWave = true;
+        }
+
         gameState.zombies.push(zombie);
 
         if (gameState.multiplayer.active && multiplayerSocket && gameState.multiplayer.isLeader) {
@@ -300,6 +317,7 @@ export class ZombieSpawnSystem {
 
         gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
         gameState.zombieSpawnTimeouts = [];
+        gameState.bountyAssignedThisWave = false; // fresh bounty target each wave
 
         if (gameState.gameMode === 'boss_rush') {
             this.spawnBossRush(multiplayerSocket);

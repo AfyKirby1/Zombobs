@@ -7,6 +7,7 @@ export class PauseMenuScreen {
         this.ctx = ctx;
         this.hud = hud;
         this.hoveredButton = null;
+        this.shownAt = 0; // Set when the pause menu opens — drives the fade-in
     }
 
     getUIScale() {
@@ -14,8 +15,19 @@ export class PauseMenuScreen {
     }
 
     draw() {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        // Fade-in (220ms ease-out)
+        const now = performance.now();
+        const shownAt = this.shownAt || now;
+        const t = Math.max(0, Math.min(1, (now - shownAt) / 220));
+        const p = 1 - Math.pow(1 - t, 3);
+        const alpha = Math.min(1, p * 1.5);
+
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         const scale = this.getUIScale();
         const centerX = this.canvas.width / 2;
@@ -23,19 +35,19 @@ export class PauseMenuScreen {
 
         // PAUSED title
         const titleFontSize = Math.max(32, 48 * scale);
-        this.ctx.font = `${titleFontSize}px "Creepster", cursive`;
-        this.ctx.textAlign = 'center';
-        this.ctx.fillStyle = '#ff0000';
-        this.ctx.shadowBlur = 20;
-        this.ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-        this.ctx.fillText('PAUSED', centerX, centerY - 120 * scale);
-        this.ctx.shadowBlur = 0;
+        ctx.font = `${titleFontSize}px "Creepster", cursive`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ff0000';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+        ctx.fillText('PAUSED', centerX, centerY - 120 * scale);
+        ctx.shadowBlur = 0;
 
         // Subtitle
         const subtitleFontSize = Math.max(14, 20 * scale);
-        this.ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillStyle = '#cccccc';
-        this.ctx.fillText('Game is currently paused', centerX, centerY - 60 * scale);
+        ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
+        ctx.fillStyle = '#cccccc';
+        ctx.fillText('Game is currently paused', centerX, centerY - 60 * scale);
 
         // Buttons
         const buttonWidth = 180 * scale;
@@ -54,6 +66,8 @@ export class PauseMenuScreen {
         this.hud.drawMenuButton('Restart', centerX - buttonWidth / 2, restartY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_restart', false);
         this.hud.drawMenuButton('Settings', centerX - buttonWidth / 2, settingsY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_settings', false);
         this.hud.drawMenuButton('Return to Menu', centerX - buttonWidth / 2, menuY - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'pause_menu', false);
+
+        ctx.restore();
     }
 
     checkButtonClick(x, y) {

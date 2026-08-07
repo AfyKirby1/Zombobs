@@ -268,6 +268,7 @@ export const gameState = {
     scrapDepot: null, // Arcade fixed restock depot
     wanderingMerchant: null, // Arcade rare merchant NPC
     scrapMagnetEndTime: 0, // Merchant scrap magnet buff
+    scrapSweepEndTime: 0, // Wave-clear scrap vacuum window
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -305,6 +306,13 @@ export const gameState = {
     sirenScreamEffects: [],
     killStreak: 0,
     lastKillTime: 0,
+    // Perfect Wave tracking — no player damage during the wave (arcade)
+    waveDamageTaken: false,
+    perfectWaveCount: 0,
+    perfectWaveStreak: 0, // consecutive perfect waves — scales the bonus
+    // Bounty Zombie — one marked target per wave (arcade local)
+    bountyAssignedThisWave: false,
+    equipmentDropPity: 0, // dry-kill counter — guarantees an equipment drop eventually
     // Multi-kill tracking (V0.7.1)
     recentKills: [], // Array of {time, zombieType} for multi-kill detection
     maxKillStreak: 0, // Track highest streak in session
@@ -612,6 +620,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.scrapDepot = null;
     gameState.wanderingMerchant = null;
     gameState.scrapMagnetEndTime = 0;
+    gameState.scrapSweepEndTime = 0;
     gameState.equipmentPickups = [];
     gameState.showEquipment = false;
     gameState.grenades = [];
@@ -638,6 +647,11 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.sirenScreamEffects = [];
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
+    gameState.waveDamageTaken = false;
+    gameState.perfectWaveCount = 0;
+    gameState.perfectWaveStreak = 0;
+    gameState.bountyAssignedThisWave = false;
+    gameState.equipmentDropPity = 0;
     gameState.maxKillStreak = 0; // V0.7.1: Track highest streak in session
     gameState.recentKills = []; // V0.7.1: Track recent kills for multi-kill detection
     gameState.weaponSwitchFlash = { active: false, startTime: 0, duration: 150, weapon: null }; // V0.7.1: Reset weapon switch flash

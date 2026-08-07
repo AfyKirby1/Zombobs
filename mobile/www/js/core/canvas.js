@@ -1,4 +1,4 @@
-import { RENDER_SCALE } from './constants.js';
+import { RENDER_SCALE, UI_RENDER_SCALE } from './constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { gameState } from './gameState.js';
 
@@ -9,23 +9,46 @@ export const uiCanvas = document.getElementById('uiCanvas');
 export const uiCtx = uiCanvas ? uiCanvas.getContext('2d', { alpha: true, willReadFrequently: true }) : null;
 
 /**
- * Apply text rendering quality to a canvas context
+ * Apply Canvas anti-aliasing/image sampling quality to a context.
+ * The legacy function name is retained because UI callers already import it.
  * @param {CanvasRenderingContext2D} context - The canvas context to apply settings to
  * @param {string} quality - 'low', 'medium', or 'high'
  */
 export function applyTextRenderingQuality(context, quality) {
     if (!context) return;
 
-    if (quality === 'low') {
+    const normalizedQuality = quality === 'low'
+        ? 'low'
+        : (quality === 'medium' ? 'medium' : 'high');
+
+    if (normalizedQuality === 'low') {
         context.imageSmoothingEnabled = false;
     } else {
         context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = quality; // 'medium' or 'high'
+        context.imageSmoothingQuality = normalizedQuality;
     }
 }
 
 /**
- * Apply text rendering quality to all canvas contexts
+ * Density compensation factor for UI drawing scales.
+ *
+ * All UI code was authored against the legacy grid where the internal canvas
+ * was RENDER_SCALE (0.75) of CSS pixels and the browser upscaled the rest.
+ * uiCanvas now renders denser (UI_RENDER_SCALE), so multiply UI scale factors
+ * by this so rendered on-screen size stays identical while text gets sharper.
+ *
+ * @returns {number} Density compensation multiplier (>= 1 when UI is denser).
+ */
+export function getUiDensityScale() {
+    if (!uiCanvas || !uiCanvas.width || !window.innerWidth) return 1;
+    const density = uiCanvas.width / window.innerWidth; // UI canvas px per CSS px
+    const comp = density / RENDER_SCALE;
+    if (!Number.isFinite(comp)) return 1;
+    return Math.min(4, Math.max(0.5, comp));
+}
+
+/**
+ * Apply anti-aliasing/image sampling quality to all Canvas2D contexts.
  * This should be called when the setting changes
  */
 export function applyTextRenderingQualityToAll() {
@@ -86,9 +109,16 @@ export function resizeCanvas(player) {
         gpuCanvas.style.height = displayHeight + 'px';
     }
 
+    // UI canvas renders at higher pixel density than gameplay for crisp text.
+    // Scaled to the same CSS size below; UI sizing must be density-compensated
+    // via getUiDensityScale() so on-screen geometry stays unchanged.
+    const uiEffectiveScale = UI_RENDER_SCALE * resolutionScale;
+    const uiWidth = Math.floor(displayWidth * uiEffectiveScale);
+    const uiHeight = Math.floor(displayHeight * uiEffectiveScale);
+
     if (uiCanvas) {
-        uiCanvas.width = canvasWidth;
-        uiCanvas.height = canvasHeight;
+        uiCanvas.width = uiWidth;
+        uiCanvas.height = uiHeight;
         uiCanvas.style.width = displayWidth + 'px';
         uiCanvas.style.height = displayHeight + 'px';
     }
@@ -111,5 +141,9 @@ export function resizeCanvas(player) {
         }
         // In arcade mode, player position is in world space - don't constrain to canvas
     }
+
+    // Assigning canvas.width/height resets the complete 2D context state,
+    // including smoothing. Re-apply after every density or viewport resize.
+    applyTextRenderingQualityToAll();
 }
 

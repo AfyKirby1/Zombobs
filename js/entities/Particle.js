@@ -50,16 +50,18 @@ export class Particle {
 
 export class DamageNumber {
     constructor(x, y, value, isCrit = false, customColor = null, customFontSize = null) {
-        this.x = x + (Math.random() - 0.5) * 10;
-        this.y = y;
+        this.style = graphicsSettings.damageNumberStyle;
+        DamageNumber._sequence = ((DamageNumber._sequence || 0) + 1) % 4;
+        this.x = this.style === 'stacking' ? x : x + (Math.random() - 0.5) * 10;
+        this.y = this.style === 'stacking' ? y - DamageNumber._sequence * 7 : y;
         this.value = value;
         this.isCrit = isCrit;
         this.customColor = customColor;
         this.customFontSize = customFontSize;
-        this.life = 60;
-        this.maxLife = 60;
-        this.vy = isCrit ? -2.0 : -1.5;
-        this.vx = (Math.random() - 0.5) * 0.5;
+        this.life = this.style === 'stacking' ? 72 : 60;
+        this.maxLife = this.life;
+        this.vy = this.style === 'stacking' ? -0.75 : (isCrit ? -2.0 : -1.5);
+        this.vx = this.style === 'stacking' ? 0 : (Math.random() - 0.5) * 0.5;
     }
 
     update() {
@@ -70,14 +72,14 @@ export class DamageNumber {
     }
 
     draw(ctx) {
-        if (this.life <= 0) return;
+        if (this.life <= 0 || graphicsSettings.damageNumberStyle === 'off') return;
         ctx.save();
         const alpha = Math.max(0, this.life / this.maxLife);
         const damageQuality = graphicsSettings.getQualityValues('damageNumber');
         const baseFontSize = this.customFontSize !== null
             ? this.customFontSize
             : (this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16);
-        const fontSize = baseFontSize * damageQuality.fontSize;
+        const fontSize = baseFontSize * damageQuality.fontSize * graphicsSettings.damageNumberScale;
 
         if (this.isCrit) {
             ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;

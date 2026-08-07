@@ -196,12 +196,25 @@ export class EquipmentSystem {
     tryDropFromZombie(zombie) {
         const isBoss = isBossEntity(zombie);
         const isWarden = zombie && zombie.type === 'warden';
+        const isGolden = zombie && zombie.isGolden;
+        const isBounty = zombie && zombie.isBounty;
+        // Tougher variants are more likely to be carrying something useful
+        const eliteTypes = ['armored', 'blight', 'siren', 'spitter', 'splitter'];
+        const isElite = zombie && eliteTypes.includes(zombie.type);
 
-        let dropChance = 0.09;
+        let dropChance = 0.14;
         if (isWarden) dropChance = 1.0;
-        else if (isBoss) dropChance = 0.55;
+        else if (isBoss) dropChance = 0.65;
+        else if (isGolden) dropChance = 1.0;
+        else if (isBounty) dropChance = 0.6;
+        else if (isElite) dropChance = 0.22;
 
-        if (Math.random() > dropChance) return null;
+        if (Math.random() > dropChance) {
+            // Pity system: a drop is guaranteed after enough dry kills
+            gameState.equipmentDropPity = (gameState.equipmentDropPity || 0) + 1;
+            if (gameState.equipmentDropPity < 45) return null;
+        }
+        gameState.equipmentDropPity = 0;
 
         const r = Math.random();
         let rarity = 'common';
@@ -214,6 +227,16 @@ export class EquipmentSystem {
             if (r > 0.85) rarity = 'legendary';
             else if (r > 0.55) rarity = 'epic';
             else if (r > 0.25) rarity = 'rare';
+            else rarity = 'uncommon';
+        } else if (isGolden || isBounty) {
+            // Special kills always feel rewarding: rare floor
+            if (r > 0.92) rarity = 'legendary';
+            else if (r > 0.68) rarity = 'epic';
+            else rarity = 'rare';
+        } else if (isElite) {
+            if (r > 0.96) rarity = 'legendary';
+            else if (r > 0.85) rarity = 'epic';
+            else if (r > 0.55) rarity = 'rare';
             else rarity = 'uncommon';
         } else {
             if (r > 0.97) rarity = 'legendary';

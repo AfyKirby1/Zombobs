@@ -19,28 +19,40 @@ export const EQUIPMENT_RARITIES = {
 
 const EQUIPMENT_NAMES = {
     weapon: [
-        'Rusty Pipe', 'Bloodied Crowbar', 'Tactical Knife', 'Plasma Blade', 'Zombie Slayer',
-        'Nail Bat', 'Fire Axe', 'Combat Machete', 'Rail Spike', 'Echo Cleaver'
+        'Rusty Pipe', 'Shiv', 'Trench Spade', 'Bloodied Crowbar', 'Nail Bat',
+        'Riot Baton', 'Tactical Knife', 'Fire Axe', 'Combat Machete', 'Bone Saw',
+        'Chainsaw Blade', 'Katana', 'Rail Spike', 'Frost Edge', 'Viper Fang',
+        'Plasma Blade', 'Thunder Maul', 'Echo Cleaver', 'Zombie Slayer', 'Apex Reaver'
     ],
     armor: [
-        'Torn Vest', 'Kevlar Plate', 'Reinforced Jacket', 'Exo-Suit', 'Aegis Armor',
-        'Scrap Plate', 'Riot Vest', 'Hazard Suit', 'Ballistic Coat', 'Warden Carapace'
+        'Torn Vest', 'Leather Rig', 'Padded Coat', 'Scrap Plate', 'Cargo Harness',
+        'Reinforced Jacket', 'Riot Vest', 'Spiked Vest', 'Trench Plate', 'Kevlar Plate',
+        'Ballistic Coat', 'Hazard Suit', 'Night Weave', 'Bastion Frame', 'Titan Shell',
+        'Exo-Suit', 'Phoenix Mail', 'Dread Plate', 'Warden Carapace', 'Aegis Armor'
     ],
     helmet: [
-        'Hard Hat', 'Riot Helmet', 'Night Vision Goggles', 'Skull Mask', 'Crown of Survival',
-        'Welding Mask', 'Tactical Visor', 'Gas Mask', 'Ballistic Helm', 'Signal Crown'
+        'Beanie', 'Hard Hat', 'Bike Helmet', 'Scrap Helm', 'Welding Mask',
+        'Hunter Hood', 'Riot Helmet', 'Gas Mask', 'Optic Rig', 'Tactical Visor',
+        'Night Vision Goggles', 'Bone Crown', 'Skull Mask', 'Spectre Cowl', 'Ballistic Helm',
+        'Fortress Helm', 'Halo Visor', 'Signal Crown', 'Apex Casque', 'Crown of Survival'
     ],
     gloves: [
-        'Work Gloves', 'Tactical Grips', 'Steady Hands', 'Rending Claws', 'Gauntlets of Fury',
-        'Mechanic Mitts', 'Fingerless Tapes', 'Grip Tape', 'Power Fists', 'Echo Gauntlets'
+        'Rag Wraps', 'Work Gloves', 'Leather Grips', 'Fingerless Tapes', 'Grip Tape',
+        'Mechanic Mitts', 'Trigger Mitts', 'Tactical Grips', 'Steady Hands', 'Riot Gauntlets',
+        'Shock Knuckles', 'Talon Grips', 'Phantom Wraps', 'Rending Claws', 'Crusher Fists',
+        'Venom Claws', 'Power Fists', 'Echo Gauntlets', 'Apex Handguards', 'Gauntlets of Fury'
     ],
     boots: [
-        'Combat Boots', 'Sprint Shoes', 'Trench Runners', 'Hover Soles', 'Boots of the Wasteland',
-        'Steel Toes', 'Mud Stompers', 'Silent Soles', 'Mag Boots', 'Rail Striders'
+        'Worn Sneakers', 'Combat Boots', 'Hiking Boots', 'Steel Toes', 'Mud Stompers',
+        'Scout Treads', 'Trench Runners', 'Sprint Shoes', 'Cleated Stompers', 'Wader Boots',
+        'Silent Soles', 'Shock Absorbers', 'Night Runners', 'Phantom Striders', 'Mag Boots',
+        'Bulwark Greaves', 'Hover Soles', 'Rail Striders', 'Apex Skates', 'Boots of the Wasteland'
     ],
     accessory: [
-        'Lucky Charm', 'Dog Tags', "Scavenger's Satchel", "Hero's Insignia", 'Artifact of the Ancients',
-        'Radio Relic', 'Blood Talisman', 'Scrap Magnet', 'Echo Badge', 'Day-0 Medallion'
+        'Bottle Cap Chain', 'Lucky Charm', 'Dog Tags', 'Compass Rose', 'Bandolier',
+        'Radio Relic', "Scavenger's Satchel", 'Field Medal', 'Scrap Magnet', 'Wolf Fang',
+        'Blood Talisman', 'Adrenal Injector', 'Void Locket', 'Storm Core', 'Echo Badge',
+        "Hero's Insignia", 'Titan Heart', 'Day-0 Medallion', 'Apex Sigil', 'Artifact of the Ancients'
     ]
 };
 
@@ -120,6 +132,42 @@ export const EQUIPMENT_SETS = {
             4: { maxHealth: 50, damageReduction: 0.10 },
             6: { maxHealth: 80, damageReduction: 0.15, speed: 0.08 }
         }
+    },
+    nightstalker: {
+        id: 'nightstalker',
+        name: 'Nightstalker',
+        color: '#7e57c2',
+        pieces: {
+            weapon: 'Viper Fang',
+            armor: 'Night Weave',
+            helmet: 'Spectre Cowl',
+            gloves: 'Phantom Wraps',
+            boots: 'Night Runners',
+            accessory: 'Wolf Fang'
+        },
+        bonuses: {
+            2: { critChance: 0.05 },
+            4: { critChance: 0.09, speed: 0.08 },
+            6: { critChance: 0.14, speed: 0.12, damage: 0.15 }
+        }
+    },
+    juggernaut: {
+        id: 'juggernaut',
+        name: 'Juggernaut',
+        color: '#90a4ae',
+        pieces: {
+            weapon: 'Thunder Maul',
+            armor: 'Bastion Frame',
+            helmet: 'Fortress Helm',
+            gloves: 'Crusher Fists',
+            boots: 'Bulwark Greaves',
+            accessory: 'Titan Heart'
+        },
+        bonuses: {
+            2: { maxHealth: 30 },
+            4: { maxHealth: 60, damageReduction: 0.08 },
+            6: { maxHealth: 100, damageReduction: 0.14, damage: 0.10 }
+        }
     }
 };
 
@@ -150,7 +198,11 @@ function pickName(slot, rarity, forceSetPiece) {
     if (forceSetPiece) return forceSetPiece;
     const list = EQUIPMENT_NAMES[slot];
     const tierIndex = ['common', 'uncommon', 'rare', 'epic', 'legendary'].indexOf(rarity);
-    const bias = Math.min(list.length - 1, Math.max(0, tierIndex + Math.floor(Math.random() * 3)));
+    // Scale the tier window to the list length so bigger name pools keep the
+    // early-name=common / late-name=legendary ordering bias.
+    const start = Math.floor((tierIndex / 5) * list.length);
+    const window = Math.max(3, Math.floor(list.length / 5) + 2);
+    const bias = Math.min(list.length - 1, start + Math.floor(Math.random() * window));
     return list[bias];
 }
 

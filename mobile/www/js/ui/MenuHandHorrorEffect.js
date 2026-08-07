@@ -383,10 +383,7 @@ export class MenuHandHorrorEffect {
 
         for (const d of this.drips) {
             const alpha = (d.life / d.maxLife) * 0.9;
-            const grad = ctx.createLinearGradient(d.x, d.y, d.x, d.y + d.length);
-            grad.addColorStop(0, `rgba(140, 0, 0, ${alpha})`);
-            grad.addColorStop(1, `rgba(60, 0, 0, 0)`);
-            ctx.strokeStyle = grad;
+            ctx.strokeStyle = `rgba(140, 0, 0, ${alpha})`;
             ctx.lineWidth = d.width;
             ctx.lineCap = 'round';
             ctx.beginPath();

@@ -62,6 +62,7 @@ export function createPlayer(x, y, colorIndex = 0) {
         // Grenade state
         grenadeCount: MAX_GRENADES,
         molotovCount: MAX_MOLOTOVS,
+        orbitalStrikeCount: 0,
         activeThrowable: 'grenade',
         lastGrenadeThrowTime: 0,
         lastThrowableCycleTime: 0,
@@ -117,6 +118,7 @@ export function createPlayer(x, y, colorIndex = 0) {
         // Scrap resource (v0.8.2.2: The Scrapen Update)
         scrap: 0, // Scrap currency collected from zombies
         scrapMultiplier: 1.0, // Multiplier for scrap gains (from skills)
+        bonusLevelUpRerolls: 0, // Merchant reroll tokens
 
         // Input
         inputSource: 'mouse', // 'mouse', 'keyboard_arrow', 'gamepad'
@@ -210,6 +212,9 @@ export const gameState = {
     zombiesKilled: 0,
     pickupsCollected: 0, // v0.8.3.5: Tracks pickups in current session
     headshots: 0, // v0.8.3.5: Tracks headshots in current session
+    totalShotsFired: 0,
+    totalShotsHit: 0,
+    lastDeathCause: 'Overwhelmed by Zombies',
     scrapCollected: 0, // v0.8.2.2: Scrap resource collected in current session
     zombiesPerWave: 5,
     zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
@@ -260,12 +265,17 @@ export const gameState = {
     frostPickups: [],
     scrapPickups: [], // v0.8.2.2: Scrap resource pickup
     scrapShrines: [], // Wave-break scrap shop shrines
+    scrapDepot: null, // Arcade fixed restock depot
+    wanderingMerchant: null, // Arcade rare merchant NPC
+    scrapMagnetEndTime: 0, // Merchant scrap magnet buff
+    scrapSweepEndTime: 0, // Wave-clear scrap vacuum window
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
     grenades: [],
     acidProjectiles: [],
     acidPools: [],
+    sentryTurrets: [],
     spawnIndicators: [],
     props: [], // v0.8.1.2: World props (rocks, debris, burnt cars) - single player arcade only
 
@@ -296,6 +306,13 @@ export const gameState = {
     sirenScreamEffects: [],
     killStreak: 0,
     lastKillTime: 0,
+    // Perfect Wave tracking — no player damage during the wave (arcade)
+    waveDamageTaken: false,
+    perfectWaveCount: 0,
+    perfectWaveStreak: 0, // consecutive perfect waves — scales the bonus
+    // Bounty Zombie — one marked target per wave (arcade local)
+    bountyAssignedThisWave: false,
+    equipmentDropPity: 0, // dry-kill counter — guarantees an equipment drop eventually
     // Multi-kill tracking (V0.7.1)
     recentKills: [], // Array of {time, zombieType} for multi-kill detection
     maxKillStreak: 0, // Track highest streak in session
@@ -383,6 +400,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesKilled = 0;
     gameState.pickupsCollected = 0;
     gameState.headshots = 0;
+    gameState.totalShotsFired = 0;
+    gameState.totalShotsHit = 0;
+    gameState.lastDeathCause = 'Overwhelmed by Zombies';
     gameState.scrapCollected = 0;
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
@@ -421,6 +441,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.maxAmmo = WEAPONS.pistol.maxAmmo;
             player.isReloading = false;
             player.grenadeCount = MAX_GRENADES;
+            player.orbitalStrikeCount = 0;
 
             // Reset score multiplier
             player.scoreMultiplier = 1.0;
@@ -436,6 +457,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.hasRegeneration = false;
             player.scrap = 0;
             player.scrapMultiplier = 1.0;
+            player.bonusLevelUpRerolls = 0;
             player.fireRateSkillMultiplier = 1.0;
             player.damageSkillMultiplier = 1.0;
             player.pierceChance = 0;
@@ -595,11 +617,16 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.frostPickups = [];
     gameState.scrapPickups = [];
     gameState.scrapShrines = [];
+    gameState.scrapDepot = null;
+    gameState.wanderingMerchant = null;
+    gameState.scrapMagnetEndTime = 0;
+    gameState.scrapSweepEndTime = 0;
     gameState.equipmentPickups = [];
     gameState.showEquipment = false;
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
+    gameState.sentryTurrets = [];
     gameState.spawnIndicators = [];
     gameState.props = []; // v0.8.1.2: Reset props for new game
 
@@ -620,6 +647,11 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.sirenScreamEffects = [];
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
+    gameState.waveDamageTaken = false;
+    gameState.perfectWaveCount = 0;
+    gameState.perfectWaveStreak = 0;
+    gameState.bountyAssignedThisWave = false;
+    gameState.equipmentDropPity = 0;
     gameState.maxKillStreak = 0; // V0.7.1: Track highest streak in session
     gameState.recentKills = []; // V0.7.1: Track recent kills for multi-kill detection
     gameState.weaponSwitchFlash = { active: false, startTime: 0, duration: 150, weapon: null }; // V0.7.1: Reset weapon switch flash

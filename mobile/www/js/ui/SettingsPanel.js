@@ -1,4 +1,4 @@
-import { ctx } from '../core/canvas.js';
+import { ctx, getUiDensityScale } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { updateAudioSettings, playMenuClickSound, playMenuHoverSound } from '../systems/AudioSystem.js';
@@ -21,6 +21,13 @@ const COLORS = {
     tooltipBorder: 'rgba(255, 23, 68, 0.6)'
 };
 
+const TAB_LABELS = {
+    video: 'GRAPHICS',
+    audio: 'AUDIO',
+    gameplay: 'GAMEPLAY',
+    controls: 'CONTROLS'
+};
+
 // Tooltip descriptions for each setting
 const TOOLTIPS = {
     // Audio
@@ -32,8 +39,6 @@ const TOOLTIPS = {
     'audio.gunshotVolume': 'Volume of weapon fire sounds.',
     'audio.hitSoundVolume': 'Volume of the "tick" sound when damaging enemies.',
     'audio.multiplierVolume': 'Volume of the crystal shimmer sound when multiplier increases.',
-    'audio.spatialAudio': 'Enable stereo panning based on sound position. Left/right audio cues.',
-
     // Video - WebGPU
     'video.webgpuEnabled': 'Enable GPU-accelerated rendering. Disable for older hardware.',
     'video.bloomIntensity': 'Glow effect strength around lights and projectiles. Set to 0 to disable.',
@@ -41,6 +46,12 @@ const TOOLTIPS = {
     'video.lightingQuality': 'Dynamic lighting quality. Off=fastest, Advanced=most realistic.',
     'video.distortionEffects': 'Screen distortion effects like shockwaves. Minor GPU impact.',
     'video.zombobsFXEnabled': 'Spore cloud effect around zombies. Atmospheric but costs performance.',
+    'video.chromaticAberration': 'Separates color channels near screen edges and during impacts.',
+    'video.filmGrain': 'Animated film texture composited over the game. Keep subtle for clarity.',
+    'video.vignetteIntensity': 'Strength of the dark cinematic frame around the world.',
+    'video.impactFlashIntensity': 'White-flash and color-split punch from damage and explosions.',
+    'video.colorGrading': 'Teal-shadow and warm-floor atmospheric color wash.',
+    'video.scanlineIntensity': 'Fine CRT scanlines for retro-horror texture.',
 
     // Video - General
     'video.qualityPreset': 'Quick quality settings. Choose Custom for manual control.',
@@ -57,6 +68,7 @@ const TOOLTIPS = {
     'video.crosshairColor': 'Crosshair color. Click to open color picker.',
     'video.damageNumberStyle': 'How damage numbers appear. Off = disabled.',
     'video.damageNumberScale': 'Damage number size multiplier.',
+    'video.floatingText': 'Show pickup, reward, and status popups in the game world.',
     'video.lowHealthWarning': 'Red screen flash when health is critical.',
     'video.enemyHealthBars': 'Show health bars above zombies.',
     'video.enemyNameTags': 'Show zombie type name tags above enemies.',
@@ -64,9 +76,9 @@ const TOOLTIPS = {
     'video.reloadBar': 'Show reload progress bar on HUD.',
     'video.showDebugStats': 'Show FPS, entity counts, and performance info.',
     'video.fpsLimit': 'Cap frame rate. OFF = unlimited (uses more power).',
-    'video.vsync': 'Sync frames to monitor refresh. Reduces tearing but may add input lag.',
+    'video.vsync': 'Use native browser frame pacing. Turn off to apply the selected FPS cap.',
     'video.uiScale': 'User interface size. Adjust for your screen.',
-    'video.textRenderingQuality': 'Text clarity. Higher = sharper but slower.',
+    'video.textRenderingQuality': 'Canvas image filtering. Low keeps hard pixels; High smooths scaled art.',
     'video.showRankBadge': 'Display your rank badge on the HUD.',
     'video.rankBadgeSize': 'Rank badge display size.',
     'video.effectIntensity': 'Global multiplier for all visual effects.',
@@ -137,10 +149,14 @@ export class SettingsPanel {
         // Color picker state
         this.colorPickerOpen = false;
         this.colorPickerTarget = null; // { category, key }
+
+        // Destructive reset requires a deliberate second click.
+        this.resetConfirmUntil = 0;
     }
 
     getUIScale() {
-        return this.settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+        const scale = this.settingsManager.getSetting('video', 'uiScale') ?? 1.0;
+        return (Number.isFinite(scale) && scale > 0 ? scale : 1.0) * getUiDensityScale();
     }
 
     getMobileScale() {
@@ -150,6 +166,11 @@ export class SettingsPanel {
     getEffectiveScale() {
         // Combined scale: UI scale setting * mobile shrink factor
         return this.getUIScale() * this.getMobileScale();
+    }
+
+    isNarrowLayout() {
+        const scale = this.getEffectiveScale();
+        return scale > 0 && (this.panelWidth / scale) < 620;
     }
 
     getScaledPanelWidth() {
@@ -398,7 +419,9 @@ export class SettingsPanel {
             }
 
             // Tab label
-            const tabFontSize = Math.max(8, Math.round(14 * scale));
+            const tabFontSize = this.isNarrowLayout()
+                ? Math.max(7, Math.round(11 * scale))
+                : Math.max(8, Math.round(14 * scale));
             this.ctx.font = isActive ? `bold ${tabFontSize}px "Roboto Mono", monospace` : `${tabFontSize}px "Roboto Mono", monospace`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -409,7 +432,7 @@ export class SettingsPanel {
                 this.ctx.shadowColor = COLORS.accent;
             }
 
-            this.ctx.fillText(tab.toUpperCase(), tabX + tabWidth / 2, tabY + this.tabHeight / 2);
+            this.ctx.fillText(TAB_LABELS[tab] || tab.toUpperCase(), tabX + tabWidth / 2, tabY + this.tabHeight / 2);
             this.ctx.shadowBlur = 0;
 
             // Register tab as clickable control
@@ -436,10 +459,16 @@ export class SettingsPanel {
 
         // Reset Button
         const resetX = startX;
+        const confirmingReset = Date.now() < this.resetConfirmUntil;
         const isResetHovered = mouse.x >= resetX && mouse.x <= resetX + btnWidth &&
             mouse.y >= btnY && mouse.y <= btnY + btnHeight;
 
-        if (isResetHovered) {
+        if (confirmingReset) {
+            this.ctx.fillStyle = isResetHovered ? 'rgba(255, 23, 68, 0.55)' : 'rgba(255, 23, 68, 0.35)';
+            this.ctx.strokeStyle = COLORS.accent;
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.7)';
+        } else if (isResetHovered) {
             this.ctx.fillStyle = 'rgba(255, 152, 0, 0.4)'; // Orange for reset
             this.ctx.strokeStyle = '#ff9800';
             this.ctx.shadowBlur = 8;
@@ -460,7 +489,7 @@ export class SettingsPanel {
         this.ctx.textBaseline = 'middle';
         const btnFontSize = Math.max(8, Math.round(13 * scale));
         this.ctx.font = `bold ${btnFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillText("RESET ALL", resetX + btnWidth / 2, btnY + btnHeight / 2);
+        this.ctx.fillText(confirmingReset ? "CONFIRM" : "RESET ALL", resetX + btnWidth / 2, btnY + btnHeight / 2);
 
         this.controls.push({
             type: 'button',
@@ -502,26 +531,29 @@ export class SettingsPanel {
     drawScrollBar(scrollY, maxScroll, mouse) {
         if (maxScroll <= 0) return;
 
-        const trackX = this.panelX + this.panelWidth - 15;
-        const trackY = this.panelY + 80;
+        const scale = this.getEffectiveScale();
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const trackX = this.panelX + this.panelWidth - (15 * scale);
+        const trackY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
         const trackHeight = this.viewportHeight;
+        const scrollBarWidth = this.scrollBarWidth * scale;
 
         // Scrollbar thumb
-        const thumbHeight = Math.max(30, (this.viewportHeight / this.contentHeight) * trackHeight);
+        const thumbHeight = Math.max(30 * scale, (this.viewportHeight / this.contentHeight) * trackHeight);
         const thumbY = trackY + (scrollY / maxScroll) * (trackHeight - thumbHeight);
 
-        const isHovered = mouse.x >= trackX - 5 && mouse.x <= trackX + this.scrollBarWidth + 5 &&
+        const isHovered = mouse.x >= trackX - (5 * scale) && mouse.x <= trackX + scrollBarWidth + (5 * scale) &&
             mouse.y >= trackY && mouse.y <= trackY + trackHeight;
 
         // Draw rounded rect manually (for compatibility)
-        const radius = 3;
+        const radius = 3 * scale;
         this.ctx.fillStyle = (isHovered || this.draggingScrollBar) ? COLORS.accent : 'rgba(255, 255, 255, 0.2)';
         this.ctx.beginPath();
         this.ctx.moveTo(trackX + radius, thumbY);
-        this.ctx.lineTo(trackX + this.scrollBarWidth - radius, thumbY);
-        this.ctx.quadraticCurveTo(trackX + this.scrollBarWidth, thumbY, trackX + this.scrollBarWidth, thumbY + radius);
-        this.ctx.lineTo(trackX + this.scrollBarWidth, thumbY + thumbHeight - radius);
-        this.ctx.quadraticCurveTo(trackX + this.scrollBarWidth, thumbY + thumbHeight, trackX + this.scrollBarWidth - radius, thumbY + thumbHeight);
+        this.ctx.lineTo(trackX + scrollBarWidth - radius, thumbY);
+        this.ctx.quadraticCurveTo(trackX + scrollBarWidth, thumbY, trackX + scrollBarWidth, thumbY + radius);
+        this.ctx.lineTo(trackX + scrollBarWidth, thumbY + thumbHeight - radius);
+        this.ctx.quadraticCurveTo(trackX + scrollBarWidth, thumbY + thumbHeight, trackX + scrollBarWidth - radius, thumbY + thumbHeight);
         this.ctx.lineTo(trackX + radius, thumbY + thumbHeight);
         this.ctx.quadraticCurveTo(trackX, thumbY + thumbHeight, trackX, thumbY + thumbHeight - radius);
         this.ctx.lineTo(trackX, thumbY + radius);
@@ -531,7 +563,7 @@ export class SettingsPanel {
 
         this.controls.push({
             type: 'scrollbar',
-            x: trackX - 5, y: trackY, width: 20, height: trackHeight,
+            x: trackX - (5 * scale), y: trackY, width: 20 * scale, height: trackHeight,
             maxScroll: maxScroll, thumbHeight: thumbHeight
         });
     }
@@ -540,123 +572,156 @@ export class SettingsPanel {
         const scale = this.getEffectiveScale();
         y += 20 * scale; // Top padding
 
-        // WebGPU Settings
-        y = this.drawSectionHeader("WEBGPU", y);
-        y = this.drawToggle("WebGPU Enabled", "video", "webgpuEnabled", y, mouse);
-        y = this.drawSlider("Bloom Intensity", "video", "bloomIntensity", 0, 1, y, mouse);
-        y = this.drawDropdown("Particle Count", "video", "particleCount", ['low', 'high', 'ultra'], y, mouse);
-        y = this.drawDropdown("Lighting Quality", "video", "lightingQuality", ['off', 'simple', 'advanced'], y, mouse);
-        y = this.drawToggle("Distortion Effects", "video", "distortionEffects", y, mouse);
-        y = this.drawToggle("Spore Cloud Effect", "video", "zombobsFXEnabled", y, mouse);
+        y = this.drawVideoStatus(y);
 
-        // General Video Settings
-        y = this.drawSectionHeader("GENERAL", y);
+        y = this.drawSectionHeader("QUICK SETUP", y);
         y = this.drawDropdown("Quality Preset", "video", "qualityPreset", ['low', 'medium', 'high', 'ultra', 'custom'], y, mouse);
-        if (this.settingsManager.getSetting('video', 'qualityPreset') === 'custom') {
-            y = this.drawSlider("Resolution Scale", "video", "resolutionScale", 0.5, 2.0, y, mouse);
-            y = this.drawToggle("Vignette", "video", "vignette", y, mouse);
-            y = this.drawToggle("Shadows", "video", "shadows", y, mouse);
-            y = this.drawToggle("Lighting", "video", "lighting", y, mouse);
-        }
+
+        y = this.drawSectionHeader("DISPLAY", y);
+        y = this.drawSlider("Resolution Scale", "video", "resolutionScale", 0.5, 2.0, y, mouse);
+        y = this.drawSlider("UI Scale", "video", "uiScale", 0.5, 1.5, y, mouse);
+        y = this.drawUIScalePresets(y, mouse);
+        y = this.drawDropdown("Canvas Filtering", "video", "textRenderingQuality", ['low', 'medium', 'high'], y, mouse);
+
+        y = this.drawSectionHeader("WORLD RENDERING", y);
+        y = this.drawToggle("Entity Shadows", "video", "shadows", y, mouse);
+        y = this.drawToggle("World Lighting", "video", "lighting", y, mouse);
+        y = this.drawToggle("Cinematic Vignette", "video", "vignette", y, mouse);
+        y = this.drawSlider("Effect Intensity", "video", "effectIntensity", 0, 2, y, mouse);
+        y = this.drawDropdown("Particle Detail", "video", "particleDetail", ['minimal', 'standard', 'detailed', 'ultra'], y, mouse);
+
+        y = this.drawSectionHeader("WEBGPU PIPELINE", y);
+        y = this.drawToggle("WebGPU Overlay", "video", "webgpuEnabled", y, mouse);
+        y = this.drawDropdown("GPU Particle Budget", "video", "particleCount", ['low', 'high', 'ultra'], y, mouse);
+        y = this.drawDropdown("Dynamic Lights", "video", "lightingQuality", ['off', 'simple', 'advanced'], y, mouse);
+        y = this.drawToggle("Spore Cloud", "video", "zombobsFXEnabled", y, mouse);
+
+        y = this.drawSectionHeader("CINEMATIC POST FX", y);
+        y = this.drawDropdown("Post-Processing", "video", "postProcessingQuality", ['off', 'low', 'medium', 'high'], y, mouse);
+        y = this.drawSlider("Bloom", "video", "bloomIntensity", 0, 1, y, mouse);
+        y = this.drawToggle("Heat Distortion", "video", "distortionEffects", y, mouse);
+        y = this.drawSlider("Color Separation", "video", "chromaticAberration", 0, 1, y, mouse);
+        y = this.drawSlider("Film Grain", "video", "filmGrain", 0, 0.2, y, mouse);
+        y = this.drawSlider("Vignette Strength", "video", "vignetteIntensity", 0, 1, y, mouse);
+        y = this.drawSlider("Atmosphere Grade", "video", "colorGrading", 0, 1, y, mouse);
+        y = this.drawSlider("CRT Scanlines", "video", "scanlineIntensity", 0, 0.2, y, mouse);
+
+        y = this.drawSectionHeader("COMBAT FEEDBACK", y);
         y = this.drawSlider("Screen Shake", "video", "screenShakeMultiplier", 0, 2, y, mouse);
         y = this.drawSlider("Blood & Gore", "video", "bloodGoreLevel", 0, 1, y, mouse);
+        y = this.drawSlider("Impact Flash", "video", "impactFlashIntensity", 0, 1, y, mouse);
+        y = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], y, mouse);
+        y = this.drawSlider("Damage Number Scale", "video", "damageNumberScale", 0.5, 2.0, y, mouse);
+        y = this.drawToggle("Pickup & Reward Popups", "video", "floatingText", y, mouse);
+        y = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", y, mouse);
+        y = this.drawToggle("Reload Progress", "video", "reloadBar", y, mouse);
+        y = this.drawToggle("Enemy Health Bars", "video", "enemyHealthBars", y, mouse);
+        y = this.drawToggle("Enemy Name Tags", "video", "enemyNameTags", y, mouse);
+        y = this.drawDropdown("Health Bar Style", "video", "enemyHealthBarStyle", ['gradient', 'solid', 'simple'], y, mouse);
+
+        y = this.drawSectionHeader("CROSSHAIR", y);
         y = this.drawDropdown("Crosshair Style", "video", "crosshairStyle", ['default', 'dot', 'cross', 'circle'], y, mouse);
         y = this.drawToggle("Dynamic Crosshair", "video", "dynamicCrosshair", y, mouse);
         y = this.drawSlider("Crosshair Size", "video", "crosshairSize", 0.5, 2.0, y, mouse);
         y = this.drawSlider("Crosshair Opacity", "video", "crosshairOpacity", 0.0, 1.0, y, mouse);
         y = this.drawColorSwatch("Crosshair Color", "video", "crosshairColor", y, mouse);
-        y = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], y, mouse);
-        y = this.drawSlider("Damage Number Scale", "video", "damageNumberScale", 0.5, 2.0, y, mouse);
-        y = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", y, mouse);
-        y = this.drawToggle("Enemy Health Bars", "video", "enemyHealthBars", y, mouse);
-        y = this.drawToggle("Enemy Name Tags", "video", "enemyNameTags", y, mouse);
-        y = this.drawDropdown("Enemy Health Bar Style", "video", "enemyHealthBarStyle", ['gradient', 'solid', 'simple'], y, mouse);
-        y = this.drawToggle("Reload Bar", "video", "reloadBar", y, mouse);
+
+        y = this.drawSectionHeader("PERFORMANCE & HUD", y);
+        y = this.drawToggle("Native Frame Pacing", "video", "vsync", y, mouse);
+        y = this.drawDropdown("FPS Cap", "video", "fpsLimit", [0, 30, 60, 90, 120, 144, 165, 240], y, mouse);
         y = this.drawToggle("Show Debug Stats", "video", "showDebugStats", y, mouse);
-        y = this.drawDropdown("FPS Limit", "video", "fpsLimit", [0, 30, 60, 120], y, mouse);
-        y = this.drawToggle("VSync", "video", "vsync", y, mouse);
-        // UI Scale with enhanced display
-        const uiScaleValue = this.settingsManager.getSetting('video', 'uiScale') ?? 1.0;
-        y = this.drawSlider("UI Scale", "video", "uiScale", 0.5, 1.5, y, mouse);
-
-        // Add preset buttons below slider
-        const presetScale = this.getUIScale();
-        const presetY = y + 5 * presetScale;
-        const presetButtonWidth = 60 * presetScale;
-        const presetButtonHeight = 25 * presetScale;
-        const presetSpacing = 10 * presetScale;
-        const presetStartX = this.panelX + this.padding + 200 * presetScale;
-
-        const presets = [
-            { label: 'Small', value: 0.7 },
-            { label: 'Medium', value: 1.0 },
-            { label: 'Large', value: 1.3 }
-        ];
-
-        presets.forEach((preset, index) => {
-            const presetX = presetStartX + index * (presetButtonWidth + presetSpacing);
-            const isActive = Math.abs(uiScaleValue - preset.value) < 0.05;
-            const isHovered = mouse && mouse.x >= presetX && mouse.x <= presetX + presetButtonWidth &&
-                mouse.y >= presetY && mouse.y <= presetY + presetButtonHeight;
-
-            // Button background
-            if (isActive) {
-                const gradient = this.ctx.createLinearGradient(presetX, presetY, presetX, presetY + presetButtonHeight);
-                gradient.addColorStop(0, COLORS.accentSoft);
-                gradient.addColorStop(1, COLORS.accent);
-                this.ctx.fillStyle = gradient;
-            } else {
-                this.ctx.fillStyle = isHovered ? 'rgba(255, 23, 68, 0.3)' : 'rgba(255, 23, 68, 0.15)';
-            }
-            this.ctx.fillRect(presetX, presetY, presetButtonWidth, presetButtonHeight);
-
-            // Button border
-            this.ctx.strokeStyle = isActive ? COLORS.accent : (isHovered ? COLORS.accentSoft : 'rgba(255, 255, 255, 0.12)');
-            this.ctx.lineWidth = isActive ? 2 : 1;
-            this.ctx.strokeRect(presetX, presetY, presetButtonWidth, presetButtonHeight);
-
-            if (isActive || isHovered) {
-                this.ctx.shadowBlur = 8;
-                this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
-                this.ctx.strokeRect(presetX, presetY, presetButtonWidth, presetButtonHeight);
-                this.ctx.shadowBlur = 0;
-            }
-
-            // Button text
-            this.ctx.fillStyle = isActive ? '#ffffff' : COLORS.textMain;
-            this.ctx.font = `bold ${Math.max(10, 11 * presetScale)}px "Roboto Mono", monospace`;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(preset.label, presetX + presetButtonWidth / 2, presetY + presetButtonHeight / 2);
-
-            // Store for click detection
-            this.controls.push({
-                type: 'uiScalePreset',
-                x: presetX,
-                y: presetY,
-                width: presetButtonWidth,
-                height: presetButtonHeight,
-                value: preset.value
-            });
-        });
-
-        y += presetButtonHeight + 10 * presetScale;
-
-        // Text Rendering Quality
-        y = this.drawDropdown("Text Rendering Quality", "video", "textRenderingQuality", ['low', 'medium', 'high'], y, mouse);
-
-        // UI Elements section
-        y = this.drawSectionHeader("UI ELEMENTS", y);
         y = this.drawToggle("Show Rank Badge", "video", "showRankBadge", y, mouse);
         y = this.drawDropdown("Rank Badge Size", "video", "rankBadgeSize", ['small', 'normal', 'large'], y, mouse);
 
-        // New graphics quality settings
-        y = this.drawSectionHeader("QUALITY", y);
-        y = this.drawSlider("Effect Intensity", "video", "effectIntensity", 0, 2, y, mouse);
-        y = this.drawDropdown("Post-Processing", "video", "postProcessingQuality", ['off', 'low', 'medium', 'high'], y, mouse);
-        y = this.drawDropdown("Particle Detail", "video", "particleDetail", ['minimal', 'standard', 'detailed', 'ultra'], y, mouse);
-
         return y;
+    }
+
+    drawVideoStatus(y) {
+        const scale = this.getEffectiveScale();
+        const x = this.panelX + this.padding;
+        const width = this.panelWidth - this.padding * 2;
+        const height = 52 * scale;
+        const preset = String(this.settingsManager.getSetting('video', 'qualityPreset') || 'custom').toUpperCase();
+        const wantsWebGPU = this.settingsManager.getSetting('video', 'webgpuEnabled') !== false;
+        const gpuLive = wantsWebGPU && window.webgpuRenderer?.isAvailable?.();
+        const renderer = gpuLive ? 'WEBGPU LIVE' : (wantsWebGPU ? 'WEBGPU READY' : 'CANVAS 2D');
+        const post = String(this.settingsManager.getSetting('video', 'postProcessingQuality') || 'off').toUpperCase();
+
+        const bg = this.ctx.createLinearGradient(x, y, x + width, y);
+        bg.addColorStop(0, 'rgba(255, 23, 68, 0.12)');
+        bg.addColorStop(0.55, 'rgba(0, 229, 255, 0.07)');
+        bg.addColorStop(1, 'rgba(5, 27, 31, 0.5)');
+        this.ctx.fillStyle = bg;
+        this.ctx.fillRect(x, y, width, height);
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        this.ctx.strokeRect(x, y, width, height);
+
+        const cells = [
+            ['PROFILE', preset, COLORS.accentSoft],
+            ['RENDERER', renderer, gpuLive ? '#00e676' : '#ffc107'],
+            ['POST FX', post, post === 'OFF' ? COLORS.textMuted : '#00e5ff']
+        ];
+        const cellWidth = width / cells.length;
+        for (let i = 0; i < cells.length; i++) {
+            const cellX = x + i * cellWidth;
+            if (i > 0) {
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.fillRect(cellX, y + 10 * scale, 1, height - 20 * scale);
+            }
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.font = `${Math.max(8, Math.round(9 * scale))}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = COLORS.textMuted;
+            this.ctx.fillText(cells[i][0], cellX + cellWidth / 2, y + 16 * scale);
+            this.ctx.font = `bold ${Math.max(9, Math.round(12 * scale))}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = cells[i][2];
+            this.ctx.fillText(cells[i][1], cellX + cellWidth / 2, y + 35 * scale);
+        }
+        return y + height + 8 * scale;
+    }
+
+    drawUIScalePresets(y, mouse) {
+        const scale = this.getEffectiveScale();
+        const current = this.settingsManager.getSetting('video', 'uiScale') ?? 1;
+        const presets = [
+            { label: 'COMPACT', value: 0.7 },
+            { label: 'STANDARD', value: 1 },
+            { label: 'LARGE', value: 1.3 }
+        ];
+        const availableWidth = this.panelWidth - this.padding * 2 - 20 * scale;
+        const buttonHeight = 24 * scale;
+        const gap = 8 * scale;
+        const buttonWidth = this.isNarrowLayout()
+            ? (availableWidth - gap * 2) / 3
+            : 88 * scale;
+        const totalWidth = presets.length * buttonWidth + (presets.length - 1) * gap;
+        const startX = this.isNarrowLayout()
+            ? this.panelX + this.padding + 10 * scale
+            : this.panelX + this.panelWidth - this.padding - totalWidth - 10 * scale;
+
+        for (let i = 0; i < presets.length; i++) {
+            const preset = presets[i];
+            const x = startX + i * (buttonWidth + gap);
+            const active = Math.abs(current - preset.value) < 0.025;
+            const hovered = mouse.x >= x && mouse.x <= x + buttonWidth
+                && mouse.y >= y && mouse.y <= y + buttonHeight;
+            this.ctx.fillStyle = active
+                ? 'rgba(255, 23, 68, 0.55)'
+                : (hovered ? 'rgba(255, 23, 68, 0.25)' : 'rgba(255, 255, 255, 0.06)');
+            this.ctx.strokeStyle = active ? COLORS.accent : COLORS.glassBorder;
+            this.ctx.lineWidth = active ? 2 : 1;
+            this.ctx.fillRect(x, y, buttonWidth, buttonHeight);
+            this.ctx.strokeRect(x, y, buttonWidth, buttonHeight);
+            this.ctx.fillStyle = active ? '#fff' : COLORS.textMuted;
+            this.ctx.font = `bold ${Math.max(8, Math.round(9 * scale))}px "Roboto Mono", monospace`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(preset.label, x + buttonWidth / 2, y + buttonHeight / 2);
+            this.controls.push({
+                type: 'uiScalePreset', x, y, width: buttonWidth, height: buttonHeight, value: preset.value
+            });
+        }
+        return y + buttonHeight + 8 * scale;
     }
 
     drawAudioSettings(y, mouse) {
@@ -676,9 +741,6 @@ export class SettingsPanel {
         y = this.drawSlider("Gunshot Volume", "audio", "gunshotVolume", 0, 1, y, mouse);
         y = this.drawSlider("Hit Marker Volume", "audio", "hitSoundVolume", 0, 1, y, mouse);
         y = this.drawSlider("Multiplier Volume", "audio", "multiplierVolume", 0, 1, y, mouse);
-
-        y = this.drawSectionHeader("EFFECTS", y);
-        y = this.drawToggle("Spatial Audio", "audio", "spatialAudio", y, mouse);
 
         return y;
     }
@@ -796,12 +858,17 @@ export class SettingsPanel {
 
     drawSlider(label, category, key, min, max, y, mouse, decimalPlaces = 2) {
         const scale = this.getEffectiveScale();
-        const rowHeight = 35 * scale; // Reduced from 40
+        const narrow = this.isNarrowLayout();
+        const rowHeight = (narrow ? 62 : 35) * scale;
         const value = this.settingsManager.getSetting(category, key) ?? min;
         const labelX = this.panelX + this.padding + (10 * scale);
-        const sliderWidth = 180 * scale; // Reduced from 200
-        const sliderX = this.panelX + this.panelWidth - this.padding - sliderWidth - (50 * scale); // Space for value text
-        const sliderY = y + (13 * scale); // Vertical center offset
+        const sliderWidth = narrow
+            ? this.panelWidth - this.padding * 2 - (88 * scale)
+            : 180 * scale;
+        const sliderX = narrow
+            ? labelX
+            : this.panelX + this.panelWidth - this.padding - sliderWidth - (50 * scale);
+        const sliderY = y + ((narrow ? 43 : 13) * scale);
         const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
         const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
 
@@ -810,7 +877,7 @@ export class SettingsPanel {
         this.ctx.fillStyle = COLORS.textMain;
         const fontSize = Math.max(8, Math.round(13 * scale));
         this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillText(label, labelX, y + (18 * scale));
+        this.ctx.fillText(label, labelX, y + ((narrow ? 17 : 18) * scale));
 
         // Slider Track
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
@@ -858,7 +925,11 @@ export class SettingsPanel {
         else if (key === 'resolutionScale' || key === 'damageNumberScale' || key === 'uiScale' || key === 'effectIntensity') displayValue = Math.round(value * 100) + '%';
         else displayValue = Math.round(value);
 
-        this.ctx.fillText(displayValue, this.panelX + this.panelWidth - this.padding - (10 * scale), y + (18 * scale));
+        this.ctx.fillText(
+            displayValue,
+            this.panelX + this.panelWidth - this.padding - (10 * scale),
+            y + ((narrow ? 47 : 18) * scale)
+        );
 
         this.controls.push({
             type: 'slider',
@@ -937,14 +1008,19 @@ export class SettingsPanel {
 
     drawDropdown(label, category, key, options, y, mouse) {
         const scale = this.getEffectiveScale();
-        const rowHeight = 35 * scale; // Reduced from 40
+        const narrow = this.isNarrowLayout();
+        const rowHeight = (narrow ? 66 : 35) * scale;
         const currentValue = this.settingsManager.getSetting(category, key);
 
         const labelX = this.panelX + this.padding + (10 * scale);
-        const dropdownWidth = 140 * scale; // Reduced from 150
+        const dropdownWidth = narrow
+            ? this.panelWidth - this.padding * 2 - (20 * scale)
+            : 140 * scale;
         const dropdownHeight = 28 * scale; // Reduced from 30
-        const dropdownX = this.panelX + this.panelWidth - this.padding - dropdownWidth - (10 * scale);
-        const dropdownY = y + (4 * scale);
+        const dropdownX = narrow
+            ? labelX
+            : this.panelX + this.panelWidth - this.padding - dropdownWidth - (10 * scale);
+        const dropdownY = y + ((narrow ? 30 : 4) * scale);
         const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
         const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
 
@@ -953,7 +1029,7 @@ export class SettingsPanel {
         this.ctx.fillStyle = COLORS.textMain;
         const labelFontSize = Math.max(10, Math.round(13 * scale));
         this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillText(label, labelX, y + 20 * scale);
+        this.ctx.fillText(label, labelX, y + (narrow ? 17 : 20) * scale);
 
         const isHovered = mouse.x >= dropdownX && mouse.x <= dropdownX + dropdownWidth &&
             mouse.y >= dropdownY && mouse.y <= dropdownY + dropdownHeight &&
@@ -1004,7 +1080,7 @@ export class SettingsPanel {
 
     drawDropdownMenu(dropdown, mouse) {
         const { x, y, width, options } = dropdown;
-        const scale = this.getUIScale();
+        const scale = this.getEffectiveScale();
         const itemHeight = 30 * scale;
         const menuHeight = options.length * itemHeight;
         const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
@@ -1051,7 +1127,7 @@ export class SettingsPanel {
 
     updateHoveredControl(mouse) {
         // Find which control the mouse is over
-        const scale = this.getUIScale();
+        const scale = this.getEffectiveScale();
         const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
         const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
 
@@ -1093,7 +1169,7 @@ export class SettingsPanel {
     drawTooltip(mouse) {
         if (!this.hoveredControl || !this.hoveredControl.tooltip) return;
 
-        const scale = this.getUIScale();
+        const scale = this.getEffectiveScale();
         const tooltip = this.hoveredControl.tooltip;
         const padding = 10 * scale;
         const maxWidth = 280 * scale;
@@ -1174,7 +1250,7 @@ export class SettingsPanel {
     }
 
     drawColorPicker(mouse) {
-        const scale = this.getUIScale();
+        const scale = this.getEffectiveScale();
         const pickerWidth = 220 * scale;
         const pickerHeight = 260 * scale;
         const pickerX = (this.canvas.width - pickerWidth) / 2;
@@ -1292,7 +1368,7 @@ export class SettingsPanel {
     }
 
     drawColorSwatch(label, category, key, y, mouse) {
-        const scale = this.getUIScale();
+        const scale = this.getEffectiveScale();
         const rowHeight = 35 * scale;
         const currentColor = this.settingsManager.getSetting(category, key) || '#00ff00';
 
@@ -1345,8 +1421,8 @@ export class SettingsPanel {
             (this.settingsManager.settings.gamepad || {});
 
         // Toggle Button (Keyboard / Controller)
-        const keybindScale = this.getUIScale();
-        const toggleWidth = 280 * keybindScale; // Scale toggle width
+        const keybindScale = this.getEffectiveScale();
+        const toggleWidth = Math.min(280 * keybindScale, this.panelWidth - this.padding * 2);
         const toggleHeight = 34 * keybindScale; // Scale toggle height
         const toggleX = this.panelX + (this.panelWidth - toggleWidth) / 2;
         const toggleY = y + (5 * keybindScale);
@@ -1391,7 +1467,7 @@ export class SettingsPanel {
             x: toggleX, y: toggleY, width: toggleWidth, height: toggleHeight
         });
 
-        y += 50; // Reduced from 60
+        y += 50 * keybindScale;
 
         if (this.controlMode === 'keyboard') {
             y = this.drawControlsReference(y, mouse);
@@ -1451,7 +1527,7 @@ export class SettingsPanel {
                 boundKey = this.getGamepadButtonName(controls[key]);
             }
 
-            const scale = this.getUIScale();
+            const scale = this.getEffectiveScale();
             const rowHeight = 35 * scale; // Scale row height
             const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
             const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
@@ -1545,7 +1621,7 @@ export class SettingsPanel {
                 }
             }
             // Clicked outside picker - close it
-            const scale = this.getUIScale();
+            const scale = this.getEffectiveScale();
             const pickerWidth = 220 * scale;
             const pickerHeight = 260 * scale;
             const pickerX = (this.canvas.width - pickerWidth) / 2;
@@ -1561,7 +1637,7 @@ export class SettingsPanel {
         // Handle active dropdown selection
         if (this.activeDropdown) {
             const { x: dropX, y: dropY, width, options, category, key, menuStartY } = this.activeDropdown;
-            const itemHeight = 30;
+            const itemHeight = 30 * this.getEffectiveScale();
             const menuHeight = options.length * itemHeight;
             const menuY = menuStartY !== undefined ? menuStartY : dropY + 30;
 
@@ -1577,15 +1653,6 @@ export class SettingsPanel {
                         this.settingsManager.setSetting(category, key, selected);
                     }
 
-                    // Apply FPS limit immediately if changed (only if VSync is disabled)
-                    if (category === 'video' && key === 'fpsLimit') {
-                        if (window.gameEngine) {
-                            const vsyncEnabled = this.settingsManager.getSetting('video', 'vsync') ?? true;
-                            if (!vsyncEnabled) {
-                                window.gameEngine.setFPSLimit(selected);
-                            }
-                        }
-                    }
                 }
                 this.activeDropdown = null;
                 return true;
@@ -1608,7 +1675,7 @@ export class SettingsPanel {
             // Skip controls if they are clipped (not visible in viewport)
             // Exception: Scrollbar, Footer, Tab, ControlModeToggle, and ColorPicker controls are always clickable
             if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar' && ctrl.type !== 'controlModeToggle' && ctrl.type !== 'tab' && ctrl.type !== 'colorSwatch') {
-                const scale = this.getUIScale();
+                const scale = this.getEffectiveScale();
                 const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
                 const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
                 if (ctrl.y < contentStartY || ctrl.y + ctrl.height > contentStartY + this.viewportHeight) {
@@ -1631,6 +1698,11 @@ export class SettingsPanel {
                     return true;
                 }
                 else if (ctrl.type === 'button' && ctrl.action === 'resetAll') {
+                    if (Date.now() >= this.resetConfirmUntil) {
+                        this.resetConfirmUntil = Date.now() + 2500;
+                        return true;
+                    }
+                    this.resetConfirmUntil = 0;
                     this.settingsManager.resetToDefaults();
                     updateAudioSettings(); // Apply audio changes immediately
                     return true;
@@ -1699,7 +1771,7 @@ export class SettingsPanel {
         }
 
         if (this.draggingScrollBar) {
-            const scale = this.getUIScale();
+            const scale = this.getEffectiveScale();
             const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
             const trackY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
             const trackHeight = this.viewportHeight;
@@ -1745,18 +1817,14 @@ export class SettingsPanel {
             updateAudioSettings();
         }
 
-        // Apply resolution scale immediately if changed
-        if (ctrl.category === 'video' && ctrl.key === 'resolutionScale') {
-            // Trigger canvas resize to apply new resolution scale
-            if (gameState.players.length > 0) {
-                resizeCanvas(gameState.players[0]);
-            }
-        }
+        // Runtime listeners in main.js apply resolution and renderer changes.
     }
 
     updateScrollBar(y, ctrl) {
         // Logic handled in mousemove for smoother dragging, but click-to-jump handled here
-        const trackY = this.panelY + 80;
+        const scale = this.getEffectiveScale();
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const trackY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
         const trackHeight = this.viewportHeight;
         const relativeY = Math.max(0, Math.min(trackHeight, y - trackY));
         const percent = relativeY / trackHeight;
@@ -1791,6 +1859,16 @@ export class SettingsPanel {
         }
 
         const lowerKey = key.toLowerCase();
+        const controls = this.settingsManager.settings.controls;
+        const previousKey = controls[this.rebindingAction];
+        const conflict = Object.keys(controls).find(action =>
+            action !== this.rebindingAction
+            && action !== 'scrollWheelSwitch'
+            && controls[action] === lowerKey
+        );
+        if (conflict) {
+            this.settingsManager.setSetting('controls', conflict, previousKey);
+        }
         this.settingsManager.setSetting('controls', this.rebindingAction, lowerKey);
         this.rebindingAction = null;
     }
@@ -1798,6 +1876,14 @@ export class SettingsPanel {
     handleGamepadRebind(buttonIndex) {
         if (!this.rebindingAction || this.controlMode !== 'gamepad') return;
 
+        const controls = this.settingsManager.settings.gamepad;
+        const previousButton = controls[this.rebindingAction];
+        const conflict = Object.keys(controls).find(action =>
+            action !== this.rebindingAction && controls[action] === buttonIndex
+        );
+        if (conflict) {
+            this.settingsManager.setSetting('gamepad', conflict, previousButton);
+        }
         this.settingsManager.setSetting('gamepad', this.rebindingAction, buttonIndex);
         this.rebindingAction = null;
     }

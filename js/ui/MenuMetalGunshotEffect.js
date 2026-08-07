@@ -152,18 +152,19 @@ export class MenuMetalGunshotEffect {
                 ctx.stroke();
             }
 
-            // Metal spark burst
+            // Metal spark burst — batched by type to minimize shadowBlur state changes
+            ctx.lineCap = 'round';
+            // Hot sparks first
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = 'rgba(255, 160, 60, 0.9)';
+            ctx.strokeStyle = '#ffd080';
             for (let i = 0; i < shot.sparks.length; i++) {
                 const spark = shot.sparks[i];
-                const sparkFade = Math.max(0, 1 - sparkT * (spark.hot ? 1.1 : 1.35));
+                if (!spark.hot) continue;
+                const sparkFade = Math.max(0, 1 - sparkT * 1.1);
                 if (sparkFade <= 0) continue;
-
-                ctx.globalAlpha = sparkFade * (spark.hot ? 1 : 0.85);
-                ctx.strokeStyle = spark.hot ? '#ffd080' : '#e8f4ff';
-                ctx.shadowBlur = spark.hot ? 8 : 5;
-                ctx.shadowColor = spark.hot ? 'rgba(255, 160, 60, 0.9)' : 'rgba(180, 220, 255, 0.8)';
+                ctx.globalAlpha = sparkFade;
                 ctx.lineWidth = spark.width;
-                ctx.lineCap = 'round';
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
                 ctx.lineTo(
@@ -172,6 +173,26 @@ export class MenuMetalGunshotEffect {
                 );
                 ctx.stroke();
             }
+            // Cold sparks
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = 'rgba(180, 220, 255, 0.8)';
+            ctx.strokeStyle = '#e8f4ff';
+            for (let i = 0; i < shot.sparks.length; i++) {
+                const spark = shot.sparks[i];
+                if (spark.hot) continue;
+                const sparkFade = Math.max(0, 1 - sparkT * 1.35);
+                if (sparkFade <= 0) continue;
+                ctx.globalAlpha = sparkFade * 0.85;
+                ctx.lineWidth = spark.width;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(
+                    Math.cos(spark.angle) * spark.length,
+                    Math.sin(spark.angle) * spark.length
+                );
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
 
             // Core white-hot flash
             if (flashT < 1) {

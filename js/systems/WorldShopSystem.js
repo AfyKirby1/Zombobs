@@ -278,9 +278,23 @@ export class WorldShopSystem {
 
     getNearbyVendorPosition(player) {
         const merchant = this.getNearbyMerchant(player);
-        if (merchant) return { x: merchant.x, y: merchant.y, radius: merchant.radius };
+        if (merchant) {
+            return {
+                x: merchant.x,
+                y: merchant.y,
+                radius: merchant.radius,
+                tooltipOffset: merchant.tooltipOffset
+            };
+        }
         const depot = this.getNearbyDepot(player);
-        if (depot) return { x: depot.x, y: depot.y, radius: depot.radius };
+        if (depot) {
+            return {
+                x: depot.x,
+                y: depot.y,
+                radius: depot.radius,
+                tooltipOffset: depot.tooltipOffset
+            };
+        }
         return null;
     }
 
@@ -298,7 +312,8 @@ export class WorldShopSystem {
                 y: depot.y,
                 letter: 'D',
                 color: '#cd7f32',
-                label: 'Depot'
+                label: 'Depot',
+                markerOffset: depot.beaconOffset
             });
         }
         const merchant = gameState.wanderingMerchant;
@@ -308,7 +323,8 @@ export class WorldShopSystem {
                 y: merchant.y,
                 letter: 'M',
                 color: '#ba68c8',
-                label: 'Merchant'
+                label: 'Merchant',
+                markerOffset: merchant.beaconOffset
             });
         }
         return targets;

@@ -1,5 +1,6 @@
 import { rankSystem } from '../systems/RankSystem.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { getUiDensityScale } from '../core/canvas.js';
 
 /** Per-rank accent palette for badge theming */
 const RANK_THEMES = [
@@ -25,7 +26,8 @@ export class RankDisplay {
 
     getUIScale() {
         const scale = settingsManager.getSetting('video', 'uiScale') ?? 1.0;
-        return Number.isFinite(scale) && scale > 0 ? scale : 1.0;
+        const base = Number.isFinite(scale) && scale > 0 ? scale : 1.0;
+        return base * getUiDensityScale();
     }
 
     getRankTheme(rankIndex) {

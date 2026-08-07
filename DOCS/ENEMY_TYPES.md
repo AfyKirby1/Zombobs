@@ -30,6 +30,25 @@ Quick-reference for all zombie variants in Zombobs — stats, spawn rules, abili
 
 ---
 
+## Visual model quality system (2026-08-05)
+
+Every gameplay enemy path is covered by the procedural model pass in `Zombie.js`; `BossZombie.js` and `WardenBoss.js` add bespoke large silhouettes. This is cosmetic only: hitboxes, AI, stats, spawn packets, and multiplayer authority are unchanged.
+
+| Detail tier | Model treatment |
+|-------------|-----------------|
+| Low | Existing base silhouettes; expensive finish pass skipped |
+| Medium | Rim definition, connected neck/clavicle anatomy, major type silhouettes |
+| High | Full ribs/material breakup, deterministic wounds, claws, armor/acid/fungal/crystal identity; authored default |
+| Ultra | High pass plus pore/membrane micro-detail, rendered with 1.5 supersampling |
+
+[AMENDED 2026-08-05]: Low no longer falls back to the old base silhouettes. Every tier now keeps the authored articulated shoulder/waist/jaw/limb geometry; quality scaling removes only secondary material and micro-detail work.
+
+Type-specific model cues include Armored rivets/straps/visor, Fast sinew and long claws, Exploding volatile sacs, Ghost rib shroud, Spitter acid glands, Flying segmented bat membranes/talons, Blight gills/spores, Crawler exposed spine, Siren throat resonators, Shard/Splitter crystal protrusions, Boss horns/pauldrons, and Warden relay armor/mask/cabling.
+
+Key methods: `getModelDetailLevel()`, `drawOrganicModelDetails()`, `drawTypeModelDetails()`, `drawClawedHand()`, and `FlyingZombie.drawWing()`.
+
+---
+
 ## Score & XP (current)
 
 | Type | Base score | XP |

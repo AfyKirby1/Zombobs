@@ -147,6 +147,8 @@ export const graphicsSettings = {
     get effectIntensity() { return settingsManager.getSetting('video', 'effectIntensity') ?? 1.0; },
     get postProcessingQuality() { return settingsManager.getSetting('video', 'postProcessingQuality') ?? 'medium'; },
     get particleDetail() { return settingsManager.getSetting('video', 'particleDetail') ?? 'standard'; },
+    get damageNumberScale() { return settingsManager.getSetting('video', 'damageNumberScale') ?? 1.0; },
+    get damageNumberStyle() { return settingsManager.getSetting('video', 'damageNumberStyle') ?? 'floating'; },
     getQualityMultipliers,
     getQualityValues
 };

@@ -44,8 +44,17 @@ export class EntityRenderSystem {
         this.drawEntityArray(gameState.scrapPickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.scrapShrines, ctx, viewport, false, false);
 
-        // Post-draw: render name tags above each zombie
+        // Post-draw: golden aura overlay + name tags above each zombie
         this.drawEntityArray(gameState.zombies, ctx, viewport, false, false, (entity, context) => {
+            if (typeof entity.drawGoldenAura === 'function') {
+                entity.drawGoldenAura(context);
+            }
+            if (typeof entity.drawBountyMark === 'function') {
+                entity.drawBountyMark(context);
+            }
+            if (typeof entity.drawLastOfWaveMark === 'function') {
+                entity.drawLastOfWaveMark(context);
+            }
             if (typeof entity.drawNameTag === 'function') {
                 entity.drawNameTag(context);
             }

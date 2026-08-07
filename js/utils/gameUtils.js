@@ -56,7 +56,9 @@ export function checkZombieCollision(bullet, zombie) {
  */
 export function isInViewport(entity, viewportLeft, viewportTop, viewportRight, viewportBottom) {
     const margin = RENDERING.CULL_MARGIN;
-    const radius = entity.radius || 0;
+    // Some landmarks deliberately render far beyond their interaction bounds.
+    // Keep their visual edge from popping in during viewport culling.
+    const radius = entity.renderRadius || entity.radius || 0;
 
     return entity.x + radius >= viewportLeft - margin &&
         entity.x - radius <= viewportRight + margin &&

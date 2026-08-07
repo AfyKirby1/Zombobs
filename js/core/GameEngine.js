@@ -6,81 +6,104 @@ export class GameEngine {
         this.timeStep = 1000 / 60; // 60 FPS
         this.targetFPS = 0; // 0 = unlimited
         this.lastFrameTime = 0;
-        this.vsyncEnabled = true; // Default to VSync enabled
+        // Browsers always present through requestAnimationFrame. This flag controls
+        // whether we trust native frame pacing or apply our own FPS cap on top.
+        this.vsyncEnabled = true;
+        this.maxDeltaTime = 250;
+        this.maxUpdateSteps = 5;
+        this.droppedSimulationTime = 0;
+        this.totalFrames = 0;
+        this.totalUpdates = 0;
 
         this.update = () => {};
         this.draw = () => {};
-        
+
         this._loop = this._loop.bind(this);
+        this._handleVisibilityChange = this._handleVisibilityChange.bind(this);
     }
 
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.lastTime = performance.now();
+        this._resyncClock(performance.now());
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', this._handleVisibilityChange);
+        }
         requestAnimationFrame(this._loop);
     }
 
     stop() {
         this.isRunning = false;
+        if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', this._handleVisibilityChange);
+        }
+    }
+
+    _resyncClock(now = performance.now()) {
+        this.lastTime = now;
+        this.lastFrameTime = now;
+        this.accumulatedTime = 0;
+    }
+
+    _handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            // Do not replay seconds of hidden-tab time as simulation updates.
+            this._resyncClock(performance.now());
+        }
     }
 
     _loop(timestamp) {
         if (!this.isRunning) return;
 
-        // FPS limiting (only if VSync is disabled)
+        // Optional app-side frame cap. Native pacing remains requestAnimationFrame.
         if (!this.vsyncEnabled && this.targetFPS > 0) {
             const targetFrameTime = 1000 / this.targetFPS;
             const elapsed = timestamp - this.lastFrameTime;
-            
-            if (elapsed < targetFrameTime) {
-                // Too early, schedule next frame
+
+            if (elapsed + 0.25 < targetFrameTime) {
                 requestAnimationFrame(this._loop);
                 return;
             }
-            
+
             this.lastFrameTime = timestamp - (elapsed % targetFrameTime);
         } else {
             this.lastFrameTime = timestamp;
         }
 
-        const deltaTime = timestamp - this.lastTime;
+        const deltaTime = Math.max(0, Math.min(this.maxDeltaTime, timestamp - this.lastTime));
         this.lastTime = timestamp;
         this.accumulatedTime += deltaTime;
 
-        // Prevent spiral of death if lag is too high
-        if (this.accumulatedTime > 1000) {
-            this.accumulatedTime = 1000;
-        }
-
-        while (this.accumulatedTime >= this.timeStep) {
+        let updateSteps = 0;
+        while (this.accumulatedTime >= this.timeStep && updateSteps < this.maxUpdateSteps) {
             this.update(this.timeStep); // Fixed time step update
             this.accumulatedTime -= this.timeStep;
+            updateSteps++;
+            this.totalUpdates++;
         }
 
-        // Interpolation alpha could be calculated here: this.accumulatedTime / this.timeStep
-        this.draw();
+        // Drop excess backlog rather than creating a multi-frame update spiral.
+        if (this.accumulatedTime >= this.timeStep) {
+            const retained = this.accumulatedTime % this.timeStep;
+            this.droppedSimulationTime += this.accumulatedTime - retained;
+            this.accumulatedTime = retained;
+        }
+
+        this.draw(this.getInterpolationAlpha());
+        this.totalFrames++;
 
         requestAnimationFrame(this._loop);
     }
-    
+
     setFPSLimit(fps) {
-        // Only apply FPS limit if VSync is disabled
-        if (!this.vsyncEnabled) {
-            this.targetFPS = fps;
-            this.lastFrameTime = performance.now();
-        } else {
-            // VSync enabled, ignore FPS limit
-            this.targetFPS = 0;
-        }
+        const normalized = Number.isFinite(Number(fps)) ? Math.max(0, Number(fps)) : 0;
+        this.targetFPS = normalized;
+        this.lastFrameTime = performance.now();
     }
-    
+
     setVSync(enabled) {
-        this.vsyncEnabled = enabled;
-        // If VSync is enabled, disable FPS limiting
-        if (enabled) {
-            this.targetFPS = 0;
-        }
+        this.vsyncEnabled = enabled !== false;
+        this.lastFrameTime = performance.now();
     }
     
     /**
@@ -91,6 +114,17 @@ export class GameEngine {
     getInterpolationAlpha() {
         if (this.timeStep <= 0) return 0;
         return Math.min(1, this.accumulatedTime / this.timeStep);
+    }
+
+    getPerformanceStats() {
+        return {
+            targetFPS: this.targetFPS,
+            nativeFramePacing: this.vsyncEnabled,
+            interpolationAlpha: this.getInterpolationAlpha(),
+            droppedSimulationTime: this.droppedSimulationTime,
+            totalFrames: this.totalFrames,
+            totalUpdates: this.totalUpdates
+        };
     }
 }
 

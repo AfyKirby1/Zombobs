@@ -1,6 +1,236 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # SCRATCHPAD
 
+## 2026-08-05 — Game Over Screen Layout Crush ✅ FIXED (v2 flow rewrite)
+- **Report 1**: Copy/Menu buttons overlay Rank/BP/stats.
+- **Report 2** (after v1): buttons clear, but BP tier-up + Rewards Claimed + NEW RECORD still pile on MAX STREAK card ("even worse / old shit").
+- **Root cause**: leftover `cy + yOffset` soup — BP extras and quick-stats shared the same band; +20px bump not enough.
+- **Fix v2**: full vertical cursor in `resolveLayout()` — title→cause→combat→score→mult→rank→BP(tier/rewards)→stats→banner→buttons. Each block owns its Y. Centered stack, clamped on-screen. Draw + hit-test share `L.*`.
+- **Also**: `GameStateManager` wave plural (`1 wave` / `N waves`); drop `\n` in score line (`fillText` ignores it).
+- **Files**: `js/ui/GameOverScreen.js`, `js/systems/GameStateManager.js` (+ mobile mirrors).
+- **Verify**: die with BP tier-up + rewards + streak record → no overlapping green text; cards clean; buttons below.
+
+## 2026-08-05 — Player Model Polish Pass (face / arms / legs / guns) ✅ COMPLETE
+- **Ask**: more realistic face, better guns, better arms/legs, iterate hard.
+- **Legs**: opposite-phase gait, thigh→knee→shin taper, kneepad plate, lace boot silhouette, planted-foot contact shadow.
+- **Arms**: new `drawArm()` — upper sleeve, elbow plate, forearm taper, wrist skin cuff. Wired into all 4 facing directions.
+- **Hands**: palm ellipse + knuckle ridge + curled finger ovals + thumb when gripping (`aimAngle` aware).
+- **Face**: orbital socket, warm sclera, iris ring + pupil + dual catchlights, lid shadow, cheek warmth, jaw shade, tear trough, nose tip/nostrils, lip volume; profile nose on LEFT/RIGHT; helmet brim raised so eyes readable.
+- **Guns**: per-weapon silhouette (`pistol`/`shotgun`/`rifle`/`smg`/`sniper`/`flamethrower`/`rocketLauncher`/`laser`) + length scale + shared grip + muzzle flash core.
+- **Head**: oval jaw (not circle), temple indent.
+- **Files**: `js/systems/PlayerRenderer.js` (+ mobile mirror). `node --check` green.
+- **Verify**: hard-refresh → walk (leg gait), aim (face/gun), swap 1–8 (weapon shapes).
+
+## 2026-08-05 - Player + Zombie Silhouette Repair (COMPLETE)
+- **Reported evidence**: Live Arcade screenshot still reads as the legacy blue player capsule and round-head/oval-torso zombies despite the documented model-quality pass.
+- **Root cause (inspected)**: The previous zombie pass only appended small anatomy/material accents after the legacy geometry, and Low quality skipped the pass entirely. The player still used an ellipse as its dominant torso, with most articulated leg work hidden underneath it.
+- **Repair target**: Replace the dominant player torso with a readable tactical humanoid rig; add shared articulated zombie shoulder/waist/jaw/limb geometry across every quality tier while retaining type-specific overlays, hitboxes, and gameplay behavior.
+- **Constraint**: Code + documentation only; no browser launch or test run per user request.
+- **Implemented**: Replaced the player's dominant ellipse with a broad-shoulder/tapered-waist armored rig, segmented plate, belt, knee pads, and longer visible articulated legs. Added a shared zombie silhouette pass with tapered core, angular jaw, jointed arms/claws, legs/feet, per-type palettes, and a dedicated four-point Crawler posture. Boss/Warden keep their bespoke rebuilt rigs.
+- **Quality correction**: Low now retains model identity instead of disabling the model pass; higher tiers remain responsible for wounds, ribs, materials, pores, and other secondary finish.
+- **Docs**: Corrected the overstated prior claim in `SUMMARY`, added the repair to `CHANGELOG`, and amended the Low-tier contract in `ENEMY_TYPES`.
+- **Validation**: Code inspected only. Browser and automated tests intentionally not run.
+
+## 2026-08-05 — Mid-Run Reload Hang (stale frame, no menu) 🔶 FIX SHIPPED, AWAITING BROWSER VERIFY
+- **Report**: reload while in a run → world visible but frozen, no input, **no console errors**. Reload from menu fine.
+- **Root cause (inspected)**: no unload teardown existed anywhere — no `pagehide`/`beforeunload`, `device.destroy()` never called, `gameEngine.stop()` never called, multiplayer socket never closed. Mid-run reload leaves the old WebGPU device + `gpuCanvas` swapchain alive; the new document's `requestAdapter()`/`requestDevice()` can then **hang without rejecting**, so `requireWebGPUBootGate()` never satisfies, no menu frame draws, and browser paint-holding keeps showing the previous document's last frame (reads as "frozen game"). Only the 20s BootLoader failsafe recovered.
+- **Fix 1 — teardown (`main.js`)**: idempotent `teardownRuntime()` on `pagehide` + `beforeunload` → `gameEngine.stop()`, `webgpuRenderer.destroy()`, `gameState.multiplayer.socket.disconnect()`. Each step try/caught so one failure can't block the rest.
+- **Fix 2 — GPU boot gate timeout (`main.js`)**: boot gate races a **6s** timer; on timeout it warns and calls `notifyWebGPUBootReady()` so the menu always appears while GPU init keeps running and applies when it lands.
+- **Fix 3 — `WebGPURenderer.destroy()`**: subsystem teardown (`zombobsFX`/`postFX`/`effects`, all optional), `context.unconfigure()`, `device.destroy()`, null `context`/`device`, `isInitialized = false`.
+- **Verify (executed)**: `node --check` green on `main.js` + `WebGPURenderer.js`; lints clean. **Not browser-verified yet** — reload mid-run and confirm menu appears right away.
+- **Mirror**: `mobile/www/js/main.js`, `mobile/www/js/core/WebGPURenderer.js`.
+- **If still hangs**: watch `gameEngine.getPerformanceStats().totalFrames` after reload (rising = loop alive, overlay/state issue; flat = loop never started), and retest with Settings → video → `webgpuEnabled` off to isolate the GPU path.
+
+## 2026-08-05 — Point Lights Buffer 528→544 (Real Fix) ✅ FIXED
+- **Error**: `bound with size 528 where the shader expects 544` (lights bind group 0 / binding 1).
+- **Root cause**: prior “fix” used `lightBytes = 16 + 16*32` which **is** 528. WGSL `LightBuffer` aligns `array<Light,16>` to offset **32** after `count`+`vec3` pad → need `32 + 16*32 = 544`. `syncLights` also wrote lights at float `@4` (byte 16); correct is `@8` (byte 32).
+- **Files**: `js/systems/vfx/WebGPUEffects.js`, `mobile/www/js/systems/vfx/WebGPUEffects.js`.
+- **Verify**: hard-refresh + fire weapon → no uncaptured lights draw error; muzzle lights visible.
+
+## 2026-08-05 — Arcade Black Screen (Bloom Alpha) ✅ FIXED
+- **Symptom**: Arcade load → black world + green spore noise + HUD OK; console empty (Errors filter).
+- **Root cause**: cinematic bloom composite in `js/shaders/bloom.js` rebuilt FX as `vec4(r,g,b, 1.0)` — forced opaque alpha on transparent `gpuCanvas` overlay → painted solid black over Canvas2D world. Spores still visible (drawn into FX buffer).
+- **Fix**: restore source `fxSample.a`; grain premultiplied by alpha; impulse lifts alpha so flash still shows.
+- **Files**: `js/shaders/bloom.js`, `mobile/www/js/shaders/bloom.js`.
+- **Verify**: hard-refresh → arcade ground/entities visible under WebGPU FX.
+
+## 2026-08-05 — Hero + Survivor NPC Model Overhaul ✅ COMPLETE
+- **Objective**: Make hireable heroes, recruited survivors, and campaign quest NPCs read as distinct humans instead of accent-tinted player clones.
+- **New module `js/systems/HumanCompanionRenderer.js`**: `ROLE_KITS` (accent + glow + kit + cloth + metal + mark per role) is now the single source of role identity. Adds:
+  - `drawCompanionGroundMark()` — perspective role ring, rotating dash, facing tick, footfall dust (behind body, quality-gated).
+  - `drawCompanionGear()` — per-role torso kit: **riot** (chest slab, curved pauldrons with rim light, back-slung axe), **scout** (wind-flapping cloak, cross strap, 3-arrow quiver), **field** (open coat lapels + hip satchel), **junk** (overloaded pack + tools that swing on stride). Shared pouch belt, deterministic grime, field-dressing bandage + blood when HP < 50%.
+  - `drawCompanionHeadgear()` — riot crest + visor glow, scout hood + rangefinder monocle, medic cap + cross patch + headlamp bleed, scavenger forehead goggles; all roles get a swaying comms antenna with blink diode.
+- **New module `js/systems/SurvivorNpcRenderer.js`**: full quest-contact rebuild — long coat with wind hem, plated core with seams/straps, slung rifle, role prop (scrap sack / medic lamp / riot plate), stubble + brow/mouth micro-motion, staggered blinks, **breath fog** puff, scan arc retained.
+- **`PlayerRenderer.js`**: dropped local `ROLE_VISUALS` + `drawRoleRig` (DRY — role data now imported); added `getViewDescriptor(direction)` so gear layers stay direction-agnostic; `drawSurvivorNPC()` is a thin delegate. File shrank ~150 lines.
+- **`PlayerSystem.js`**: hero role label tints by role accent instead of hardcoded orange.
+- **Verify (executed)**: `node --check` green on all four files; `ReadLints` clean. Not browser-QA'd yet.
+- **Mirror**: 4 files copied into `mobile/www/js/systems/` (2 new + 2 modified).
+- **Next**: visual pass in-game at gameplay zoom; consider role kits for co-op AI (`inputSource === 'ai'` non-hero) if they still read plain.
+
+## 2026-08-05 - Zombie Model Quality Pass (IN PROGRESS)
+- **Objective**: Upgrade every gameplay zombie model (base/normal variants, armored, fast, exploding, ghost, spitter, flying, blight, crawler, siren, shard, splitter, arcade Boss, and campaign Warden) with stronger procedural anatomy, silhouettes, material detail, and type readability.
+- **Quality path**: Make High/Ultra presets apply high-quality Canvas smoothing and meaningfully higher gameplay render density; ensure preset changes notify the resize/smoothing pipeline.
+- **Scope guard**: Visual/model code + appended docs only. Per request, do not run automated tests or launch browser QA after the edits.
+- **[AMENDED 2026-08-05] Status: COMPLETE** - The header's in-progress marker is superseded. All 13 non-boss render classes plus arcade Boss and campaign Warden are covered.
+- **Implemented**: Shared model tier API (`getModelDetailLevel`, `drawOrganicModelDetails`, `drawTypeModelDetails`, `drawClawedHand`); type-specific anatomy/material cues; segmented `FlyingZombie.drawWing`; rebuilt Boss/Warden silhouettes; High/Ultra density + smoothing preset upgrade; smoothing restore after resize.
+- **Files**: `js/entities/Zombie.js`, `js/entities/BossZombie.js`, `js/entities/WardenBoss.js`, `js/systems/SettingsManager.js`, `js/core/canvas.js`, `DOCS/SUMMARY.md`, `DOCS/CHANGELOG.md`, `DOCS/ENEMY_TYPES.md`, `DOCS/ARCHITECTURE.md`, `DOCS/STYLE_GUIDE.md`, `DOCS/SCRATCHPAD.md`.
+- **Verification boundary**: Code/diff inspection only. Automated tests, syntax scripts, smoke tests, and browser QA were intentionally not run per user request. `mobile/www` was not synced in this pass.
+
+## 2026-08-05 — Engine/VFX Docs Truth Pass ✅ COMPLETE
+- **Done**: Synced status + agent docs to shipped hybrid render stack (no code changes in this pass beyond docs).
+  - `AGENTS.md` — canvas order (game → GPU overlay → UI); `js/shaders/` + `js/systems/vfx/`; WebGPU truth (~25k FX, real bloom, `coneLight.js`); smoke test note.
+  - `ARCHITECTURE.md` — amend WebGPURenderer / ZombobsFX / BloodSimulation / Rendering Pipeline; add PostFX/WebGPUEffects/Decal/shaders sections.
+  - `SUMMARY.md` — ✅ Engine + VFX Modernization entry with hotfixes.
+  - `CHANGELOG.md` — [v0.10.1] Docs note; [v0.10.0] Fixed: lights 544B, bloom usage conflict, coneLight rename, vfx import depth.
+- **Next**: Optional `npm run sync:web` if mobile mirror still lags shaders/vfx.
+
+## 2026-08-03 — Custom Cursor System Overhaul (V0.10.1 ALPHA) ✅ COMPLETE
+- **Pointer Cursor Overhaul (`GameHUD.js`)**: Replaced flat vector arrow with high-fidelity animated pointer (`_drawPointerCursor`). Features ghost trails (`_cursorTrail`), motion spark embers with gravity (`_cursorEmbers`), velocity tilt, 2D retro drop shadow, sharp outline, specular highlight, glowing neon tip, smooth blood-red hover glow interpolation (`_cursorHoverGlow`), and animated pulsing target bracket corners `[ ]` on button hover.
+- **Interactive Click Ripple (`GameHUD.js`, `main.js`)**: Added `cursorClickFlash()` method wired into `main.js` `mousedown` event listener to project an expanding blood-red energy ripple on click.
+- **Grab Hand Cursor Upgrade (`GameHUD.js`)**: Enhanced `_drawGrabCursor` with radial background glow, squeezing scale animation on grab state, double drop shadow, and blood-red fingertip nail accents in open-hand state.
+- **Gameplay Crosshairs & Hit Markers (`drawingUtils.js`)**: Added center-gap arm separation for all 4 crosshair styles, specular center pips, cardinal tick marks on circle style, and an animated scale-punch hit marker (`X`) with yellow glow bloom and tilt feedback.
+- **Version Bump V0.10.1 ALPHA**: Centralized constants (`constants.js`), package metadata (`LOCAL_SERVER`, `huggingface-space-SERVER`), landing page (`landing.html`), itch description (`ITCH/page_description.md`), README badge (`README.md`), `CHANGELOG.md`, and `SUMMARY.md`.
+- **Files**: `js/ui/GameHUD.js`, `js/utils/drawingUtils.js`, `js/main.js`, `js/core/constants.js`, `LOCAL_SERVER/package.json`, `huggingface-space-SERVER/package.json`, `landing.html`, `ITCH/page_description.md`, `README.md`, `DOCS/CHANGELOG.md`, `DOCS/SUMMARY.md`, `DOCS/SCRATCHPAD.md`.
+
+## 2026-08-02 — WebGPU Lights Uniform Buffer Under-Allocation Fix ✅ COMPLETE
+- **Error**: `Uncaptured WebGPU error: In a draw command, kind: Draw, ... bind group index 0, the buffer bound at binding index 1 is bound with size 528 where the shader expects 544.` (additive point-lights pass).
+- **Root cause**: `WebGPUEffects._initLights()` sized the light uniform buffer `(4 + 16*8) * 4 = 528` bytes, but the WGSL `LightBuffer` struct is `count(4B) + vec3 pad(16B, 16-aligned) + 16 × Light(32B) = 544` bytes — the vec3 padding after `count` forces `data` to offset 32. Comment even said "pad to 144*4" but the code never padded.
+- **Fix**: buffer + CPU array sized `16 + 16*32 = 544` bytes (`lightBytes`); `syncLights()` layout (count@0, light@`4 + i*8` floats) unchanged and now writes the full 544 bytes.
+- **Audit (executed)**: all other uniform bindings verified in-range — Flashlight struct 16B in 32B buffer (larger OK), `bloodGridParams` vec4 16B = 16B, ZombobsFX `SimParams` 16B = 16B, combat `dtPad` vec4 16B = 16B, main `Uniforms` 32B in 48B buffer, bloodEdge 24B in 32B. No other under-allocations.
+- **Files**: `js/systems/vfx/WebGPUEffects.js`, `DOCS/SCRATCHPAD.md`.
+- **Verify**: `node --check` green; hard-refresh with WebGPU on → no uncaptured draw errors; muzzle/explosion/fire lights render.
+- **Note**: `mobile/www` mirror stale — run `cd mobile && npm run sync:web` before next Android build.
+
+## 2026-08-02 — Cursor, Game Over Screen & Transition Smoothness ✅ COMPLETE
+- **Cursor boundaries (bug)**: custom cursor vanished at screen edges — `drawCursor()` early-returned when the pointer left `[0, canvas]` while the OS cursor was hidden (`cursor: none`), leaving no visible pointer near edges; position also froze at the last in-window spot when the mouse left the window.
+  - Fix: `drawCursor()` now clamps the drawn position to a 5px margin inside the canvas; new `gameHUD.mouseInside` flag (true on `mousemove`, false on `mouseleave`/window `blur`) hides the cursor when the pointer leaves the window instead of freezing it.
+- **Cursor redesign (retro)**: chunky miter arrow — crisp offset drop shadow (`#02040a`), hard dark outline, bone-white fill (`#f5f5f5`), hot-red tip pixel (`#ff1744`); hovering an interactive element turns the fill blood red (`#ff5252`) + red target square under the point. No blur — keeps the pixel/CRT feel. Grab/grabbing hand states untouched.
+- **Game over screen redesign** (`GameOverScreen.js` rewritten): glass dossier card (rounded, style-guide `rgba(10,12,16,…)` + red bottom accent) sized to content, blood-red edge vignette, neon-pulsing Creepster title, `CAUSE OF TERMINATION` microlabel + quoted epitaph, dashed divider, bracketed retro readout `[ ACCURACY X% ] [ HEADSHOTS Y ] [ SCRAP Z ]`, restyled stat cards (flat terminal blocks + colored top notch + upper-case labels), staggered card fade-in. All original vertical positions preserved; button geometry/hit areas byte-identical to `checkButtonClick` (no click regressions).
+- **Transitions**: entrance animation on game over (ease-out cubic 550ms, content rises + fades, cards stagger); pause menu fades in (220ms); new `gameHUD.startScreenFade()` full-screen black fade with callback — wired to game-over→Main Menu (320ms), game-over→Retry Zone (320ms), pause→Return to Menu (320ms); `handleMenuInteraction` ignores clicks while a fade is running. Menu→game already used the session-prep spinner fade.
+- **Files**: `js/ui/GameHUD.js`, `js/ui/GameOverScreen.js`, `js/ui/PauseMenuScreen.js`, `js/main.js`, `DOCS/SCRATCHPAD.md`.
+- **Verify**: `node --check` ×4 green + `test-syntax.ps1` green. Manual: move cursor to screen edges (stays visible, clamped), leave window (cursor hides, no freeze), die (dossier slides/fades in), pause (fade-in), pause→menu & game-over→menu (black fade, no click-through during fade).
+- **Note**: `mobile/www` mirror stale — run `cd mobile && npm run sync:web` before next Android build.
+
+## 2026-08-02 — Font Sanitizer Warnings Fixed (Roboto Mono + Creepster) ✅ COMPLETE
+- **Warnings** (Chrome, benign but noisy): `glyf: empty gid 1 used as component in glyph 225` (Roboto Mono 400/700 woff2), `glyf: Glyph bbox was incorrect; adjusting (glyph N)` ×~160 (Creepster), `gasp: Changed the version number to 1` (Creepster).
+- **Root causes** (executed via fontTools): Google's Roboto Mono TTFs define NBSP as a composite glyph of the empty `space` glyph; the old custom subsets kept that composite → sanitizer flagged "empty gid 1 component". Creepster ships with wrong glyf bboxes + a version-0 `gasp` table.
+- **Fixes** (files rewritten in place, originals backed up to `%TEMP%\opencode\zombobs-fonts\`):
+  - `roboto-mono-latin-400/700.woff2`: regenerated via fontTools subset from the original Google TTFs (`L0xuDF4xlVMF-*`) with identical coverage (228 chars, no hinting, `layout_features='*'`), then decomposed empty-component composites (NBSP→space) into plain 0-contour glyphs (advance width preserved, 1229 both).
+  - `AlZy_zVUqJz4yMrniH4hdQ.ttf` (Creepster): `glyf.recalcBounds()` on every glyph + `gasp.version = 1`, saved as TTF (same format, no CSS change).
+- **Files**: the 3 font binaries, `DOCS/SCRATCHPAD.md`. No code/CSS changes needed — filenames/format unchanged (`fonts.css`, `index.html` preload untouched).
+- **Verify**: hard-refresh → no `downloadable font:` warnings in console; text renders identically (advance widths byte-identical).
+- **Regression note**: the boot-overlay prefetch initially fired before `let WebGPURenderer` initialized (TDZ `ReferenceError` at main.js:220) — prefetch call moved to after `loadWebGPURendererModule()` definition; `node --check` green.
+- **Note**: `mobile/www` mirror stale (fonts + BootLoader/style/main) — run `cd mobile && npm run sync:web` before next Android build.
+
+## 2026-08-02 — Boot Overlay: Faster Dismiss + Click-Proof Fade ✅ COMPLETE
+- **Bug 1 (accidental clicks)**: during the 350ms fade-out, `.boot-overlay--done` set `pointer-events: none` while still covering the screen (element removed only on `transitionend`/500ms timeout) → clicks passed through to `uiCanvas` and could trigger main-menu buttons while the loading screen was still visibly fading.
+- **Fix 1 (three layers)**: removed `pointer-events: none` from `.boot-overlay--done` in `css/style.css` (overlay now swallows clicks during fade; after fade `visibility: hidden` blocks them anyway) + new `isBootOverlayActive()` export in `js/core/BootLoader.js` (true while overlay is in DOM, incl. fade) + `if (isBootOverlayActive()) return;` guard at the top of `handleMenuInteraction` in `js/main.js` — single funnel for every menu/lobby/pause/gameover click (mouse `mousedown` + touch both route there).
+- **Speed**: `MIN_DISPLAY_MS` 500 → 300 (overlay was force-held for a minimum half-second even on fast boots; now ~200ms faster) + early module prefetch — `loadWebGPURendererModule()` now caches the in-flight `import()` promise (`webgpuModulePromise`) so a prefetch fired right after `initBootLoader()` (when WebGPU enabled + native) overlaps the WebGPU module fetch/parse with the rest of bootstrap; `scheduleWebGPUInit()` reuses the cached promise (no double import, no unhandled rejection — prefetch has `.catch(() => {})`).
+- **Files**: `js/core/BootLoader.js`, `css/style.css`, `js/main.js`, `DOCS/SCRATCHPAD.md`.
+- **Verify**: `node --check` green (main.js, BootLoader.js). Manual: hard-refresh → overlay dismisses promptly; mash-click during the fade → no menu button fires; `perf` tab — `zombobs:webgpu:module-load` starts before `zombobs:main:init:start` mark.
+- **Note**: `mobile/www` mirror stale for `BootLoader.js`/`style.css`/`main.js` — run `cd mobile && npm run sync:web` before next Android build.
+
+## 2026-08-02 — WebGPU Shader Parse Crash Fix ✅ COMPLETE
+- **Bug**: `Uncaptured WebGPU error: Shader module creation failed: Parsing error` + pipeline `matchShaderStages(VERTEX)` invalid at boot (V0.10.0 cinematic composite).
+- **Root cause**: `js/shaders/bloom.js` `fs_main` declared `let dv = uv - vec2(0.5)` then did `dv *= vec2(1.5, 1.0)` — WGSL `let` is immutable, so module parse failed and both the composite vertex+fragment pipeline went invalid.
+- **Fix**: `let dv` → `var dv` in `js/shaders/bloom.js` (source + `mobile/www` mirror). Verified no other shaders mutate a `let` (`bloodEdge.js`, `coneLight.js` use `var`; composite `params` buffer stays 32 bytes matching `array<vec4<f32>, 2>`).
+- **Files**: `js/shaders/bloom.js`, `mobile/www/js/shaders/bloom.js`, `DOCS/SCRATCHPAD.md`.
+- **Verify**: hard-refresh `index.html` with WebGPU on — no shader/pipeline errors; bloom/CA/grain/vignette/impulse render.
+
+## 2026-08-02 — Main Menu Pixel-Density (Crisp Text) ✅ COMPLETE
+- **Problem**: `uiCanvas` (main menu + all UI) shared `RENDER_SCALE = 0.75`, so the whole menu was internally rendered at 75% and CSS-upscaled ~1.33× → muddy/blurry text.
+- **Fix**: Decoupled UI density from gameplay — new `UI_RENDER_SCALE = 1.0` (`constants.js`); `resizeCanvas` sizes `uiCanvas` at full CSS pixel density (`gameCanvas`/`gpuCanvas` unchanged) via `UI_RENDER_SCALE * resolutionScale`.
+- **Compensation**: new `getUiDensityScale()` in `js/core/canvas.js` = `(uiCanvas.width / innerWidth) / RENDER_SCALE`; multiplied into every UI scale getter (`GameHUD.getUIScale`, `LeaderboardDisplay`, `RankDisplay`, `BossHealthBar`, `SettingsPanel`) so on-screen text/geometry size is byte-for-byte identical while now sampled at native resolution (sharper). Mouse/touch coordinate mapping already resolution-ratio based — no changes needed there.
+- **MainMenuScreen**: density-scaled the fixed-px chrome that would otherwise shrink (version badge fonts + box dims, PATCH NOTES hint, news ticker box, tech-branding measure).
+- **Files**: `constants.js`, `js/core/canvas.js`, `js/ui/GameHUD.js`, `js/ui/MainMenuScreen.js`, `js/ui/LeaderboardDisplay.js`, `js/ui/RankDisplay.js`, `js/ui/BossHealthBar.js`, `js/ui/SettingsPanel.js`, `DOCS/SCRATCHPAD.md`.
+- **Verify**: `node --check` green ×8; `test-syntax.ps1` green. Manual: hard-refresh `index.html` → main menu text (title, subtitle, buttons, version badge, leaderboards, settings, news) visibly sharper at same size; in-game HUD unaffected size-wise.
+- **Note**: `mobile/www` mirror is now stale for these files — run `cd mobile && npm run sync:web` before next Android build. No version bump (visual polish only).
+
+## 2026-08-02 — Homepage VFX Polish (landing) ✅ COMPLETE
+- **Scroll progress bar**: fixed top accent-gradient bar (`#scroll-progress`, `scaleX` driven by scroll + resize, passive listener).
+- **Title glitch**: `titleGlitch` keyframes — periodic (6s loop) spectral RGB-shift + skew flicker on the ZOMBOBS title.
+- **Play Now ping ring**: `playPing` box-shadow pulse (expanding halo) on `.top-play-button:not(:hover)` — respects `${overflow:hidden}` shine, settles on hover.
+- **Cursor ember trail**: canvas ember particles spawn at pointer (`pointermove`/`pointerleave`), drift outward with velocity decay, red/orange hues, capped 90.
+- **Reduced motion**: `prefers-reduced-motion` disables title glitch, ping, progress bar, and ember trail.
+- **Files**: `landing.html` (root + `mobile/www` synced via `cd mobile && npm run sync:web`). Verify: `node --check` on extracted inline scripts clean; `test-syntax.ps1` green; manual — scroll page → progress bar tracks; title flickers ~every 6s; hover Play → ping stops; move mouse → embers.
+
+## 2026-08-02 — AAA Cinematic VFX + Muzzle Juice ✅ COMPLETE
+- **Post-FX composite upgraded** (`js/shaders/bloom.js`, `PostFXPass.js`): uniform extended 16→32 bytes (`params` array `vec4<f32>×2`) adding radial **chromatic aberration** (aspect-corrected, subtle ~1–3px edges), animated **film grain**, **vignette**, and an **impulse white-flash** (center-weighted). All driven from `WebGPURenderer.render`; gated by `lightingQuality` (grain/aberration at quality 2+, vignette at 1+).
+- **Impulse system**: `WebGPURenderer.addPostImpulse(0..1)` decays `×0.82/frame`. Wired to explosions (`ParticleSystem.createExplosion` +0.28×size), player damage (`combatUtils.applyPlayerDamage` scaled by damage). Delivers CA kick + center flash on big hits — AAA punch without gameplay changes.
+- **Muzzle micro-FX**: `shootBullet` now emits `muzzle` puff particles (+1 kicked-back `ember`) at the barrel; shotguns/rifle get 3 puffs, SMG 1. `GameLoopSystem` re-adds a muzzle **world point light** each frame while `muzzleFlash` active (intensity-scaled) — gunfire now illuminates the world in WebGPU mode.
+- **Files**: `js/shaders/bloom.js`, `js/systems/vfx/PostFXPass.js`, `js/core/WebGPURenderer.js`, `js/systems/ParticleSystem.js`, `js/utils/combatUtils.js`, `js/systems/GameLoopSystem.js`.
+- **Verify**: `node --check` green ×6, `test-syntax.ps1` green, `tools/vfx_smoke_test.mjs` 21/21 pass. Manual: fire weapons in arcade (GPU quality high) → barrel smoke trail + dynamic light catches; nuke a horde / take a hit → CA kick + center flash; check menu + campaign unaffected.
+
+## 2026-08-02 — V0.10.0 Modality Pass ✅ COMPLETE
+- **Version bump to V0.10.0 ALPHA — *VFX & Scrap Update*** across every version surface. `constants.js` hub: `GAME_VERSION` → `V0.10.0 ALPHA`; `VERSION_HISTORY` UNRELEASED block → **V0.10.0 VFX & Scrap Update** with `CURRENT` tag; `NEWS_UPDATES` leads with V0.10.0 VFX modernization.
+- **Landing (root + `mobile/www`)**: tagline + engine badges + Tech Specs → V0.10.0; "Latest on Main" relabeled to V0.10.0 VFX & Scrap with bullets; new **V0.10.0 version bubble** inserted before V0.9.3 (fixed a double-heading slip + corrupted zone names mid-edit).
+- **README**: badge → `0.10.0_ALPHA`; new **What's New in V0.10.0** block (VFX & Scrap).
+- **Itch**: `page_description.md` Latest on Main → V0.10.0 section; engine + disclaimer → V0.10.0; `ITCH_IO_GUIDE.md` disclaimer.
+- **Servers**: `LOCAL_SERVER` + `huggingface-space-SERVER` package.json `version` → `0.10.0-ALPHA`.
+- **Docs**: `CHANGELOG` — `[Unreleased]` → `[v0.10.0] - 2026-08-02` (VFX & Scrap summary), added VFX + cinematic + muzzle juice Added entries; `SUMMARY` Current Status + ✅ entry; `AGENTS.md` version line; `My_Thoughts` + checklist amend.
+- **Files**: `constants.js`, `index.html`, `landing.html`, `README.md`, `ITCH/page_description.md`, `ITCH/DOCS/ITCH_IO_GUIDE.md`, `LOCAL_SERVER/package.json`, `huggingface-space-SERVER/package.json`, `AGENTS.md`, `DOCS/CHANGELOG.md`, `DOCS/SUMMARY.md`, `DOCS/SCRATCHPAD.md`, `DOCS/VERSION_UPDATE_CHECKLIST.md`, `DOCS/My_Thoughts.md`. `mobile/www` re-synced via `cd mobile && npm run sync:web`.
+- **Verify**: `node --check` on `constants.js` clean; `test-syntax.ps1` green; main-menu badge + 🎃 patch notes show **V0.10.0 ALPHA** with CURRENT tag; news ticker leads V0.10.0.
+
+## 2026-07-15 — Equipment Item Pool Doubled ✅ COMPLETE
+- **Names**: 10 → **20 per slot** (120 total), lists reordered common→legendary; all old names kept (set pieces intact). `pickName` tier bias now scales with list length (`start = tierIndex/5 * len`, window `len/5 + 2`).
+- **Sets**: 3 → **5** — added **Nightstalker** (crit/speed, purple #7e57c2) + **Juggernaut** (HP/DR, steel #90a4ae). All set consumers iterate `EQUIPMENT_SETS` dynamically — zero changes needed elsewhere (verified via grep: only `equipmentDefinitions.js` references it).
+- **File**: `equipmentDefinitions.js`. `node --check` green.
+- **Verify manual**: drops show new names; collect 2 Nightstalker pieces → crit set bonus in E panel.
+
+## 2026-07-15 — Snow Screen-Anchor Fix (ROOT CAUSE) + More Equipment Drops ✅ COMPLETE
+- **Snow rises — real root cause**: world-anchored flakes fall 1.8–5.0 px/frame but player base speed is **4** (sprint 7). Walking south, camera outruns snowfall → flakes climb the screen. Entire render chain (CPU sim, `syncGameParticles`, WGSL NDC flip, camera uniforms, dead GPU snow paths) verified correct — the math was right, the *feel* was wrong.
+- **Fix**: snow now simulated in **screen space** (`p.screenX/screenY`), world pos re-derived each frame from viewport cached in `snowWeather` (`updateSnowSystem` sets `viewLeft/Top/Width/Height`; recycle loop re-pins world pos after camera moves). Both render paths untouched — they land flakes at fixed screen anchors. Recycle checks screen bounds.
+- **More equipment drops** (`EquipmentSystem.tryDropFromZombie`): base 9%→14%, elites (armored/blight/siren/spitter/splitter) 22% w/ uncommon bias, golden 100% + bounty 60% w/ rare-floor table, boss 55%→65%, pity guarantee after 45 dry kills (`gameState.equipmentDropPity`, reset in `resetGameState`). Explosion kill path (`combatUtils.js` ~line 549) now rolls equipment — was bullet/melee only.
+- **Files**: `ParticleSystem.js`, `EquipmentSystem.js`, `combatUtils.js`, `gameState.js`. `node --check` green ×4.
+- **Verify manual**: sprint south in arcade snow → flakes still fall down-screen; grenade a horde → occasional gear crate; kill golden → guaranteed rare+ gear.
+
+## 2026-07-15 — Arcade Additions Round 2 ✅ COMPLETE
+- **Bounty Zombie**: wave 3+ arcade local, one marked zombie per wave (12% roll per spawn, `bountyAssignedThisWave` gate, reset in `spawnZombies`). Crimson target ring + 💀 tag (`Zombie.drawBountyMark` via EntityRenderSystem post-draw). Kill = 40 + 4/wave scrap (cap +60) to killer, red popup, all 3 kill sites.
+- **Perfect Wave streak**: `perfectWaveStreak` scales bonus x1/x2/x3 cap, `PERFECT WAVE xN!` label; damage resets streak.
+- **Scrap Sweep**: wave clear → `scrapSweepEndTime = now+5s` → +900 magnet range in `updateScrapPickups` (local only; no value mult side effect).
+- **Last Zombie marker**: 1 zombie left (arcade local, non-boss) → `isLastOfWave` → amber ring + bouncing arrow (`drawLastOfWaveMark`).
+- **Files**: `gameState.js`, `ZombieSpawnSystem.js`, `Zombie.js`, `EntityRenderSystem.js`, `GameLoopSystem.js`, `PickupSpawnSystem.js`, `bulletZombieCollisions.js`, `MeleeSystem.js`, `combatUtils.js`.
+- **Verify**: `node --check` green ×9. Manual: wave 3+ → red-ringed zombie → kill → BOUNTY popup + scrap; chain 2 perfect waves → x2 popup; clear wave with scrap on floor → auto-vacuum; last zombie shows amber arrow.
+
+## 2026-07-15 — Arcade Additions + Snow World-Anchor Fix ✅ COMPLETE
+[AMENDED 2026-07-15]: World-anchor fix superseded — flakes slower than player speed still read as rising while moving south. See screen-anchor entry above.
+- **Snow direction fix**: screen-space snow read as "falling upward" whenever the camera moved (flakes screen-fixed, ground scrolling). Reverted to **world-anchored** flakes: world-coord spawn above viewport, incremental fall (`y += vy` + wind/flutter), out-of-viewport recycle pass, Canvas2D draw under camera transform, WGSL camera exempt removed. Flag renamed `screenSpace` → `isSnowflake`. Files: `ParticleSystem.js`, `js/shaders/gameParticles.js`.
+- **Perfect Wave bonus**: wave cleared with zero player damage (arcade/co-op local, not campaign/MP) → `PERFECT WAVE!` + `+scrap` popups, 25 + 5/wave (cap +50) scrap to living players. `gameState.waveDamageTaken` set at all damage sites (`combatUtils.js` ×2, `AcidPool.js`, `Zombie.js` spore); reset on wave spawn + campaign zone loads. Wires dead `perfect_wave` achievement: `perfectWaveCount` → gameOver sessionStats → `totalPerfectWaves`. Files: `gameState.js`, `GameLoopSystem.js`, `GameStateManager.js`.
+- **Golden Zombie scrap burst**: golden kill → ring of 5–7 scrap pickups (`PickupSpawnSystem.spawnGoldenScrapBurst`) at all 3 kill sites.
+- **Verify**: `node --check` green on all 11 touched files. Manual: move while snowing → flakes fall relative to ground; no-hit wave → PERFECT WAVE popup + scrap; kill golden zombie → scrap ring.
+
+## 2026-07-15 — Golden Zombie + WIP QoL Pass ✅ COMPLETE
+- **Golden Zombie**: rare ~1.5% spawn roll in `ZombieSpawnSystem._createAndPushZombie` (single-player only, skips boss/warden/shard). `zombie.isGolden` flag; gold aura/sparkles/ring drawn via `Zombie.drawGoldenAura()` from the `EntityRenderSystem` post-draw hook (covers all subclass draw overrides). Kill = **5x XP** + gold `GOLDEN KILL!` popup at all 3 kill sites (`bulletZombieCollisions.js`, `MeleeSystem.js`, `combatUtils.js` explosion path).
+- **Speed Boost pickup**: 8s → 12s (`combatUtils.js`) — WIP-list gameplay tweak (list said 10s→12s; code baseline was actually 8s).
+- **Crosshair drop shadow**: subtle shadow (blur 3, offset 1,1) inside `drawCrosshair()` save/restore — applies to all styles; WIP-list visual fix.
+- **Verify**: `node --check` green on all 7 touched files. Manual: arcade run until gold-aura zombie appears → kill → GOLDEN KILL popup + 5x XP; grab speed boost → HUD timer shows 12s; crosshair readable over snow/bright ground.
+- **Docs**: CHANGELOG Unreleased (Added + Changed), WIP-dev-list checkoffs.
+
+## 2026-07-25 — Downward Layered Snow Pass
+
+- Reworked Arcade snow into depth-linked flake layers with coordinated size, opacity, and fall speed.
+- Added slow horizontal wind and gust interpolation; vertical velocity is clamped positive so every flake always travels downward.
+- Added horizontal overscan, density recovery after combat-heavy particle bursts, and smoother pool-aware spawning.
+- Added a dedicated WebGPU six-arm crystalline snow silhouette with an icy center instead of the generic soft combat-particle disc.
+- Follow-up: moved live snow into true screen space, decoupled from the player-follow camera so camera travel cannot drag flakes or visually reverse their fall.
+- Final direction lock: removed vertical flutter entirely and derive each frame from `spawnY + age * positiveFallSpeed`; fall speed increased for an unmistakably downward read.
+- Preserved the existing single-player Arcade-only gating and disabled accumulation overlay.
+- [AMENDED 2026-07-15]: Screen-space approach caused "snow goes upward" perception during camera travel — superseded by world-anchored rework (see *Arcade Additions + Snow World-Anchor Fix* above).
+
+## Human Model + VFX Pass (2026-07-25) COMPLETE
+- **Player model**: Added articulated tactical legs/boots with movement-driven stride, role rig accents for heroes/recruited survivors, sprint chevrons, shield scan arcs, and static-charge lightning. Cosmetic motion data is written by `PlayerSystem`; no collision, networking, or combat rules changed.
+- **Campaign NPCs**: Replaced the generic glowing circles with low-cost procedural human survivor models (armor, helmet, boots, slung weapon, role insignia, ambient scan arc). Rook/Pip/June/Holt now visually match their warrior/ranger/scavenger/medic roles before recruitment.
+- **Files**: `PlayerRenderer.js`, `PlayerSystem.js`, `MapLoader.js`.
+- **Verify**: `test-syntax.ps1` green; local Arcade smoke test loaded and rendered without browser console errors. Manual campaign route still recommended to inspect all four survivor role silhouettes in their intended map lighting.
+
+### Facial Animation Expansion (2026-07-25) COMPLETE
+- **Done**: Procedural blinking and aim-gaze, combat/reload/low-health expressions, brow movement, breathing/head bob, firing recoil, role comms LEDs, and animated survivor eyes/mouths.
+- **Files**: `PlayerRenderer.js`.
+
+## Launcher StrictMode Empty-Port Fix (2026-07-25) COMPLETE
+- **Problem**: An available port made `Get-ListenersOnPort` emit no pipeline objects, so PowerShell assigned `$null`; `Set-StrictMode -Version Latest` then rejected `$inUse.Count`.
+- **Fix**: Port-listener call sites now explicitly collect output with `@(...)`, including the post-stop check. Empty ports safely report as available.
+
 ## Active Tasks
 ### Engine + VFX Modernization (2026-07-21) ✅ COMPLETE
 - **Done (Phase 0)**: WGSL → `js/shaders/*`; snow overlay gated off; particle RGBA cache + bind-group reuse.
@@ -8,7 +238,7 @@
 - **Done (Phase 2)**: GPU combat compute (`WebGPUEffects`); heat haze; fire-pool embers/lights.
 - **Done (Phase 3)**: Camera-anchored blood; GPU blood discs; point lights; `DecalSystem`; procedural floor fallback.
 - **Validate**: `test-syntax.ps1` green; `node tools/vfx_smoke_test.mjs` 21/21.
-- **Doc drift (flagged)**: AGENTS/ARCHITECTURE still say GPU bottom layer / old bloom/100k FX — overlay z=2, bloom now real, FX=25k.
+- **Doc drift**: ~~AGENTS/ARCHITECTURE still say GPU bottom layer / old bloom/100k FX~~ **[RESOLVED 2026-08-05]** — truth pass on `AGENTS` / `ARCHITECTURE` / `SUMMARY` / `CHANGELOG` (see top SCRATCHPAD entry).
 - **Hotfix (2026-07-22)**: `js/systems/vfx/*` used one-level `../` imports → resolved to `js/systems/core|shaders|utils` (404 HTML MIME on GH Pages). Fixed to `../../core`, `../../shaders`, `../../utils`.
 - **Hotfix (2026-07-22c)**: GH Pages module load fail on `js/shaders/flashlight.js` — ad blockers match `*flash*` in URL. Renamed → `coneLight.js`.
 - **Next**: Push; hard refresh / disable blockers to verify; optional V0.9.4 modality.
@@ -463,3 +693,20 @@
 - [x] Revamp Mobile HUD (Move Stick, Optimize Bottom bar)
 - [ ] Expand Car Builder Parts
 - [ ] Debug Main Menu Buttons
+
+## Settings, VFX, and Frame-Pacing Audit (2026-08-05) - COMPLETE
+
+- **[Inspected] Root causes:** Saved settings accepted unknown/invalid data; migrations could lose the source version; presets were partial and mislabeled ordinary UI changes as Custom; several visible controls had no runtime consumer; settings pointer coordinates diverged from the high-density UI canvas; WebGPU post FX was incorrectly gated by bloom and dynamic lighting.
+- **[Executed] Settings core:** Added a versioned schema with validation, clamping, unknown-key removal, reliable migrations, complete preset transactions/listener notifications, `zombobsFXEnabled`, and six live cinematic/combat VFX controls. Retired the non-functional spatial-audio switch.
+- **[Executed] Settings UI:** Reorganized Graphics into functional sections, added live Profile/Renderer/Post FX status, responsive stacked controls, fluid mobile scaling, correct dropdown hit geometry, safer two-click reset, duplicate-safe rebinding, expanded FPS choices, and accurate labels for native frame pacing/canvas filtering.
+- **[Executed] Runtime wiring:** Auto Reload now honors its setting; damage number scale/off/stacking modes work; UI pointers use UI-canvas coordinates; renderer settings reapply after WebGPU initialization; post-processing quality and all new shader parameters update live.
+- **[Executed] VFX:** Decoupled post FX from bloom/lighting and added adjustable color separation, film grain, vignette, atmosphere color grade, scanlines, and impact-flash intensity while preserving the transparent overlay's premultiplied-alpha contract.
+- **[Executed] Engine:** Added bounded fixed-step catch-up, hidden-tab clock resync, stable app-side frame limiting, interpolation delivery, and performance counters to prevent update spirals and preserve the selected cap across frame-pacing changes.
+- **[Executed] Verification:** `test-syntax.ps1` passed for all root JS; settings and engine contract smoke tests passed; VFX smoke test passed 21/21; browser QA passed at desktop and 390x844 with zero console errors; canonical web files were synced into `mobile/www` and hash-verified for all settings/engine/VFX entry points.
+
+## World Landmark Visual Scale Pass (2026-08-05) - COMPLETE
+
+- **[Executed] Landmark pass 1:** Rebuilt the small procedural station markers as destination-scale world visuals: a staffed Scrap Depot field stall, a rolling Night Market kiosk, and a stepped Scrap Shrine with a floating relic. The prior icon-first rendering was replaced by structure-sized silhouettes, material detail, shadows, and distinct palette reads.
+- **[Executed] Landmark pass 2:** Added independent tooltip and HUD beacon offsets so the larger awnings, mast, and relic do not overlap interaction text or on-screen direction markers. Gameplay interaction ranges remain unchanged.
+- **[Executed] Landmark pass 3:** Added `renderRadius` support to viewport culling and assigned complete visual extents to all three landmarks, preventing late pop-in at the viewport edge.
+- **[Executed] Verification:** Root syntax check passed; VFX smoke test passed 21/21; focused landmark render smoke test passed 9 assertions (renders/labels, enlarged extents, preserved interaction limits, and render-radius culling). Mobile `www` was intentionally not regenerated because it contains pre-existing uncommitted generated-file changes; run `npm run sync:web` from `mobile/` after those changes are reconciled.

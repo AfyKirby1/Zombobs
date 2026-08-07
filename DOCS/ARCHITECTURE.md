@@ -94,6 +94,7 @@ This modular structure improves maintainability, testability, and scalability.
 - `applyTextRenderingQualityToAll()` - Apply text rendering quality to all canvas contexts
 
 **Text Rendering Quality System**:
+[AMENDED 2026-08-05]: Despite the legacy function names, this is the Canvas2D anti-aliasing/image-sampling path, not font rasterization control. `resizeCanvas()` must re-apply it after width/height assignments reset context state. High uses `resolutionScale: 1.25` (0.9375 gameplay pixels per CSS pixel after `RENDER_SCALE`); Ultra uses `1.5` (1.125, supersampled). High/Ultra force `imageSmoothingQuality = 'high'`.
 - Applies font smoothing settings (low, medium, high) to all canvas contexts
 - `applyTextRenderingQualityToAll()` updates: main canvas, GameHUD, RankDisplay, LeaderboardDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, BossHealthBar
 - Change listener in `js/main.js` calls `applyTextRenderingQualityToAll()` when `textRenderingQuality` setting changes
@@ -144,14 +145,14 @@ This modular structure improves maintainability, testability, and scalability.
 **Dependencies**: `MainMenuScreen.js`, `GameHUD.js`
 
 #### WebGPURenderer.js
-**Purpose**: GPU-accelerated background rendering and compute-driven particles
+**Purpose**: GPU-accelerated FX overlay (not a full scene renderer)
 
 **Responsibilities**:
 - Initialize WebGPU device/context and configure preferred canvas format
 - Maintain a uniform buffer for time, resolution, bloom intensity, distortion toggle, and lighting quality level
 - Render a full-screen procedural background with noise/fog/vignette and optional distortion and rim lighting
 - Update particles via a compute shader and render them with a point-list pipeline
-- **ZombobsFX Integration**: 100k particle spore cloud effect with mouse repulsion (above background, below game entities)
+- **ZombobsFX Integration**: spore cloud with mouse repulsion on FX overlay [AMENDED 2026-08-05: default ~25k, not 100k; overlay above Canvas2D world, not “below game entities”]
 - Gracefully fall back to Canvas 2D if WebGPU is unavailable
 - **Performance**: Dirty flag system for efficient uniform buffer updates
 
@@ -160,21 +161,21 @@ This modular structure improves maintainability, testability, and scalability.
 - `setDistortionEffects(enabled)` — boolean (marks uniforms dirty when changed)
 - `setLightingQuality(level)` — `off` | `simple` | `advanced` (marks uniforms dirty when changed)
 - `setParticleCount(level)` — `low` (CPU/off) | `high` (10k) | `ultra` (50k) (optimized buffer reuse)
-- `setZombobsFXEnabled(enabled)` — boolean (toggles 100k particle spore cloud effect)
+- `setZombobsFXEnabled(enabled)` — boolean (toggles spore cloud; [AMENDED 2026-08-05]: ~25k default)
 - `static isWebGPUAvailable()` — Consolidated WebGPU availability check
 
 **ZombobsFX Spore Cloud Effect**:
-- **100k Particles**: GPU-accelerated compute shader updates all particles
+- **Particles**: GPU-accelerated compute shader updates all particles [AMENDED 2026-08-05: default **25,000**, not 100k]
 - **Mouse Interaction**: Particles repel from cursor position (normalized -1 to 1 coordinates)
 - **Color Gradient**: Zombie Purple to Toxic Green based on particle life
 - **Additive Blending**: Creates glowing "radioactive core" effect when particles overlap
-- **Render Order**: Renders after background shader, before game particles
+- **Render Order**: On FX overlay pass with other WebGPU FX [AMENDED 2026-08-05: not a bottom “background under entities” stack]
 - **Settings**: Toggleable via `video.zombobsFXEnabled` (default: true)
 - **Integration**: Uses shared WebGPU device/context from WebGPURenderer (no duplicate initialization)
 - **Location**: `js/core/ZombobsFX.js` - Integrated into `WebGPURenderer.render()`
 
 **Intensity Adjustment Parameters** (in `js/core/ZombobsFX.js`):
-- **Particle Count** (`this.numParticles`): Default 100,000. Range: 10,000-200,000. More = denser cloud (higher performance cost)
+- **Particle Count** (`this.numParticles`): Default **25,000** [AMENDED 2026-08-05; was 100,000]. Range: 10,000-200,000. More = denser cloud (higher performance cost)
 - **Particle Size** (vertex shader line ~132): Default 0.008. Range: 0.005-0.015. Larger = more visible particles
 - **Repel Strength** (`updateCompute()` line ~294): Default 2.0. Range: 1.0-5.0. Higher = stronger mouse repulsion
 - **Alpha Multiplier** (vertex shader line ~143): Default 0.8. Range: 0.5-1.0. Higher = more opaque particles
@@ -209,9 +210,9 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - **[AMENDED 2026-06-26] Lazy load + warm-up**: `WebGPURenderer` module loads via dynamic `import()` — not at menu boot. `scheduleWebGPUInit()` runs during idle menu warm-up (`requestIdleCallback`) or on first Play via `prepareGameSession()`. `#gpuCanvas` visibility toggled in `updateGpuCanvasVisibility()` with 450ms CSS opacity fade-in (`css/style.css`).
 - **[AMENDED 2026-07-06] Boot overlay gate**: `scheduleWebGPUInit()` also starts at bootstrap (behind `#boot-overlay` via `BootLoader.js`). Overlay dismisses only after first menu frame **and** WebGPU init (or gate skipped when disabled/unavailable). Idle warm-up retains ground-texture preload only.
 - **[AMENDED 2026-07-09] Boot buffer/lag hardening**: `init({ onPhase })` callbacks drive staged boot UI during adapter/device/shader/pipeline work; progress creep + stall messaging mask compile stalls; 3-frame settle after gates before fade.
-
+- **[AMENDED 2026-07-21 / 2026-08-05] Engine + VFX modernization (truth)**: `#gpuCanvas` is a **transparent overlay** (`z-index: 2`) above Canvas2D world — not a bottom background layer. Real bloom via `PostFXPass` (extract → blur ping-pong → composite; never sample+write same texture in one pass). Heat haze / distortion / chromatic aberration / film grain / vignette / `addPostImpulse`. WGSL extracted to `js/shaders/*.js`. Flashlight WGSL file is `coneLight.js` (rename from `flashlight.js` — ad blockers match `*flash*` URLs on GH Pages). Hosts `WebGPUEffects` (combat compute particles, ≤16 point lights — uniform buffer **544** bytes, ZombobsFX ~**25k** default not 100k, blood soft-disc sync). Typed `PARTICLE_KIND` + pre-parsed `rgba` on sync. Snow GPU accumulate/draw paths gated off.
 #### ZombobsFX.js
-**Purpose**: 100k particle spore cloud background effect with mouse interaction
+**Purpose**: Spore cloud overlay effect with mouse interaction
 
 **Exports**:
 - `ZombobsFX` class - Spore cloud particle effect system
@@ -223,7 +224,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - `isReady()` - Check if effect is initialized and ready to render
 
 **Features**:
-- **100k Particles**: GPU-accelerated compute shader updates all particles per frame
+- **Particles**: GPU-accelerated compute shader updates all particles per frame [AMENDED 2026-08-05: default **25k**, not 100k]
 - **Mouse Repulsion**: Particles repel from cursor position (normalized -1 to 1 coordinates)
 - **Color Gradient**: Zombie Purple to Toxic Green based on particle life
 - **Additive Blending**: Creates glowing "radioactive core" effect when particles overlap
@@ -233,11 +234,22 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 
 **Integration**:
 - Uses shared WebGPU device/context from WebGPURenderer (no duplicate initialization)
-- Renders in WebGPURenderer.render() after background shader, before game particles
+- Renders in `WebGPURenderer.render()` on the FX overlay pass [AMENDED 2026-08-05]
 - Toggleable via `video.zombobsFXEnabled` setting (default: true)
 - Settings applied in real-time via `webgpuRenderer.setZombobsFXEnabled()`
 
 **Dependencies**: `core/canvas.js` (for canvas reference), WebGPU device/context from WebGPURenderer
+
+**[AMENDED 2026-07-21 / 2026-08-05]**: Default `numParticles` is **25,000** (not 100k). WGSL lives in `js/shaders/zombobsFX.js`. Deferred init until first gameplay frame via `WebGPURenderer._ensureGameplayEffectsInit()`. Renders on the FX overlay pass (above Canvas2D world).
+
+#### PostFXPass.js / WebGPUEffects.js / DecalSystem.js (`js/systems/vfx/`)
+**[ADDED 2026-07-21 / amended 2026-08-05]** Engine VFX hosts (imported by `WebGPURenderer`):
+- **`PostFXPass`**: Offscreen FX target → bloom extract → H/V blur ping-pong (never sample the color-target texture in the same pass) → composite to swapchain. Also heat haze, chromatic aberration, film grain, vignette, impulse flash (`addPostImpulse`). Quality from `lightingQuality` (`off`/`simple`/`advanced`).
+- **`WebGPUEffects`**: GPU combat particle compute ring buffer; ≤16 additive point lights (uniform **544** bytes — `count` + 16-aligned pad + 16×32B lights); blood soft-disc render from CPU grid sync.
+- **`DecalSystem`**: Canvas2D blood/scorch stamp ring buffer under entities.
+
+#### Shader modules (`js/shaders/`)
+**[ADDED 2026-07-21]**: WGSL string exports — `uniforms.js`, `bloom.js`, `gameParticles.js`, `coneLight.js` (flashlight cone; renamed from `flashlight.js` for adblock), `bloodEdge.js`, `zombobsFX.js`, `combatParticles.js`, `bloodAndLights.js`.
 
 #### gameState.js
 **Purpose**: Centralized game state management
@@ -358,6 +370,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 **Purpose**: Zombie enemy classes
 
 **Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `BlightZombie`, `CrawlerZombie`, `SirenZombie`
+[AMENDED 2026-08-05]: Export coverage also includes `ShardZombie`, `SplitterZombie`, and `spawnSplitterShards`; arcade `BossZombie` and campaign `WardenBoss` live in dedicated entity modules.
 
 **Zombie Variants**:
 - **NormalZombie**: Default enemy type with **8 randomized visual variants**:
@@ -396,6 +409,14 @@ flowchart TD
 | `drawTorsoOverlayLayer(ctx, x, y, radius)` | Additive torso detail VFX |
 
 **Per-zombie animation fields**: `animSeed`, `gazeX`, `gazeY`, `bodyLean`, `facingAngle`, `walkPhase`, `armSwayOffset`, `hitReactUntil`, `behaviorState`, `behaviorUntil`, `torsoOverlay`, `torsoShape`
+
+**Procedural model quality system (2026-08-05)**:
+- `getModelDetailLevel()` maps Low/Medium/High/Ultra to 0/1/2/3. High is the full authored model; Ultra adds micro-detail.
+- `drawOrganicModelDetails()` supplies connected neck/clavicle/rib anatomy, deterministic mottling/wounds, silhouette rim definition, and Ultra pore breakup.
+- `drawTypeModelDetails()` covers every type with distinct material/silhouette cues (armor, sinew, volatile sacs, shroud, acid glands, fungal gills, spine, resonators, shards, and boss machinery).
+- `drawClawedHand()` supplies quality-gated palms/fingers/nails; `FlyingZombie.drawWing()` uses a segmented/scalloped bat membrane instead of oval wing sprites.
+- Coordinate tables are module-level constants to avoid per-frame array allocation in the entity render hot path.
+- `BossZombie.draw()` and `WardenBoss.draw()` use separate torso/head forms and articulated limbs, then reuse the base finish API. All changes are cosmetic: collision radii and multiplayer packets are untouched.
 
 **Micro-behaviors** (pose-only): `lurch`, `stagger`, `hesitate`, `reach`, `chase` — cosmetic; do not alter `speed` or AI pathfinding.
 
@@ -761,6 +782,7 @@ flowchart TD
 - Blood trails flowing downhill with terrain detection
 - Gameplay mechanics: Blood pools slow zombies by 20%
 
+**[AMENDED 2026-07-21 / 2026-08-05]**: Grid is **camera-anchored** (no world-modulo tile look); `setCameraAnchor()` recenters when deposits leave the grid. Non-empty cells sync to GPU soft discs via `WebGPURenderer.syncBloodCells` / `WebGPUEffects` when WebGPU is active (Canvas2D circles remain the fallback). Header “GPU fluid” claim was aspirational — core sim remains CPU cellular automata.
 #### SettingsManager.js
 **Purpose**: Settings persistence and management
 
@@ -789,6 +811,8 @@ flowchart TD
 - `video.enemyHealthBarStyle` - Enemy health bar style ('gradient', 'solid', 'simple')
 
 **Dependencies**: None (localStorage only)
+
+**[AMENDED 2026-08-05] Settings v5 contract**: `SETTING_SCHEMA` is the authoritative validation surface for every persisted category/key. Loading clones defaults, accepts only known schema entries, normalizes/clamps valid values, drops retired/unknown data, then runs migrations while preserving the saved source version. Video presets are atomic transactions and notify every changed runtime consumer; manual edits to preset-owned quality keys select `custom`. Graphics UI exposes live Profile / Renderer / Post FX truth and applies WebGPU/post parameters immediately and again after asynchronous GPU initialization. Responsive settings input is mapped in `uiCanvas` coordinates; Capacitor receives the same canonical files through `mobile/scripts/sync-web.js`.
 
 #### SkillSystem.js
 **Purpose**: Skill upgrade system and XP management
@@ -2240,6 +2264,13 @@ flowchart TD
 
 ## Rendering Pipeline
 
+### Stack order (truth) [AMENDED 2026-08-05]
+1. `#gameCanvas` (`z-index: 1`) — Canvas2D world
+2. `#gpuCanvas` (`z-index: 2`) — WebGPU FX overlay (particles, flashlight, bloom, lights, blood edge, ZombobsFX)
+3. `#uiCanvas` (`z-index: 2000`) — HUD/menus
+
+Per-frame: `GameLoopSystem.draw()` (Canvas2D) → `syncGameParticles` / blood / lights feed → `webgpuRenderer.render()` (compute + FX pass → optional `PostFXPass` bloom composite onto swapchain).
+
 ### drawGame() Function (GameLoopSystem.draw) [AMENDED 2026-06-25]
 Previously in `main.js`; now `GameLoopSystem.draw()`.
 **Execution Order**:
@@ -2264,6 +2295,7 @@ Previously in `main.js`; now `GameLoopSystem.draw()`.
 17. Restore transform (undo shake)
 18. Draw UI elements (damage numbers, crosshair, HUD, notifications, FPS)
 
+**[AMENDED 2026-07-21]**: Decals (`decalSystem.draw`) under entities; blood GPU sync when available; fire-pool point lights + haze/embers fed from update loop.
 ### Update Loop (GameLoopSystem.update) [AMENDED 2026-06-25]
 Previously `updateGame()` in `main.js`; now `GameLoopSystem.update()`, called from `gameEngine.update` in `main.js`.
 **updateGame() Function**:

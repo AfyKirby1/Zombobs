@@ -35,9 +35,18 @@ export class WebGPURenderer {
         this.postFX = null;
         this.effects = null;
         this.hazeStrength = 0;
-        
+        this.postImpulse = 0; // explosions / damage drive white flash + aberration kick
+
         this.distortionEnabled = true;
         this.lightingQuality = 1;
+        this.postProcessingQuality = 2;
+        this.chromaticAberration = 0.3;
+        this.filmGrain = 0.05;
+        this.vignetteEnabled = true;
+        this.vignetteIntensity = 0.26;
+        this.impactFlashIntensity = 0.65;
+        this.colorGrading = 0.35;
+        this.scanlineIntensity = 0.025;
 
         // Falling Snow/Ash Particles
         this.particleCount = 0;
@@ -642,8 +651,9 @@ export class WebGPURenderer {
 
             const encoder = this.device.createCommandEncoder();
 
-            // Decay heat haze
+            // Decay heat haze + post impulse
             this.hazeStrength = Math.max(0, (this.hazeStrength || 0) * 0.92);
+            this.postImpulse = Math.max(0, (this.postImpulse || 0) * 0.82);
 
             // Falling snow compute — only when snow overlay path re-enabled (gated off)
             if (this.snowOverlayEnabled && this.snowEnabled && this.particleCount > 0 && this.particleBuffer && this.particleComputeBindGroup) {
@@ -666,12 +676,13 @@ export class WebGPURenderer {
             }
 
             // Ensure post-FX targets sized
-            const useBloom = this.bloomEnabled && this.bloomIntensity > 0.01 && this.postFX?.ready
-                && this.lightingQuality > 0;
-            if (useBloom) {
+            // Post-FX is independent from bloom and dynamic-light quality. A user
+            // can disable glow while retaining color grade, grain, or impact flash.
+            const usePostFX = this.postProcessingQuality > 0 && this.postFX?.ready;
+            if (usePostFX) {
                 this.postFX.ensureSize(gpuCanvas.width, gpuCanvas.height);
             }
-            const fxView = useBloom ? this.postFX.getFxTargetView() : null;
+            const fxView = usePostFX ? this.postFX.getFxTargetView() : null;
             const swapchainView = this.context.getCurrentTexture().createView();
             const colorView = fxView || swapchainView;
 
@@ -722,12 +733,19 @@ export class WebGPURenderer {
 
             pass.end();
 
-            if (useBloom && fxView) {
+            if (usePostFX && fxView) {
+                const impulse = Math.min(1.0, this.postImpulse || 0);
                 this.postFX.run(encoder, swapchainView, {
-                    bloomIntensity: this.bloomIntensity,
+                    bloomIntensity: this.bloomEnabled ? this.bloomIntensity : 0,
                     distortionEnabled: this.distortionEnabled,
                     time: this.time,
                     hazeStrength: this.hazeStrength || 0,
+                    aberration: this.chromaticAberration + impulse * 0.8,
+                    grain: this.filmGrain,
+                    vignette: this.vignetteEnabled ? this.vignetteIntensity : 0,
+                    impulse,
+                    colorGrading: this.colorGrading,
+                    scanlineIntensity: this.scanlineIntensity,
                 });
             }
 
@@ -789,6 +807,39 @@ export class WebGPURenderer {
         }
     }
 
+    /**
+     * Add a post-FX impulse (white flash + chromatic aberration kick) scaled 0..1.
+     * Driven by explosions and player damage for AAA cinematic punch.
+     */
+    addPostImpulse(strength = 0.5) {
+        const scaled = Math.max(0, strength) * this.impactFlashIntensity;
+        this.postImpulse = Math.min(1.0, (this.postImpulse || 0) + scaled);
+    }
+
+    setPostProcessingQuality(level) {
+        const levels = { off: 0, low: 1, medium: 2, high: 3 };
+        this.postProcessingQuality = levels[level] ?? 2;
+        if (this.postFX) {
+            this.postFX.setQuality(this.postProcessingQuality === 0
+                ? 'off'
+                : (this.postProcessingQuality === 1 ? 'simple' : 'advanced'));
+        }
+    }
+
+    setPostFXParameters(config = {}) {
+        const clamp = (value, min, max, fallback) => {
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? Math.max(min, Math.min(max, numeric)) : fallback;
+        };
+        this.chromaticAberration = clamp(config.chromaticAberration, 0, 1, this.chromaticAberration);
+        this.filmGrain = clamp(config.filmGrain, 0, 0.2, this.filmGrain);
+        this.vignetteEnabled = config.vignetteEnabled !== false;
+        this.vignetteIntensity = clamp(config.vignetteIntensity, 0, 1, this.vignetteIntensity);
+        this.impactFlashIntensity = clamp(config.impactFlashIntensity, 0, 1, this.impactFlashIntensity);
+        this.colorGrading = clamp(config.colorGrading, 0, 1, this.colorGrading);
+        this.scanlineIntensity = clamp(config.scanlineIntensity, 0, 0.2, this.scanlineIntensity);
+    }
+
     setZombobsFXEnabled(enabled) {
         this.zombobsFXEnabled = enabled;
     }
@@ -802,9 +853,6 @@ export class WebGPURenderer {
         if (this.lightingQuality !== newQuality) {
             this.lightingQuality = newQuality;
             this.uniformsDirty = true;
-        }
-        if (this.postFX) {
-            this.postFX.setQuality(newQuality === 0 ? 'off' : (newQuality === 1 ? 'simple' : 'advanced'));
         }
         if (this.effects) {
             const cap = newQuality >= 2 ? 4096 : (newQuality === 1 ? 2048 : 512);
@@ -1197,5 +1245,36 @@ export class WebGPURenderer {
                 { binding: 0, resource: { buffer: this.bloodEdgeUniformBuffer } }
             ]
         });
+    }
+
+    /**
+     * Release the GPU device and swapchain. Without this, a page reload leaves the
+     * previous document's device alive and the next `requestAdapter()`/`requestDevice()`
+     * can stall — the boot gate then never satisfies and no menu frame is drawn.
+     */
+    destroy() {
+        this.isInitialized = false;
+        try {
+            this.zombobsFX?.destroy?.();
+            this.postFX?.destroy?.();
+            this.effects?.destroy?.();
+        } catch (error) {
+            console.warn('WebGPURenderer: subsystem teardown failed', error);
+        }
+
+        try {
+            this.context?.unconfigure?.();
+        } catch (error) {
+            console.warn('WebGPURenderer: context unconfigure failed', error);
+        }
+
+        try {
+            this.device?.destroy?.();
+        } catch (error) {
+            console.warn('WebGPURenderer: device destroy failed', error);
+        }
+
+        this.context = null;
+        this.device = null;
     }
 }

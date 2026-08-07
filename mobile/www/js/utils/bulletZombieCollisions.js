@@ -169,6 +169,7 @@ export function handleBulletZombieCollisions() {
 
             const collisionResult = checkZombieCollision(bullet, zombie);
             if (collisionResult.hit) {
+                gameState.totalShotsHit = (gameState.totalShotsHit || 0) + 1;
                 // v0.8.3.5 Store headshot status for the kill reward
                 const isHeadshot = collisionResult.isHeadshot;
                 // Handle Rocket collisions FIRST (before marking as hit)
@@ -546,6 +547,22 @@ export function handleBulletZombieCollisions() {
                     // Award XP for kill (with multiplier)
                     const zombieType = zombie.type || 'normal';
                     let xpAmount = skillSystem.getXPForZombieType(zombieType);
+                    // Golden Zombie: 5x XP bonus
+                    if (zombie.isGolden) {
+                        xpAmount *= 5;
+                        gameState.damageNumbers.push(new DamageNumber(
+                            zombieX, zombieY - 45, 'GOLDEN KILL!', false, '#ffd700', 26
+                        ));
+                        pickupSpawnSystem.spawnGoldenScrapBurst(gameState, zombieX, zombieY);
+                    }
+                    // Bounty Zombie: claim reward
+                    if (zombie.isBounty) {
+                        const bounty = 40 + Math.min(60, gameState.wave * 4);
+                        shootingPlayer.scrap = (shootingPlayer.scrap || 0) + bounty;
+                        gameState.scrapCollected += bounty;
+                        gameState.score += bounty;
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 45, `💀 BOUNTY +${bounty}`, false, '#ff5252', 24));
+                    }
                     xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier * headhunterXpMult);
                     // Show XP popup over player instead of zombie
                     skillSystem.gainXP(xpAmount, { x: shootingPlayer.x, y: shootingPlayer.y, streak: gameState.killStreak });

@@ -95,6 +95,8 @@ A global grain effect applied to the viewport to reduce banding and add texture.
 - **Zombies**: Radial gradients for "toxic aura" and body.
   - [AMENDED 2026-06-25]: Upright zombies use additive torso overlay layers (`screen`/`lighter`, clipped to torso ellipse) and procedural organic motion (gaze-offset eyes, velocity lean, per-id `walkPhase`). Extra glow layers respect `graphicsSettings.getQualityValues('aura'|'eyeGlow')`.
   - [AMENDED 2026-07-05]: **Siren** — cyan palette (`#00e5ff` / `#00bcd4`), throat-sac pulse, radio-static halo arcs during scream windup; shock rings rendered by `EntityRenderSystem.drawSirenScreamEffects`.
+- [AMENDED 2026-08-05] **All-enemy model pass**: shared connected anatomy (neck/clavicles/ribs), deterministic material breakup/wounds, rim definition, and type-specific silhouettes/materials. High is the authored full-detail tier; Ultra adds micro-detail. Preserve type palettes and threat readability; model detail must remain cosmetic and must not change collision geometry.
+- [AMENDED 2026-08-05] **Canvas anti-aliasing / density**: High uses `resolutionScale: 1.25`, high smoothing, advanced lighting, and high post-processing; Ultra uses `1.5` supersampling. Always re-apply `imageSmoothingEnabled` / `imageSmoothingQuality` after setting canvas width/height because resize resets Canvas2D state.
 - **Projectiles**: High contrast cores (white/yellow) with colored outer glows.
 - **Lighting**: Additive blending (implicit in some particle effects) and radial gradient overlays for vignettes.
 - **Shadows**: Dark ellipses offset below entities (zombies and players) when shadows enabled.

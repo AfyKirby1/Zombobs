@@ -1,5 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { getUiDensityScale } from '../core/canvas.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
 import { getLastRuns, formatTime, loadScoreboard, isMobileDevice } from '../utils/gameUtils.js';
 import { NEWS_UPDATES, GAME_VERSION } from '../core/constants.js';
@@ -246,8 +247,11 @@ export class MainMenuScreen {
     }
 
     drawEffects() {
-        // Draw Eyes
+        // Draw Eyes — shadow state set once before loop
         this.ctx.save();
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = '#ff0000';
         for (const eye of this.eyes) {
             let opacity = 0;
             if (eye.state === 'in') opacity = eye.life / 50;
@@ -260,9 +264,6 @@ export class MainMenuScreen {
             this.ctx.scale(eye.scale, eye.scale);
 
             // Left Eye
-            this.ctx.fillStyle = '#ff1744';
-            this.ctx.shadowBlur = 15;
-            this.ctx.shadowColor = '#ff0000';
             this.ctx.beginPath();
             this.ctx.ellipse(-10, 0, 4, 2, 0, 0, Math.PI * 2);
             this.ctx.fill();
@@ -272,10 +273,8 @@ export class MainMenuScreen {
             this.ctx.ellipse(10, 0, 4, 2, 0, 0, Math.PI * 2);
             this.ctx.fill();
 
-            this.ctx.restore();
             // Reset transform for next eye
             this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-            this.ctx.save();
         }
         this.ctx.restore();
 
@@ -950,17 +949,18 @@ export class MainMenuScreen {
         const scale = this.getUIScale();
         // Use smaller font size for news ticker to fit more content
         const newsFontSize = Math.max(10, Math.round(11 * scale * 0.85)); // 15% smaller than regular font
+        const density = getUiDensityScale();
         const canvas = this.canvas;
         const ctx = this.ctx;
 
         // Dimensions
-        const boxWidth = 650;  // Increased from 480
-        const boxHeight = 28;  // Increased from 24 for better visibility
+        const boxWidth = 650 * density;  // Increased from 480
+        const boxHeight = 28 * density;  // Increased from 24 for better visibility
         const centerX = canvas.width / 2;
         const boxX = centerX - (boxWidth / 2);
 
         // Position at bottom of screen with 10px padding
-        const boxY = canvas.height - boxHeight - 10;
+        const boxY = canvas.height - boxHeight - (10 * density);
 
         // Store box coordinates for hit detection
         this.newsTickerBoxX = boxX;
@@ -1031,8 +1031,9 @@ export class MainMenuScreen {
 
     drawVersionBox() {
         if (this.isMobileLayout) return;
-        const padding = 15;
-        const boxHeight = 26;
+        const density = getUiDensityScale();
+        const padding = 15 * density;
+        const boxHeight = 26 * density;
         const x = this.getMenuTopLeftContentX();
         const y = padding;
         const hovered = this.hoveredButton === 'version';
@@ -1040,10 +1041,10 @@ export class MainMenuScreen {
         const pulse = 0.9 + 0.1 * Math.sin(t / 700);
 
         this.ctx.save();
-        this.ctx.font = 'bold 12px "Roboto Mono", monospace';
+        this.ctx.font = `bold ${Math.round(12 * density)}px "Roboto Mono", monospace`;
         const label = `🎃 ${GAME_VERSION}`;
         const textWidth = this.ctx.measureText(label).width;
-        const boxWidth = textWidth + 28;
+        const boxWidth = textWidth + 28 * density;
 
         this.versionBoxX = x;
         this.versionBoxY = y;
@@ -1074,9 +1075,9 @@ export class MainMenuScreen {
         this.ctx.fillText(label, x + boxWidth / 2, y + boxHeight / 2);
 
         if (hovered) {
-            this.ctx.font = '9px "Roboto Mono", monospace';
+            this.ctx.font = `${Math.round(9 * getUiDensityScale())}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = 'rgba(255, 183, 77, 0.8)';
-            this.ctx.fillText('PATCH NOTES', x + boxWidth / 2, y + boxHeight + 10);
+            this.ctx.fillText('PATCH NOTES', x + boxWidth / 2, y + boxHeight + 10 * getUiDensityScale());
         }
 
         this.ctx.restore();
@@ -1115,9 +1116,9 @@ export class MainMenuScreen {
         const panelWidth = maxWidth + textPadding * 2 + (20 * scale);
         const panelHeight = lines.length * lineHeight + textPadding * 2;
 
-        this.ctx.font = 'bold 12px "Roboto Mono", monospace';
+        this.ctx.font = `bold ${Math.round(12 * getUiDensityScale())}px "Roboto Mono", monospace`;
         const versionTextWidth = this.ctx.measureText(`🎃 ${GAME_VERSION}`).width;
-        const versionBoxWidth = versionTextWidth + 28;
+        const versionBoxWidth = versionTextWidth + 28 * getUiDensityScale();
         const panelX = this.getMenuTopLeftContentX() + versionBoxWidth + spacing;
         const panelY = padding;
 

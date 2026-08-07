@@ -31,7 +31,7 @@ const TIP_ROTATE_MS = 2800;
 const CREEP_INTERVAL_MS = 120;
 const CREEP_RATE = 0.35;
 const SETTLE_FRAMES = 3;
-const MIN_DISPLAY_MS = 500;
+const MIN_DISPLAY_MS = 300;
 const ELAPSED_TICK_MS = 250;
 
 let dismissed = false;
@@ -390,6 +390,11 @@ export function tryDismissBootOverlay() {
 
 export function isBootOverlayDismissed() {
     return dismissed;
+}
+
+/** True while the boot overlay still covers the screen (incl. fade-out). Use to gate UI input. */
+export function isBootOverlayActive() {
+    return !dismissed || (overlayEl !== null && overlayEl.isConnected);
 }
 
 /** Map WebGPURenderer.init phase callbacks → boot stages. */

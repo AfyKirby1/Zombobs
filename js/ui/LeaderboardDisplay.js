@@ -1,6 +1,7 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SERVER_URL } from '../core/constants.js';
+import { getUiDensityScale } from '../core/canvas.js';
 
 /**
  * LeaderboardDisplay - UI component for fetching and displaying global leaderboard
@@ -27,7 +28,7 @@ export class LeaderboardDisplay {
             console.warn('getUIScale: Invalid scale value, using default 1.0', { scale });
             return 1.0;
         }
-        return scale;
+        return scale * getUiDensityScale();
     }
 
     async fetch() {

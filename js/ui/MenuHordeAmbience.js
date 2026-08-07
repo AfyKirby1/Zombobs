@@ -20,6 +20,9 @@ export class MenuHordeAmbience {
         this.embers = [];
         this.menuEnteredAt = Date.now();
         this._seeded = false;
+        // Cached fog gradient — only recreate when canvas height changes
+        this._fogGradient = null;
+        this._fogHeight = 0;
     }
 
     reset() {
@@ -28,6 +31,8 @@ export class MenuHordeAmbience {
         this.embers = [];
         this.menuEnteredAt = Date.now();
         this._seeded = false;
+        this._fogGradient = null;
+        this._fogHeight = 0;
     }
 
     update(isMobile) {
@@ -44,7 +49,7 @@ export class MenuHordeAmbience {
             this._seeded = true;
             const seedCount = Math.min(cap, isMobile ? 5 : 9);
             for (let i = 0; i < seedCount; i++) {
-                this.zombies.push(this._makeZombie(width, height, true));
+                this._insertZombieSorted(this._makeZombie(width, height, true));
             }
             for (let i = 0; i < ashCap; i++) {
                 this.ash.push(this._makeAsh(width, height, true));
@@ -55,7 +60,7 @@ export class MenuHordeAmbience {
         }
 
         while (this.zombies.length < cap && Math.random() < 0.04) {
-            this.zombies.push(this._makeZombie(width, height, false));
+            this._insertZombieSorted(this._makeZombie(width, height, false));
         }
 
         for (let i = this.zombies.length - 1; i >= 0; i--) {
@@ -103,6 +108,19 @@ export class MenuHordeAmbience {
             e.life--;
             if (e.life <= 0) this.embers.splice(i, 1);
         }
+    }
+
+    /** Insert zombie maintaining sorted-by-depth order (far → near) */
+    _insertZombieSorted(z) {
+        const arr = this.zombies;
+        // Binary search for insertion point by depth (ascending)
+        let lo = 0, hi = arr.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >>> 1;
+            if (arr[mid].depth < z.depth) lo = mid + 1;
+            else hi = mid;
+        }
+        arr.splice(lo, 0, z);
     }
 
     _makeZombie(width, height, seeded) {
@@ -180,18 +198,21 @@ export class MenuHordeAmbience {
     draw(ctx, width, height) {
         ctx.save();
 
-        // Ground fog band behind horde
-        const fogGrad = ctx.createLinearGradient(0, height * 0.65, 0, height);
-        fogGrad.addColorStop(0, 'rgba(8, 12, 10, 0)');
-        fogGrad.addColorStop(0.45, 'rgba(12, 18, 14, 0.35)');
-        fogGrad.addColorStop(1, 'rgba(6, 10, 8, 0.55)');
-        ctx.fillStyle = fogGrad;
+        // Ground fog band behind horde — cached gradient
+        if (this._fogHeight !== height) {
+            this._fogHeight = height;
+            this._fogGradient = ctx.createLinearGradient(0, height * 0.65, 0, height);
+            this._fogGradient.addColorStop(0, 'rgba(8, 12, 10, 0)');
+            this._fogGradient.addColorStop(0.45, 'rgba(12, 18, 14, 0.35)');
+            this._fogGradient.addColorStop(1, 'rgba(6, 10, 8, 0.55)');
+        }
+        ctx.fillStyle = this._fogGradient;
         ctx.fillRect(0, height * 0.65, width, height * 0.35);
 
-        // Far → near so depth reads
-        const sorted = this.zombies.slice().sort((a, b) => a.depth - b.depth);
-        for (let i = 0; i < sorted.length; i++) {
-            this._drawZombie(ctx, sorted[i]);
+        // Zombies are maintained in depth-sorted order via _insertZombieSorted
+        const now = Date.now();
+        for (let i = 0; i < this.zombies.length; i++) {
+            this._drawZombie(ctx, this.zombies[i], now);
         }
 
         for (let i = 0; i < this.ash.length; i++) {
@@ -205,13 +226,29 @@ export class MenuHordeAmbience {
             ctx.restore();
         }
 
+        // Batch embers by type to minimize shadowBlur state changes
+        // Hot embers first
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(255, 120, 40, 0.9)';
+        ctx.fillStyle = '#ffab40';
         for (let i = 0; i < this.embers.length; i++) {
             const e = this.embers[i];
+            if (!e.hot) continue;
             const t = e.life / e.maxLife;
             ctx.globalAlpha = t * 0.85;
-            ctx.shadowBlur = e.hot ? 10 : 5;
-            ctx.shadowColor = e.hot ? 'rgba(255, 120, 40, 0.9)' : 'rgba(255, 80, 40, 0.6)';
-            ctx.fillStyle = e.hot ? '#ffab40' : '#ff5722';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.size * t, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Cold embers
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = 'rgba(255, 80, 40, 0.6)';
+        ctx.fillStyle = '#ff5722';
+        for (let i = 0; i < this.embers.length; i++) {
+            const e = this.embers[i];
+            if (e.hot) continue;
+            const t = e.life / e.maxLife;
+            ctx.globalAlpha = t * 0.85;
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.size * t, 0, Math.PI * 2);
             ctx.fill();
@@ -222,7 +259,7 @@ export class MenuHordeAmbience {
         ctx.restore();
     }
 
-    _drawZombie(ctx, z) {
+    _drawZombie(ctx, z, now) {
         ctx.save();
         ctx.globalAlpha = z.alpha;
         ctx.translate(z.x, z.y);
@@ -283,7 +320,7 @@ export class MenuHordeAmbience {
         }
 
         if (z.eyeGlow) {
-            const pulse = 0.55 + 0.45 * Math.sin(Date.now() * 0.006 + z.bobPhase);
+            const pulse = 0.55 + 0.45 * Math.sin(now * 0.006 + z.bobPhase);
             ctx.globalAlpha = z.alpha * pulse;
             ctx.fillStyle = '#ff1744';
             ctx.shadowBlur = 8;

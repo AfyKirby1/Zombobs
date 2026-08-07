@@ -121,6 +121,23 @@ export class ZombieSpawnSystem {
         zombie.x = spawnX;
         zombie.y = spawnY;
         applyMutatorHealth(zombie, mutator);
+
+        // Golden Zombie: rare 1.5% roll (single-player only to avoid MP desync; never bosses/shards)
+        if (!gameState.multiplayer.active &&
+            zombie.type !== 'boss' && zombie.type !== 'warden' && zombie.type !== 'shard' &&
+            Math.random() < 0.015) {
+            zombie.isGolden = true;
+        }
+
+        // Bounty Zombie: one marked target per wave (arcade local only, wave 3+, never bosses/shards)
+        if (!gameState.multiplayer.active && gameState.gameMode !== 'campaign' &&
+            !gameState.bountyAssignedThisWave && gameState.wave >= 3 &&
+            zombie.type !== 'boss' && zombie.type !== 'warden' && zombie.type !== 'shard' &&
+            Math.random() < 0.12) {
+            zombie.isBounty = true;
+            gameState.bountyAssignedThisWave = true;
+        }
+
         gameState.zombies.push(zombie);
 
         if (gameState.multiplayer.active && multiplayerSocket && gameState.multiplayer.isLeader) {
@@ -256,6 +273,43 @@ export class ZombieSpawnSystem {
         }
     }
 
+    spawnBossRush(multiplayerSocket) {
+        if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) return;
+
+        gameState.isSpawningWave = true;
+        gameState.bossActive = true;
+        gameState.waveMutator = 'elites';
+        gameState.waveStartTime = Date.now();
+
+        const isSinglePlayerArcade = this._isSinglePlayerArcade();
+        const localPlayer = this._getLocalPlayer();
+
+        // Spawn Boss
+        let bossX = localPlayer ? localPlayer.x : canvas.width / 2;
+        let bossY = localPlayer ? localPlayer.y - 450 : -50;
+        const boss = new BossZombie(bossX, bossY);
+        gameState.boss = boss;
+        gameState.zombies.push(boss);
+
+        // Spawn Elites / Minibosses (Siren, Splitter, Armored)
+        const eliteTypes = [SirenZombie, SplitterZombie, ArmoredZombie, ExplodingZombie, SpitterZombie];
+        const numElites = Math.min(6, 2 + Math.floor(gameState.wave * 0.8));
+        gameState.zombiesSpawnedThisWave = 1 + numElites;
+
+        for (let i = 0; i < numElites; i++) {
+            const side = Math.floor(Math.random() * 4);
+            const { x: sx, y: sy } = this._computeSpawnPosition(isSinglePlayerArcade, localPlayer, side);
+            const EliteClass = eliteTypes[i % eliteTypes.length];
+            const timeout = setTimeout(() => {
+                this._createAndPushZombie(EliteClass, sx, sy, 'elites', multiplayerSocket);
+                if (i === numElites - 1) gameState.isSpawningWave = false;
+            }, 300 + i * 250);
+            gameState.zombieSpawnTimeouts.push(timeout);
+        }
+
+        triggerWaveNotification(`👹 BOSS RUSH WAVE ${gameState.wave}`, 180);
+    }
+
     spawnZombies(count, multiplayerSocket) {
         if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
             return;
@@ -263,6 +317,12 @@ export class ZombieSpawnSystem {
 
         gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
         gameState.zombieSpawnTimeouts = [];
+        gameState.bountyAssignedThisWave = false; // fresh bounty target each wave
+
+        if (gameState.gameMode === 'boss_rush') {
+            this.spawnBossRush(multiplayerSocket);
+            return;
+        }
 
         if (gameState.wave % 5 === 0 && !isCampaignMode(gameState)) {
             this.spawnBoss(multiplayerSocket);

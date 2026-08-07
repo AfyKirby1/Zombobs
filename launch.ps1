@@ -96,8 +96,10 @@ function Get-ListenersOnPort {
 
 function Stop-PortListeners {
     param([int]$ListenPort)
-    $listeners = Get-ListenersOnPort -ListenPort $ListenPort
-    if (-not $listeners -or $listeners.Count -eq 0) { return $true }
+    # PowerShell unrolls an empty array returned from a function to $null.
+    # Keep the collection shape explicit so StrictMode never reads .Count on $null.
+    $listeners = @(Get-ListenersOnPort -ListenPort $ListenPort)
+    if ($listeners.Count -eq 0) { return $true }
 
     $uniquePids = $listeners | ForEach-Object { $_.OwningProcess } | Where-Object { $_ -gt 0 } | Select-Object -Unique
     foreach ($procId in $uniquePids) {
@@ -113,8 +115,8 @@ function Stop-PortListeners {
         }
     }
     Start-Sleep -Milliseconds 600
-    $still = Get-ListenersOnPort -ListenPort $ListenPort
-    return (-not $still -or $still.Count -eq 0)
+    $still = @(Get-ListenersOnPort -ListenPort $ListenPort)
+    return ($still.Count -eq 0)
 }
 
 function Get-LanIPv4 {
@@ -212,8 +214,8 @@ if ($nodeVersion -match 'v(\d+)') {
 
 # Port
 Write-Info "Checking port $SERVER_PORT..."
-$inUse = Get-ListenersOnPort -ListenPort $SERVER_PORT
-if ($inUse -and $inUse.Count -gt 0) {
+$inUse = @(Get-ListenersOnPort -ListenPort $SERVER_PORT)
+if ($inUse.Count -gt 0) {
     $ownerPids = ($inUse | ForEach-Object { $_.OwningProcess } | Select-Object -Unique) -join ', '
     Write-Warn "Port $SERVER_PORT is in use (PID: $ownerPids)"
 

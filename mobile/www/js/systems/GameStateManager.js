@@ -9,6 +9,7 @@ import { groundTextureSystem } from './GroundTextureSystem.js';
 import { cameraSystem } from './CameraSystem.js';
 import { mapLoader } from './MapLoader.js';
 import { achievementSystem } from './AchievementSystem.js';
+import { worldShopSystem } from './WorldShopSystem.js';
 
 /**
  * GameStateManager - Handles game lifecycle (start, restart, game over)
@@ -75,6 +76,7 @@ export class GameStateManager {
                 pickupsCollected: gameState.pickupsCollected,
                 headshots: gameState.headshots,
                 maxKillStreak: gameState.maxKillStreak,
+                perfectWaves: gameState.perfectWaveCount,
                 coopWin: gameState.isCoop && gameState.wave > 1 // Consider it a win if survived past wave 1
             };
 
@@ -99,10 +101,11 @@ export class GameStateManager {
         const p1 = gameState.players[0];
         const p2 = gameState.players[1];
 
-        let scoreMsg = `You survived ${gameState.wave} waves!\nKilled: ${gameState.zombiesKilled}`;
+        const waveWord = gameState.wave === 1 ? 'wave' : 'waves';
+        let scoreMsg = `You survived ${gameState.wave} ${waveWord}!  Killed: ${gameState.zombiesKilled}`;
 
         if (gameState.isCoop && p2) {
-            scoreMsg = `Team survived ${gameState.wave} waves!\nTotal Kills: ${gameState.zombiesKilled}`;
+            scoreMsg = `Team survived ${gameState.wave} ${waveWord}!  Total Kills: ${gameState.zombiesKilled}`;
         }
 
         this.gameHUD.showGameOver(scoreMsg);
@@ -194,6 +197,9 @@ export class GameStateManager {
         gameState.nukePickups = [];
         gameState.scrapPickups = [];
         gameState.scrapShrines = [];
+        gameState.scrapDepot = null;
+        gameState.wanderingMerchant = null;
+        gameState.scrapMagnetEndTime = 0;
         gameState.props = [];
 
         gameState.wave = 1;
@@ -204,6 +210,7 @@ export class GameStateManager {
         gameState.zombiesSpawnedThisWave = 0;
         gameState.bossActive = false;
         gameState.showLevelUp = false;
+        gameState.waveDamageTaken = false;
         gameState.campaignZoneCleared = false;
         gameState.campaignZoneClearTime = 0;
         gameState.campaignActClear = false;
@@ -249,6 +256,9 @@ export class GameStateManager {
         gameState.nukePickups = [];
         gameState.scrapPickups = [];
         gameState.scrapShrines = [];
+        gameState.scrapDepot = null;
+        gameState.wanderingMerchant = null;
+        gameState.scrapMagnetEndTime = 0;
         gameState.props = [];
 
         gameState.wave = 1;
@@ -261,6 +271,7 @@ export class GameStateManager {
         gameState.zombiesKilled = 0;
         gameState.bossActive = false;
         gameState.showLevelUp = false;
+        gameState.waveDamageTaken = false;
 
         gameState.campaignZoneCleared = false;
         gameState.campaignZoneClearTime = 0;
@@ -358,6 +369,9 @@ export class GameStateManager {
                 mapLoader.spawnMapProps();
                 mapLoader.applyAmbiance();
                 cameraSystem.initialize(gameState.players[0]);
+            } else {
+                worldShopSystem.reset();
+                worldShopSystem.spawnDepot();
             }
         } else {
             // Just reset game objects, keep players

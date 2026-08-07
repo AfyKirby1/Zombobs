@@ -108,7 +108,8 @@ export class ZombieUpdateSystem {
                     zombie.sirenBoostUntil = undefined;
                 }
             }
-            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow * sirenBoost;
+            const bossRushRageSpeed = zombie.bossRushSpeedMultiplier || 1.0;
+            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier * bossFrostSlow * sirenBoost * bossRushRageSpeed;
             zombie.update(closestPlayer);
 
             if (isCampaignMode(gameState) && mapLoader.isLoaded()) {

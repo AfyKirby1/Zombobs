@@ -27,6 +27,7 @@ import {
 } from '../entities/Zombie.js';
 import { getSurvivorById } from '../core/survivorDefinitions.js';
 import { achievementSystem } from './AchievementSystem.js';
+import { drawSurvivorNPC } from './PlayerRenderer.js';
 
 const MAP_REGISTRY = {
     crash_site: crashSiteMap,
@@ -1120,30 +1121,9 @@ export class MapLoader {
             const questReady = run.met[n.survivorId] && !run.questDone[n.survivorId] &&
                 this._isSurvivorQuestComplete(n.def, run, gameState.players[0] || { scrap: 0 });
 
+            drawSurvivorNPC(n, { questReady, pulse });
+
             ctx.save();
-            // Soft glow
-            ctx.globalAlpha = 0.35 * pulse;
-            ctx.fillStyle = questReady ? '#00ff7f' : '#ffd54f';
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, NPC_RADIUS + 8, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Body
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = '#2a3a4a';
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, NPC_RADIUS, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = questReady ? '#00ff7f' : '#ffb300';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Face dot
-            ctx.fillStyle = '#cfd8dc';
-            ctx.beginPath();
-            ctx.arc(n.x, n.y - 4, 4, 0, Math.PI * 2);
-            ctx.fill();
-
             // Name + quest marker
             ctx.fillStyle = '#ffd54f';
             ctx.font = 'bold 10px "Roboto Mono", monospace';

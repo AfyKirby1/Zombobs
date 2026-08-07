@@ -8,14 +8,36 @@
 
 ---
 
-### **🆕 Latest on Main — Act 1 Finale**
+### **🆕 Latest on Main — V0.10.1 Custom Cursors**
 
-*   **Act 1 Complete** — Zones 1–4 playable: Crash Site → Maintenance Tunnels → Switching Yard → Control Tower; hack/defend → **The Warden** → **ACT 1 CLEAR**
-*   **Survivor Quests** — Rook, Pip, June, Holt: talk **E** → quest → recruit AI teammate; extract tax + hotter zone starts
-*   **Campaign Alive** — Radio/static SFX, companion dialogue bubbles, zone retry, campaign victory path, 3 campaign achievements
-*   **Equipment + Heroes** — 6-slot gear sets, scrap-hire Rex/Mira/Doc/Nix/Kira/Voss; press **E**
-*   **Main Menu Ambience** — Silhouette horde, ash/embers, title glitch, emoji button icons (`MenuHordeAmbience.js`)
-*   **Codebase Audit** — 44,609 functional LOC across 144 maintained files (`tools/count_functional_loc.py`, 2026-07-09)
+*   **Custom Cursor System** — Animated pointer with motion ghost trails, spark ember particles, velocity tilt
+*   **Neon Glow Brackets** — Blood-red pulsing hover glow + target corner brackets on buttons
+*   **Click Flash Ring** — Expanding energy ripple on mouse click across all UI screens
+*   **Grab / Grabbing Hand** — Squeezing animation, depth shadows, blood-red fingertip nail accents
+*   **Dynamic Crosshairs** — Center gap separation, dot pips, cardinal ticks, scale-punch hit markers
+
+---
+
+### **🆕 V0.10.1 ALPHA — Custom Cursor System**
+
+*   **Animated Menu Pointer** — Motion ghost trails, spark ember particles, velocity-driven tilt
+*   **Interactive Hover FX** — Pulsing blood-red glow aura + animated bracket target corners on buttons
+*   **Click Flash Ring** — Expanding energy ripple on mouse click across all UI screens
+*   **Grab / Grabbing Hand** — Squeezing animation, depth shadows, blood-red fingertip nail accents
+*   **Dynamic Crosshairs** — Center gap separation, dot pips, cardinal ticks, scale-punch hit markers
+
+---
+
+### **🆕 V0.10.0 ALPHA — VFX & Scrap Update**
+
+*   **Engine + VFX Modernization** — WebGPU bloom + heat haze; typed `PARTICLE_KIND` emitters with per-kind budgets; GPU combat-particle compute; camera-anchored blood pools; explosive fire/ember/shockwave recipes
+*   **Cinematic Post-FX** — Chromatic aberration, animated film grain, vignette, and an explosion/damage white-flash impulse kick
+*   **Muzzle Juice** — Barrel smoke/ember particles + per-frame world point lights; gunfire now lights the arena in WebGPU mode
+*   **Arcade Scrap Depot** — Fixed landmark with multi-offer restock (ammo/medkit/grenade/molotov/armor), wave-scaled prices, stock limits, always-on `D` compass + edge beacon
+*   **Wandering Merchant** — Rare black-market visits on wave breaks (turret, orbital, mystery crate, overclock, scrap magnet, panic nuke, reroll, XP burst); **Gear Crate** drops real equipment
+*   **Equip Drops + Scrap Sink** — Warden/boss loot parity, melee kill gear drops, equipment crates magnet + name label, panel scroll + Shift-click scrap sink
+*   **V0.9.3 Systems Still Live** — Act 1 finale (Z1–4 + Warden), survivor quests, campaign alive, main-menu horde ambience
+*   **V0.9.2 / V0.9.1 / V0.9.0 Still Live** — Equipment + heroes, mobile touch, 93 skills, lazy WebGPU/Socket.IO
 
 ---
 
@@ -189,7 +211,7 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.9.3 ALPHA (Vanilla JS + HTML5 Canvas)
+*   **Engine:** ZOMBS-XFX-NGIN V0.10.0 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
@@ -199,6 +221,6 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.3 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.10.0 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*

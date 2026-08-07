@@ -21,7 +21,7 @@ import { applyWaveRiderBoost } from '../utils/combatUtils.js';
 import { setGameMusicIntensity } from './AudioSystem.js';
 import { shootBullet, handlePlayerZombieCollisions, handlePickupCollisions } from '../utils/combatUtils.js';
 import { handleBulletZombieCollisions } from '../utils/bulletZombieCollisions.js';
-import { updateParticles, drawParticles, updateSnowSystem, PARTICLE_KIND, emit } from './ParticleSystem.js';
+import { updateParticles, drawParticles, updateSnowSystem, PARTICLE_KIND, emit, createParticles } from './ParticleSystem.js';
 import { zombieUpdateSystem } from './ZombieUpdateSystem.js';
 import { pickupSpawnSystem } from './PickupSpawnSystem.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
@@ -296,6 +296,11 @@ export class GameLoopSystem {
                 p.muzzleFlash.intensity = p.muzzleFlash.life / p.muzzleFlash.maxLife;
                 if (p.muzzleFlash.life <= 0) {
                     p.muzzleFlash.active = false;
+                } else if (this.webgpuRenderer?.effects && p.muzzleFlash.intensity > 0.25) {
+                    const mf = p.muzzleFlash;
+                    this.webgpuRenderer.effects.addLight(
+                        mf.x, mf.y, 70, mf.intensity * 1.3, 1.0, 0.78, 0.42
+                    );
                 }
             }
 
@@ -366,6 +371,15 @@ export class GameLoopSystem {
         handlePickupCollisions();
         this._updateEquipmentPickups();
 
+        // Last zombie of the wave — mark it so players don't hunt around (arcade local)
+        if (gameState.zombies.length === 1 && !gameState.isSpawningWave &&
+            gameState.gameMode !== 'campaign' && !gameState.multiplayer.active) {
+            const lastZ = gameState.zombies[0];
+            if (lastZ && lastZ.type !== 'boss' && lastZ.type !== 'warden' && !lastZ.isLastOfWave) {
+                lastZ.isLastOfWave = true;
+            }
+        }
+
         if (gameState.zombies.length === 0 && gameState.gameRunning && !gameState.isSpawningWave) {
             const script = gameState.campaignScript;
             const finaleLock = script && (script.defendActive || script.wardenSpawned || script.actClear || gameState.campaignActClear);
@@ -373,6 +387,33 @@ export class GameLoopSystem {
                 // Hack/defend/Warden owns spawn — don't advance arcade waves
             } else if (!gameState.waveBreakActive) {
                 gameState.waveBreakActive = true;
+                // Perfect Wave — cleared without any player taking a hit (arcade/co-op, local only)
+                if (!gameState.waveDamageTaken && gameState.gameMode !== 'campaign' && !gameState.multiplayer.active) {
+                    gameState.perfectWaveCount++;
+                    gameState.perfectWaveStreak++;
+                    // Consecutive perfect waves scale the bonus (x1/x2/x3 cap)
+                    const streakMult = Math.min(3, gameState.perfectWaveStreak);
+                    const bonusScrap = (25 + Math.min(50, gameState.wave * 5)) * streakMult;
+                    for (let pi = 0; pi < gameState.players.length; pi++) {
+                        const pl = gameState.players[pi];
+                        if (pl.health > 0) pl.scrap = (pl.scrap || 0) + bonusScrap;
+                    }
+                    gameState.scrapCollected += bonusScrap;
+                    gameState.score += bonusScrap;
+                    const pw = gameState.players[0];
+                    if (pw) {
+                        const label = gameState.perfectWaveStreak >= 2 ? `PERFECT WAVE x${gameState.perfectWaveStreak}!` : 'PERFECT WAVE!';
+                        gameState.damageNumbers.push(new DamageNumber(pw.x, pw.y - 62, label, false, '#00e5ff', 24));
+                        gameState.damageNumbers.push(new DamageNumber(pw.x, pw.y - 40, `+${bonusScrap} SCRAP`, false, '#ffd700', 16));
+                        createParticles(pw.x, pw.y, '#00e5ff', 12);
+                    }
+                } else if (gameState.waveDamageTaken) {
+                    gameState.perfectWaveStreak = 0; // streak broken
+                }
+                // Scrap Sweep — wave clear vacuums leftover scrap toward players (local only)
+                if (!gameState.multiplayer.active && gameState.scrapPickups.length > 0) {
+                    gameState.scrapSweepEndTime = Date.now() + 5000;
+                }
                 const breakDuration = getWaveBreakDuration(gameState.wave, {
                     fastClear: wasFastWaveClear(gameState.waveStartTime),
                     rushActive: gameState.waveMutator === 'rush'
@@ -386,6 +427,7 @@ export class GameLoopSystem {
                 worldShopSystem.onWaveBreakEnd();
                 gameState.wave++;
                 gameState.zombiesPerWave += 2;
+                gameState.waveDamageTaken = false; // fresh Perfect Wave window
                 applyWaveRiderBoost(gameState.players);
                 this.spawnZombies(gameState.zombiesPerWave);
             }
@@ -969,7 +1011,7 @@ export class GameLoopSystem {
 
         const isSinglePlayerArcade = isSinglePlayerArcadeMode(gameState);
         let drawX = shrine.x;
-        let drawY = shrine.y - shrine.radius - 8;
+        let drawY = shrine.y - (shrine.tooltipOffset || shrine.radius + 8);
 
         if (isSinglePlayerArcade) {
             const screenPos = cameraSystem.worldToScreen(drawX, drawY);
@@ -988,7 +1030,7 @@ export class GameLoopSystem {
         if (!pos) return;
 
         let drawX = pos.x;
-        let drawY = pos.y - (pos.radius || 20) - 8;
+        let drawY = pos.y - (pos.tooltipOffset || (pos.radius || 20) + 8);
 
         if (isSinglePlayerArcadeMode(gameState)) {
             const screenPos = cameraSystem.worldToScreen(drawX, drawY);

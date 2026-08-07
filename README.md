@@ -37,7 +37,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-FF1744?style=for-the-badge" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.9.3_ALPHA-00C853?style=for-the-badge" alt="Version 0.9.3 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.10.1_ALPHA-00C853?style=for-the-badge" alt="Version 0.10.1 ALPHA" />
   </a>
 </p>
 
@@ -88,6 +88,20 @@ From the **repo root**, build the upload zip with:
 `powershell -NoProfile -ExecutionPolicy Bypass -File ITCH/build-itch.ps1`
 
 This writes **`Zombobs_Web.zip`** and **fails the build** if zip entry paths use Windows backslashes or required files are missing (Explorer / `Compress-Archive` zips break itch’s CDN and cause **403** on all assets). Details: `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md`.
+
+## 🔥 What's New in V0.10.0 ALPHA
+
+### ✨ VFX & Scrap Update
+
+> **AAA-style cinematic FX plus mid-run scrap economy depth**
+
+- **✨ Engine + VFX Modernization** — WebGPU bloom, typed `PARTICLE_KIND` emitters, GPU combat particle compute, camera-anchored blood pools
+- **🌐 Cinematic Post-FX** — Chromatic aberration, animated film grain, vignette, and a damage/explosion white-flash impulse kick
+- **🔫 Muzzle Juice** — Barrel smoke/ember particles + per-frame world point lights; gunfire lights the arena
+- **🏪 Arcade Scrap Depot** — Fixed restock shop with wave-scaled prices + always-on compass beacon
+- **📦 Wandering Merchant** — Rare black-market visits on wave breaks + Gear Crate real-equipment offers
+- **🛡 Equip Drops + Scrap Sink** — Warden/boss loot parity, melee drops, equipment scroll + Shift-click scrap sink
+- **📊 Codebase** — **44,609** functional LOC / **144** files (`tools/count_functional_loc.py`, 2026-07-09)
 
 ## 🔥 What's New in V0.9.3 ALPHA
 

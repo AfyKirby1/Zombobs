@@ -73,6 +73,7 @@ import {
     notifyBootFirstFrame,
     tryDismissBootOverlay,
     isBootOverlayDismissed,
+    isBootOverlayActive,
     reportWebGPUBootPhase
 } from './core/BootLoader.js';
 
@@ -163,9 +164,7 @@ const multiplayerSystem = new MultiplayerSystem(
 const initialFpsLimit = settingsManager.getSetting('video', 'fpsLimit') ?? 0;
 const initialVSync = settingsManager.getSetting('video', 'vsync') ?? true;
 gameEngine.setVSync(initialVSync);
-if (!initialVSync) {
-    gameEngine.setFPSLimit(initialFpsLimit);
-}
+gameEngine.setFPSLimit(initialFpsLimit);
 
 // Initialize Settings Panel
 const settingsPanel = new SettingsPanel(uiCanvas, settingsManager);
@@ -199,6 +198,7 @@ window.addEventListener('resize', () => {
 let WebGPURenderer = null;
 let webgpuRenderer = null;
 let webgpuInitPromise = null;
+let webgpuModulePromise = null;
 // Make renderer globally accessible for GameHUD
 window.webgpuRenderer = webgpuRenderer;
 
@@ -213,14 +213,23 @@ function loadWebGPURendererModule() {
     if (WebGPURenderer) {
         return Promise.resolve(WebGPURenderer);
     }
+    if (webgpuModulePromise) {
+        return webgpuModulePromise;
+    }
 
     perfMark('zombobs:webgpu:module:start');
-    return import('./core/WebGPURenderer.js').then(module => {
+    webgpuModulePromise = import('./core/WebGPURenderer.js').then(module => {
         WebGPURenderer = module.WebGPURenderer;
         perfMark('zombobs:webgpu:module:end');
         perfMeasure('zombobs:webgpu:module-load', 'zombobs:webgpu:module:start', 'zombobs:webgpu:module:end');
         return WebGPURenderer;
     });
+    return webgpuModulePromise;
+}
+
+// Early-prefetch the code-split WebGPU module so its fetch/parse overlaps the rest of bootstrap.
+if ((settingsManager.getSetting('video', 'webgpuEnabled') ?? true) && hasNativeWebGPU()) {
+    loadWebGPURendererModule().catch(() => {});
 }
 
 function scheduleWebGPUInit() {
@@ -378,6 +387,17 @@ function applyWebGPUSettings() {
     webgpuRenderer.setParticleCount(particles);
     const zombobsFX = settingsManager.getSetting('video', 'zombobsFXEnabled') ?? true;
     webgpuRenderer.setZombobsFXEnabled(zombobsFX);
+    const postQuality = settingsManager.getSetting('video', 'postProcessingQuality') ?? 'medium';
+    webgpuRenderer.setPostProcessingQuality(postQuality);
+    webgpuRenderer.setPostFXParameters({
+        chromaticAberration: settingsManager.getSetting('video', 'chromaticAberration') ?? 0.3,
+        filmGrain: settingsManager.getSetting('video', 'filmGrain') ?? 0.05,
+        vignetteEnabled: settingsManager.getSetting('video', 'vignette') !== false,
+        vignetteIntensity: settingsManager.getSetting('video', 'vignetteIntensity') ?? 0.26,
+        impactFlashIntensity: settingsManager.getSetting('video', 'impactFlashIntensity') ?? 0.65,
+        colorGrading: settingsManager.getSetting('video', 'colorGrading') ?? 0.35,
+        scanlineIntensity: settingsManager.getSetting('video', 'scanlineIntensity') ?? 0.025
+    });
 }
 
 // Listen for settings changes and update renderer/systems
@@ -413,22 +433,28 @@ settingsManager.addChangeListener((category, key, value) => {
         // Handle VSync and FPS limit (affects all rendering)
         if (key === 'vsync') {
             gameEngine.setVSync(value);
+            gameEngine.setFPSLimit(settingsManager.getSetting('video', 'fpsLimit') ?? 0);
         }
         if (key === 'fpsLimit') {
-            // Only apply FPS limit if VSync is disabled
-            const vsyncEnabled = settingsManager.getSetting('video', 'vsync') ?? true;
-            if (!vsyncEnabled) {
-                gameEngine.setFPSLimit(value);
-            }
+            gameEngine.setFPSLimit(value);
         }
 
         // Handle WebGPU enabled/disabled toggle
         if (key === 'webgpuEnabled') {
             if (value) {
-                ensureWebGPUInit();
+                const initPromise = ensureWebGPUInit();
+                if (initPromise) {
+                    Promise.resolve(initPromise).then(() => applyWebGPUSettings());
+                }
             }
             // Update gpuCanvas visibility when WebGPU setting changes
             updateGpuCanvasVisibility();
+        }
+
+        // Presets are stored atomically before their notifications fire, so one
+        // full apply here synchronizes every renderer knob in a single frame.
+        if (key === 'qualityPreset' && isWebGPUActive()) {
+            applyWebGPUSettings();
         }
 
         // WebGPU-specific settings (only apply if WebGPU is active)
@@ -447,6 +473,22 @@ settingsManager.addChangeListener((category, key, value) => {
             }
             if (key === 'particleCount') {
                 webgpuRenderer.setParticleCount(value);
+            }
+            if (key === 'postProcessingQuality') {
+                webgpuRenderer.setPostProcessingQuality(value);
+            }
+            if (key === 'vignette' || key === 'chromaticAberration' || key === 'filmGrain'
+                || key === 'vignetteIntensity' || key === 'impactFlashIntensity'
+                || key === 'colorGrading' || key === 'scanlineIntensity') {
+                webgpuRenderer.setPostFXParameters({
+                    chromaticAberration: settingsManager.getSetting('video', 'chromaticAberration'),
+                    filmGrain: settingsManager.getSetting('video', 'filmGrain'),
+                    vignetteEnabled: settingsManager.getSetting('video', 'vignette') !== false,
+                    vignetteIntensity: settingsManager.getSetting('video', 'vignetteIntensity'),
+                    impactFlashIntensity: settingsManager.getSetting('video', 'impactFlashIntensity'),
+                    colorGrading: settingsManager.getSetting('video', 'colorGrading'),
+                    scanlineIntensity: settingsManager.getSetting('video', 'scanlineIntensity')
+                });
             }
         }
 
@@ -795,6 +837,8 @@ gameEngine.draw = () => {
 
 // Event Listeners
 function handleMenuInteraction(clickX, clickY, opts = {}) {
+    if (isBootOverlayActive()) return; // Loading screen still up (incl. fade-out) — ignore clicks
+    if (gameHUD.screenFade) return; // Mid-transition — ignore clicks
     if (gameState.showSettingsPanel) {
         settingsPanel.handleClick(clickX, clickY);
         return;
@@ -1045,10 +1089,14 @@ function handleMenuInteraction(clickX, clickY, opts = {}) {
             gameState.particles = [];
             if (isWebGPUActive() && webgpuRenderer.resetSnow) webgpuRenderer.resetSnow();
         } else if (clickedButton === 'gameover_menu') {
-            restartGame();
+            gameHUD.startScreenFade(320, true, () => {
+                restartGame();
+            });
             gameState.particles = [];
         } else if (clickedButton === 'gameover_retry') {
-            gameStateManager.retryCampaignZone();
+            gameHUD.startScreenFade(320, true, () => {
+                gameStateManager.retryCampaignZone();
+            });
             gameState.particles = [];
         } else if (clickedButton === 'gameover_copy') {
             if (gameHUD.gameOverScreen) gameHUD.gameOverScreen.copyReportToClipboard();
@@ -1065,7 +1113,11 @@ function handleMenuInteraction(clickX, clickY, opts = {}) {
             gameState.showSettingsPanel = true;
             settingsPanel.open();
             playerProfileSystem.trackSettingsVisit();
-        } else if (clickedButton === 'pause_menu') restartGame();
+        } else if (clickedButton === 'pause_menu') {
+            gameHUD.startScreenFade(320, true, () => {
+                restartGame();
+            });
+        }
         return;
     }
 }
@@ -1266,16 +1318,33 @@ function getCanvasMousePos(e) {
     return { x, y };
 }
 
+function getUiMousePos(e) {
+    if (!uiCanvas) return getCanvasMousePos(e);
+    const rect = uiCanvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left) * (uiCanvas.width / rect.width),
+        y: (e.clientY - rect.top) * (uiCanvas.height / rect.height)
+    };
+}
+
+function isUiPointerMode() {
+    return gameState.showSettingsPanel || gameState.showMainMenu || gameState.showLobby
+        || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery
+        || gameState.showAbout || gameState.showLevelUp || gameState.showEquipment
+        || gameState.gamePaused || gameHUD.gameOver;
+}
+
 // Use window for mouse events to ensure we catch them even if uiCanvas blocks canvas
 window.addEventListener('mousemove', (e) => {
     inputSourceState.active = 'mouse';
 
-    const pos = getCanvasMousePos(e);
+    const pos = isUiPointerMode() ? getUiMousePos(e) : getCanvasMousePos(e);
     mouse.x = pos.x;
     mouse.y = pos.y;
 
     // Always update GameHUD mouse position so cursor works even when Settings Panel blocks normal updateMenuHover
     if (gameHUD) {
+        gameHUD.mouseInside = true;
         gameHUD.mouseX = mouse.x;
         gameHUD.mouseY = mouse.y;
     }
@@ -1310,10 +1379,13 @@ window.addEventListener('mousedown', (e) => {
 
     inputSourceState.active = 'mouse';
 
-    const pos = getCanvasMousePos(e);
+    const pos = isUiPointerMode() ? getUiMousePos(e) : getCanvasMousePos(e);
 
     // Use common handler for all menu interactions
     handleMenuInteraction(pos.x, pos.y, { shiftKey: e.shiftKey });
+
+    // Trigger cursor click-ring FX
+    if (gameHUD.cursorClickFlash) gameHUD.cursorClickFlash();
 
     // Gameplay Mouse Input (Shooting / Melee)
     // Only process if not on a menu screen
@@ -1349,6 +1421,7 @@ window.addEventListener('blur', () => {
 
 window.addEventListener('mouseleave', () => {
     mouse.isDown = false;
+    if (gameHUD) gameHUD.mouseInside = false;
     if (gameHUD?.newsTickerDragging) {
         gameHUD.endNewsTickerDrag();
     }
@@ -1493,6 +1566,9 @@ window.addEventListener('touchstart', (e) => {
         // Prevent default to avoid generating a specialized "click" event later (ghost click)
         if (e.cancelable) e.preventDefault();
 
+        mouse.x = uiPos.x;
+        mouse.y = uiPos.y;
+
         // Use UI Coords for Menus
         handleMenuInteraction(uiPos.x, uiPos.y);
 
@@ -1585,7 +1661,9 @@ window.addEventListener('touchmove', (e) => {
     // Settings Panel Dragging (Sliders, Scrollbar)
     if (gameState.showSettingsPanel) {
         if (e.cancelable) e.preventDefault(); // Critical for preventing scroll while dragging sliders
-        settingsPanel.handleMouseMove(mouse.x, mouse.y);
+        mouse.x = uiPos.x;
+        mouse.y = uiPos.y;
+        settingsPanel.handleMouseMove(uiPos.x, uiPos.y);
         return;
     }
 
@@ -1663,12 +1741,52 @@ if (bootWebgpuEnabled && hasNativeWebGPU()) {
     setBootWebGPUMode(true);
     setBootSubstatus('Requesting GPU adapter · WGSL pipeline');
     webgpuInitStarted = true;
-    scheduleWebGPUInit()
-        .then(() => notifyWebGPUBootReady())
-        .catch(() => notifyWebGPUBootReady());
+    // `requestAdapter()`/`requestDevice()` can hang instead of rejecting (leaked device
+    // from a previous document, driver stall). Release the boot gate on a timeout so the
+    // menu always appears; GPU init keeps running and applies when it lands.
+    const BOOT_GPU_GATE_TIMEOUT_MS = 6000;
+    const gpuGateTimer = window.setTimeout(() => {
+        console.warn('WebGPU boot gate timed out — continuing to menu without GPU warm-up');
+        notifyWebGPUBootReady();
+    }, BOOT_GPU_GATE_TIMEOUT_MS);
+    const releaseGpuGate = () => {
+        window.clearTimeout(gpuGateTimer);
+        notifyWebGPUBootReady();
+    };
+    scheduleWebGPUInit().then(releaseGpuGate).catch(releaseGpuGate);
 } else {
     skipWebGPUBootGate();
 }
+
+// Reload/navigation teardown. A mid-run reload used to leave the WebGPU device and
+// the multiplayer socket alive, which stalled the next document's GPU init and left
+// the boot gate unsatisfied (stale frame on screen, no menu, no error).
+let teardownDone = false;
+function teardownRuntime() {
+    if (teardownDone) return;
+    teardownDone = true;
+
+    try {
+        gameEngine.stop();
+    } catch (error) {
+        console.warn('Teardown: engine stop failed', error);
+    }
+
+    try {
+        webgpuRenderer?.destroy?.();
+    } catch (error) {
+        console.warn('Teardown: WebGPU destroy failed', error);
+    }
+
+    try {
+        gameState.multiplayer?.socket?.disconnect?.();
+    } catch (error) {
+        console.warn('Teardown: socket disconnect failed', error);
+    }
+}
+
+window.addEventListener('pagehide', teardownRuntime);
+window.addEventListener('beforeunload', teardownRuntime);
 
 requestAnimationFrame(() => {
     perfMark('zombobs:game-loop:start');

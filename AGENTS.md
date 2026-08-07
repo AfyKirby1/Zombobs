@@ -6,7 +6,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 Zombobs is a top-down zombie survival shooter built entirely with **vanilla JavaScript (ES6+)**, HTML5 Canvas 2D, and WebGPU. **Zero external runtime dependencies** on the client — no frameworks, no bundlers, no build step. The multiplayer server uses Node.js + Express + Socket.IO.
 
-Version: **V0.9.3 ALPHA**. Proprietary/closed-source license. Codebase scale: **~44,609 functional LOC** across **144** maintained files (JS **~39,065** / **107** files) per `tools/count_functional_loc.py` (2026-07-09).
+Version: **V0.10.0 ALPHA**. Proprietary/closed-source license. Codebase scale: **~44,609 functional LOC** across **144** maintained files (JS **~39,065** / **107** files) per `tools/count_functional_loc.py` (2026-07-09).
 
 **Game modes:** Arcade (wave survival arena), Campaign Act 1 (**Zones 1–4** playable: Crash Site → Maintenance Tunnels → Switching Yard → Control Tower + **The Warden**), Co-op, Multiplayer.
 
@@ -52,14 +52,16 @@ Requires JDK 17 or 19, Gradle 8.13.
 ```
 
 ### No Test Suite
-There is no automated test runner or linting configuration. Validation is manual browser testing.
+There is no full automated test runner or linting configuration. Validation is primarily manual browser testing. Lightweight checks:
+- `.\test-syntax.ps1` — `node --check` on all `js/**/*.js`
+- `node tools/vfx_smoke_test.mjs` — pure-logic particle/RGBA/explosion-stage smoke tests (no Canvas/WebGPU)
 
 ## Architecture
 
 ### Rendering Pipeline — Three Canvases
 The game uses three stacked `<canvas>` elements (defined in `index.html`):
-1. **`gpuCanvas`** — WebGPU background shaders, bloom, ZombobsFX spore cloud (bottom layer)
-2. **`gameCanvas`** (id=`gameCanvas`) — Main Canvas 2D gameplay: entities, particles, ground
+1. **`gameCanvas`** (id=`gameCanvas`) — Main Canvas 2D gameplay: ground, entities, props (`z-index: 1`)
+2. **`gpuCanvas`** — WebGPU **FX overlay** (`z-index: 2`, transparent): soft game particles, ZombobsFX spore cloud (~25k), flashlight cone, blood-edge, bloom/post-FX, point lights — **not** a background under the world
 3. **`uiCanvas`** — All UI: HUD, menus, settings, lobbies, game over (top layer, captures pointer events)
 
 `uiCanvas` is separate from the game canvas and handles all interactive UI. Pointer events are toggled on/off based on active UI state.
@@ -90,11 +92,13 @@ All JS uses native `import`/`export`. No webpack, no vite, no transpilation. Fil
 | Directory | Purpose |
 |---|---|
 | `js/core/` | Constants (`GAME_VERSION`, `VERSION_HISTORY`, `NEWS_UPDATES`), canvas init, gameState, GameEngine, BootLoader, WebGPURenderer, ZombobsFX; definitions: skills/trees/synergies, equipment, heroes, survivors, achievements, badges, battlepass, ranks |
+| `js/shaders/` | Extracted WGSL as JS string exports (`bloom.js`, `gameParticles.js`, `coneLight.js`, `bloodEdge.js`, `zombobsFX.js`, `combatParticles.js`, `bloodAndLights.js`, `uniforms.js`) — no bundler; imported by WebGPU hosts |
 | `js/entities/` | Entity classes: Zombie (11 variants + Shard minions + Boss + **WardenBoss**; see `DOCS/ENEMY_TYPES.md`), Bullet, Particle, Pickup, Grenade, Molotov, Shell, AcidProjectile, AcidPool, Prop, ScrapPickup, ScrapShrine, **ScrapDepot**, **WanderingMerchant**, EquipmentPickup, SentryTurret, OrbitalStrikeBeacon |
 | `js/systems/` | Self-contained systems: **GameLoopSystem**, Audio, Particle, Camera, Input, Settings, Skill, Rank, Achievement, Battlepass, Badge, Multiplayer, ZombieSpawn, ZombieUpdate, PlayerSystem, PlayerRenderer, EntityRender, PropSpawn, PropRender, GroundTexture, BloodSimulation, Melee, PickupSpawn, GameStateManager, ArcadeMusic, TouchControl, ScrapShop, **WorldShop**, Equipment, WaveChaos, Graphics, RenderingCache, PlayerProfile, **MapLoader** (campaign) |
+| `js/systems/vfx/` | Post-FX + GPU extras: `PostFXPass.js` (bloom extract/blur/composite + heat haze), `WebGPUEffects.js` (combat compute particles, point lights, blood soft discs), `DecalSystem.js` (blood/scorch stamps) |
 | `js/maps/` | Static campaign zones for `MapLoader`: `crashSite.js` (Z1), `maintenanceTunnels.js` (Z2), `switchingYard.js` (Z3), `controlTower.js` (Z4 finale) |
 | `js/ui/` | Canvas-drawn UI: GameHUD, SettingsPanel, MainMenuScreen, LobbyScreen, CoopLobbyScreen, GameOverScreen, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, EquipmentScreen, GalleryScreen, LevelUpScreen, VersionModal, CampaignIntroScreen, etc. Main-menu ambient FX: `MenuHordeAmbience.js`, `MenuHandHorrorEffect.js`, `MenuMetalGunshotEffect.js` |
-| `js/utils/` | Pure functions: combatUtils, gameUtils, drawingUtils, arrayUtils, bulletZombieCollisions, mapCollisionUtils, **scrapOfferUtils**, Quadtree, ObjectPool, ChunkManager |
+| `js/utils/` | Pure functions: combatUtils, gameUtils, drawingUtils, arrayUtils, bulletZombieCollisions, mapCollisionUtils, **scrapOfferUtils**, **colorParse** (`PARTICLE_KIND`), Quadtree, ObjectPool, ChunkManager |
 | `js/companions/` | `CompanionSystem.js` (hireable heroes + survivor recruits), `CompanionDialogue.js` (speech bubbles) |
 | `js/vendor/` | Vendored `socket.io.min.js` (avoids itch.io CSP blocking) |
 
@@ -117,11 +121,11 @@ All user settings persist to `localStorage`. Read via `settingsManager.getSettin
 ### Canvas UI Convention
 All menus and HUD are drawn on `uiCanvas` using Canvas 2D API (no DOM elements for gameplay UI). Shared drawing helpers live in `js/ui/GameHUD.js` (`drawMenuButton`, `drawGlassCard`, `getUIScale`) and `js/utils/drawingUtils.js`. Canvas UI uses a standard color palette defined in `DOCS/STYLE_GUIDE.md`.
 
-### WebGPU (`js/core/WebGPURenderer.js` + `js/core/ZombobsFX.js`)
-Optional GPU-accelerated layer. Gracefully falls back to Canvas 2D. Renders: procedural background shader, bloom post-processing, ZombobsFX (100k particle spore cloud), and synced game particles. Controlled by settings; dirty-flag system for uniform buffer efficiency.
+### WebGPU (`js/core/WebGPURenderer.js` + `js/core/ZombobsFX.js` + `js/systems/vfx/*` + `js/shaders/*`)
+Optional **transparent FX overlay** on `#gpuCanvas` (above Canvas2D world). Graceful Canvas2D fallback. Ships: real multi-pass bloom (`PostFXPass` — extract/blur/composite + chromatic aberration / grain / vignette / impulse), heat haze, ZombobsFX spore cloud (**~25k** default, not 100k), CPU→GPU synced soft game particles (`PARTICLE_KIND` soft-falloff), flashlight cone (`coneLight.js` — avoid URL names with `flash` for adblock), blood-edge injury overlay, GPU combat particle compute + ≤16 point lights + blood soft discs (`WebGPUEffects`). WGSL lives in `js/shaders/*.js` string exports. Dirty-flag uniforms + buffer reuse. Dynamic `import()` of `WebGPURenderer` at boot/warm-up.
 
 ### Boot Loader (`js/core/BootLoader.js`)
-Gated `#boot-overlay` on `index.html` masks startup + WebGPU compile/buffer lag. Dismiss requires **first menu frame** + **WebGPU init** (gate skipped when GPU off/unavailable), then **3-frame settle** + min 500ms before fade. Progress creep between stages; stall UI at 5s/10s; 20s failsafe. `WebGPURenderer.init({ onPhase })` reports `adapter` → `device` → `shaders` → `pipelines` → `done` to `reportWebGPUBootPhase()`. Inline critical CSS in `index.html` renders before `style.css`. Key files: `BootLoader.js`, `WebGPURenderer.js`, `main.js`, `index.html`, `css/style.css`.
+Gated `#boot-overlay` on `index.html` masks startup + WebGPU compile/buffer lag. Dismiss requires **first menu frame** + **WebGPU init** (gate skipped when GPU off/unavailable), then **3-frame settle** + min display before fade. Progress creep between stages; stall UI at 5s/10s; 20s failsafe. `WebGPURenderer.init({ onPhase })` reports `adapter` → `device` → `shaders` → `pipelines` → `done` to `reportWebGPUBootPhase()`. Inline critical CSS in `index.html` renders before `style.css`. Key files: `BootLoader.js`, `WebGPURenderer.js`, `main.js`, `index.html`, `css/style.css`.
 
 ### Main Menu Ambience (`js/ui/MenuHordeAmbience.js`)
 Canvas2D ambient layer for main menu: depth-sorted silhouette horde, ash/embers, ground fog. Owned by `MainMenuScreen.js`; resets on `GameHUD.showMainMenu()`. Stacks under hand-horror + metal gunshot FX. Mobile uses lower walker caps. Flavor pass also adds title pulse/RGB glitch, rotating subtitles, button emoji icons, floating glyphs.
@@ -179,7 +183,7 @@ Status docs live in `DOCS/` (all files carry `<!-- PRESERVATION RULE: Never dele
 - **Viewport culling**: All entity rendering checks against viewport bounds (`getViewportBounds()`, `isInViewport()`). Update culling uses a larger 300px margin.
 - **World-space camera** (single player arcade + campaign): `cameraSystem` follows the player; ground texture, props, and entity rendering offset by camera position. Co-op and multiplayer use screen-space.
 - **Campaign vs arcade**: Check `gameState.gameMode` and helpers in `gameUtils.js` (`isSinglePlayerArcadeMode()`, `isGameplayBlocked()`). Campaign spawns, bosses, and victory flow differ from arcade.
-- **Version strings**: Update `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` (prepend), and `NEWS_UPDATES` in `js/core/constants.js` together with `LOCAL_SERVER/package.json` and `huggingface-space-SERVER/package.json`. `launch.ps1` reads version from `LOCAL_SERVER/package.json` (no hardcode). Main-menu badge, About screen, and `VersionModal` read from constants — do not hardcode. Full checklist: `DOCS/VERSION_UPDATE_CHECKLIST.md` (includes `landing.html`, itch copy, `mobile/www`).
+- **Version strings**: Update `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` (prepend), and `NEWS_UPDATES` in `js/core/constants.js` together with `LOCAL_SERVER/package.json` and `huggingface-space-SERVER/package.json`. `launch.ps1` reads version from `LOCAL_SERVER/package.json` (no hardcode). Main-menu badge, About screen, and `VersionModal` read from constants — do not hardcode. Full checklist: `DOCS/VERSION_UPDATE_CHECKLIST.md` and automated skill `.agents/skills/version-update-flow/SKILL.md` (includes `landing.html`, itch copy, `mobile/www`).
 - **Global exposure**: Systems needing cross-module access are assigned to `window.*` in `main.js`. This is intentional — don't refactor to remove these without a replacement pattern.
 
 ## Agent Behavior Charter (META v2.0)

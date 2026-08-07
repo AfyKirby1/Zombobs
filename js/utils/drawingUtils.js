@@ -84,7 +84,13 @@ export function drawCrosshair(mouse) {
     }
 
     ctx.save();
-    
+
+    // Subtle drop shadow so the crosshair stays visible on bright backgrounds
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
     // Get crosshair settings
     const crosshairColorHex = settingsManager.getSetting('video', 'crosshairColor') || '#00ff00';
     const crosshairSizeMult = settingsManager.getSetting('video', 'crosshairSize') ?? 1.0;
@@ -132,115 +138,178 @@ export function drawCrosshair(mouse) {
 
     // Draw based on style
     if (crosshairStyle === 'dot') {
-        // Simple dot crosshair
+        // ── Premium dot crosshair ──
+        // Outer ring
+        ctx.strokeStyle = crosshairOutlineColor;
+        ctx.lineWidth = crosshairLineWidth + 1.5;
+        ctx.beginPath();
+        ctx.arc(crosshairX, crosshairY, 5 * crosshairSizeMult, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner filled dot
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(crosshairX, crosshairY, 3, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 3 * crosshairSizeMult, 0, Math.PI * 2);
         ctx.fill();
 
-        // Outline
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // Bright center pip
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = crosshairOpacity * 0.6;
+        ctx.beginPath();
+        ctx.arc(crosshairX - 0.5, crosshairY - 0.5, 1 * crosshairSizeMult, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
     } else if (crosshairStyle === 'circle') {
-        // Circle crosshair
+        // ── Premium circle crosshair ──
+        const gap = 3 * crosshairSizeMult;
+
+        // Outline ring
         ctx.strokeStyle = crosshairOutlineColor;
         ctx.lineWidth = crosshairLineWidth + 2;
         ctx.beginPath();
         ctx.arc(crosshairX, crosshairY, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
 
+        // Colored ring
         ctx.strokeStyle = crosshairColorCurrent;
         ctx.lineWidth = crosshairLineWidth;
         ctx.beginPath();
         ctx.arc(crosshairX, crosshairY, crosshairSize, 0, Math.PI * 2);
         ctx.stroke();
+
+        // Four cardinal tick marks (inside the circle)
+        ctx.strokeStyle = crosshairColorCurrent;
+        ctx.lineWidth = crosshairLineWidth;
+        ctx.lineCap = 'round';
+        const innerTick = crosshairSize * 0.55;
+        const outerTick = crosshairSize * 0.85;
+        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        for (const [dx, dy] of dirs) {
+            // Outline
+            ctx.strokeStyle = crosshairOutlineColor;
+            ctx.lineWidth = crosshairLineWidth + 2;
+            ctx.beginPath();
+            ctx.moveTo(crosshairX + dx * innerTick, crosshairY + dy * innerTick);
+            ctx.lineTo(crosshairX + dx * outerTick, crosshairY + dy * outerTick);
+            ctx.stroke();
+            // Fill
+            ctx.strokeStyle = crosshairColorCurrent;
+            ctx.lineWidth = crosshairLineWidth;
+            ctx.beginPath();
+            ctx.moveTo(crosshairX + dx * innerTick, crosshairY + dy * innerTick);
+            ctx.lineTo(crosshairX + dx * outerTick, crosshairY + dy * outerTick);
+            ctx.stroke();
+        }
 
         // Center dot
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(crosshairX, crosshairY, 1.5, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 1.8 * crosshairSizeMult, 0, Math.PI * 2);
         ctx.fill();
+
     } else if (crosshairStyle === 'cross') {
-        // Simple cross (no center dot)
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = crosshairLineWidth + 2;
+        // ── Premium cross (no center dot, gapped) ──
+        const gap = 3 * crosshairSizeMult;
         ctx.lineCap = 'round';
 
-        ctx.beginPath();
-        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
-        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
-        ctx.stroke();
+        // Four arms with gap
+        const arms = [
+            [crosshairX - crosshairSize, crosshairY, crosshairX - gap, crosshairY],
+            [crosshairX + gap, crosshairY, crosshairX + crosshairSize, crosshairY],
+            [crosshairX, crosshairY - crosshairSize, crosshairX, crosshairY - gap],
+            [crosshairX, crosshairY + gap, crosshairX, crosshairY + crosshairSize],
+        ];
 
-        ctx.beginPath();
-        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
-        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
-        ctx.stroke();
+        for (const [x1, y1, x2, y2] of arms) {
+            // Outline
+            ctx.strokeStyle = crosshairOutlineColor;
+            ctx.lineWidth = crosshairLineWidth + 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            // Fill
+            ctx.strokeStyle = crosshairColorCurrent;
+            ctx.lineWidth = crosshairLineWidth;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
 
-        ctx.strokeStyle = crosshairColorCurrent;
-        ctx.lineWidth = crosshairLineWidth;
-
-        ctx.beginPath();
-        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
-        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
-        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
-        ctx.stroke();
     } else {
-        // Default: cross with center dot
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = crosshairLineWidth + 2;
+        // ── Default: cross with center dot, gapped arms ──
+        const gap = 3 * crosshairSizeMult;
         ctx.lineCap = 'round';
 
+        // Four arms with gap
+        const arms = [
+            [crosshairX - crosshairSize, crosshairY, crosshairX - gap, crosshairY],
+            [crosshairX + gap, crosshairY, crosshairX + crosshairSize, crosshairY],
+            [crosshairX, crosshairY - crosshairSize, crosshairX, crosshairY - gap],
+            [crosshairX, crosshairY + gap, crosshairX, crosshairY + crosshairSize],
+        ];
+
+        for (const [x1, y1, x2, y2] of arms) {
+            // Outline
+            ctx.strokeStyle = crosshairOutlineColor;
+            ctx.lineWidth = crosshairLineWidth + 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            // Fill
+            ctx.strokeStyle = crosshairColorCurrent;
+            ctx.lineWidth = crosshairLineWidth;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        // Center dot
+        ctx.fillStyle = crosshairOutlineColor;
         ctx.beginPath();
-        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
-        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
-        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
-        ctx.stroke();
-
-        ctx.strokeStyle = crosshairColorCurrent;
-        ctx.lineWidth = crosshairLineWidth;
-
-        ctx.beginPath();
-        ctx.moveTo(crosshairX - crosshairSize, crosshairY);
-        ctx.lineTo(crosshairX + crosshairSize, crosshairY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(crosshairX, crosshairY - crosshairSize);
-        ctx.lineTo(crosshairX, crosshairY + crosshairSize);
-        ctx.stroke();
-
+        ctx.arc(crosshairX, crosshairY, 2.5 * crosshairSizeMult, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = crosshairColorCurrent;
         ctx.beginPath();
-        ctx.arc(crosshairX, crosshairY, 1.5, 0, Math.PI * 2);
+        ctx.arc(crosshairX, crosshairY, 1.5 * crosshairSizeMult, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Draw hit marker (X) when hit occurs
+    // ── Hit marker (animated X with scale punch) ──
     if (gameState.hitMarker.active) {
         const alpha = gameState.hitMarker.life / gameState.hitMarker.maxLife;
-        const markerSize = 8;
-        const markerColor = `rgba(255, 255, 0, ${alpha})`;
+        const punch = 1 + (1 - alpha) * 0.4; // scale punch outward as it fades
+        const markerSize = 8 * punch;
 
-        ctx.strokeStyle = markerColor;
-        ctx.lineWidth = 2;
+        ctx.save();
+        ctx.translate(crosshairX, crosshairY);
+        ctx.rotate(alpha * 0.15); // tiny spin for kinetic feel
+
+        // Glow
+        ctx.shadowColor = `rgba(255, 255, 0, ${alpha * 0.6})`;
+        ctx.shadowBlur = 6;
+
+        // White core → yellow fade
+        const mr = Math.round(255);
+        const mg = Math.round(255);
+        const mb = Math.round(255 - (1 - alpha) * 255);
+        ctx.strokeStyle = `rgba(${mr}, ${mg}, ${mb}, ${alpha})`;
+        ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
 
-        // Draw X
         ctx.beginPath();
-        ctx.moveTo(crosshairX - markerSize, crosshairY - markerSize);
-        ctx.lineTo(crosshairX + markerSize, crosshairY + markerSize);
-        ctx.moveTo(crosshairX + markerSize, crosshairY - markerSize);
-        ctx.lineTo(crosshairX - markerSize, crosshairY + markerSize);
+        ctx.moveTo(-markerSize, -markerSize);
+        ctx.lineTo(markerSize, markerSize);
+        ctx.moveTo(markerSize, -markerSize);
+        ctx.lineTo(-markerSize, markerSize);
         ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.restore();
     }
 
     ctx.restore();

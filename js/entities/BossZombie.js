@@ -117,6 +117,21 @@ export class BossZombie extends Zombie {
         const pulse = Math.sin(Date.now() / 200) * 0.2 + 0.8;
         const rage = this.bossRushPhase || 0;
         const auraSize = this.radius * (1.5 + rage * 0.24) * pulse;
+
+        if (settingsManager.getSetting('video', 'shadows') !== false) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(
+                this.x + this.radius * 0.12,
+                this.y + this.radius * 1.15,
+                this.radius * 1.35,
+                this.radius * 0.48,
+                0,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
         
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -155,29 +170,94 @@ export class BossZombie extends Zombie {
             ctx.setLineDash([]);
         }
 
-        // Body
-        const bodyGradient = ctx.createRadialGradient(-this.radius/3, -this.radius/3, 0, 0, 0, this.radius);
+        // Articulated brute arms establish a broad silhouette behind the body.
+        const armSwing = Math.sin(Date.now() / 260 + this.animSeed) * this.radius * 0.08;
+        for (let side = -1; side <= 1; side += 2) {
+            ctx.strokeStyle = this.color.dark;
+            ctx.lineWidth = this.radius * 0.34;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(side * this.radius * 0.72, this.radius * 0.18);
+            ctx.quadraticCurveTo(
+                side * this.radius * 1.24,
+                this.radius * 0.58 + armSwing * side,
+                side * this.radius * 1.05,
+                this.radius * 1.18
+            );
+            ctx.stroke();
+            this.drawClawedHand(
+                ctx,
+                side * this.radius * 1.05,
+                this.radius * 1.24,
+                this.radius / 19,
+                this.color.light,
+                side * -0.2
+            );
+        }
+
+        // Separate torso and skull forms replace the old single-circle model.
+        const bodyGradient = ctx.createRadialGradient(
+            -this.radius * 0.35,
+            -this.radius * 0.28,
+            0,
+            0,
+            this.radius * 0.15,
+            this.radius * 1.25
+        );
         bodyGradient.addColorStop(0, this.color.light);
+        bodyGradient.addColorStop(0.5, '#65040b');
         bodyGradient.addColorStop(1, this.color.dark);
         ctx.fillStyle = bodyGradient;
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.ellipse(0, this.radius * 0.28, this.radius * 1.08, this.radius * 1.22, 0, 0, Math.PI * 2);
         ctx.fill();
-
-        // Outline
         ctx.strokeStyle = this.color.outline;
         ctx.lineWidth = 3;
         ctx.stroke();
 
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -this.radius * 0.28, this.radius * 0.82, this.radius * 0.76, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        this.drawOrganicModelDetails(ctx, 0, -this.radius * 0.28, this.radius * 0.82, {
+            torsoOffsetY: 9,
+            torsoRx: 1.32,
+            torsoRy: 1.5,
+            rimColor: 'rgba(255, 125, 105, 0.28)',
+            boneColor: 'rgba(255, 175, 145, 0.35)',
+            woundColor: 'rgba(55, 0, 0, 0.9)'
+        });
+        this.drawTypeModelDetails(ctx, 0, 0, this.radius, 'boss');
+        this.drawFaceFeatures(ctx, 0, -this.radius * 0.28, this.radius * 0.72, {
+            mouthColor: '#270003',
+            toothColor: '#f2d6a2',
+            woundColor: 'rgba(35, 0, 0, 0.9)'
+        });
+
         // Eyes (Glowing yellow)
         ctx.fillStyle = '#ffff00';
         ctx.shadowColor = '#ffff00';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = rage === 2 ? 22 : 14;
         ctx.beginPath();
-        ctx.arc(-this.radius * 0.3, -this.radius * 0.2, 6, 0, Math.PI * 2);
-        ctx.arc(this.radius * 0.3, -this.radius * 0.2, 6, 0, Math.PI * 2);
+        ctx.ellipse(-this.radius * 0.24, -this.radius * 0.38, 6, 4.5, -0.12, 0, Math.PI * 2);
+        ctx.ellipse(this.radius * 0.24, -this.radius * 0.38, 6, 4.5, 0.12, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
+
+        // Boss-rush phase shackles heat up as the encounter escalates.
+        if (rage > 0) {
+            ctx.strokeStyle = rage === 2 ? '#ff5252' : '#ff9800';
+            ctx.lineWidth = 3;
+            for (let side = -1; side <= 1; side += 2) {
+                ctx.beginPath();
+                ctx.arc(side * this.radius * 0.98, this.radius * 0.82, this.radius * 0.18, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        this.drawHitReactFlash(ctx, 0, -this.radius * 0.12, this.radius);
 
         ctx.restore();
         

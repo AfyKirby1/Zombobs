@@ -62,7 +62,7 @@
         .boot-overlay.boot-overlay--done {
             opacity: 0;
             visibility: hidden;
-            pointer-events: none;
+            /* NO pointer-events: none — keeps swallowing clicks during the fade so menu buttons can't be triggered */
         }
 
         .boot-overlay__inner {

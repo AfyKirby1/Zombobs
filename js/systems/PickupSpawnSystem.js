@@ -67,6 +67,10 @@ export class PickupSpawnSystem {
         if (gameState.scrapMagnetEndTime && now < gameState.scrapMagnetEndTime) {
             maxMagnetBonus += MERCHANT_SCRAP_MAGNET_RANGE_BONUS;
         }
+        // Scrap Sweep — wave clear vacuums leftover scrap from across the arena
+        if (gameState.scrapSweepEndTime && now < gameState.scrapSweepEndTime) {
+            maxMagnetBonus += 900;
+        }
         const magnetRange = SCRAP_MAGNETIC_RANGE + maxMagnetBonus;
         const magnetRangeSq = magnetRange * magnetRange;
 
@@ -116,6 +120,21 @@ export class PickupSpawnSystem {
         scrap.value = value;
         gameState.scrapPickups.push(scrap);
         return scrap;
+    }
+
+    /**
+     * Golden Zombie death — burst of 5-7 scrap pickups in a ring
+     * @param {Object} gameState
+     * @param {number} x
+     * @param {number} y
+     */
+    spawnGoldenScrapBurst(gameState, x, y) {
+        const count = 5 + Math.floor(Math.random() * 3); // 5-7
+        for (let i = 0; i < count; i++) {
+            const ang = (Math.PI * 2 * i) / count + Math.random() * 0.6;
+            const dist = 14 + Math.random() * 26;
+            this.spawnScrapAt(gameState, x + Math.cos(ang) * dist, y + Math.sin(ang) * dist, SCRAP_VALUE);
+        }
     }
 
     /**

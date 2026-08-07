@@ -1,4 +1,4 @@
-import { ctx } from '../core/canvas.js';
+import { ctx, getUiDensityScale } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
 import { cameraSystem } from '../systems/CameraSystem.js';
 import { BossHealthBar } from './BossHealthBar.js';
@@ -60,6 +60,8 @@ export class GameHUD {
         this.lobbyEnterTime = null; // Track when lobby was entered for fade-in animations
         this.lastLobbyState = false; // Track previous lobby state to reset animation
         this.sessionPrep = null;
+        this.mouseInside = true; // Set false when the pointer leaves the window
+        this.screenFade = null; // Full-screen transition fade
         // News ticker drag state - now managed by MainMenuScreen, but expose for backward compatibility
         Object.defineProperty(this, 'newsTickerDragging', {
             get: () => this.mainMenuScreen?.newsTickerDragging || false
@@ -71,6 +73,8 @@ export class GameHUD {
         this._creepyBgFrame = 0;
         this._creepyBgScanlineCanvas = null;
         this._creepyBgVignetteCanvas = null;
+        // Cached button gradients — keyed by "height|state"
+        this._buttonGradientCache = new Map();
     }
 
     getUIScale() {
@@ -110,9 +114,9 @@ export class GameHUD {
             scale *= autoScale;
         }
 
-        this._cachedScale = scale;
+        this._cachedScale = scale * getUiDensityScale();
         this._lastScaleTime = now;
-        return scale;
+        return this._cachedScale;
     }
 
     isMobile() {
@@ -397,6 +401,8 @@ export class GameHUD {
 
         this.updateSessionPrep();
         this.drawSessionPrepOverlay();
+
+        this.drawScreenFade();
     }
 
     beginSessionPrep() {
@@ -406,6 +412,35 @@ export class GameHUD {
             spinnerAngle: 0,
             startedAt: performance.now()
         };
+    }
+
+    /** Full-screen black fade for smooth screen transitions. Callback fires when the fade completes. */
+    startScreenFade(durationMs, toBlack, onComplete) {
+        this.screenFade = {
+            toBlack: !!toBlack,
+            startTime: performance.now(),
+            duration: Math.max(1, durationMs),
+            onComplete: onComplete || null
+        };
+    }
+
+    drawScreenFade() {
+        if (!this.screenFade) return;
+
+        const f = this.screenFade;
+        const t = Math.max(0, Math.min(1, (performance.now() - f.startTime) / f.duration));
+        const alpha = f.toBlack ? t : 1 - t;
+
+        this.ctx.save();
+        this.ctx.fillStyle = `rgba(2, 4, 10, ${alpha})`;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+
+        if (t >= 1) {
+            const cb = f.onComplete;
+            this.screenFade = null;
+            if (cb) cb();
+        }
     }
 
     endSessionPrep() {
@@ -564,10 +599,10 @@ export class GameHUD {
             // Let's use drawStat but save bounds for tap
             const grenadeY = rightBlockStartY + weaponHeight + sidebarSpacing;
             const activeThrowable = player.activeThrowable || 'grenade';
-            const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
-            const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
-            const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
-            const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+            const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : (activeThrowable === 'orbital_strike' ? 'Orbital Strike' : 'Molotovs');
+            const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : (activeThrowable === 'orbital_strike' ? player.orbitalStrikeCount : player.molotovCount);
+            const throwableIcon = activeThrowable === 'grenade' ? '💣' : (activeThrowable === 'orbital_strike' ? '🛰️' : '🍾');
+            const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : (activeThrowable === 'orbital_strike' ? '#ff1744' : '#ff4500')) : '#666666';
             this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, rightX, grenadeY, weaponWidth, weaponHeight);
 
             // Store interactable bounds for Mobile Touches
@@ -1071,10 +1106,10 @@ export class GameHUD {
         // Grenades
         currentY += height + itemSpacing;
         const activeThrowable = player.activeThrowable || 'grenade';
-        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
-        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
-        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
-        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : (activeThrowable === 'orbital_strike' ? 'Orbital Strike' : 'Molotovs');
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : (activeThrowable === 'orbital_strike' ? player.orbitalStrikeCount : player.molotovCount);
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : (activeThrowable === 'orbital_strike' ? '🛰️' : '🍾');
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : (activeThrowable === 'orbital_strike' ? '#ff1744' : '#ff4500')) : '#666666';
         this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, x, currentY, width);
     }
 
@@ -1162,10 +1197,10 @@ export class GameHUD {
 
         // Grenades box - side by side
         const activeThrowable = player.activeThrowable || 'grenade';
-        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
-        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
-        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
-        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : (activeThrowable === 'orbital_strike' ? 'Orbital Strike' : 'Molotovs');
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : (activeThrowable === 'orbital_strike' ? player.orbitalStrikeCount : player.molotovCount);
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : (activeThrowable === 'orbital_strike' ? '🛰️' : '🍾');
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : (activeThrowable === 'orbital_strike' ? '#ff1744' : '#ff4500')) : '#666666';
         this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, grenadeX, y, width);
     }
 
@@ -1216,127 +1251,395 @@ export class GameHUD {
         return 'pointer';
     }
 
-    drawCursor() {
-        const x = this.mouseX;
-        const y = this.mouseY;
+    // ── Cursor animation state ──────────────────────────────────────────
+    _initCursorState() {
+        if (this._cursorInited) return;
+        this._cursorInited = true;
+        this._cursorTrail = [];           // ghost trail positions
+        this._cursorPrevX = undefined;
+        this._cursorPrevY = undefined;
+        this._cursorVelX = 0;
+        this._cursorVelY = 0;
+        this._cursorEmbers = [];          // tiny particle sparks
+        this._cursorPulse = 0;            // 0-1 oscillator
+        this._cursorHoverGlow = 0;        // 0-1 interpolated hover intensity
+        this._cursorClickFlash = 0;       // 0-1 click ring
+    }
 
-        if (x === undefined || y === undefined ||
-            x < 0 || x > this.canvas.width ||
-            y < 0 || y > this.canvas.height) return;
+    drawCursor() {
+        if (this.mouseInside === false) return;
+        this._initCursorState();
+
+        const margin = 5 * this.getUIScale();
+        let x = this.mouseX;
+        let y = this.mouseY;
+
+        if (x === undefined || y === undefined) return;
+
+        // Clamp to canvas bounds so the cursor never vanishes or hangs past the edge
+        x = Math.max(margin, Math.min(this.canvas.width - margin, x));
+        y = Math.max(margin, Math.min(this.canvas.height - margin, y));
+
+        // ── Update velocity / physics ──
+        if (this._cursorPrevX !== undefined) {
+            this._cursorVelX = x - this._cursorPrevX;
+            this._cursorVelY = y - this._cursorPrevY;
+        }
+        this._cursorPrevX = x;
+        this._cursorPrevY = y;
+        const speed = Math.sqrt(this._cursorVelX * this._cursorVelX + this._cursorVelY * this._cursorVelY);
+
+        // ── Pulse timer ──
+        this._cursorPulse = (this._cursorPulse + 0.025) % 1;
+
+        // ── Hover glow interpolation ──
+        const hoverTarget = this.hoveredButton ? 1 : 0;
+        this._cursorHoverGlow += (hoverTarget - this._cursorHoverGlow) * 0.18;
+
+        // ── Click flash decay ──
+        if (this._cursorClickFlash > 0) this._cursorClickFlash *= 0.88;
+
+        // ── Ghost trail ──
+        const trail = this._cursorTrail;
+        if (speed > 1.2) {
+            trail.push({ x, y, alpha: 0.7 });
+            if (trail.length > 10) trail.shift();
+        }
+        for (let i = trail.length - 1; i >= 0; i--) {
+            trail[i].alpha -= 0.06;
+            if (trail[i].alpha <= 0) { trail.splice(i, 1); }
+        }
+
+        // ── Ember particles (spawn on movement) ──
+        const embers = this._cursorEmbers;
+        if (speed > 3 && embers.length < 20) {
+            embers.push({
+                x: x + (Math.random() - 0.5) * 8,
+                y: y + (Math.random() - 0.5) * 8,
+                vx: (Math.random() - 0.5) * 1.5 - this._cursorVelX * 0.15,
+                vy: -Math.random() * 2.2 - 0.5,
+                life: 1,
+                size: Math.random() * 2.5 + 1,
+            });
+        }
+        for (let i = embers.length - 1; i >= 0; i--) {
+            const e = embers[i];
+            e.x += e.vx;
+            e.y += e.vy;
+            e.vy += 0.03; // gravity
+            e.life -= 0.04;
+            if (e.life <= 0) embers.splice(i, 1);
+        }
 
         const mode = this.getCursorMode();
         if (mode === 'grab') {
-            this.drawGrabCursor(false);
+            this._drawGrabCursor(x, y, false);
         } else if (mode === 'grabbing') {
-            this.drawGrabCursor(true);
+            this._drawGrabCursor(x, y, true);
         } else {
-            this.drawPointerCursor();
+            this._drawPointerCursor(x, y);
         }
     }
 
-    drawPointerCursor() {
-        const x = this.mouseX;
-        const y = this.mouseY;
-        const scale = this.getUIScale();
-        const size = 18 * scale;
-
-        this.ctx.save();
-
-        this.ctx.strokeStyle = '#000000';
-        this.ctx.fillStyle = '#000000';
-        this.ctx.lineWidth = 3;
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y);
-        this.ctx.lineTo(x + size * 0.5, y + size * 0.5);
-        this.ctx.lineTo(x + size * 0.2, y + size * 0.85);
-        this.ctx.lineTo(x + size * 0.05, y + size * 0.7);
-        this.ctx.closePath();
-        this.ctx.stroke();
-
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.lineWidth = 2;
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y);
-        this.ctx.lineTo(x + size * 0.5, y + size * 0.5);
-        this.ctx.lineTo(x + size * 0.2, y + size * 0.85);
-        this.ctx.lineTo(x + size * 0.05, y + size * 0.7);
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.stroke();
-
-        this.ctx.restore();
+    /** Trigger cursor click ring (call from mousedown handler) */
+    cursorClickFlash() {
+        if (this._cursorInited) this._cursorClickFlash = 1;
     }
 
-    drawGrabCursor(grabbing) {
-        const x = this.mouseX;
-        const y = this.mouseY;
+    // ── Premium Pointer Cursor ─────────────────────────────────────────
+    _drawPointerCursor(x, y) {
+        const ctx = this.ctx;
+        const scale = this.getUIScale();
+        const size = 22 * scale;
+        const hovered = this._cursorHoverGlow;
+        const pulse = Math.sin(this._cursorPulse * Math.PI * 2) * 0.5 + 0.5;
+        const speed = Math.sqrt(this._cursorVelX * this._cursorVelX + this._cursorVelY * this._cursorVelY);
+
+        ctx.save();
+
+        // ── 1. Ember particles (behind cursor) ──
+        for (let i = 0; i < this._cursorEmbers.length; i++) {
+            const e = this._cursorEmbers[i];
+            const ea = e.life * 0.9;
+            ctx.globalAlpha = ea;
+            ctx.fillStyle = e.life > 0.5
+                ? `hsl(${10 + e.life * 20}, 100%, ${55 + e.life * 20}%)`
+                : `hsl(${5 + e.life * 10}, 90%, ${40 + e.life * 15}%)`;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.size * e.life, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // ── 2. Ghost trail ──
+        const trail = this._cursorTrail;
+        for (let i = 0; i < trail.length; i++) {
+            const t = trail[i];
+            const ta = t.alpha * 0.5;
+            ctx.globalAlpha = ta;
+            ctx.fillStyle = hovered > 0.5
+                ? `rgba(255, 23, 68, ${ta})`
+                : `rgba(245, 245, 245, ${ta * 0.6})`;
+            // Mini-arrow ghost
+            ctx.beginPath();
+            const gs = size * 0.35 * t.alpha;
+            ctx.moveTo(t.x, t.y);
+            ctx.lineTo(t.x + gs * 0.5, t.y + gs * 0.5);
+            ctx.lineTo(t.x + gs * 0.15, t.y + gs * 0.8);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // ── 3. Hover glow aura ──
+        if (hovered > 0.05) {
+            const glowRadius = (14 + pulse * 4) * scale;
+            const glowAlpha = hovered * (0.25 + pulse * 0.1);
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+            gradient.addColorStop(0, `rgba(255, 23, 68, ${glowAlpha})`);
+            gradient.addColorStop(0.5, `rgba(255, 82, 82, ${glowAlpha * 0.4})`);
+            gradient.addColorStop(1, 'rgba(255, 23, 68, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ── 4. Click ring ──
+        if (this._cursorClickFlash > 0.05) {
+            const ringR = (18 + (1 - this._cursorClickFlash) * 14) * scale;
+            ctx.strokeStyle = `rgba(255, 23, 68, ${this._cursorClickFlash * 0.7})`;
+            ctx.lineWidth = 2 * scale * this._cursorClickFlash;
+            ctx.beginPath();
+            ctx.arc(x, y, ringR, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // ── 5. Subtle velocity tilt ──
+        const tilt = Math.atan2(this._cursorVelY, this._cursorVelX);
+        const tiltAmount = Math.min(speed * 0.008, 0.18);
+
+        // ── 6. Draw the pointer arrow ──
+        ctx.lineJoin = 'miter';
+
+        const tracePointer = (ox, oy) => {
+            // Slightly taller, sharper pointer shape
+            ctx.moveTo(x + ox, y + oy);
+            ctx.lineTo(x + ox + size * 0.48, y + oy + size * 0.56);
+            ctx.lineTo(x + ox + size * 0.30, y + oy + size * 0.56);
+            ctx.lineTo(x + ox + size * 0.38, y + oy + size * 0.82);
+            ctx.lineTo(x + ox + size * 0.22, y + oy + size * 0.82);
+            ctx.lineTo(x + ox + size * 0.15, y + oy + size * 0.56);
+            ctx.lineTo(x + ox + size * 0.02, y + oy + size * 0.56);
+            ctx.closePath();
+        };
+
+        // Apply tilt transform
+        ctx.translate(x, y);
+        ctx.rotate(tiltAmount * Math.sin(tilt));
+        ctx.translate(-x, -y);
+
+        // Drop shadow (offset, crisp — retro feel)
+        ctx.fillStyle = 'rgba(2, 4, 10, 0.65)';
+        ctx.beginPath();
+        tracePointer(2 * scale, 2 * scale);
+        ctx.fill();
+
+        // Hard outer outline
+        ctx.lineWidth = 3.5 * scale;
+        ctx.strokeStyle = '#02040a';
+        ctx.fillStyle = '#02040a';
+        ctx.beginPath();
+        tracePointer(0, 0);
+        ctx.fill();
+        ctx.stroke();
+
+        // Fill: interpolate white → blood-red based on hover
+        const r = Math.round(245 + hovered * 10);
+        const g = Math.round(245 - hovered * 222);
+        const b = Math.round(245 - hovered * 177);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.lineWidth = 1.5 * scale;
+        ctx.strokeStyle = `rgba(2, 4, 10, 0.9)`;
+        ctx.beginPath();
+        tracePointer(0, 0);
+        ctx.fill();
+        ctx.stroke();
+
+        // ── 7. Inner edge highlight (subtle specular gleam) ──
+        ctx.globalAlpha = 0.3 + pulse * 0.1;
+        ctx.fillStyle = hovered > 0.5 ? '#ff8a80' : '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(x + size * 0.02, y + size * 0.04);
+        ctx.lineTo(x + size * 0.18, y + size * 0.30);
+        ctx.lineTo(x + size * 0.05, y + size * 0.30);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // ── 8. Hot-red tip accent (glowing) ──
+        const tipGlow = 0.6 + pulse * 0.4;
+        ctx.shadowColor = `rgba(255, 23, 68, ${tipGlow})`;
+        ctx.shadowBlur = 6 * scale;
+        ctx.fillStyle = '#ff1744';
+        const tipPx = Math.max(2.5, 3 * scale);
+        ctx.beginPath();
+        ctx.arc(x + size * 0.015, y + size * 0.015, tipPx, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // ── 9. Hover: animated corner brackets ──
+        if (hovered > 0.15) {
+            const bracketSize = (6 + pulse * 2) * scale;
+            const bracketOffset = (8 + (1 - hovered) * 4) * scale;
+            const bracketAlpha = hovered * (0.5 + pulse * 0.2);
+            ctx.strokeStyle = `rgba(255, 23, 68, ${bracketAlpha})`;
+            ctx.lineWidth = 1.8 * scale;
+            ctx.lineCap = 'square';
+
+            // Top-left bracket
+            ctx.beginPath();
+            ctx.moveTo(x - bracketOffset, y - bracketOffset + bracketSize);
+            ctx.lineTo(x - bracketOffset, y - bracketOffset);
+            ctx.lineTo(x - bracketOffset + bracketSize, y - bracketOffset);
+            ctx.stroke();
+
+            // Top-right bracket
+            ctx.beginPath();
+            ctx.moveTo(x + bracketOffset - bracketSize, y - bracketOffset);
+            ctx.lineTo(x + bracketOffset, y - bracketOffset);
+            ctx.lineTo(x + bracketOffset, y - bracketOffset + bracketSize);
+            ctx.stroke();
+
+            // Bottom-left bracket
+            ctx.beginPath();
+            ctx.moveTo(x - bracketOffset, y + bracketOffset - bracketSize);
+            ctx.lineTo(x - bracketOffset, y + bracketOffset);
+            ctx.lineTo(x - bracketOffset + bracketSize, y + bracketOffset);
+            ctx.stroke();
+
+            // Bottom-right bracket
+            ctx.beginPath();
+            ctx.moveTo(x + bracketOffset - bracketSize, y + bracketOffset);
+            ctx.lineTo(x + bracketOffset, y + bracketOffset);
+            ctx.lineTo(x + bracketOffset, y + bracketOffset - bracketSize);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    // ── Premium Grab / Grabbing Cursor ─────────────────────────────────
+    _drawGrabCursor(cx, cy, grabbing) {
+        const ctx = this.ctx;
         const scale = this.getUIScale();
         const s = scale;
+        const pulse = Math.sin(this._cursorPulse * Math.PI * 2) * 0.5 + 0.5;
 
-        this.ctx.save();
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // ── Glow aura behind hand ──
+        const glowR = (16 + pulse * 3) * s;
+        const grad = ctx.createRadialGradient(cx, cy + 4 * s, 0, cx, cy + 4 * s, glowR);
+        grad.addColorStop(0, `rgba(255, 82, 82, ${grabbing ? 0.25 : 0.12})`);
+        grad.addColorStop(1, 'rgba(255, 82, 82, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy + 4 * s, glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ── Squeeze animation for grabbing ──
+        const squeezeX = grabbing ? 1 + pulse * 0.04 : 1;
+        const squeezeY = grabbing ? 1 - pulse * 0.03 : 1;
+        ctx.translate(cx, cy);
+        ctx.scale(squeezeX, squeezeY);
+        ctx.translate(-cx, -cy);
 
         const strokeHand = (fill, stroke, lineWidth) => {
-            this.ctx.fillStyle = fill;
-            this.ctx.strokeStyle = stroke;
-            this.ctx.lineWidth = lineWidth;
+            ctx.fillStyle = fill;
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
 
             if (grabbing) {
-                this.ctx.beginPath();
-                this.ctx.roundRect(x - 7 * s, y - 3 * s, 14 * s, 15 * s, 4 * s);
-                this.ctx.fill();
-                this.ctx.stroke();
+                // Closed fist
+                ctx.beginPath();
+                ctx.roundRect(cx - 7 * s, cy - 3 * s, 14 * s, 15 * s, 4 * s);
+                ctx.fill();
+                ctx.stroke();
 
-                this.ctx.beginPath();
-                this.ctx.arc(x - 9 * s, y + 5 * s, 3 * s, 0, Math.PI * 2);
-                this.ctx.fill();
-                this.ctx.stroke();
+                // Thumb
+                ctx.beginPath();
+                ctx.arc(cx - 9 * s, cy + 5 * s, 3 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
 
-                this.ctx.strokeStyle = stroke;
-                this.ctx.lineWidth = Math.max(1, 1.2 * s);
+                // Knuckle lines
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = Math.max(1, 1.2 * s);
                 for (let i = 0; i < 3; i++) {
-                    const ky = y + 1 * s + i * 3.2 * s;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x - 5 * s, ky);
-                    this.ctx.lineTo(x + 5 * s, ky);
-                    this.ctx.stroke();
+                    const ky = cy + 1 * s + i * 3.2 * s;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 5 * s, ky);
+                    ctx.lineTo(cx + 5 * s, ky);
+                    ctx.stroke();
                 }
             } else {
+                // Open hand
                 const fingerW = 2.6 * s;
                 const fingerH = 7.5 * s;
                 const gap = 0.9 * s;
                 const fingersW = fingerW * 4 + gap * 3;
-                const startX = x - fingersW / 2;
+                const startX = cx - fingersW / 2;
 
-                this.ctx.beginPath();
-                this.ctx.roundRect(x - 7 * s, y, 14 * s, 11 * s, 3 * s);
-                this.ctx.fill();
-                this.ctx.stroke();
+                ctx.beginPath();
+                ctx.roundRect(cx - 7 * s, cy, 14 * s, 11 * s, 3 * s);
+                ctx.fill();
+                ctx.stroke();
 
                 for (let i = 0; i < 4; i++) {
                     const fx = startX + i * (fingerW + gap);
-                    this.ctx.beginPath();
-                    this.ctx.roundRect(fx, y - fingerH + 1 * s, fingerW, fingerH, fingerW * 0.45);
-                    this.ctx.fill();
-                    this.ctx.stroke();
+                    ctx.beginPath();
+                    ctx.roundRect(fx, cy - fingerH + 1 * s, fingerW, fingerH, fingerW * 0.45);
+                    ctx.fill();
+                    ctx.stroke();
                 }
 
-                this.ctx.beginPath();
-                this.ctx.roundRect(x - 10.5 * s, y + 2 * s, 3.2 * s, 6 * s, 1.5 * s);
-                this.ctx.fill();
-                this.ctx.stroke();
+                // Thumb
+                ctx.beginPath();
+                ctx.roundRect(cx - 10.5 * s, cy + 2 * s, 3.2 * s, 6 * s, 1.5 * s);
+                ctx.fill();
+                ctx.stroke();
             }
         };
 
-        strokeHand('#000000', '#000000', 3.5 * s);
-        strokeHand('#ffffff', '#000000', 2 * s);
+        // Shadow layer
+        ctx.save();
+        ctx.translate(1.5 * s, 1.5 * s);
+        strokeHand('rgba(2, 4, 10, 0.55)', 'rgba(2, 4, 10, 0.55)', 3.5 * s);
+        ctx.restore();
 
-        this.ctx.restore();
+        // Outline + fill
+        strokeHand('#02040a', '#02040a', 3.5 * s);
+        strokeHand('#f5f5f5', '#02040a', 2 * s);
+
+        // ── Nail accents (blood-red dots on fingertips) ──
+        if (!grabbing) {
+            ctx.fillStyle = `rgba(255, 23, 68, ${0.6 + pulse * 0.3})`;
+            const fingerW = 2.6 * s;
+            const gap = 0.9 * s;
+            const fingersW = fingerW * 4 + gap * 3;
+            const startFx = cx - fingersW / 2;
+            for (let i = 0; i < 4; i++) {
+                const fx = startFx + i * (fingerW + gap) + fingerW * 0.5;
+                ctx.beginPath();
+                ctx.arc(fx, cy - 7.5 * s + 2.2 * s, 1.2 * s, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        ctx.restore();
     }
 
 
@@ -1344,6 +1647,7 @@ export class GameHUD {
         this.gameOver = true;
         this.finalScore = scoreText;
         this.gameOverScreen.finalScore = scoreText;
+        if (this.gameOverScreen) this.gameOverScreen.shownAt = performance.now();
 
         // Update all-time max multiplier if any player exceeded it
         gameState.players.forEach(player => {
@@ -1356,7 +1660,7 @@ export class GameHUD {
         saveMultiplierStats();
     }
 
-    showPauseMenu() { this.paused = true; }
+    showPauseMenu() { this.paused = true; if (this.pauseMenuScreen) this.pauseMenuScreen.shownAt = performance.now(); }
     hidePauseMenu() { this.paused = false; }
     hideGameOver() { this.gameOver = false; this.finalScore = ''; }
 
@@ -1393,6 +1697,46 @@ export class GameHUD {
         vigCtx.fillStyle = vignette;
         vigCtx.fillRect(0, 0, w, h);
         this._creepyBgVignetteCanvas = vigCanvas;
+
+        // Static noise pre-baked (250 dots)
+        const noiseCanvas = document.createElement('canvas');
+        noiseCanvas.width = w;
+        noiseCanvas.height = h;
+        const noiseCtx = noiseCanvas.getContext('2d');
+        noiseCtx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+        for (let i = 0; i < 250; i++) {
+            noiseCtx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 2 + 1, Math.random() * 2 + 1);
+        }
+        this._creepyBgNoiseCanvas = noiseCanvas;
+
+        // Red pulse gradient pre-baked (400x400 normalized space)
+        const pulseCanvas = document.createElement('canvas');
+        pulseCanvas.width = 400;
+        pulseCanvas.height = 400;
+        const pCtx = pulseCanvas.getContext('2d');
+        const pGrad = pCtx.createRadialGradient(200, 200, 0, 200, 200, 200);
+        pGrad.addColorStop(0, 'rgba(180, 0, 0, 0.7)');
+        pGrad.addColorStop(0.4, 'rgba(120, 0, 0, 0.5)');
+        pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        pCtx.fillStyle = pGrad;
+        pCtx.fillRect(0, 0, 400, 400);
+        this._creepyBgPulseCanvas = pulseCanvas;
+
+        // Flashlight gradient pre-baked (400x400 normalized space)
+        const flashCanvas = document.createElement('canvas');
+        flashCanvas.width = 400;
+        flashCanvas.height = 400;
+        const fCtx = flashCanvas.getContext('2d');
+        const fGrad = fCtx.createRadialGradient(200, 200, 0, 200, 200, 200);
+        fGrad.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+        fGrad.addColorStop(0.2, 'rgba(255, 220, 220, 0.25)');
+        fGrad.addColorStop(0.5, 'rgba(255, 180, 180, 0.18)');
+        fGrad.addColorStop(0.75, 'rgba(200, 120, 120, 0.1)');
+        fGrad.addColorStop(0.9, 'rgba(150, 80, 80, 0.05)');
+        fGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        fCtx.fillStyle = fGrad;
+        fCtx.fillRect(0, 0, 400, 400);
+        this._creepyBgFlashlightCanvas = flashCanvas;
     }
 
     drawCreepyBackground(bgOffsetY = 0) {
@@ -1417,16 +1761,13 @@ export class GameHUD {
         // Pulsing red gradient center
         const pulseSpeed = 0.002;
         const pulseSize = 0.5 + Math.sin(time * pulseSpeed) * 0.1;
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
+        const centerX = width / 2;
+        const centerY = height / 2;
 
-        const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, this.canvas.height * pulseSize);
-        gradient.addColorStop(0, 'rgba(180, 0, 0, 0.7)');
-        gradient.addColorStop(0.4, 'rgba(120, 0, 0, 0.5)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-        this.ctx.fillStyle = gradient;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        if (this._creepyBgPulseCanvas) {
+            const r = height * pulseSize;
+            this.ctx.drawImage(this._creepyBgPulseCanvas, centerX - r, centerY - r, r * 2, r * 2);
+        }
 
         // Hidden Scratches (only visible near mouse)
         if (Math.random() < 0.1) {
@@ -1471,9 +1812,10 @@ export class GameHUD {
             this.ctx.globalAlpha = s.alpha;
             this.ctx.beginPath();
             this.ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-            s.blobs.forEach(b => {
+            for (let j = 0; j < s.blobs.length; j++) {
+                const b = s.blobs[j];
                 this.ctx.arc(s.x + b.ox, s.y + b.oy, b.r, 0, Math.PI * 2);
-            });
+            }
             this.ctx.fill();
         }
         this.ctx.globalAlpha = 1.0;
@@ -1500,15 +1842,8 @@ export class GameHUD {
         }
 
         // Static noise — every 4th frame, fewer dots (same visual density, ~75% less work)
-        if (this._creepyBgFrame % 4 === 0) {
-            const noiseAmount = 250;
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-            for (let i = 0; i < noiseAmount; i++) {
-                const x = Math.random() * this.canvas.width;
-                const y = Math.random() * this.canvas.height;
-                const size = Math.random() * 2 + 1;
-                this.ctx.fillRect(x, y, size, size);
-            }
+        if (this._creepyBgFrame % 4 === 0 && this._creepyBgNoiseCanvas) {
+            this.ctx.drawImage(this._creepyBgNoiseCanvas, 0, 0);
         }
 
         // Pre-baked vignette (static per canvas size)
@@ -1518,17 +1853,11 @@ export class GameHUD {
 
         // Flashlight follows mouse
         const flashlightRadius = 150 + Math.sin(time * 0.005) * 20;
-        const flashlight = this.ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, flashlightRadius);
-        flashlight.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-        flashlight.addColorStop(0.2, 'rgba(255, 220, 220, 0.25)');
-        flashlight.addColorStop(0.5, 'rgba(255, 180, 180, 0.18)');
-        flashlight.addColorStop(0.75, 'rgba(200, 120, 120, 0.1)');
-        flashlight.addColorStop(0.9, 'rgba(150, 80, 80, 0.05)');
-        flashlight.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-        this.ctx.globalCompositeOperation = 'screen';
-        this.ctx.fillStyle = flashlight;
-        this.ctx.fillRect(0, -bgOffsetY, width, height + bgOffsetY);
+        if (this._creepyBgFlashlightCanvas) {
+            this.ctx.globalCompositeOperation = 'screen';
+            this.ctx.drawImage(this._creepyBgFlashlightCanvas, mouseX - flashlightRadius, (mouseY - flashlightRadius) - bgOffsetY, flashlightRadius * 2, flashlightRadius * 2);
+            this.ctx.globalCompositeOperation = 'source-over';
+        }
         this.ctx.globalCompositeOperation = 'source-over';
 
         this.ctx.restore();
@@ -1572,19 +1901,29 @@ export class GameHUD {
 
     drawMenuButton(text, x, y, width, height, hovered, disabled) {
         const scale = this.getUIScale();
-        const isMobile = isMobileDevice();
+        const isMobile = this._isMobileCached;
         const mobileScale = isMobile ? 0.6 : 1.0;
 
-        const bgColor = disabled ? '#333333' : (hovered ? '#ff1744' : '#1a1a1a');
         const borderColor = disabled ? '#666666' : (hovered ? '#ff5252' : '#ff1744');
         const textColor = disabled ? '#888888' : '#ffffff';
 
-        const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
-        bgGradient.addColorStop(0, disabled ? 'rgba(51, 51, 51, 0.9)' : (hovered ? 'rgba(255, 23, 68, 0.3)' : 'rgba(26, 26, 26, 0.9)'));
-        bgGradient.addColorStop(1, disabled ? 'rgba(26, 26, 26, 0.9)' : (hovered ? 'rgba(255, 23, 68, 0.2)' : 'rgba(10, 10, 10, 0.9)'));
+        // Cached button gradient — keyed by height and visual state
+        const state = disabled ? 'd' : (hovered ? 'h' : 'n');
+        const gradKey = `${height}|${state}`;
+        let bgGradient = this._buttonGradientCache.get(gradKey);
+        if (!bgGradient) {
+            bgGradient = this.ctx.createLinearGradient(0, 0, 0, height);
+            bgGradient.addColorStop(0, disabled ? 'rgba(51, 51, 51, 0.9)' : (hovered ? 'rgba(255, 23, 68, 0.3)' : 'rgba(26, 26, 26, 0.9)'));
+            bgGradient.addColorStop(1, disabled ? 'rgba(26, 26, 26, 0.9)' : (hovered ? 'rgba(255, 23, 68, 0.2)' : 'rgba(10, 10, 10, 0.9)'));
+            this._buttonGradientCache.set(gradKey, bgGradient);
+        }
 
+        // Translate so the cached gradient (0,0 → 0,height) maps correctly
+        this.ctx.save();
+        this.ctx.translate(x, y);
         this.ctx.fillStyle = bgGradient;
-        this.ctx.fillRect(x, y, width, height);
+        this.ctx.fillRect(0, 0, width, height);
+        this.ctx.restore();
 
         // Texture overlay (bloody_dark_floor.png pattern)
         const groundPattern = initGroundPattern();
@@ -1968,7 +2307,126 @@ export class GameHUD {
 
         this.ctx.restore();
 
+        this.drawShopCompassMarkers();
         this.drawMultiplierOverlay();
+    }
+
+    /**
+     * Compass ticks for arcade depot / merchant beacons.
+     */
+    drawShopCompassMarkers() {
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+        if (gameState.players.length === 0) return;
+        if (!window.worldShopSystem) return;
+
+        const targets = window.worldShopSystem.getBeaconTargets();
+        if (!targets || targets.length === 0) return;
+
+        const player = gameState.players[0];
+        const {
+            compassHeight,
+            compassY,
+            compassWidth,
+            compassX,
+            scale
+        } = this.getTopCompassLayout();
+
+        const playerAngle = player.angle;
+        const compassAngle = -playerAngle + Math.PI / 2;
+        const centerX = compassX + compassWidth / 2;
+
+        this.ctx.save();
+        const fontSize = Math.max(9, Math.round(11 * scale));
+        this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+
+        for (let i = 0; i < targets.length; i++) {
+            const t = targets[i];
+            const worldAngle = Math.atan2(t.y - player.y, t.x - player.x);
+            // Convert world aim angle to compass heading (0 = North)
+            const targetCompass = -worldAngle + Math.PI / 2;
+            let normalizedAngle = targetCompass - compassAngle;
+            while (normalizedAngle > Math.PI) normalizedAngle -= Math.PI * 2;
+            while (normalizedAngle < -Math.PI) normalizedAngle += Math.PI * 2;
+
+            if (Math.abs(normalizedAngle) < Math.PI / 2) {
+                const offset = normalizedAngle / (Math.PI / 2) * (compassWidth / 2 - 20);
+                const markerX = centerX + offset;
+                this.ctx.fillStyle = t.color || '#cd7f32';
+                this.ctx.fillText(t.letter || '?', markerX, compassY + compassHeight - 4);
+            }
+        }
+
+        this.ctx.restore();
+    }
+
+    /**
+     * Screen-edge chevrons pointing at world shop beacons when off-screen.
+     * @param {Array<{x:number,y:number,letter:string,color:string}>} targets
+     */
+    drawShopBeacons(targets) {
+        if (!targets || targets.length === 0) return;
+        if (!gameState.gameRunning || gameState.gamePaused) return;
+
+        const margin = 28;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        this.ctx.save();
+
+        for (let i = 0; i < targets.length; i++) {
+            const t = targets[i];
+            const screen = cameraSystem.worldToScreen(t.x, t.y);
+            const onScreen = screen.x >= margin && screen.x <= w - margin &&
+                screen.y >= margin + 40 && screen.y <= h - margin;
+
+            if (onScreen) {
+                // Soft world-marker pip when on screen
+                this.ctx.fillStyle = t.color || '#cd7f32';
+                this.ctx.globalAlpha = 0.85;
+                this.ctx.beginPath();
+                this.ctx.arc(screen.x, screen.y - 48, 5, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.globalAlpha = 1;
+                this.ctx.font = 'bold 11px "Roboto Mono", monospace';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(t.letter || '?', screen.x, screen.y - 62);
+                continue;
+            }
+
+            const dx = screen.x - cx;
+            const dy = screen.y - cy;
+            const angle = Math.atan2(dy, dx);
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+
+            const tMaxX = cos !== 0 ? ((cos > 0 ? w - margin : margin) - cx) / cos : Infinity;
+            const tMaxY = sin !== 0 ? ((sin > 0 ? h - margin : margin + 50) - cy) / sin : Infinity;
+            const tHit = Math.min(Math.abs(tMaxX), Math.abs(tMaxY));
+            const ax = cx + cos * tHit;
+            const ay = cy + sin * tHit;
+
+            this.ctx.fillStyle = t.color || '#cd7f32';
+            this.ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(ax, ay);
+            this.ctx.lineTo(ax - Math.cos(angle - 0.4) * 14, ay - Math.sin(angle - 0.4) * 14);
+            this.ctx.lineTo(ax - Math.cos(angle + 0.4) * 14, ay - Math.sin(angle + 0.4) * 14);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            this.ctx.font = 'bold 10px "Roboto Mono", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(t.letter || '?', ax - Math.cos(angle) * 18, ay - Math.sin(angle) * 18);
+        }
+
+        this.ctx.restore();
     }
 
     drawMultiplierOverlay() {
@@ -2214,8 +2672,12 @@ export class GameHUD {
         this.hoveredSkillIndex = this.levelUpScreen.updateHover(x, y);
     }
 
-    checkEquipmentClick(x, y) {
-        return this.equipmentScreen.checkClick(x, y);
+    checkEquipmentClick(x, y, opts = {}) {
+        return this.equipmentScreen.checkClick(x, y, opts);
+    }
+
+    handleEquipmentWheel(deltaY) {
+        return this.equipmentScreen.handleWheel(deltaY);
     }
 
     updateEquipmentHover(x, y) {

@@ -9,6 +9,18 @@ import { graphicsSettings } from '../systems/GraphicsSystem.js';
 
 // Additive torso overlay VFX — clipped to the torso ellipse, drawn above flesh / under limbs & head
 const TORSO_OVERLAY_TYPES = ['goreWetness', 'decayMold', 'tornRemnants', 'infectionPulse', 'slimeFilm'];
+const MODEL_MOTTLES = [
+    [-0.48, -0.25, 0.13],
+    [0.38, 0.08, 0.1],
+    [-0.12, 0.38, 0.08],
+    [0.23, -0.5, 0.07]
+];
+const MODEL_ARMOR_RIVETS = [[-0.68, 0.48], [0.68, 0.48], [-0.68, 1.12], [0.68, 1.12]];
+const MODEL_EXPLOSION_SACS = [[-0.62, 0.72, 0.3], [0.55, 1.12, 0.26], [0.18, 0.56, 0.2]];
+const MODEL_BLIGHT_CAPS = [[-0.9, -0.52], [0.78, -0.68], [0.12, -1.02]];
+const MODEL_SHARD_POINTS = [[-0.82, -0.2, -1.22, -0.82], [0.72, -0.12, 1.18, -0.72], [0.48, 0.82, 0.98, 1.18]];
+const MODEL_SPLITTER_SPIKES = [[-0.72, 0.12, -1.12, -0.32], [0.75, 0.35, 1.18, 0.05], [-0.45, 1.12, -0.82, 1.52], [0.48, 1.08, 0.9, 1.48]];
+const FLYING_WING_TIPS = [[2.15, -0.78], [1.72, -0.15], [1.18, 0.34], [0.68, 0.42]];
 
 function hashZombieId(str) {
     let hash = 0;
@@ -192,6 +204,644 @@ export class Zombie {
     }
 
     /** Eye draw options — subclasses override for variant colors */
+    /**
+     * Procedural model detail tier. High is the authored target; Ultra adds
+     * small material marks without changing hitboxes or gameplay silhouettes.
+     */
+    getModelDetailLevel() {
+        const quality = graphicsSettings.quality || 'high';
+        // Model identity is never disabled. Low keeps the authored silhouette
+        // and skips only the smaller material work below.
+        if (quality === 'low') return 1;
+        if (quality === 'medium') return 1;
+        if (quality === 'ultra') return 3;
+        return 2; // high + custom
+    }
+
+    drawClawedHand(context, x, y, scale, color, angle = 0) {
+        const detail = this.getModelDetailLevel();
+        if (detail < 1) return;
+
+        context.save();
+        context.translate(x, y);
+        context.rotate(angle);
+        context.fillStyle = color;
+        context.beginPath();
+        context.ellipse(0, 0, 2.8 * scale, 2.2 * scale, 0, 0, Math.PI * 2);
+        context.fill();
+
+        context.strokeStyle = color;
+        context.lineWidth = Math.max(0.8, 1.15 * scale);
+        context.lineCap = 'round';
+        for (let i = -1; i <= 1; i++) {
+            context.beginPath();
+            context.moveTo(i * 1.25 * scale, -0.3 * scale);
+            context.lineTo(i * 1.65 * scale, (3.3 + Math.abs(i) * 0.5) * scale);
+            context.stroke();
+        }
+
+        if (detail >= 2) {
+            context.strokeStyle = 'rgba(235, 228, 205, 0.8)';
+            context.lineWidth = Math.max(0.55, 0.65 * scale);
+            for (let i = -1; i <= 1; i++) {
+                context.beginPath();
+                context.moveTo(i * 1.65 * scale, 3.1 * scale);
+                context.lineTo(i * 1.85 * scale, 4.4 * scale);
+                context.stroke();
+            }
+        }
+        context.restore();
+    }
+
+    /**
+     * Draw the shared silhouette that the old circle + ellipse models lacked.
+     * It deliberately sits over each variant's legacy fill so all subclasses
+     * inherit shoulders, a waist, jaw structure, articulated limbs, and feet
+     * without changing collision radii or network state.
+     */
+    drawArticulatedSilhouette(context, x, y, radius, options = {}) {
+        const type = this.type || 'normal';
+        if (type === 'boss' || type === 'warden') return;
+
+        const scale = radius / 15;
+        const variantColors = this.visualVariant?.skinColors;
+        const typePalettes = {
+            armored: ['#526348', '#1d2a1d', '#aeb99b'],
+            fast: ['#a95a2c', '#4b1e13', '#d7aa73'],
+            exploding: ['#a84d19', '#4a160c', '#efb451'],
+            ghost: ['#83d8df', '#236979', '#d9ffff'],
+            spitter: ['#4fb55c', '#174c2a', '#bcff9d'],
+            flying: ['#574064', '#211629', '#b493c7'],
+            blight: ['#75418d', '#2b1735', '#d69ee8'],
+            crawler: ['#6d4539', '#291713', '#b38a72'],
+            siren: ['#3694a6', '#123e4b', '#b4edf3'],
+            shard: ['#6f9445', '#263c1b', '#c9dfa1'],
+            splitter: ['#96713a', '#3e2b16', '#e0b86d']
+        };
+        const palette = typePalettes[type] || [
+            variantColors?.secondary || '#718f43',
+            variantColors?.outline || '#263815',
+            variantColors?.primary || '#a8c66c'
+        ];
+        const flesh = options.fleshColor || palette[0];
+        const shadow = options.limbColor || palette[1];
+        const highlight = options.highlightColor || palette[2];
+        const pose = this.getPoseOffsets?.() || {};
+        const stride = Math.sin(this.walkPhase || 0) * radius * 0.16;
+        const sway = (pose.armSway || 0) * 0.45;
+
+        context.save();
+        context.lineCap = 'round';
+        context.lineJoin = 'round';
+
+        if (type === 'crawler') {
+            // Crawlers get a low, four-point silhouette rather than inheriting
+            // the upright biped rig.
+            context.strokeStyle = shadow;
+            context.lineWidth = Math.max(3.2, radius * 0.34);
+            for (let side = -1; side <= 1; side += 2) {
+                context.beginPath();
+                context.moveTo(x + side * radius * 0.45, y + radius * 0.45);
+                context.lineTo(x + side * radius * 1.05, y + radius * 0.82 + stride * side);
+                context.lineTo(x + side * radius * 1.55, y + radius * 0.62 + stride * side);
+                context.stroke();
+                context.beginPath();
+                context.moveTo(x + side * radius * 0.25, y + radius * 0.86);
+                context.lineTo(x + side * radius * 0.82, y + radius * 1.22 - stride * side);
+                context.lineTo(x + side * radius * 1.35, y + radius * 1.35 - stride * side);
+                context.stroke();
+            }
+            context.strokeStyle = highlight;
+            context.lineWidth = Math.max(0.8, 1.05 * scale);
+            context.beginPath();
+            context.moveTo(x - radius * 0.78, y + radius * 0.45);
+            context.quadraticCurveTo(x, y + radius * 0.1, x + radius * 0.82, y + radius * 0.48);
+            context.stroke();
+            context.restore();
+            return;
+        }
+
+        const isSpectral = type === 'ghost';
+        const isFlying = type === 'flying';
+        const bulk = ['exploding', 'blight', 'splitter'].includes(type) ? 1.12 : (type === 'fast' ? 0.86 : 1);
+        const shoulderY = y + radius * 0.5;
+        const hipY = y + radius * 1.72;
+
+        // Limbs are laid down first so the tapered torso owns the joints.
+        if (!isSpectral) {
+            context.strokeStyle = shadow;
+            context.lineWidth = Math.max(4, radius * (isFlying ? 0.26 : 0.34));
+            for (let side = -1; side <= 1; side += 2) {
+                const shoulderX = x + side * radius * 0.82 * bulk;
+                const elbowX = x + side * radius * (1.18 * bulk + sway / radius);
+                const elbowY = y + radius * (isFlying ? 1.0 : 1.16);
+                const handX = x + side * radius * (isFlying ? 0.78 : 0.96) * bulk;
+                const handY = y + radius * (isFlying ? 1.7 : 2.02) + (pose.armReach || 0) * 0.35;
+                context.beginPath();
+                context.moveTo(shoulderX, shoulderY);
+                context.lineTo(elbowX, elbowY);
+                context.lineTo(handX, handY);
+                context.stroke();
+
+                context.strokeStyle = flesh;
+                context.lineWidth = Math.max(2.1, radius * 0.19);
+                context.beginPath();
+                context.moveTo(elbowX, elbowY);
+                context.lineTo(handX, handY);
+                context.stroke();
+                this.drawClawedHand(context, handX, handY + 1.5 * scale, scale * 0.72, flesh, side * -0.12);
+                context.strokeStyle = shadow;
+                context.lineWidth = Math.max(4, radius * (isFlying ? 0.26 : 0.34));
+            }
+        }
+
+        if (!isSpectral && !isFlying) {
+            context.strokeStyle = shadow;
+            context.lineWidth = Math.max(4.5, radius * 0.4);
+            for (let side = -1; side <= 1; side += 2) {
+                const hipX = x + side * radius * 0.38;
+                const kneeX = x + side * radius * 0.5;
+                const kneeY = y + radius * 2.12 + stride * side;
+                const footX = x + side * radius * 0.56;
+                const footY = y + radius * 2.62 - stride * side;
+                context.beginPath();
+                context.moveTo(hipX, hipY);
+                context.lineTo(kneeX, kneeY);
+                context.lineTo(footX, footY);
+                context.stroke();
+                context.fillStyle = '#151a12';
+                context.beginPath();
+                context.ellipse(footX + side * radius * 0.1, footY, radius * 0.32, radius * 0.18, side * 0.12, 0, Math.PI * 2);
+                context.fill();
+            }
+        }
+
+        // An opaque tapered core visibly replaces the old capsule read.
+        const torsoGradient = context.createLinearGradient(x, shoulderY, x, hipY);
+        torsoGradient.addColorStop(0, highlight);
+        torsoGradient.addColorStop(0.32, flesh);
+        torsoGradient.addColorStop(1, shadow);
+        context.fillStyle = torsoGradient;
+        context.strokeStyle = shadow;
+        context.lineWidth = Math.max(1.4, 1.9 * scale);
+        context.beginPath();
+        context.moveTo(x - radius * 0.88 * bulk, shoulderY);
+        context.quadraticCurveTo(x - radius * 1.05 * bulk, y + radius * 0.82, x - radius * 0.62 * bulk, y + radius * 1.35);
+        context.lineTo(x - radius * 0.68 * bulk, hipY);
+        context.quadraticCurveTo(x, y + radius * 1.92, x + radius * 0.68 * bulk, hipY);
+        context.lineTo(x + radius * 0.62 * bulk, y + radius * 1.35);
+        context.quadraticCurveTo(x + radius * 1.05 * bulk, y + radius * 0.82, x + radius * 0.88 * bulk, shoulderY);
+        context.quadraticCurveTo(x, y + radius * 0.72, x - radius * 0.88 * bulk, shoulderY);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        // Angular jaw breaks the circular head silhouette at gameplay scale.
+        if (options.neck !== false) {
+            context.fillStyle = flesh;
+            context.strokeStyle = shadow;
+            context.lineWidth = Math.max(1.1, 1.5 * scale);
+            context.beginPath();
+            context.moveTo(x - radius * 0.66, y + radius * 0.08);
+            context.lineTo(x - radius * 0.52, y + radius * 0.58);
+            context.lineTo(x - radius * 0.25, y + radius * 0.8);
+            context.lineTo(x + radius * 0.3, y + radius * 0.76);
+            context.lineTo(x + radius * 0.62, y + radius * 0.36);
+            context.lineTo(x + radius * 0.66, y + radius * 0.04);
+            context.quadraticCurveTo(x, y + radius * 0.34, x - radius * 0.66, y + radius * 0.08);
+            context.closePath();
+            context.fill();
+            context.stroke();
+        }
+
+        context.restore();
+    }
+
+    /** Shared anatomy/material finish used by every gameplay zombie model. */
+    drawOrganicModelDetails(context, x, y, radius, options = {}) {
+        const detail = this.getModelDetailLevel();
+        if (detail < 1) return;
+
+        const scale = radius / 15;
+        const torsoY = y + (options.torsoOffsetY ?? 15) * scale;
+        const torsoRx = radius * (options.torsoRx ?? 1.15);
+        const torsoRy = radius * (options.torsoRy ?? 1.45);
+        const headRx = radius * (options.headRx ?? 1);
+        const headRy = radius * (options.headRy ?? 1);
+        const seed = this.animSeed || 0;
+
+        this.drawArticulatedSilhouette(context, x, y, radius, options);
+
+        context.save();
+        context.lineCap = 'round';
+        context.lineJoin = 'round';
+
+        // Neck cavity and clavicles anchor the head to the torso instead of
+        // leaving two disconnected circles.
+        if (options.neck !== false) {
+            context.fillStyle = options.neckColor || 'rgba(12, 18, 8, 0.42)';
+            context.beginPath();
+            context.ellipse(x, y + 11.5 * scale, radius * 0.36, radius * 0.26, 0, 0, Math.PI * 2);
+            context.fill();
+            context.strokeStyle = options.boneColor || 'rgba(205, 215, 170, 0.28)';
+            context.lineWidth = Math.max(0.7, 1.05 * scale);
+            context.beginPath();
+            context.moveTo(x - radius * 0.7, y + 12 * scale);
+            context.quadraticCurveTo(x - radius * 0.25, y + 9 * scale, x, y + 13 * scale);
+            context.quadraticCurveTo(x + radius * 0.25, y + 9 * scale, x + radius * 0.7, y + 12 * scale);
+            context.stroke();
+        }
+
+        // Controlled rim light preserves each silhouette over dark ground.
+        context.strokeStyle = options.rimColor || 'rgba(220, 255, 190, 0.2)';
+        context.lineWidth = Math.max(0.65, 0.9 * scale);
+        context.beginPath();
+        context.ellipse(x, y, headRx, headRy, -0.25, Math.PI * 1.02, Math.PI * 1.62);
+        context.stroke();
+        context.beginPath();
+        context.ellipse(x, torsoY, torsoRx, torsoRy, 0, Math.PI * 1.05, Math.PI * 1.55);
+        context.stroke();
+
+        if (detail >= 2) {
+            if (options.ribs !== false) {
+                context.strokeStyle = options.boneColor || 'rgba(210, 220, 180, 0.28)';
+                context.lineWidth = Math.max(0.55, 0.75 * scale);
+                for (let i = 0; i < 3; i++) {
+                    const ribY = torsoY - radius * 0.25 + i * 4 * scale;
+                    const ribW = radius * (0.55 - i * 0.06);
+                    context.beginPath();
+                    context.moveTo(x, ribY - scale);
+                    context.quadraticCurveTo(x - ribW, ribY, x - ribW * 0.82, ribY + 3 * scale);
+                    context.moveTo(x, ribY - scale);
+                    context.quadraticCurveTo(x + ribW, ribY, x + ribW * 0.82, ribY + 3 * scale);
+                    context.stroke();
+                }
+                context.beginPath();
+                context.moveTo(x, torsoY - radius * 0.45);
+                context.lineTo(x, torsoY + radius * 0.35);
+                context.stroke();
+            }
+
+            // Stable mottling gives each instance skin breakup without random
+            // per-frame shimmer.
+            context.fillStyle = options.mottleColor || 'rgba(20, 25, 12, 0.28)';
+            for (let i = 0; i < MODEL_MOTTLES.length; i++) {
+                const m = MODEL_MOTTLES[(i + seed) % MODEL_MOTTLES.length];
+                context.beginPath();
+                context.ellipse(
+                    x + m[0] * torsoRx,
+                    torsoY + m[1] * torsoRy,
+                    radius * m[2],
+                    radius * m[2] * 0.72,
+                    (seed + i * 19) % 10 / 10,
+                    0,
+                    Math.PI * 2
+                );
+                context.fill();
+            }
+
+            const woundSide = seed % 2 === 0 ? -1 : 1;
+            context.strokeStyle = options.woundColor || 'rgba(95, 8, 18, 0.78)';
+            context.lineWidth = Math.max(0.8, 1.25 * scale);
+            context.beginPath();
+            context.moveTo(x + woundSide * radius * 0.35, torsoY - radius * 0.12);
+            context.lineTo(x + woundSide * radius * 0.58, torsoY + radius * 0.08);
+            context.lineTo(x + woundSide * radius * 0.33, torsoY + radius * 0.28);
+            context.stroke();
+        }
+
+        if (detail >= 3) {
+            context.fillStyle = options.poreColor || 'rgba(8, 12, 6, 0.38)';
+            for (let i = 0; i < 7; i++) {
+                const angle = seed * 0.017 + i * 2.399;
+                const distance = radius * (0.18 + ((seed + i * 23) % 55) / 100);
+                context.beginPath();
+                context.arc(
+                    x + Math.cos(angle) * distance,
+                    y + Math.sin(angle) * distance,
+                    Math.max(0.45, radius * 0.035),
+                    0,
+                    Math.PI * 2
+                );
+                context.fill();
+            }
+        }
+
+        context.restore();
+    }
+
+    /** Type-readability pass: anatomy and materials unique to each enemy. */
+    drawTypeModelDetails(context, x, y, radius, type = this.type) {
+        const detail = this.getModelDetailLevel();
+        if (detail < 1) return;
+        const scale = radius / 15;
+        const pulse = Math.sin((Date.now() + (this.animSeed || 0)) / 190) * 0.25 + 0.75;
+
+        context.save();
+        context.lineCap = 'round';
+        context.lineJoin = 'round';
+
+        switch (type) {
+            case 'base':
+            case 'normal': {
+                const variant = this.visualVariant;
+                if (variant?.hasClothing) {
+                    context.strokeStyle = 'rgba(225, 220, 195, 0.32)';
+                    context.lineWidth = Math.max(0.65, scale);
+                    context.beginPath();
+                    context.moveTo(x - radius * 0.72, y + radius * 0.72);
+                    context.lineTo(x - radius * 0.28, y + radius * 1.18);
+                    context.moveTo(x + radius * 0.72, y + radius * 0.72);
+                    context.lineTo(x + radius * 0.32, y + radius * 1.22);
+                    context.stroke();
+                }
+                if (detail >= 2) {
+                    const side = (this.animSeed || 0) % 2 === 0 ? -1 : 1;
+                    context.fillStyle = 'rgba(80, 5, 10, 0.52)';
+                    context.beginPath();
+                    context.ellipse(x + side * radius * 0.68, y + radius * 0.08, radius * 0.2, radius * 0.12, side * 0.35, 0, Math.PI * 2);
+                    context.fill();
+                }
+                break;
+            }
+            case 'armored': {
+                context.strokeStyle = 'rgba(25, 28, 35, 0.9)';
+                context.lineWidth = Math.max(1, 1.5 * scale);
+                context.beginPath();
+                context.moveTo(x - radius * 0.65, y + radius * 0.35);
+                context.lineTo(x + radius * 0.58, y + radius * 1.15);
+                context.moveTo(x + radius * 0.65, y + radius * 0.35);
+                context.lineTo(x - radius * 0.58, y + radius * 1.15);
+                context.stroke();
+                context.fillStyle = '#252a31';
+                for (let i = 0; i < MODEL_ARMOR_RIVETS.length; i++) {
+                    const rivet = MODEL_ARMOR_RIVETS[i];
+                    context.beginPath();
+                    context.arc(x + rivet[0] * radius, y + rivet[1] * radius, 1.25 * scale, 0, Math.PI * 2);
+                    context.fill();
+                }
+                context.fillStyle = `rgba(255, 50, 35, ${0.45 + pulse * 0.35})`;
+                context.fillRect(x - radius * 0.58, y - radius * 0.98, radius * 1.16, Math.max(1.2, 1.8 * scale));
+                if (detail >= 2) {
+                    context.strokeStyle = 'rgba(235, 240, 245, 0.35)';
+                    context.lineWidth = Math.max(0.6, 0.75 * scale);
+                    context.beginPath();
+                    context.moveTo(x - radius * 0.4, y + radius * 0.62);
+                    context.lineTo(x + radius * 0.25, y + radius * 0.78);
+                    context.moveTo(x + radius * 0.12, y + radius * 0.38);
+                    context.lineTo(x + radius * 0.48, y + radius * 0.52);
+                    context.stroke();
+                }
+                break;
+            }
+            case 'fast': {
+                context.strokeStyle = 'rgba(255, 190, 120, 0.5)';
+                context.lineWidth = Math.max(0.7, scale);
+                for (let side = -1; side <= 1; side += 2) {
+                    context.beginPath();
+                    context.moveTo(x + side * radius * 0.55, y + radius * 0.35);
+                    context.quadraticCurveTo(x + side * radius * 1.25, y + radius * 0.9, x + side * radius * 0.88, y + radius * 1.85);
+                    context.stroke();
+                    this.drawClawedHand(context, x + side * radius * 0.88, y + radius * 1.88, scale, '#9a431f', side * -0.2);
+                }
+                if (detail >= 2) {
+                    context.strokeStyle = 'rgba(80, 15, 5, 0.65)';
+                    context.beginPath();
+                    context.moveTo(x - radius * 0.5, y + radius * 0.25);
+                    context.quadraticCurveTo(x, y + radius * 0.65, x + radius * 0.5, y + radius * 0.25);
+                    context.stroke();
+                }
+                break;
+            }
+            case 'exploding': {
+                for (let i = 0; i < MODEL_EXPLOSION_SACS.length; i++) {
+                    const sac = MODEL_EXPLOSION_SACS[i];
+                    const glow = context.createRadialGradient(
+                        x + sac[0] * radius, y + sac[1] * radius, 0,
+                        x + sac[0] * radius, y + sac[1] * radius, radius * sac[2]
+                    );
+                    glow.addColorStop(0, `rgba(255, 245, 150, ${0.72 * pulse})`);
+                    glow.addColorStop(0.5, `rgba(255, 105, 0, ${0.58 * pulse})`);
+                    glow.addColorStop(1, 'rgba(110, 25, 0, 0.15)');
+                    context.fillStyle = glow;
+                    context.beginPath();
+                    context.arc(x + sac[0] * radius, y + sac[1] * radius, radius * sac[2], 0, Math.PI * 2);
+                    context.fill();
+                }
+                context.strokeStyle = `rgba(255, 225, 90, ${0.5 + pulse * 0.35})`;
+                context.lineWidth = Math.max(0.75, 1.1 * scale);
+                context.beginPath();
+                context.moveTo(x, y + radius * 0.2);
+                context.lineTo(x - radius * 0.18, y + radius * 0.62);
+                context.lineTo(x + radius * 0.22, y + radius * 1.2);
+                context.lineTo(x, y + radius * 1.65);
+                context.stroke();
+                break;
+            }
+            case 'ghost': {
+                context.strokeStyle = 'rgba(224, 247, 250, 0.55)';
+                context.lineWidth = Math.max(0.7, scale);
+                for (let i = -1; i <= 1; i++) {
+                    context.beginPath();
+                    context.moveTo(x, y + radius * (0.5 + i * 0.18));
+                    context.quadraticCurveTo(x + i * radius * 0.75, y + radius * 1.05, x + i * radius * 0.55, y + radius * 1.75);
+                    context.stroke();
+                }
+                context.fillStyle = 'rgba(225, 255, 255, 0.18)';
+                for (let i = 0; i < 3; i++) {
+                    const wx = x + (i - 1) * radius * 0.52;
+                    context.beginPath();
+                    context.moveTo(wx - radius * 0.28, y + radius * 1.45);
+                    context.quadraticCurveTo(wx, y + radius * (2 + pulse * 0.25), wx + radius * 0.24, y + radius * 1.42);
+                    context.closePath();
+                    context.fill();
+                }
+                break;
+            }
+            case 'spitter': {
+                context.fillStyle = `rgba(185, 255, 120, ${0.36 + pulse * 0.28})`;
+                context.beginPath();
+                context.ellipse(x - radius * 0.62, y + radius * 0.32, radius * 0.26, radius * 0.38, -0.35, 0, Math.PI * 2);
+                context.ellipse(x + radius * 0.62, y + radius * 0.32, radius * 0.26, radius * 0.38, 0.35, 0, Math.PI * 2);
+                context.fill();
+                context.strokeStyle = 'rgba(210, 255, 180, 0.55)';
+                context.lineWidth = Math.max(0.65, scale);
+                context.beginPath();
+                context.moveTo(x - radius * 0.5, y + radius * 0.12);
+                context.quadraticCurveTo(x, y + radius * 0.5, x + radius * 0.5, y + radius * 0.12);
+                context.stroke();
+                if (detail >= 2) {
+                    context.fillStyle = 'rgba(160, 255, 90, 0.7)';
+                    context.beginPath();
+                    context.ellipse(x + radius * 0.38, y + radius * 0.58 + pulse * 2 * scale, 1.2 * scale, 3.5 * scale, 0, 0, Math.PI * 2);
+                    context.fill();
+                }
+                break;
+            }
+            case 'flying': {
+                context.strokeStyle = 'rgba(180, 145, 215, 0.5)';
+                context.lineWidth = Math.max(0.65, scale);
+                for (let i = 0; i < 4; i++) {
+                    const ribY = y + radius * (0.42 + i * 0.22);
+                    context.beginPath();
+                    context.moveTo(x, ribY);
+                    context.lineTo(x - radius * (0.48 - i * 0.05), ribY + radius * 0.13);
+                    context.moveTo(x, ribY);
+                    context.lineTo(x + radius * (0.48 - i * 0.05), ribY + radius * 0.13);
+                    context.stroke();
+                }
+                for (let side = -1; side <= 1; side += 2) {
+                    this.drawClawedHand(context, x + side * radius * 0.72, y + radius * 1.72, scale * 0.85, '#2d173d', side * 0.28);
+                }
+                break;
+            }
+            case 'blight': {
+                context.strokeStyle = 'rgba(255, 190, 255, 0.48)';
+                context.lineWidth = Math.max(0.55, 0.8 * scale);
+                for (let c = 0; c < MODEL_BLIGHT_CAPS.length; c++) {
+                    const capX = x + MODEL_BLIGHT_CAPS[c][0] * radius;
+                    const capY = y + MODEL_BLIGHT_CAPS[c][1] * radius;
+                    for (let g = -1; g <= 1; g++) {
+                        context.beginPath();
+                        context.moveTo(capX, capY);
+                        context.lineTo(capX + g * 3 * scale, capY + 4 * scale);
+                        context.stroke();
+                    }
+                }
+                if (detail >= 2) {
+                    context.fillStyle = `rgba(235, 120, 255, ${0.35 + pulse * 0.25})`;
+                    for (let i = 0; i < 5; i++) {
+                        const angle = i * 2.2 + pulse;
+                        context.beginPath();
+                        context.arc(x + Math.cos(angle) * radius * 1.25, y + Math.sin(angle) * radius * 1.15, 1.1 * scale, 0, Math.PI * 2);
+                        context.fill();
+                    }
+                }
+                break;
+            }
+            case 'crawler': {
+                context.strokeStyle = 'rgba(145, 105, 90, 0.55)';
+                context.lineWidth = Math.max(0.75, scale);
+                context.beginPath();
+                context.moveTo(x - radius * 0.82, y + radius * 0.45);
+                context.quadraticCurveTo(x, y - radius * 0.08, x + radius * 0.9, y + radius * 0.42);
+                context.stroke();
+                for (let i = -2; i <= 2; i++) {
+                    const spineX = x + i * radius * 0.3;
+                    context.beginPath();
+                    context.moveTo(spineX, y + radius * 0.15);
+                    context.lineTo(spineX + i * 0.7 * scale, y - radius * (0.2 + (2 - Math.abs(i)) * 0.06));
+                    context.stroke();
+                }
+                for (let side = -1; side <= 1; side += 2) {
+                    this.drawClawedHand(context, x + side * radius * 1.72, y + radius * 1.02, scale * 0.82, '#28100d', side * 0.45);
+                }
+                break;
+            }
+            case 'siren': {
+                context.strokeStyle = `rgba(178, 245, 255, ${0.38 + pulse * 0.32})`;
+                context.lineWidth = Math.max(0.65, scale);
+                for (let i = 0; i < 4; i++) {
+                    const ringY = y + radius * (0.52 + i * 0.2);
+                    context.beginPath();
+                    context.ellipse(x, ringY, radius * (0.32 + i * 0.025), radius * 0.1, 0, 0, Math.PI * 2);
+                    context.stroke();
+                }
+                context.strokeStyle = 'rgba(0, 45, 55, 0.8)';
+                context.lineWidth = Math.max(0.9, 1.25 * scale);
+                context.beginPath();
+                context.moveTo(x - radius * 0.48, y + radius * 0.15);
+                context.quadraticCurveTo(x, y + radius * 0.52, x + radius * 0.48, y + radius * 0.15);
+                context.stroke();
+                break;
+            }
+            case 'shard': {
+                context.fillStyle = `rgba(255, 193, 7, ${0.5 + pulse * 0.35})`;
+                for (let i = 0; i < MODEL_SHARD_POINTS.length; i++) {
+                    const p = MODEL_SHARD_POINTS[i];
+                    context.beginPath();
+                    context.moveTo(x + p[0] * radius, y + p[1] * radius);
+                    context.lineTo(x + p[2] * radius, y + p[3] * radius);
+                    context.lineTo(x + p[0] * 0.72 * radius, y + (p[1] + 0.38) * radius);
+                    context.closePath();
+                    context.fill();
+                }
+                break;
+            }
+            case 'splitter': {
+                context.fillStyle = `rgba(255, 152, 0, ${0.42 + pulse * 0.38})`;
+                for (let i = 0; i < MODEL_SPLITTER_SPIKES.length; i++) {
+                    const s = MODEL_SPLITTER_SPIKES[i];
+                    context.beginPath();
+                    context.moveTo(x + s[0] * radius, y + s[1] * radius);
+                    context.lineTo(x + s[2] * radius, y + s[3] * radius);
+                    context.lineTo(x + s[0] * 0.78 * radius, y + (s[1] + 0.28) * radius);
+                    context.closePath();
+                    context.fill();
+                }
+                break;
+            }
+            case 'boss': {
+                context.fillStyle = '#491018';
+                for (let side = -1; side <= 1; side += 2) {
+                    context.beginPath();
+                    context.moveTo(x + side * radius * 0.45, y - radius * 0.72);
+                    context.lineTo(x + side * radius * 0.92, y - radius * 1.36);
+                    context.lineTo(x + side * radius * 0.78, y - radius * 0.42);
+                    context.closePath();
+                    context.fill();
+                    context.fillStyle = '#65131d';
+                    context.beginPath();
+                    context.arc(x + side * radius * 0.86, y + radius * 0.32, radius * 0.34, 0, Math.PI * 2);
+                    context.fill();
+                    context.fillStyle = '#491018';
+                }
+                context.strokeStyle = 'rgba(255, 150, 120, 0.42)';
+                context.lineWidth = Math.max(1, 1.4 * scale);
+                for (let i = 0; i < 4; i++) {
+                    const ribY = y + radius * (0.22 + i * 0.2);
+                    context.beginPath();
+                    context.moveTo(x, ribY);
+                    context.lineTo(x - radius * (0.62 - i * 0.05), ribY + radius * 0.12);
+                    context.moveTo(x, ribY);
+                    context.lineTo(x + radius * (0.62 - i * 0.05), ribY + radius * 0.12);
+                    context.stroke();
+                }
+                break;
+            }
+            case 'warden': {
+                context.fillStyle = '#202734';
+                context.strokeStyle = '#00b8d4';
+                context.lineWidth = Math.max(1, 1.25 * scale);
+                for (let side = -1; side <= 1; side += 2) {
+                    context.beginPath();
+                    context.moveTo(x + side * radius * 0.42, y - radius * 0.58);
+                    context.lineTo(x + side * radius * 1.02, y - radius * 0.18);
+                    context.lineTo(x + side * radius * 0.88, y + radius * 0.42);
+                    context.lineTo(x + side * radius * 0.38, y + radius * 0.15);
+                    context.closePath();
+                    context.fill();
+                    context.stroke();
+                }
+                context.strokeStyle = `rgba(0, 229, 255, ${0.48 + pulse * 0.4})`;
+                context.lineWidth = Math.max(0.7, scale);
+                for (let i = -2; i <= 2; i++) {
+                    context.beginPath();
+                    context.moveTo(x + i * radius * 0.16, y + radius * 0.12);
+                    context.lineTo(x + i * radius * 0.18, y + radius * 0.48);
+                    context.stroke();
+                }
+                context.beginPath();
+                context.moveTo(x - radius * 0.7, y + radius * 0.55);
+                context.quadraticCurveTo(x, y + radius * 1.08, x + radius * 0.72, y + radius * 0.55);
+                context.stroke();
+                break;
+            }
+        }
+
+        context.restore();
+    }
+
     getEyeDrawOptions() {
         return {
             leftX: -5,
@@ -659,6 +1309,8 @@ export class Zombie {
         ctx.setLineDash([]);
 
         this.drawFaceFeatures(ctx, x, y, radius);
+        this.drawOrganicModelDetails(ctx, x, y, radius);
+        this.drawTypeModelDetails(ctx, x, y, radius, 'base');
     }
 
     /**
@@ -952,6 +1604,108 @@ export class Zombie {
             }
             context.restore();
         }
+    }
+
+    /**
+     * Golden Zombie aura — rare 5x XP spawn. Drawn as a post-draw overlay
+     * from EntityRenderSystem so every subclass draw() is covered.
+     */
+    drawGoldenAura(context) {
+        if (!this.isGolden) return;
+        const goldPulse = Math.sin(Date.now() / 180) * 0.25 + 0.75;
+        context.save();
+        const goldAura = context.createRadialGradient(this.x, this.y, this.radius * 0.3, this.x, this.y, this.radius * 2.2);
+        goldAura.addColorStop(0, `rgba(255, 215, 0, ${0.35 * goldPulse})`);
+        goldAura.addColorStop(0.5, `rgba(255, 200, 40, ${0.2 * goldPulse})`);
+        goldAura.addColorStop(1, 'rgba(255, 215, 0, 0)');
+        context.fillStyle = goldAura;
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius * 2.2, 0, Math.PI * 2);
+        context.fill();
+
+        // Orbiting sparkles
+        const t = Date.now() / 400;
+        context.fillStyle = `rgba(255, 235, 130, ${0.9 * goldPulse})`;
+        for (let i = 0; i < 3; i++) {
+            const ang = t + (Math.PI * 2 * i / 3);
+            const sx = this.x + Math.cos(ang) * (this.radius + 6);
+            const sy = this.y + Math.sin(ang) * (this.radius + 6);
+            context.beginPath();
+            context.arc(sx, sy, 1.5, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        // Gold ring around the body
+        context.strokeStyle = `rgba(255, 215, 0, ${0.8 * goldPulse})`;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius + 3, 0, Math.PI * 2);
+        context.stroke();
+        context.restore();
+    }
+
+    /**
+     * Bounty Zombie marker — one marked target per wave. Post-draw overlay
+     * from EntityRenderSystem (same hook as the golden aura).
+     */
+    drawBountyMark(context) {
+        if (!this.isBounty) return;
+        const pulse = Math.sin(Date.now() / 220) * 0.3 + 0.7;
+        context.save();
+
+        // Crimson target ring + rotating tick marks
+        context.strokeStyle = `rgba(255, 60, 60, ${0.85 * pulse})`;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius + 7, 0, Math.PI * 2);
+        context.stroke();
+
+        const t = Date.now() / 500;
+        for (let i = 0; i < 4; i++) {
+            const ang = t + (Math.PI / 2) * i;
+            const inner = this.radius + 4;
+            const outer = this.radius + 12;
+            context.beginPath();
+            context.moveTo(this.x + Math.cos(ang) * inner, this.y + Math.sin(ang) * inner);
+            context.lineTo(this.x + Math.cos(ang) * outer, this.y + Math.sin(ang) * outer);
+            context.stroke();
+        }
+
+        // Floating bounty tag
+        context.font = 'bold 11px Arial';
+        context.textAlign = 'center';
+        context.fillStyle = `rgba(255, 80, 80, ${0.9 * pulse})`;
+        context.fillText('💀 BOUNTY', this.x, this.y - this.radius - 14);
+        context.restore();
+    }
+
+    /**
+     * Last-zombie-of-wave marker — bouncing arrow + soft ring so the final
+     * straggler is easy to find. Post-draw overlay from EntityRenderSystem.
+     */
+    drawLastOfWaveMark(context) {
+        if (!this.isLastOfWave) return;
+        const pulse = Math.sin(Date.now() / 250) * 0.3 + 0.7;
+        const bob = Math.sin(Date.now() / 300) * 4;
+        context.save();
+
+        // Soft amber ring
+        context.strokeStyle = `rgba(255, 193, 7, ${0.6 * pulse})`;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius + 9, 0, Math.PI * 2);
+        context.stroke();
+
+        // Bouncing downward arrow above the head
+        const ay = this.y - this.radius - 26 + bob;
+        context.fillStyle = `rgba(255, 193, 7, ${0.9 * pulse})`;
+        context.beginPath();
+        context.moveTo(this.x - 7, ay);
+        context.lineTo(this.x + 7, ay);
+        context.lineTo(this.x, ay + 10);
+        context.closePath();
+        context.fill();
+        context.restore();
     }
 
     /**
@@ -1293,6 +2047,13 @@ export class NormalZombie extends Zombie {
         if (variant.hasAccessory) {
             this.drawAccessory(ctx, x, y, radius, variant);
         }
+
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            ribs: !variant.hasClothing,
+            rimColor: 'rgba(230, 255, 205, 0.22)',
+            woundColor: variant.scarColor || 'rgba(95, 8, 18, 0.75)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'normal');
     }
 
     drawClothing(ctx, x, y, radius, variant) {
@@ -1599,6 +2360,7 @@ export class ArmoredZombie extends Zombie {
         ctx.stroke();
 
         ctx.restore();
+        this.drawTypeModelDetails(ctx, x, y, radius, 'armored');
     }
 
     // Use default Zombie.draw() which calls drawStaticBody()
@@ -1689,6 +2451,14 @@ export class FastZombie extends Zombie {
         ctx.setLineDash([]);
 
         this.drawFaceFeatures(ctx, x, y, radius, { mouthColor: '#4a2c1a' });
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            torsoOffsetY: 12,
+            torsoRx: 1,
+            torsoRy: 1.2,
+            rimColor: 'rgba(255, 183, 115, 0.24)',
+            boneColor: 'rgba(255, 210, 150, 0.32)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'fast');
     }
 
     draw(context = ctx) {
@@ -1822,6 +2592,12 @@ export class ExplodingZombie extends Zombie {
             toothColor: '#ffe0a0',
             woundColor: 'rgba(120, 40, 0, 0.5)'
         });
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            rimColor: 'rgba(255, 205, 95, 0.28)',
+            boneColor: 'rgba(255, 225, 145, 0.26)',
+            woundColor: 'rgba(120, 30, 0, 0.8)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'exploding');
     }
 
     draw(context = ctx) {
@@ -1916,6 +2692,16 @@ export class GhostZombie extends Zombie {
         ctx.arc(x + 4, y - 2, 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
+
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            torsoOffsetY: 10,
+            torsoRx: 0.8,
+            torsoRy: 1.2,
+            rimColor: 'rgba(230, 255, 255, 0.55)',
+            boneColor: 'rgba(235, 255, 255, 0.42)',
+            woundColor: 'rgba(80, 190, 210, 0.42)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'ghost');
     }
 
     draw(context = ctx) {
@@ -2116,6 +2902,12 @@ export class SpitterZombie extends Zombie {
             toothColor: '#d4ffd4',
             woundColor: 'rgba(40, 100, 30, 0.5)'
         });
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            rimColor: 'rgba(155, 255, 130, 0.27)',
+            boneColor: 'rgba(205, 255, 180, 0.28)',
+            mottleColor: 'rgba(5, 75, 25, 0.34)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'spitter');
     }
 
     draw(context = ctx) {
@@ -2233,6 +3025,52 @@ export class FlyingZombie extends Zombie {
 
     }
 
+    drawWing(context, side, wingAngle) {
+        const radius = this.radius;
+        context.save();
+        context.scale(side, 1);
+        context.rotate(-0.18 + wingAngle * side);
+
+        const membrane = context.createLinearGradient(0, 0, radius * 2.2, 0);
+        membrane.addColorStop(0, '#3d2b5e');
+        membrane.addColorStop(0.55, '#241632');
+        membrane.addColorStop(1, '#0b0812');
+        context.fillStyle = membrane;
+        context.strokeStyle = '#08060d';
+        context.lineWidth = Math.max(1.4, radius * 0.13);
+        context.beginPath();
+        context.moveTo(radius * 0.45, -radius * 0.12);
+        context.quadraticCurveTo(radius * 1.35, -radius * 1.05, radius * 2.15, -radius * 0.78);
+        context.lineTo(radius * 1.72, -radius * 0.15);
+        context.quadraticCurveTo(radius * 1.45, radius * 0.08, radius * 1.18, radius * 0.34);
+        context.quadraticCurveTo(radius * 0.92, radius * 0.06, radius * 0.68, radius * 0.42);
+        context.quadraticCurveTo(radius * 0.52, radius * 0.12, radius * 0.25, radius * 0.24);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        // Finger bones divide the membrane into readable bat-wing panels.
+        context.strokeStyle = 'rgba(116, 78, 145, 0.72)';
+        context.lineWidth = Math.max(0.8, radius * 0.075);
+        for (let i = 0; i < FLYING_WING_TIPS.length; i++) {
+            const tip = FLYING_WING_TIPS[i];
+            context.beginPath();
+            context.moveTo(radius * 0.42, -radius * 0.08);
+            context.lineTo(radius * tip[0], radius * tip[1]);
+            context.stroke();
+        }
+
+        if (this.getModelDetailLevel() >= 3) {
+            context.strokeStyle = 'rgba(210, 175, 235, 0.18)';
+            context.lineWidth = Math.max(0.5, radius * 0.045);
+            context.beginPath();
+            context.moveTo(radius * 0.62, -radius * 0.12);
+            context.quadraticCurveTo(radius * 1.1, -radius * 0.48, radius * 1.68, -radius * 0.55);
+            context.stroke();
+        }
+        context.restore();
+    }
+
     draw() {
         // Calculate floating animation - MORE ELEVATED (increased from 3 to 8 pixels)
         const floatOffset = Math.sin((Date.now() + this.floatOffset) / 250) * 8;
@@ -2311,64 +3149,8 @@ export class FlyingZombie extends Zombie {
         // LARGER, MORE PROMINENT BAT-LIKE WINGS
         const wingFlapSpeed = 400; // Wing flap speed
         const wingAngle = Math.sin((Date.now() + this.floatOffset) / wingFlapSpeed) * 0.4; // More pronounced wing animation
-        const wingColor = '#1a1a2e'; // Dark purple/black bat-like color
-        const wingAccent = '#2d1b4e'; // Dark purple accent
-
-        // Left wing (LARGER - 12px x 6px instead of 6px x 3px)
-        ctx.save();
-        ctx.translate(-12, -4); // Further out and up
-        ctx.rotate(-0.5 + wingAngle); // More angle
-        // Wing membrane gradient
-        const leftWingGradient = ctx.createLinearGradient(-8, 0, 8, 0);
-        leftWingGradient.addColorStop(0, wingAccent);
-        leftWingGradient.addColorStop(0.5, wingColor);
-        leftWingGradient.addColorStop(1, '#0f0f1a');
-        ctx.fillStyle = leftWingGradient;
-        ctx.strokeStyle = '#0a0a15';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        // Bat-like wing shape (more elongated)
-        ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Wing bone structure
-        ctx.strokeStyle = '#3d2b5e';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-8, -3);
-        ctx.moveTo(0, 0);
-        ctx.lineTo(8, -2);
-        ctx.stroke();
-        ctx.restore();
-
-        // Right wing (LARGER - 12px x 6px instead of 6px x 3px)
-        ctx.save();
-        ctx.translate(12, -4); // Further out and up
-        ctx.rotate(0.5 - wingAngle); // More angle
-        // Wing membrane gradient
-        const rightWingGradient = ctx.createLinearGradient(-8, 0, 8, 0);
-        rightWingGradient.addColorStop(0, wingAccent);
-        rightWingGradient.addColorStop(0.5, wingColor);
-        rightWingGradient.addColorStop(1, '#0f0f1a');
-        ctx.fillStyle = rightWingGradient;
-        ctx.strokeStyle = '#0a0a15';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        // Bat-like wing shape (more elongated)
-        ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Wing bone structure
-        ctx.strokeStyle = '#3d2b5e';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-8, -2);
-        ctx.moveTo(0, 0);
-        ctx.lineTo(8, -3);
-        ctx.stroke();
-        ctx.restore();
+        this.drawWing(ctx, -1, wingAngle);
+        this.drawWing(ctx, 1, wingAngle);
 
         ctx.restore();
 
@@ -2500,6 +3282,13 @@ export class FlyingZombie extends Zombie {
         ctx.moveTo(this.x + 4, drawY + 5);
         ctx.lineTo(this.x + 4, drawY + 7);
         ctx.stroke();
+
+        this.drawOrganicModelDetails(ctx, this.x, drawY, this.radius, {
+            rimColor: 'rgba(190, 150, 225, 0.28)',
+            boneColor: 'rgba(190, 155, 215, 0.38)',
+            woundColor: 'rgba(55, 10, 70, 0.78)'
+        });
+        this.drawTypeModelDetails(ctx, this.x, drawY, this.radius, 'flying');
 
         // Health bar (if recently damaged and setting enabled)
         if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
@@ -2737,6 +3526,18 @@ export class BlightZombie extends Zombie {
         ctx.moveTo(x + 9, y + 10);
         ctx.lineTo(x + 17, y + 19);
         ctx.stroke();
+
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            torsoOffsetY: 16,
+            torsoRx: 1.35,
+            torsoRy: 1.6,
+            headRx: 1.05,
+            headRy: 1.05,
+            rimColor: 'rgba(240, 145, 255, 0.26)',
+            boneColor: 'rgba(235, 175, 245, 0.3)',
+            mottleColor: 'rgba(55, 0, 75, 0.32)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'blight');
     }
 
     draw(context = ctx) {
@@ -2946,6 +3747,7 @@ export class BlightZombie extends Zombie {
 
             if (distSq < radiusSq) {
                 // Apply damage — shield absorbs first, then health
+                gameState.waveDamageTaken = true;
                 if (player.shield > 0) {
                     player.shield -= this.sporeCloudDamage;
                     if (player.shield < 0) {
@@ -3162,6 +3964,19 @@ export class CrawlerZombie extends Zombie {
         ctx.moveTo(this.x + 3, drawY + 2);
         ctx.lineTo(this.x + 3, drawY + 4);
         ctx.stroke();
+
+        this.drawOrganicModelDetails(ctx, this.x, drawY - 2, this.radius, {
+            neck: false,
+            torsoOffsetY: 8,
+            torsoRx: 1.4,
+            torsoRy: 0.7,
+            headRx: 0.9,
+            headRy: 0.8,
+            ribs: false,
+            rimColor: 'rgba(155, 105, 95, 0.24)',
+            woundColor: 'rgba(90, 0, 0, 0.75)'
+        });
+        this.drawTypeModelDetails(ctx, this.x, drawY - 2, this.radius, 'crawler');
 
         // Health bar (if recently damaged and setting enabled)
         if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
@@ -3425,6 +4240,15 @@ export class SirenZombie extends Zombie {
             toothColor: '#b2ebf2',
             woundColor: 'rgba(0, 120, 140, 0.45)'
         });
+        this.drawOrganicModelDetails(ctx, x, y - 2, radius * 0.9, {
+            torsoOffsetY: 20,
+            torsoRx: 1.05,
+            torsoRy: 1.75,
+            rimColor: 'rgba(105, 235, 255, 0.3)',
+            boneColor: 'rgba(175, 245, 255, 0.3)',
+            woundColor: 'rgba(0, 70, 85, 0.75)'
+        });
+        this.drawTypeModelDetails(ctx, x, y - 2, radius, 'siren');
     }
 
     draw(context = ctx) {
@@ -3615,6 +4439,14 @@ export class ShardZombie extends Zombie {
         ctx.stroke();
 
         this.drawFaceFeatures(ctx, x, y, radius * 0.9, { mouthColor: '#2a4a10' });
+        this.drawOrganicModelDetails(ctx, x, y, radius * 0.9, {
+            torsoOffsetY: 9,
+            torsoRx: 1.2,
+            torsoRy: 1.15,
+            rimColor: 'rgba(255, 207, 105, 0.32)',
+            ribs: false
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'shard');
     }
 
     draw(context = ctx) {
@@ -3716,6 +4548,14 @@ export class SplitterZombie extends Zombie {
             toothColor: '#fff8e1',
             woundColor: 'rgba(100, 60, 0, 0.45)'
         });
+        this.drawOrganicModelDetails(ctx, x, y, radius, {
+            torsoOffsetY: 16,
+            torsoRx: 1.35,
+            torsoRy: 1.65,
+            rimColor: 'rgba(255, 195, 90, 0.24)',
+            woundColor: 'rgba(125, 65, 0, 0.78)'
+        });
+        this.drawTypeModelDetails(ctx, x, y, radius, 'splitter');
     }
 
     draw(context = ctx) {

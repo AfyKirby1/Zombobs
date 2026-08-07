@@ -21,10 +21,11 @@ import { applyWaveRiderBoost } from '../utils/combatUtils.js';
 import { setGameMusicIntensity } from './AudioSystem.js';
 import { shootBullet, handlePlayerZombieCollisions, handlePickupCollisions } from '../utils/combatUtils.js';
 import { handleBulletZombieCollisions } from '../utils/bulletZombieCollisions.js';
-import { updateParticles, drawParticles, updateSnowSystem } from './ParticleSystem.js';
+import { updateParticles, drawParticles, updateSnowSystem, PARTICLE_KIND, emit, createParticles } from './ParticleSystem.js';
 import { zombieUpdateSystem } from './ZombieUpdateSystem.js';
 import { pickupSpawnSystem } from './PickupSpawnSystem.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
+import { worldShopSystem } from './WorldShopSystem.js';
 import { propSpawnSystem } from './PropSpawnSystem.js';
 import { propRenderSystem } from './PropRenderSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
@@ -32,9 +33,12 @@ import { cameraSystem } from './CameraSystem.js';
 import { mapLoader } from './MapLoader.js';
 import { entityRenderSystem } from './EntityRenderSystem.js';
 import { bloodSimulationSystem } from './BloodSimulationSystem.js';
+import { decalSystem } from './vfx/DecalSystem.js';
 import { skillSystem } from './SkillSystem.js';
 import { equipmentSystem } from './EquipmentSystem.js';
-import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
+import { getRarityColor } from '../core/equipmentDefinitions.js';
+import { DamageNumber } from '../entities/Particle.js';
+import { drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawCampaignObjective, drawBossRushHeader, drawCampaignTransition, drawFpsCounter } from '../utils/drawingUtils.js';
 
 /**
  * GameLoopSystem — per-frame gameplay update and world/HUD rendering.
@@ -198,6 +202,10 @@ export class GameLoopSystem {
         });
 
         zombieUpdateSystem.updateZombies(gameState, this.gameEngine, viewport, now);
+        compactArrayWithUpdate(gameState.sentryTurrets, turret => {
+            turret.update();
+            return !turret.isDestroyed;
+        });
         updateParticles();
         updateSnowSystem(viewport);
 
@@ -207,6 +215,44 @@ export class GameLoopSystem {
         }
 
         bloodSimulationSystem.update(16.67);
+        const anchorPlayer = gameState.players[0];
+        if (anchorPlayer) {
+            bloodSimulationSystem.setCameraAnchor(anchorPlayer.x, anchorPlayer.y);
+        }
+        decalSystem.update();
+
+        // Fire pool point lights + heat haze + occasional embers
+        if (gameState.acidPools) {
+            for (let i = 0; i < gameState.acidPools.length; i++) {
+                const pool = gameState.acidPools[i];
+                if (!pool || !pool.isFirePool) continue;
+                if (this.webgpuRenderer?.addPointLight) {
+                    this.webgpuRenderer.addPointLight(
+                        pool.x, pool.y,
+                        pool.radius * 2.2,
+                        0.55,
+                        1.0, 0.45, 0.1
+                    );
+                }
+                if (this.webgpuRenderer) {
+                    this.webgpuRenderer.hazeStrength = Math.min(
+                        1.2,
+                        (this.webgpuRenderer.hazeStrength || 0) + 0.08
+                    );
+                }
+                if (Math.random() < 0.15) {
+                    emit(PARTICLE_KIND.ember, pool.x, pool.y, '#ff8800', {
+                        radius: 2 + Math.random() * 2,
+                        vx: (Math.random() - 0.5) * 1.5,
+                        vy: -1 - Math.random() * 2,
+                        life: 25,
+                        maxLife: 25,
+                        drag: 0.96,
+                        gravity: -0.04,
+                    });
+                }
+            }
+        }
 
         compactArrayWithUpdate(gameState.shells, shell => {
             if (shell.life <= 0) return false;
@@ -250,6 +296,11 @@ export class GameLoopSystem {
                 p.muzzleFlash.intensity = p.muzzleFlash.life / p.muzzleFlash.maxLife;
                 if (p.muzzleFlash.life <= 0) {
                     p.muzzleFlash.active = false;
+                } else if (this.webgpuRenderer?.effects && p.muzzleFlash.intensity > 0.25) {
+                    const mf = p.muzzleFlash;
+                    this.webgpuRenderer.effects.addLight(
+                        mf.x, mf.y, 70, mf.intensity * 1.3, 1.0, 0.78, 0.42
+                    );
                 }
             }
 
@@ -320,6 +371,15 @@ export class GameLoopSystem {
         handlePickupCollisions();
         this._updateEquipmentPickups();
 
+        // Last zombie of the wave — mark it so players don't hunt around (arcade local)
+        if (gameState.zombies.length === 1 && !gameState.isSpawningWave &&
+            gameState.gameMode !== 'campaign' && !gameState.multiplayer.active) {
+            const lastZ = gameState.zombies[0];
+            if (lastZ && lastZ.type !== 'boss' && lastZ.type !== 'warden' && !lastZ.isLastOfWave) {
+                lastZ.isLastOfWave = true;
+            }
+        }
+
         if (gameState.zombies.length === 0 && gameState.gameRunning && !gameState.isSpawningWave) {
             const script = gameState.campaignScript;
             const finaleLock = script && (script.defendActive || script.wardenSpawned || script.actClear || gameState.campaignActClear);
@@ -327,22 +387,53 @@ export class GameLoopSystem {
                 // Hack/defend/Warden owns spawn — don't advance arcade waves
             } else if (!gameState.waveBreakActive) {
                 gameState.waveBreakActive = true;
+                // Perfect Wave — cleared without any player taking a hit (arcade/co-op, local only)
+                if (!gameState.waveDamageTaken && gameState.gameMode !== 'campaign' && !gameState.multiplayer.active) {
+                    gameState.perfectWaveCount++;
+                    gameState.perfectWaveStreak++;
+                    // Consecutive perfect waves scale the bonus (x1/x2/x3 cap)
+                    const streakMult = Math.min(3, gameState.perfectWaveStreak);
+                    const bonusScrap = (25 + Math.min(50, gameState.wave * 5)) * streakMult;
+                    for (let pi = 0; pi < gameState.players.length; pi++) {
+                        const pl = gameState.players[pi];
+                        if (pl.health > 0) pl.scrap = (pl.scrap || 0) + bonusScrap;
+                    }
+                    gameState.scrapCollected += bonusScrap;
+                    gameState.score += bonusScrap;
+                    const pw = gameState.players[0];
+                    if (pw) {
+                        const label = gameState.perfectWaveStreak >= 2 ? `PERFECT WAVE x${gameState.perfectWaveStreak}!` : 'PERFECT WAVE!';
+                        gameState.damageNumbers.push(new DamageNumber(pw.x, pw.y - 62, label, false, '#00e5ff', 24));
+                        gameState.damageNumbers.push(new DamageNumber(pw.x, pw.y - 40, `+${bonusScrap} SCRAP`, false, '#ffd700', 16));
+                        createParticles(pw.x, pw.y, '#00e5ff', 12);
+                    }
+                } else if (gameState.waveDamageTaken) {
+                    gameState.perfectWaveStreak = 0; // streak broken
+                }
+                // Scrap Sweep — wave clear vacuums leftover scrap toward players (local only)
+                if (!gameState.multiplayer.active && gameState.scrapPickups.length > 0) {
+                    gameState.scrapSweepEndTime = Date.now() + 5000;
+                }
                 const breakDuration = getWaveBreakDuration(gameState.wave, {
                     fastClear: wasFastWaveClear(gameState.waveStartTime),
                     rushActive: gameState.waveMutator === 'rush'
                 });
                 gameState.waveBreakEndTime = Date.now() + breakDuration;
                 scrapShopSystem.trySpawnShrine();
+                worldShopSystem.onWaveBreakStart();
             } else if (Date.now() >= gameState.waveBreakEndTime) {
                 gameState.waveBreakActive = false;
                 scrapShopSystem.clearShrines();
+                worldShopSystem.onWaveBreakEnd();
                 gameState.wave++;
                 gameState.zombiesPerWave += 2;
+                gameState.waveDamageTaken = false; // fresh Perfect Wave window
                 applyWaveRiderBoost(gameState.players);
                 this.spawnZombies(gameState.zombiesPerWave);
             }
         }
 
+        worldShopSystem.update();
         this._updateMusicIntensity();
     }
 
@@ -370,16 +461,39 @@ export class GameLoopSystem {
         const player = gameState.players[0];
         if (!player || player.health <= 0) return;
 
+        const now = Date.now();
         for (let i = gameState.equipmentPickups.length - 1; i >= 0; i--) {
             const pickup = gameState.equipmentPickups[i];
-            pickup.update();
+            pickup.update(player.x, player.y);
 
             const dx = player.x - pickup.x;
             const dy = player.y - pickup.y;
             const collectRadius = player.radius + pickup.radius;
             if (dx * dx + dy * dy <= collectRadius * collectRadius) {
-                equipmentSystem.autoEquipIfSlotEmpty(player, pickup.item);
-                gameState.equipmentPickups.splice(i, 1);
+                const ok = equipmentSystem.autoEquipIfSlotEmpty(player, pickup.item);
+                if (ok) {
+                    const item = pickup.item;
+                    const color = getRarityColor(item.rarity);
+                    if (gameState.damageNumbers) {
+                        gameState.damageNumbers.push(
+                            new DamageNumber(
+                                player.x,
+                                player.y - 40,
+                                `${item.icon} ${item.name}`,
+                                false,
+                                color
+                            )
+                        );
+                    }
+                    gameState.equipmentPickups.splice(i, 1);
+                } else if (!pickup._fullInvToastAt || now - pickup._fullInvToastAt > 1200) {
+                    pickup._fullInvToastAt = now;
+                    if (gameState.damageNumbers) {
+                        gameState.damageNumbers.push(
+                            new DamageNumber(pickup.x, pickup.y - 28, 'Inventory full', false, '#ff5252')
+                        );
+                    }
+                }
             } else if (pickup.life <= 0) {
                 gameState.equipmentPickups.splice(i, 1);
             }
@@ -661,8 +775,14 @@ export class GameLoopSystem {
             propRenderSystem.render(gameState, viewport);
         }
 
+        decalSystem.draw();
         entityRenderSystem.drawEntities(gameState, ctx, viewport);
+        worldShopSystem.draw(viewport);
         this.drawPlayers();
+
+        for (let i = 0; i < gameState.sentryTurrets.length; i++) {
+            gameState.sentryTurrets[i].draw(ctx, isSinglePlayerArcade ? cameraSystem : null);
+        }
 
         for (let i = 0; i < gameState.equipmentPickups.length; i++) {
             gameState.equipmentPickups[i].draw(ctx);
@@ -720,7 +840,10 @@ export class GameLoopSystem {
 
         if (bloodSimulationSystem.enabled) {
             const bloodData = bloodSimulationSystem.getBloodData();
-            if (bloodData.length > 0) {
+            const gpuBlood = this.webgpuRenderer?.isAvailable?.() && this.webgpuRenderer.syncBloodCells;
+            if (gpuBlood && bloodData.length > 0) {
+                this.webgpuRenderer.syncBloodCells(bloodData, bloodSimulationSystem.cellSize);
+            } else if (bloodData.length > 0) {
                 ctx.fillStyle = '#8B0000';
                 for (let i = 0; i < bloodData.length; i++) {
                     const cell = bloodData[i];
@@ -796,14 +919,17 @@ export class GameLoopSystem {
         if (gameState.gameRunning && !gameState.gamePaused && localPlayer) {
             this._drawPickupTooltips(localPlayer);
             this._drawScrapShrinePrompt(localPlayer);
+            this._drawWorldShopPrompt(localPlayer);
         }
 
         gameHUD.draw();
         if (gameState.gameRunning && !gameState.gamePaused) {
             gameHUD.drawCompass();
+            gameHUD.drawShopBeacons(worldShopSystem.getBeaconTargets());
         }
         drawWaveNotification();
         drawCampaignObjective();
+        drawBossRushHeader();
         drawCampaignTransition();
         drawWaveBreak();
         drawFpsCounter();
@@ -888,6 +1014,25 @@ export class GameLoopSystem {
         let drawY = shrine.y - shrine.radius - 8;
 
         if (isSinglePlayerArcade) {
+            const screenPos = cameraSystem.worldToScreen(drawX, drawY);
+            drawX = screenPos.x;
+            drawY = screenPos.y;
+        }
+
+        this.gameHUD.drawTooltip(prompt, drawX, drawY);
+    }
+
+    _drawWorldShopPrompt(localPlayer) {
+        const prompt = worldShopSystem.getPromptText(localPlayer);
+        if (!prompt) return;
+
+        const pos = worldShopSystem.getNearbyVendorPosition(localPlayer);
+        if (!pos) return;
+
+        let drawX = pos.x;
+        let drawY = pos.y - (pos.radius || 20) - 8;
+
+        if (isSinglePlayerArcadeMode(gameState)) {
             const screenPos = cameraSystem.worldToScreen(drawX, drawY);
             drawX = screenPos.x;
             drawY = screenPos.y;

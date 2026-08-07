@@ -40,9 +40,9 @@
     - Fix rare audio popping when too many zombies die at once (limit max concurrent death sounds?).
 - [ ] **Visual Fixes**:
     - "Ammo" text on HUD overlaps with weapon icon on 4:3 resolutions.
-    - Add subtle shadow to the crosshair for better visibility on bright backgrounds.
-- [ ] **Gameplay Tweak**:
-    - Increase "Speed Boost" pickup duration from 10s to 12s (feels a bit too short).
+    - [x] Add subtle shadow to the crosshair for better visibility on bright backgrounds. *(2026-07-15)*
+- [x] **Gameplay Tweak**:
+    - Increase "Speed Boost" pickup duration from 10s to 12s (feels a bit too short). *(2026-07-15 — code baseline was 8s; now 12s)*
 - [ ] **Buff/Debuff Tray** (Roadmap): Visual icons with timers for active status effects.
 - [ ] **Impact Decals** (Roadmap): Persistent bullet holes and scorch marks on surfaces.
 - [ ] **Distant Ambience** (Roadmap): Background soundscape (distant sirens, wind) for immersion.
@@ -141,7 +141,7 @@
     - **v0.8.9.2**: *Role Assignment*
         - **System**: Assign survivor to "Repair Duty" or "Turret Duty".
         - **AI**: Survivors flee to "Safe Zone" when walls are breached.
-- **Idea**: "Golden Zombie" rare spawn that drops 5x XP?
+- **Idea**: "Golden Zombie" rare spawn that drops 5x XP? — [x] SHIPPED 2026-07-15 (1.5% roll, gold aura, 5x XP)
 - **Tech Debt**: Refactor `main.js` event listeners into a dedicated `InputManager` class.
 
 - **v0.9.0: The Silent & Deadly Update** (Stealth & Tactics)

@@ -110,6 +110,8 @@ Example: `V0.8.4 ALPHA`
 
 [AMENDED 2026-06-26]: Current release example: `V0.9.3 ALPHA`
 
+[AMENDED 2026-08-02 — V0.10.0 modality pass]: Updated `constants.js` hub (`GAME_VERSION` → V0.10.0 ALPHA; `VERSION_HISTORY` UNRELEASED → **V0.10.0 VFX & Scrap** with CURRENT tag; `NEWS_UPDATES`), landing + `mobile/www` landing (new V0.10.0 bubble, Latest on Main), README (badge + What's New), itch `page_description.md` (Latest on Main + V0.10.0 section, engine, disclaimer), `ITCH_IO_GUIDE.md` disclaimer, server package metadata (`0.10.0-ALPHA`), `AGENTS.md`, `CHANGELOG` ([Unreleased] → [v0.10.0]), `SUMMARY`, `My_Thoughts`, checklist amend. `GAME_VERSION` is now **V0.10.0 ALPHA**.
+
 [AMENDED 2026-07-09 — V0.9.3 modality pass]: Updated `NEWS_UPDATES`, landing bubbles (new V0.9.3 section), mobile web mirror, itch `page_description.md`, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.3 public copy leads with *Act 1 Finale Update* (Z1–4 + Warden + ACT 1 CLEAR, survivor quests, campaign alive, menu horde ambience, boot hardening, 44,609 LOC).
 
 [AMENDED 2026-07-09 — V0.9.2 modality pass]: Updated `NEWS_UPDATES`, landing bubbles (new V0.9.2 section), mobile web mirror, itch `page_description.md`, launcher, server package metadata, `AGENTS.md`, `CHANGELOG`, `SUMMARY`. V0.9.2 public copy leads with *Campaign & Mobile Update* (Act 1 Zones 1–3, equipment/heroes, mobile touch wired, boot progress, 40K LOC).
@@ -164,3 +166,5 @@ Example: `V0.8.4 ALPHA`
 [AMENDED 2026-06-26 — smooth game entry]: Documented idle GPU/ground warm-up, async `startGame()`, session prep overlay, and `gpuCanvas` fade-in in `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `REFACTOR_PLAN`, `My_Thoughts`. No version bump — ships under existing V0.9.0 ALPHA performance release.
 
 [AMENDED 2026-07-06 — VersionModal + constants hub]: Clickable main-menu version badge opens `js/ui/VersionModal.js` (spooky arcade **PATCH NOTES**). Centralized `GAME_VERSION`, `ENGINE_VERSION`, `VERSION_HISTORY` in `js/core/constants.js`. Version bumps now **prepend** to `VERSION_HISTORY` and update constants — MainMenu/About/VersionModal read automatically. Added §1 hub table, §2 modality matrix, §9 mobile sync, and GitHub Pages `VersionModal.js` artifact check. See `DOCS/SCRATCHPAD.md` § Clickable Version Modal.
+
+[AMENDED 2026-08-03 — V0.10.1 modality pass]: Custom Cursor System overhaul. Updated `constants.js` hub (`GAME_VERSION` → V0.10.1 ALPHA; `VERSION_HISTORY` prepended with CURRENT tag; `NEWS_UPDATES`), landing hero + tech specs + version bubbles, itch `page_description.md`, server package metadata (`0.10.1-ALPHA`), `README.md` badge, `CHANGELOG` [v0.10.1], `SUMMARY`, `SCRATCHPAD`. Created workspace skill `.agents/skills/version-update-flow/SKILL.md` to automate future version update workflows.

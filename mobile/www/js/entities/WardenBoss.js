@@ -2,6 +2,7 @@
 import { BossZombie } from './BossZombie.js';
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 import { triggerExplosion, applyPlayerDamage } from '../utils/combatUtils.js';
 import {
     Zombie,
@@ -155,6 +156,21 @@ export class WardenBoss extends BossZombie {
         const pulse = Math.sin(Date.now() / 180) * 0.2 + 0.8;
         const auraSize = this.radius * (1.6 + this.phase * 0.15) * pulse;
 
+        if (settingsManager.getSetting('video', 'shadows') !== false) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.58)';
+            ctx.beginPath();
+            ctx.ellipse(
+                this.x + this.radius * 0.12,
+                this.y + this.radius * 1.18,
+                this.radius * 1.4,
+                this.radius * 0.5,
+                0,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+
         ctx.save();
         ctx.translate(this.x, this.y);
 
@@ -184,34 +200,118 @@ export class WardenBoss extends BossZombie {
         ctx.moveTo(0, -this.radius - 30);
         ctx.lineTo(0, this.radius + 10);
         ctx.stroke();
+
+        // Relay crossbars and hanging signal leads make the mast read as
+        // machinery rather than a single line.
+        ctx.strokeStyle = 'rgba(0, 188, 212, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-this.radius * 0.45, -this.radius - 18);
+        ctx.lineTo(this.radius * 0.45, -this.radius - 18);
+        ctx.moveTo(-this.radius * 0.3, -this.radius - 9);
+        ctx.lineTo(this.radius * 0.3, -this.radius - 9);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-this.radius * 0.42, -this.radius - 18);
+        ctx.quadraticCurveTo(-this.radius * 0.72, -this.radius * 0.2, -this.radius * 0.9, this.radius * 0.38);
+        ctx.moveTo(this.radius * 0.42, -this.radius - 18);
+        ctx.quadraticCurveTo(this.radius * 0.72, -this.radius * 0.2, this.radius * 0.9, this.radius * 0.38);
+        ctx.stroke();
         ctx.fillStyle = '#00e5ff';
         ctx.beginPath();
         ctx.arc(0, -this.radius - 34, 6, 0, Math.PI * 2);
         ctx.fill();
 
+        // Long armored arms behind the core body.
+        const armSwing = Math.sin(Date.now() / 300 + this.animSeed) * this.radius * 0.06;
+        for (let side = -1; side <= 1; side += 2) {
+            ctx.strokeStyle = '#1c1530';
+            ctx.lineWidth = this.radius * 0.3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(side * this.radius * 0.7, this.radius * 0.06);
+            ctx.quadraticCurveTo(
+                side * this.radius * 1.22,
+                this.radius * 0.52 + armSwing * side,
+                side * this.radius * 1.02,
+                this.radius * 1.12
+            );
+            ctx.stroke();
+            this.drawClawedHand(
+                ctx,
+                side * this.radius * 1.02,
+                this.radius * 1.18,
+                this.radius / 21,
+                '#594072',
+                side * -0.2
+            );
+        }
+
         const bodyGradient = ctx.createRadialGradient(
-            -this.radius / 3, -this.radius / 3, 0, 0, 0, this.radius
+            -this.radius / 3, -this.radius / 3, 0, 0, this.radius * 0.12, this.radius * 1.25
         );
         bodyGradient.addColorStop(0, this.color.light);
+        bodyGradient.addColorStop(0.55, '#32104f');
         bodyGradient.addColorStop(1, this.color.dark);
         ctx.fillStyle = bodyGradient;
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.ellipse(0, this.radius * 0.28, this.radius * 1.08, this.radius * 1.24, 0, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.strokeStyle = this.color.outline;
         ctx.lineWidth = 3;
         ctx.stroke();
 
+        // Angular broadcast mask/head.
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.moveTo(-this.radius * 0.72, -this.radius * 0.5);
+        ctx.lineTo(-this.radius * 0.52, -this.radius * 0.9);
+        ctx.lineTo(this.radius * 0.52, -this.radius * 0.9);
+        ctx.lineTo(this.radius * 0.72, -this.radius * 0.5);
+        ctx.lineTo(this.radius * 0.58, this.radius * 0.08);
+        ctx.lineTo(0, this.radius * 0.32);
+        ctx.lineTo(-this.radius * 0.58, this.radius * 0.08);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        this.drawOrganicModelDetails(ctx, 0, -this.radius * 0.28, this.radius * 0.82, {
+            torsoOffsetY: 9,
+            torsoRx: 1.32,
+            torsoRy: 1.55,
+            ribs: false,
+            rimColor: 'rgba(100, 225, 255, 0.34)',
+            mottleColor: 'rgba(20, 0, 45, 0.34)',
+            woundColor: 'rgba(0, 105, 125, 0.78)'
+        });
+        this.drawTypeModelDetails(ctx, 0, 0, this.radius, 'warden');
+
         // Floodlight eyes
         ctx.fillStyle = '#00e5ff';
         ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = 14;
+        ctx.shadowBlur = 14 + this.phase * 3;
         ctx.beginPath();
-        ctx.arc(-this.radius * 0.32, -this.radius * 0.18, 7, 0, Math.PI * 2);
-        ctx.arc(this.radius * 0.32, -this.radius * 0.18, 7, 0, Math.PI * 2);
+        ctx.ellipse(-this.radius * 0.3, -this.radius * 0.38, 8, 5, -0.12, 0, Math.PI * 2);
+        ctx.ellipse(this.radius * 0.3, -this.radius * 0.38, 8, 5, 0.12, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
+
+        // Respirator grille and phase-lit relay nodes.
+        ctx.strokeStyle = '#94a3ad';
+        ctx.lineWidth = 2;
+        for (let i = -2; i <= 2; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * this.radius * 0.12, -this.radius * 0.08);
+            ctx.lineTo(i * this.radius * 0.1, this.radius * 0.18);
+            ctx.stroke();
+        }
+        for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = i < this.phase ? '#00e5ff' : 'rgba(0, 77, 87, 0.7)';
+            ctx.beginPath();
+            ctx.arc((i - 1) * this.radius * 0.22, this.radius * 0.52, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Headset bar
         ctx.strokeStyle = '#888';
@@ -219,6 +319,8 @@ export class WardenBoss extends BossZombie {
         ctx.beginPath();
         ctx.arc(0, -this.radius * 0.1, this.radius * 0.7, Math.PI * 1.1, Math.PI * 1.9);
         ctx.stroke();
+
+        this.drawHitReactFlash(ctx, 0, -this.radius * 0.08, this.radius);
 
         ctx.restore();
 

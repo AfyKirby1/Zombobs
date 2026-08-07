@@ -52,6 +52,7 @@ export class AcidPool {
                     // Player is in acid pool - take damage
                     const damage = this.damagePerTick;
                     const previousHealth = player.health;
+                    gameState.waveDamageTaken = true;
                     
                     // Apply to shield first, then health
                     if (player.shield > 0) {

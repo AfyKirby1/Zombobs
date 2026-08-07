@@ -16,6 +16,7 @@ import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
 import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
+import { getRoleKit } from './HumanCompanionRenderer.js';
 import { isMobileDevice, isCampaignMode } from '../utils/gameUtils.js';
 import { mapLoader } from './MapLoader.js';
 import { scrapShopSystem } from './ScrapShopSystem.js';
@@ -321,6 +322,12 @@ export class PlayerSystem {
                 player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
             }
 
+            // Compact cosmetic motion data for the procedural human renderer.
+            // Gameplay never reads these fields.
+            player.visualMoveX = moveX;
+            player.visualMoveY = moveY;
+            player.visualMoveAmount = Math.min(1, Math.abs(moveX) + Math.abs(moveY));
+
             // Footstep sounds (more frequent and louder when sprinting)
             if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {
                 const currentTime = Date.now();
@@ -593,7 +600,7 @@ export class PlayerSystem {
                 ctx.shadowBlur = 4;
                 ctx.fillText(player.name, player.x, player.y - player.radius - 8);
                 if (player.isHero && player.heroRole) {
-                    ctx.fillStyle = '#ff6b35';
+                    ctx.fillStyle = getRoleKit(player).accent;
                     ctx.font = "10px 'Roboto Mono', monospace";
                     ctx.fillText(player.heroRole.toUpperCase(), player.x, player.y - player.radius - 20);
                 }

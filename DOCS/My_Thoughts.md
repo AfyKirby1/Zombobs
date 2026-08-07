@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-08-02 - V0.10.0 Modality Pass
+
+Bumped all version surfaces to **V0.10.0 ALPHA — VFX & Scrap Update**: `constants.js` hub (GAME_VERSION + VERSION_HISTORY CURRENT moved from UNRELEASED to V0.10.0 + NEWS_UPDATES), landing + `mobile/www` (badge, engine, new V0.10.0 bubble, Latest on Main), README badge/What's New, itch page description + guide, server packages, `AGENTS.md`, `CHANGELOG` ([Unreleased] → [v0.10.0] as the VFX & Scrap release), `SUMMARY`, `My_Thoughts`. Folded in the real VFX work (cinematic post-FX impulse + muzzle world lights, 2026-08-02) plus prior Unreleased Arcade Depot/Wandering Merchant. Chose "VFX & Scrap" codename to lead with the hot new visuals while credit the economy depth. `mobile/www` synced via `npm run sync:web` after hub edits so no drift.
+
 ## 2026-07-21 - Arcade Depot + Wandering Merchant
 
 Scrap shrine alone was a nice spike but the open arcade world still felt empty between waves. Split economy into three roles so spend loops don't cannibalize each other: **shrine** = one random combat buff on break; **depot** = always-on restock landmark with a permanent beacon (risk trek mid-horde); **merchant** = rare FOMO visit with pricey uniques. Shared `applyScrapOffer` so turret/nuke/magnet don't fork three code paths. Gated hard to arcade SP — campaign already dense with MapLoader POIs; MP sync deferred. Compass `D`/`M` + edge chevrons reuse existing HUD language instead of a minimap. Next depth pass if wanted: campaign shop triggers, or between-run permanent shop from roadmap.

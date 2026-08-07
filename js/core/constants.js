@@ -1,6 +1,13 @@
 // Game constants
 export const RENDER_SCALE = 0.75;
 
+// UI canvas pixel density (gameplay canvases use RENDER_SCALE).
+// uiCanvas hosts the main menu + all UI text; rendering it at RENDER_SCALE and
+// upscaling to CSS size made fonts look muddy. 1.0 = one canvas px per CSS px,
+// so text is sampled at native resolution while getUiDensityScale() keeps the
+// on-screen geometry size unchanged.
+export const UI_RENDER_SCALE = 1.0;
+
 // Math constants (cached for performance)
 export const TWO_PI = Math.PI * 2;
 
@@ -213,21 +220,33 @@ function resolveServerUrl() {
 export const SERVER_URL = resolveServerUrl();
 
 // Version control — single source of truth for all in-game version displays
-export const GAME_VERSION = 'V0.9.3 ALPHA';
+export const GAME_VERSION = 'V0.10.1 ALPHA';
 export const ENGINE_NAME = 'ZOMBS-XFX-NGIN';
 export const ENGINE_VERSION = `${ENGINE_NAME} ${GAME_VERSION}`;
 
 /** Patch notes shown in the main-menu version modal (newest first) */
 export const VERSION_HISTORY = [
     {
-        version: 'UNRELEASED',
-        codename: 'Scrap Economy Depth',
-        date: '2026-07-21',
+        version: 'V0.10.1 ALPHA',
+        codename: 'Custom Cursor System',
+        date: '2026-08-03',
         tag: 'CURRENT',
         highlights: [
-            'Engine VFX modernize — real bloom/post-FX, typed particles, GPU combat FX',
-            'Explosion/fire fidelity + heat haze, point lights, blood/scorch decals',
-            'Camera-anchored blood pools + WGSL shader extract (js/shaders/)',
+            'Animated menu cursor — motion ghost trails, spark ember particles, velocity tilt',
+            'Pulsing blood-red hover glow + animated bracket target corners on buttons',
+            'Click flash ring — expanding energy ripple on mouse click',
+            'Squeezing grab/grabbing hand cursor with blood-red nail accents & depth shadow',
+            'Dynamic crosshair polish — center gap separation, dot pip, cardinal ticks, scale-punch hit markers'
+        ]
+    },
+    {
+        version: 'V0.10.0 ALPHA',
+        codename: 'VFX & Scrap Update',
+        date: '2026-08-02',
+        highlights: [
+            'Engine + VFX modernization — WebGPU bloom, typed particles, GPU combat FX',
+            'Chromatic aberration, film grain, vignette + damage/explosion impulse',
+            'Muzzle smoke + world point lights — gunfire lights the arena',
             'Arcade Scrap Depot — fixed restock shop + always-on beacon',
             'Wandering Merchant — rare black-market visits + Gear Crate',
             'Equipment drops improved — Warden loot, melee drops, scrap sink',
@@ -293,7 +312,7 @@ export const VERSION_HISTORY = [
 ];
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: UNRELEASED — Scrap Economy Depth: Arcade Depot 🏪 | Merchant Gear Crate 📦 | Equip Drops + Scrap Sink 🛡 | Warden Loot Fix 👹 | V0.9.3: Act 1 Finale | Survivor Quests 🤝 | And More...";
+export const NEWS_UPDATES = "NEW: V0.10.1 — Custom Cursor System 🎯 | Motion Spark Trails ✨ | Neon Glow Brackets ⭕ | Dynamic Crosshairs 💥 | V0.10.0: VFX & Scrap Update";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

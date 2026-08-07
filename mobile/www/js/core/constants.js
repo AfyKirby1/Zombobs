@@ -1,6 +1,13 @@
 // Game constants
 export const RENDER_SCALE = 0.75;
 
+// UI canvas pixel density (gameplay canvases use RENDER_SCALE).
+// uiCanvas hosts the main menu + all UI text; rendering it at RENDER_SCALE and
+// upscaling to CSS size made fonts look muddy. 1.0 = one canvas px per CSS px,
+// so text is sampled at native resolution while getUiDensityScale() keeps the
+// on-screen geometry size unchanged.
+export const UI_RENDER_SCALE = 1.0;
+
 // Math constants (cached for performance)
 export const TWO_PI = Math.PI * 2;
 
@@ -43,13 +50,68 @@ export const SCRAP_SHRINE_INTERACT_RANGE = 70;
 export const SCRAP_SHOP_AMMO_COST = 20;
 export const SCRAP_SHOP_SHIELD_COST = 30;
 export const SCRAP_SHOP_OVERCLOCK_COST = 40;
+export const SCRAP_SHOP_TURRET_COST = 35;
+export const SCRAP_SHOP_ORBITAL_STRIKE_COST = 60;
 export const SCRAP_SHOP_OVERCLOCK_DURATION_MS = 10000;
 export const SCRAP_SHOP_SHIELD_AMOUNT = 25;
 
 export const SCRAP_SHOP_OFFERS = [
     { id: 'ammo', label: 'Ammo Cache', cost: SCRAP_SHOP_AMMO_COST, icon: '📦' },
     { id: 'shield', label: 'Armor Plate', cost: SCRAP_SHOP_SHIELD_COST, icon: '🛡' },
-    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' }
+    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' },
+    { id: 'sentry_turret', label: 'Sentry Turret', cost: SCRAP_SHOP_TURRET_COST, icon: '🤖' },
+    { id: 'orbital_strike', label: 'Orbital Strike', cost: SCRAP_SHOP_ORBITAL_STRIKE_COST, icon: '🛰️' }
+];
+
+// Arcade Scrap Depot — fixed map restock shop
+export const DEPOT_INTERACT_RANGE = 80;
+export const DEPOT_SPAWN_DIST_MIN = 800;
+export const DEPOT_SPAWN_DIST_MAX = 1200;
+export const DEPOT_PRICE_SCALE_PER_WAVE = 0.08;
+export const DEPOT_PRICE_SCALE_CAP = 2.0;
+export const DEPOT_MEDKIT_HEAL = 40;
+export const DEPOT_OFFERS = [
+    { id: 'ammo', label: 'Ammo Cache', cost: 15, icon: '📦', stock: 3 },
+    { id: 'medkit', label: 'Medkit', cost: 25, icon: '❤️', stock: 2 },
+    { id: 'grenade', label: 'Grenade', cost: 20, icon: '💣', stock: 2 },
+    { id: 'molotov', label: 'Molotov', cost: 25, icon: '🔥', stock: 1 },
+    { id: 'shield', label: 'Armor Plate', cost: 30, icon: '🛡', stock: 2 }
+];
+
+// Wandering Merchant — rare black-market visit
+export const MERCHANT_INTERACT_RANGE = 75;
+export const MERCHANT_MIN_WAVE = 6;
+export const MERCHANT_SPAWN_CHANCE = 0.35;
+export const MERCHANT_COOLDOWN_WAVES = 2;
+export const MERCHANT_DURATION_MS = 22000;
+export const MERCHANT_SPAWN_DIST_MIN = 400;
+export const MERCHANT_SPAWN_DIST_MAX = 700;
+export const MERCHANT_OVERCLOCK_DURATION_MS = 20000;
+export const MERCHANT_SCRAP_MAGNET_DURATION_MS = 15000;
+export const MERCHANT_SCRAP_MAGNET_RANGE_BONUS = 200;
+export const MERCHANT_SCRAP_VALUE_MULT = 1.5;
+export const MERCHANT_XP_BURST = 150;
+export const MERCHANT_OFFER_SLOTS = 3;
+export const MERCHANT_FLAVOR_ARRIVE = [
+    'Got goods. Got prices. Got outta here.',
+    'Black market open — make it snappy.',
+    'Horde pays well. You pay better.'
+];
+export const MERCHANT_FLAVOR_LEAVE = [
+    'Later, scav.',
+    'Stock gone. I gone.',
+    'Radio says leave. I listen.'
+];
+export const MERCHANT_OFFERS = [
+    { id: 'sentry_turret', label: 'Sentry Turret', cost: 45, icon: '🤖', weight: 3, rare: false },
+    { id: 'orbital_strike', label: 'Orbital Strike', cost: 70, icon: '🛰️', weight: 2, rare: true },
+    { id: 'mystery_crate', label: 'Mystery Crate', cost: 35, icon: '🎁', weight: 4, rare: false },
+    { id: 'gear_crate', label: 'Gear Crate', cost: 65, icon: '📦', weight: 2, rare: true },
+    { id: 'overclock_syringe', label: 'Overclock Syringe', cost: 55, icon: '💉', weight: 3, rare: false },
+    { id: 'scrap_magnet', label: 'Scrap Magnet', cost: 40, icon: '🧲', weight: 3, rare: false },
+    { id: 'panic_nuke', label: 'Panic Nuke', cost: 90, icon: '☢️', weight: 1, rare: true },
+    { id: 'reroll_token', label: 'Reroll Token', cost: 50, icon: '🔄', weight: 2, rare: true },
+    { id: 'xp_burst', label: 'XP Burst', cost: 30, icon: '✨', weight: 4, rare: false }
 ];
 
 // Low ammo threshold (25% of max ammo)
@@ -158,17 +220,43 @@ function resolveServerUrl() {
 export const SERVER_URL = resolveServerUrl();
 
 // Version control — single source of truth for all in-game version displays
-export const GAME_VERSION = 'V0.9.3 ALPHA';
+export const GAME_VERSION = 'V0.10.1 ALPHA';
 export const ENGINE_NAME = 'ZOMBS-XFX-NGIN';
 export const ENGINE_VERSION = `${ENGINE_NAME} ${GAME_VERSION}`;
 
 /** Patch notes shown in the main-menu version modal (newest first) */
 export const VERSION_HISTORY = [
     {
+        version: 'V0.10.1 ALPHA',
+        codename: 'Custom Cursor System',
+        date: '2026-08-03',
+        tag: 'CURRENT',
+        highlights: [
+            'Animated menu cursor — motion ghost trails, spark ember particles, velocity tilt',
+            'Pulsing blood-red hover glow + animated bracket target corners on buttons',
+            'Click flash ring — expanding energy ripple on mouse click',
+            'Squeezing grab/grabbing hand cursor with blood-red nail accents & depth shadow',
+            'Dynamic crosshair polish — center gap separation, dot pip, cardinal ticks, scale-punch hit markers'
+        ]
+    },
+    {
+        version: 'V0.10.0 ALPHA',
+        codename: 'VFX & Scrap Update',
+        date: '2026-08-02',
+        highlights: [
+            'Engine + VFX modernization — WebGPU bloom, typed particles, GPU combat FX',
+            'Chromatic aberration, film grain, vignette + damage/explosion impulse',
+            'Muzzle smoke + world point lights — gunfire lights the arena',
+            'Arcade Scrap Depot — fixed restock shop + always-on beacon',
+            'Wandering Merchant — rare black-market visits + Gear Crate',
+            'Equipment drops improved — Warden loot, melee drops, scrap sink',
+            'Shared scrap offers — turret, orbital, magnet, nuke, reroll'
+        ]
+    },
+    {
         version: 'V0.9.3 ALPHA',
         codename: 'Act 1 Finale',
         date: '2026-07-09',
-        tag: 'CURRENT',
         highlights: [
             'Campaign Act 1 Zones 1–4 + The Warden + ACT 1 CLEAR',
             'Survivor quests — Rook, Pip, June, Holt talk/quest/recruit',
@@ -220,22 +308,11 @@ export const VERSION_HISTORY = [
             'MP3 arcade soundtrack',
             'GameLoopSystem engine refactor'
         ]
-    },
-    {
-        version: 'V0.8.3 ALPHA',
-        codename: 'Survival Polish',
-        date: '2026-06-20',
-        highlights: [
-            'Rank & achievement systems',
-            'Battlepass season overhaul',
-            'Dodge roll & explosive barrels',
-            'Molotov throwable weapon'
-        ]
     }
 ];
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.9.3 ALPHA — Act 1 Finale: Zones 1–4 + Warden 👹 | Survivor Quests 🤝 | ACT 1 CLEAR 🏆 | Campaign Alive Radio 📻 | Menu Horde Ambience 🧟 | Boot Hardening 🛡 | 44K+ LOC 📊 | V0.9.2: Equipment + Mobile 📱 | And More...";
+export const NEWS_UPDATES = "NEW: V0.10.1 — Custom Cursor System 🎯 | Motion Spark Trails ✨ | Neon Glow Brackets ⭕ | Dynamic Crosshairs 💥 | V0.10.0: VFX & Scrap Update";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

@@ -6,15 +6,17 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
-**Release: V0.9.3 ALPHA (2026-07-09)** — *Act 1 Finale Update*. Campaign Act 1 **Zones 1–4** + **The Warden** + **ACT 1 CLEAR**, **survivor quests**, **campaign alive** pass, **main-menu horde ambience**, boot hardening, achievements/gallery redesign; **44,609 LOC** / **144** files. Prior **V0.9.2** equipment/mobile, **V0.9.1** skills, **V0.9.0** perf live.
+**Zombie Model Quality Overhaul (2026-08-05) - COMPLETE**: Every gameplay zombie render path now uses quality-gated procedural anatomy/material finishing plus a distinct type-readability layer: 8 Normal looks, Armored, Fast, Exploding, Ghost, Spitter, Flying, Blight, Crawler, Siren, Shard, Splitter, arcade Boss, and campaign Warden. Highlights include articulated limbs/claws, ribs/clavicles, deterministic wounds/mottling, armor rivets/visor, volatile sacs, spectral shrouds, acid glands, real segmented bat wings, fungal gills/spores, crawler spine, Siren throat rings, Splitter shards, and bespoke Boss/Warden silhouettes. High now targets near-native gameplay density (`resolutionScale: 1.25`) with high smoothing/advanced lighting; Ultra supersamples (`1.5`). Canvas resize re-applies smoothing after context-state reset. Key files: `Zombie.js`, `BossZombie.js`, `WardenBoss.js`, `SettingsManager.js`, `canvas.js`.
+[AMENDED 2026-08-05]: Screenshot review showed the first pass retained the legacy circle/ellipse as its dominant geometry, so its small detail overlays did not read as a model change. The repair replaces that visual read with shared tapered torsos, angular jaws, articulated arms/claws, and legs/feet at **every** quality tier. The local player likewise now uses a shoulder/waist tactical armor silhouette instead of an ellipse torso. Gameplay hitboxes and authority remain unchanged.
+**Release: V0.10.1 ALPHA (2026-08-03)** — *Custom Cursor System*. Overhauled procedural vector cursor rendering for menus & gameplay: animated motion ghost trails, spark ember particles, velocity tilt, pulsing blood-red hover glow, target corner brackets, expanding click-flash ripples, squeezing grab hand with nail accents, and dynamic crosshair reticle polish with scale-punch hit markers.
 
-[AMENDED 2026-07-21]: **Arcade Depot + Wandering Merchant** — shipped in Unreleased; see ✅ entry below + `CHANGELOG` Unreleased.
+[AMENDED 2026-08-03]: **V0.10.1 Custom Cursor System** — shipped as the next release; see `CHANGELOG` [v0.10.1] + ✅ entry below.
 
-[AMENDED 2026-07-09]: **Main menu flavor pass** — shipped in Unreleased; see ✅ entry below + `CHANGELOG` Unreleased.
+✅ **V0.10.1 Custom Cursor System (2026-08-03)** — Procedural vector custom cursor overhaul across menu UI and gameplay crosshairs. Motion ghost trails, spark embers, velocity-driven tilt, pulsing blood-red hover glow, target bracket corners `[ ]`, expanding click flash energy ring, squeezing grab hand, and gapped dynamic crosshairs with scale-punch hit markers. Key files: `GameHUD.js`, `drawingUtils.js`, `main.js`.
 
-[AMENDED 2026-07-09]: **Act 1 finale playable (Unreleased)** — Zone 4 Control Tower + Warden + power/steam/debris/hack-defend. Full chain Z1→Z4 → **ACT 1 CLEAR**. See `CHANGELOG` Unreleased + `CAMPAIGN_DESIGN.md`.
+✅ **Engine + VFX Modernization (2026-07-21 → hotfixes 2026-07-22 / 2026-08-02)** — Hybrid stack truth: Canvas2D world + WebGPU **overlay** (`gpuCanvas` z=2). Real bloom/`PostFXPass`, typed `PARTICLE_KIND`, GPU combat FX + point lights + camera-anchored blood, `js/shaders/*` + `js/systems/vfx/*`. Hotfixes: `vfx/` import depth (`../../`), bloom ping-pong usage conflict, `flashlight.js` → `coneLight.js` (adblock), lights uniform **544** bytes. Smoke: `tools/vfx_smoke_test.mjs`. See `ARCHITECTURE` WebGPU section + `CHANGELOG` [v0.10.0].
 
-[AMENDED 2026-07-09]: **Campaign Alive Coverage (Unreleased)** — Feedback/quest/presence/atmosphere pass on Act 1 Z1–Z4; retry zone, campaign victory path, 3 campaign achievements. See `CAMPAIGN_DESIGN.md` §19.
+✅ **V0.10.0 VFX & Scrap (2026-08-02)** — Cinematic post-FX (chromatic aberration, film grain, vignette, damage/explosion white-flash impulse via `addPostImpulse`); muzzle juice (barrel smoke/embers + per-frame world point lights while firing); plus prior Unreleased Arcade Depot, Wandering Merchant, equipment drops/scrap-sink and 2026-07-15 arcade pass folded into **V0.10.0 ALPHA — VFX & Scrap Update**. Modality pass: `constants.js` hub (GAME_VERSION/VERSION_HISTORY/NEWS_UPDATES), landing + README + itch + servers + `AGENTS.md` + `CHANGELOG` + `SUMMARY`; `mobile/www` synced. Key files: `bloom.js`, `PostFXPass.js`, `WebGPURenderer.js`, `combatUtils.js`, `GameLoopSystem.js`.
 
 ✅ **Arcade Depot + Wandering Merchant (2026-07-21)** — Arcade SP scrap economy depth. Fixed **Scrap Depot** landmark (multi-offer restock, wave-scaled prices, stock limits, always-on bronze `D` compass + edge beacon). Rare **Wandering Merchant** on wave breaks (wave 6+, black-market stock, purple `M` beacon + toast). Wave-break **Scrap Shrine** kept. Shared `applyScrapOffer`. Key files: `WorldShopSystem.js`, `ScrapDepot.js`, `WanderingMerchant.js`, `scrapOfferUtils.js`, `GameHUD.js`, `ScrapShopSystem.js`. Campaign/MP gated.
 
@@ -317,8 +319,10 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── skillTreeDefinitions.js  # Class tree skills (Gunner/Survivor/Scavenger)
 │   │   ├── canvas.js             # Canvas initialization and management
 │   │   ├── BootLoader.js         # Gated boot overlay — creep, stall UI, WebGPU phases, 3-frame settle
-│   │   ├── WebGPURenderer.js     # GPU background, bloom, particles, blood-edge overlay
+│   │   ├── WebGPURenderer.js     # WebGPU FX overlay (bloom/post-FX, particles, lights, blood-edge) — not a bottom background
+│   │   ├── ZombobsFX.js          # Spore cloud compute FX (~25k default) on overlay
 │   │   ├── gameState.js          # Centralized game state management
+│   ├── shaders/                  # [ADDED tree note 2026-08-05] WGSL string exports (bloom, coneLight, gameParticles, …)
 │   ├── companions/
 │   │   └── CompanionSystem.js   # AI NPC companion behavior and lifecycle
 │   ├── entities/
@@ -331,6 +335,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── AcidProjectile.js    # Acid projectile from Spitter Zombie
 │   │   └── AcidPool.js          # Acid pool ground hazard
 │   ├── systems/
+│   │   ├── vfx/                  # [ADDED tree note 2026-08-05] PostFXPass, WebGPUEffects, DecalSystem
 │   │   ├── AudioSystem.js        # Web Audio API sound generation
 │   │   ├── GraphicsSystem.js     # Graphics utilities (ground texture loading)
 │   │   ├── ParticleSystem.js     # Particle effects and blood splatter
@@ -510,6 +515,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Toggleable via Video settings: "Spore Cloud Effect" (default: enabled)
   - Integrated into WebGPURenderer using shared device/context (no duplicate initialization)
   - Location: `js/core/ZombobsFX.js`, integrated in `js/core/WebGPURenderer.js`
+  - [AMENDED 2026-08-05]: Default count is now **~25k** on the WebGPU **FX overlay** (`gpuCanvas` z=2 above Canvas2D world), not a bottom background under entities. See Engine + VFX Modernization ✅ entry.
 - **WebGPU Explosions & Particle Overhaul**: Enabled large-scale explosions for grenades and rockets
   - Removed early return in `ParticleSystem.js` that was disabling explosions
   - Updated `WebGPURenderer.js` to support larger particles (8x radius) and more particles (2000 limit)
